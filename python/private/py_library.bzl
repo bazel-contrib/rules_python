@@ -118,6 +118,34 @@ This allows optimizing the generation of symlinks to be cheaper at analysis time
     },
 )
 
+def _validate_srcs(ctx):
+    """Validate that srcs targets provide Python sources or Python metadata."""
+    for target in ctx.attr.srcs:
+        files = target[DefaultInfo].files.to_list()
+        if not files and (
+            PyInfo in target or
+            (BuiltinPyInfo != None and BuiltinPyInfo in target)
+        ):
+            continue
+
+        found_match = False
+        for file in files:
+            if file.is_directory or file.extension in ("py", "py3"):
+                found_match = True
+                break
+
+        if found_match:
+            continue
+
+        fail(
+            ("{} does not produce any py_library srcs files " +
+             "(expected .py or .py3) and is not an empty target providing " +
+             "PyInfo").format(
+                target.label,
+            ),
+            attr = "srcs",
+        )
+
 def py_library_impl(ctx):
     """Abstract implementation of py_library rule.
 
@@ -127,6 +155,7 @@ def py_library_impl(ctx):
     Returns:
         A list of modern providers to propagate.
     """
+    _validate_srcs(ctx)
     direct_sources = filter_to_py_srcs(ctx.files.srcs)
 
     precompile_result = maybe_precompile(ctx, direct_sources)
@@ -297,4 +326,13 @@ def create_py_library_rule_builder():
             ruleb.ToolchainType(EXEC_TOOLS_TOOLCHAIN_TYPE, mandatory = False),
         ],
     )
+    srcs_attr = builder.attrs.get("srcs")
+    srcs_attr.set_allow_files(True)
+    srcs_attr.set_doc(srcs_attr.doc() + """
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+As an exception, empty targets in `srcs` that provide {obj}`PyInfo` are
+allowed. Ordinary library dependencies should remain in `deps`.
+:::
+""")
     return builder
