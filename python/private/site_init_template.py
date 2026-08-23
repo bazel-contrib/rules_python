@@ -259,11 +259,14 @@ def _fixup_stdlib_paths():
     else:
         runtime_root = parent
 
-    runfiles_norm = _RUNFILES_ROOT.replace("\\", "/").rstrip("/")
+    def _norm_path(path_str):
+        return os.path.normcase(path_str).replace("\\", "/").rstrip("/")
+
+    runfiles_norm = _norm_path(_RUNFILES_ROOT)
     runfiles_prefix = runfiles_norm + "/"
 
     def _in_runfiles(path_str):
-        norm = path_str.replace("\\", "/").rstrip("/")
+        norm = _norm_path(path_str)
         return norm == runfiles_norm or norm.startswith(runfiles_prefix)
 
     # Fast path: only remap if runtime_root in runfiles actually contains a
@@ -297,12 +300,10 @@ def _fixup_stdlib_paths():
         return
 
     for i, p in enumerate(sys.path):
+        norm_p = _norm_path(p)
         for old_prefix in old_prefixes:
-            # Check both separators to match subdirectories regardless of
-            # Windows slash style, while preventing false-positive matches
-            # against sibling directories (e.g. /foo/prefix vs /foo/prefix2).
-            prefix_seps = (old_prefix + "/", old_prefix + "\\")
-            if p == old_prefix or p.startswith(prefix_seps):
+            norm_old = _norm_path(old_prefix)
+            if norm_p == norm_old or norm_p.startswith(norm_old + "/"):
                 new_path = target_root + p[len(old_prefix) :]
                 _print_verbose("remap stdlib sys.path:", p, "->", new_path)
                 sys.path[i] = new_path
