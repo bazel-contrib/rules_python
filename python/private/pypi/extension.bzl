@@ -548,15 +548,15 @@ def _pip_impl(module_ctx):
 
     pip.parse(
         hub_name = "pip",
-        python_version = 3.9,
-        requirements_lock = "//:requirements_lock_3_9.txt",
-        requirements_windows = "//:requirements_windows_3_9.txt",
-    )
-    pip.parse(
-        hub_name = "pip",
         python_version = 3.10,
         requirements_lock = "//:requirements_lock_3_10.txt",
         requirements_windows = "//:requirements_windows_3_10.txt",
+    )
+    pip.parse(
+        hub_name = "pip",
+        python_version = 3.11,
+        requirements_lock = "//:requirements_lock_3_11.txt",
+        requirements_windows = "//:requirements_windows_3_11.txt",
     )
 
     For instance, we have a hub with the name of "pip".
@@ -569,8 +569,8 @@ def _pip_impl(module_ctx):
     Two different pip.parse statements exist in MODULE.bazel provide the hub_name "pip".
     These definitions create two different pip spoke repositories that are
     related to the hub "pip".
-    One spoke uses Python 3.9 and the other uses Python 3.10. This code automatically
-    determines the Python version and the interpreter.
+    One spoke uses Python 3.10 and the other uses Python 3.11. This code
+    automatically determines the Python version and the interpreter.
     Both of these pip spokes contain requirements files that includes websocket
     and its dependencies.
 
@@ -579,8 +579,8 @@ def _pip_impl(module_ctx):
     each pip spoke had a requirements file that contained websockets. We
     then create two different wheel repositories that are named the following.
 
-    - @@rules_python~override~pip~pip_39_websockets
     - @@rules_python~override~pip~pip_310_websockets
+    - @@rules_python~override~pip~pip_311_websockets
 
     And if the wheel has any other dependencies subsequent wheels are created in the same fashion.
 
@@ -590,10 +590,10 @@ def _pip_impl(module_ctx):
     Also we may have more than one hub as defined in a MODULES.bazel file.  So we could have multiple
     hubs pointing to various different pip spokes.
 
-    Some other business rules notes. A hub can only have one spoke per Python version.  We cannot
-    have a hub named "pip" that has two spokes that use the Python 3.9 interpreter.  Second
-    we cannot have the same hub name used in sub-modules.  The hub name has to be globally
-    unique.
+    Some other business rules notes. A hub can only have one spoke per Python
+    version. We cannot have a hub named "pip" that has two spokes that use the
+    Python 3.10 interpreter. Second we cannot have the same hub name used in
+    sub-modules. The hub name has to be globally unique.
 
     This implementation also handles the creation of whl_modification JSON files that are used
     during the creation of wheel libraries. These JSON files used via the annotations argument

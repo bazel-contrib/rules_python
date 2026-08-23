@@ -1,6 +1,7 @@
 [project]
 name = "rules_python_dev"
 version = "0.0.0"
+requires-python = ">=3.10"
 
 dependencies = [
     # NOTE: This is only used as input to create the resolved requirements.txt

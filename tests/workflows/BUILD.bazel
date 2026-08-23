@@ -45,5 +45,6 @@ pytest_test(
     target_compatible_with = NOT_WINDOWS,
     deps = [
         "//python/runfiles",
+        "@pypi//pyyaml",
     ],
 )

@@ -2,5 +2,5 @@
 name = "multi_python_versions"
 version = "0.0.0"
 dependencies = [
-    'websockets ; python_full_version > "3.9.1"',
+    'websockets ; python_full_version >= "3.10.0"',
 ]

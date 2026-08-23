@@ -1,10 +1,12 @@
 ---
-name: Release Tracking Issue
-about: Checklist for tracking a new release of rules_python.
+name: Release or Backport Tracking Issue
+about: Checklist for tracking a new release, patch release, or backport of rules_python.
 title: 'Release <version>'
 labels: ['type: release']
 ---
 # Release tasks
+<!-- For patch releases and backports, only "Tag Final" is needed; delete the
+other release tasks below. -->
 - [ ] Prepare Release | status=awaiting-preparation
 - [ ] Create Release branch
 - [ ] Tag RC0
@@ -12,10 +14,12 @@ labels: ['type: release']
 
 ## Backports
  
-To request a backport, comment `/backport` on the PR, comment `/backport <PR>`
-on this issue, or add it to the checklist below. See
+To request or track a backport, comment `/backport` on the PR, comment
+`/backport <PR>` on this issue, or add it to the checklist below. See
 [RELEASING.md: How to add backports](https://github.com/bazel-contrib/rules_python/blob/main/RELEASING.md#how-to-add-backports)
 for details.
+ 
+- [ ] #PR_NUMBER
  
 ---
  

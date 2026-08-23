@@ -3,6 +3,7 @@ from tools.private.release.release_issue import (
     add_sync_changelog_task_to_body,
     format_metadata_line,
     load_release_tracking_template,
+    parse_backports,
     parse_checklist_state,
     parse_metadata_line,
 )
@@ -93,6 +94,41 @@ def test_add_backports_to_body():
 - [ ] #123 | status=done
 - [ ] #124
 - [ ] #125
+"""
+    assert updated_body.strip() == expected_body.strip()
+
+
+def test_parse_backports_ignores_placeholders():
+    body = """
+## Backports
+- [ ] #PR_NUMBER
+- [ ] #
+- [ ] #123 | status=done
+"""
+    items = parse_backports(body)
+    assert len(items) == 1
+    assert items[0].pr_ref == "#123"
+
+
+def test_add_backports_to_body_removes_placeholders():
+    body = """
+## Checklist
+- [ ] Tag Final
+
+## Backports
+- [ ] #PR_NUMBER
+- [ ] #
+- [ ] #123 | status=done
+"""
+    items = [{"ref": "124"}]
+    updated_body = add_backports_to_body(body, items)
+    expected_body = """
+## Checklist
+- [ ] Tag Final
+
+## Backports
+- [ ] #123 | status=done
+- [ ] #124
 """
     assert updated_body.strip() == expected_body.strip()
 

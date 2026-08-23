@@ -10,10 +10,10 @@ manifest:
     asgiref: asgiref
     astroid: astroid
     certifi: certifi
-    chardet: chardet
+    charset_normalizer: charset_normalizer
     dateutil: python_dateutil
     dill: dill
-    django: Django
+    django: django
     django_stubs_ext: django_stubs_ext
     idna: idna
     isort: isort
@@ -22,7 +22,6 @@ manifest:
     mccabe: mccabe
     mypy_django_plugin: django_stubs
     pathspec: pathspec
-    pkg_resources: setuptools
     platformdirs: platformdirs
     pylint: pylint
     requests: requests
@@ -30,7 +29,6 @@ manifest:
     six: six
     sqlparse: sqlparse
     tabulate: tabulate
-    tomli: tomli
     tomlkit: tomlkit
     typing_extensions: typing_extensions
     urllib3: urllib3
