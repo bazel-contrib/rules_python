@@ -18,7 +18,11 @@ load("@rules_python//python:py_test.bzl", "py_test")
 compile_pip_requirements_3_10(
     name = "requirements_3_10",
     timeout = "moderate",
-    src = "requirements.in",
+    src = "pyproject.toml",
+    extra_args = [
+        "--extra-index-url",
+        "https://pypi.org/simple/",
+    ],
     requirements_txt = "requirements_lock_3_10.txt",
     requirements_windows = "requirements_windows_3_10.txt",
 )

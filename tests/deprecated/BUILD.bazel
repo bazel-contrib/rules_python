@@ -51,7 +51,7 @@ versioned_py_console_script_binary(
 
 versioned_compile_pip_requirements(
     name = "versioned_compile_pip_requirements",
-    src = "requirements.in",
+    src = "pyproject.toml",
     requirements_txt = "requirements.txt",
 )
 
@@ -75,7 +75,7 @@ hub_py_console_script_binary(
 
 hub_compile_pip_requirements(
     name = "hub_compile_pip_requirements",
-    src = "requirements.in",
+    src = "pyproject.toml",
     requirements_txt = "requirements_hub.txt",
 )
 

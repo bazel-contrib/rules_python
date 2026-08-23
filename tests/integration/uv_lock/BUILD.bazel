@@ -4,7 +4,7 @@ load(":uv_runner.bzl", "uv_runner")
 
 lock(
     name = "requirements",
-    srcs = ["requirements.in"],
+    srcs = ["pyproject.toml"],
     out = "requirements.txt",
     tags = ["no-remote-exec"],
 )

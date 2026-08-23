@@ -15,6 +15,7 @@ filegroup(
     name = "distribution",
     srcs = [
         "BUILD.bazel",
+        "pyproject.toml",
         "requirements_darwin.txt",
         "requirements_linux.txt",
         "requirements_universal.txt",
@@ -26,7 +27,7 @@ filegroup(
 # Run bazel run //private:requirements.update to update the outs
 publish_deps(
     name = "requirements",
-    srcs = ["requirements.in"],
+    srcs = ["pyproject.toml"],
     outs = {
         "requirements_darwin.txt": "macos",
         "requirements_linux.txt": "linux",

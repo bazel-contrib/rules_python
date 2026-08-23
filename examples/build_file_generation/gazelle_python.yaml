@@ -35,4 +35,4 @@ manifest:
     zipp: zipp
   pip_repository:
     name: pip
-integrity: 19c0e03a9cf1d6bbb2dfe301325fefc59a30c3f967f84c2f1baaf915c2805da7
+integrity: e4fe0209cae76a4a70f0585b1c6c411fdccb2137336cf95b2cad90204fd77ded

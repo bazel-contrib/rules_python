@@ -7,10 +7,10 @@ load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
 load("//:requirements.bzl", "all_data_requirements", "all_requirements", "all_whl_requirements", "requirement")
 
 # This rule adds a convenient way to update the requirements.txt
-# lockfile based on the requirements.in.
+# lockfile based on the pyproject.toml.
 compile_pip_requirements(
     name = "requirements",
-    src = "requirements.in",
+    src = "pyproject.toml",
 )
 
 # The requirements.bzl file is using the hub repo to access packages via the

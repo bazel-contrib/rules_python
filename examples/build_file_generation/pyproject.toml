@@ -1,0 +1,8 @@
+[project]
+name = "build_file_generation"
+version = "0.0.0"
+dependencies = [
+    "flask",
+    "sphinx",
+    "sphinxcontrib-serializinghtml",
+]

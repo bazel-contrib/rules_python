@@ -53,7 +53,7 @@ py_console_script_binary(
 # This rule adds a convenient way to update the requirements file.
 compile_pip_requirements(
     name = "requirements",
-    src = "requirements.in",
+    src = "pyproject.toml",
     constraints = [
         "constraints_certifi.txt",
         "constraints_urllib3.txt",

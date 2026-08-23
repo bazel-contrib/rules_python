@@ -15,7 +15,7 @@ packaging==26.1 \
 pypiserver==2.4.1 \
     --hash=sha256:156540f87ecfd6db06ae2c16e25ae5afe4fda6f510bd1c34e46fbb0c491bcd9e \
     --hash=sha256:45f116d0bff6aafcaed002cfad48a6832e62a82393e3a9b447d5c41a0e310fff
-    # via -r examples/wheel/requirements_server.in
+    # via example_wheel (examples/wheel/pyproject.toml)
 
 # The following packages are considered to be unsafe in a requirements file:
 pip==24.0 \
