@@ -269,16 +269,6 @@ def _fixup_stdlib_paths():
         norm = _norm_path(path_str)
         return norm == runfiles_norm or norm.startswith(runfiles_prefix)
 
-    # Fast path: only remap if runtime_root in runfiles actually contains a
-    # standard library (avoiding remapping system/platform Python runtimes).
-    has_stdlib = False
-    for entry in ("lib", "lib64", "Lib", "DLLs"):
-        if os.path.exists(os.path.join(runtime_root, entry)):
-            has_stdlib = True
-            break
-    if not has_stdlib:
-        return
-
     target_root = _get_windows_path_with_unc_prefix(runtime_root)
     if _is_windows():
         target_root = target_root.replace("/", os.sep)
@@ -288,11 +278,10 @@ def _fixup_stdlib_paths():
     # outside the runfiles tree). Never overwrite sys.prefix / sys.exec_prefix
     # with the base Python stdlib root in a venv.
     in_venv = sys.prefix != sys.base_prefix
-    attrs = (
-        ("base_prefix", "base_exec_prefix")
-        if in_venv
-        else ("base_prefix", "base_exec_prefix", "prefix", "exec_prefix")
-    )
+    if in_venv:
+        attrs = ("base_prefix", "base_exec_prefix")
+    else:
+        attrs = ("base_prefix", "base_exec_prefix", "prefix", "exec_prefix")
     old_prefixes = set()
     for attr in attrs:
         old_prefix = getattr(sys, attr)
