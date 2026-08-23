@@ -591,6 +591,32 @@ bzl_library(
 )
 
 bzl_library(
+    name = "whl_library_deps_targets",
+    srcs = ["whl_library_deps_targets.bzl"],
+    deps = [
+        ":env_marker_setting",
+        ":labels",
+        ":pep508_deps",
+        "//python:py_library",
+        "//python/private:normalize_name",
+    ],
+)
+
+bzl_library(
+    name = "whl_library_srcs",
+    srcs = ["whl_library_srcs.bzl"],
+    deps = [
+        ":gen_wheel_record",
+        ":labels",
+        ":namespace_pkgs",
+        ":venv_entry_point",
+        ":venv_rewrite_shebang",
+        "//python:py_library",
+        "@bazel_skylib//rules:copy_file",
+    ],
+)
+
+bzl_library(
     name = "argparse",
     srcs = ["argparse.bzl"],
 )
