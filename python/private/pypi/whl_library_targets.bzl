@@ -86,16 +86,17 @@ def whl_library_targets(
         **kwargs
     )
 
-    whl_library_deps_targets(
-        name = name,
-        metadata_name = metadata_name,
-        requires_dist = requires_dist,
-        dep_template = dep_template,  # only needed if requires_dist or group_name is present
-        group_deps = group_deps,  # only needed if group_name is present
-        group_name = group_name,  # must specify group_deps together
-        extras = extras,  # only needed if requires_dist is present
-        include = include,  # only needed if requires_dist is present
-        repo = None,  # set aliases in the same repo
-        aliases = {},
-        **kwargs
-    )
+    if dep_template:
+        whl_library_deps_targets(
+            name = name,
+            metadata_name = metadata_name,
+            requires_dist = requires_dist,
+            dep_template = dep_template,  # only needed if requires_dist or group_name is present
+            group_deps = group_deps,  # only needed if group_name is present
+            group_name = group_name,  # must specify group_deps together
+            extras = extras,  # only needed if requires_dist is present
+            include = include,  # only needed if requires_dist is present
+            repo = None,  # set aliases in the same repo
+            aliases = {},
+            **kwargs
+        )

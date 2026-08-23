@@ -23,8 +23,8 @@ def whl_library_deps_targets(
         repo,
         aliases = None,
         metadata_name,
-        requires_dist,
-        extras,
+        requires_dist = [],
+        extras = [],
         include = [],
         group_deps = [],
         group_name = None,
@@ -168,6 +168,7 @@ def whl_library_deps_targets(
                 package_deps = package_deps,
                 tmpl = dep_template.format(name = "{}", target = PY_LIBRARY_PUBLIC_LABEL),
             ),
+            precompile = "disabled",
             tags = tags,
             visibility = impl_vis,
         )
