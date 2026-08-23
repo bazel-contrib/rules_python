@@ -1,10 +1,10 @@
-diff --unified --recursive a/requests-2.33.0.dist-info/METADATA b/requests-2.33.0.dist-info/METADATA
---- a/requests-2.33.0.dist-info/METADATA	2020-12-16 19:37:50.000000000 +0900
-+++ b/requests-2.33.0.dist-info/METADATA	2023-09-30 20:31:50.079863410 +0900
+diff --unified --recursive a/requests-2.34.2.dist-info/METADATA b/requests-2.34.2.dist-info/METADATA
+--- a/requests-2.34.2.dist-info/METADATA	2020-12-16 19:37:50.000000000 +0900
++++ b/requests-2.34.2.dist-info/METADATA	2023-09-30 20:31:50.079863410 +0900
 @@ -1,7 +1,7 @@
  Metadata-Version: 2.4
  Name: requests
- Version: 2.33.0
+ Version: 2.34.2
 -Summary: Python HTTP for Humans.
 +Summary: Python HTTP for Humans. Patched.
  Author-email: Kenneth Reitz <me@kennethreitz.org>
