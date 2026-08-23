@@ -37,3 +37,7 @@
 * **Platform Constraints**: Restrict OS-specific targets with
   `target_compatible_with` (e.g., `["@platforms//os:windows"]`) to skip on
   incompatible platforms.
+* **Multi-version `pytest_test`**: Restrict targets using `python_versions` to
+  Bzlmod with `target_compatible_with = SUPPORTS_BZLMOD`
+  (`//tests/support:support.bzl`). WORKSPACE mode resolves pip dependencies for
+  only the host Python version.

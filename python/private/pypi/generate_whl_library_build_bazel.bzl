@@ -101,7 +101,7 @@ def generate_whl_library_build_bazel(
         kwargs["requires_dist"] = requires_dist
 
     loads.extend([
-        """load("@rules_python//python/private/pypi:whl_library_targets.bzl", "{}")""".format(fn),
+        """load("@rules_python//python/private/pypi:{}.bzl", "{}")""".format(fn, fn),
     ])
 
     additional_content = []

@@ -31,8 +31,19 @@ import pathlib
 import posixpath
 import sys
 from collections import defaultdict
-from collections.abc import Generator
+from collections.abc import Generator, Iterator
 from typing import cast
+
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing import TypeVar
+
+    _FuncT = TypeVar("_FuncT")
+
+    def override(func: _FuncT) -> _FuncT:
+        return func
+
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -202,7 +213,7 @@ class Path(pathlib.Path):
     # __new__ or with_segments(), the runfiles state is preserved. We delegate
     # to self._as_path() because super().resolve() creates intermediate objects
     # that would otherwise crash during internal stat() calls.
-    # override
+    @override
     def resolve(self, strict: bool = False) -> Self:
         return type(self)(
             self._as_path().resolve(strict=strict),
@@ -210,7 +221,7 @@ class Path(pathlib.Path):
             source_repo=self._source_repo,
         )
 
-    # override
+    @override
     def absolute(self) -> Self:
         return type(self)(
             self._as_path().absolute(),
@@ -218,7 +229,7 @@ class Path(pathlib.Path):
             source_repo=self._source_repo,
         )
 
-    # override
+    @override
     def with_segments(self, *pathsegments: str | os.PathLike) -> Self:
         """Used by Python 3.12+ pathlib to create new path objects."""
         return type(self)(
@@ -228,7 +239,6 @@ class Path(pathlib.Path):
         )
 
     # For Python < 3.12
-    # override
     def _make_child(self, args: tuple[str, ...]) -> Self:
         # _make_child is an internal CPython method in Python < 3.12 omitted from
         # typeshed stubs. We ignore [missing-attribute] for pyrefly.
@@ -237,8 +247,8 @@ class Path(pathlib.Path):
         obj._source_repo = self._source_repo
         return cast(Self, obj)
 
-    # override
     @property
+    @override
     def parents(self) -> tuple[Self, ...]:
         return tuple(
             type(self)(
@@ -249,8 +259,8 @@ class Path(pathlib.Path):
             for p in super().parents
         )
 
-    # override
     @property
+    @override
     def parent(self) -> Self:
         return type(self)(
             super().parent,
@@ -266,7 +276,7 @@ class Path(pathlib.Path):
             return ""
         return path_posix
 
-    # override
+    @override
     def with_name(self, name: str) -> Self:
         return type(self)(
             super().with_name(name),
@@ -274,7 +284,7 @@ class Path(pathlib.Path):
             source_repo=self._source_repo,
         )
 
-    # override
+    @override
     def with_suffix(self, suffix: str) -> Self:
         return type(self)(
             super().with_suffix(suffix),
@@ -285,49 +295,55 @@ class Path(pathlib.Path):
     def _as_path(self) -> pathlib.Path:
         return pathlib.Path(str(self))
 
-    # override
+    @override
     def stat(self, *, follow_symlinks: bool = True) -> os.stat_result:
         return self._as_path().stat(follow_symlinks=follow_symlinks)
 
-    # override
+    @override
     def lstat(self) -> os.stat_result:
         return self._as_path().lstat()
 
-    # override
-    def exists(self) -> bool:
+    @override
+    def exists(self, *, follow_symlinks: bool = True) -> bool:
+        if not follow_symlinks and sys.version_info >= (3, 12):
+            return self._as_path().exists(follow_symlinks=follow_symlinks)
         return self._as_path().exists()
 
-    # override
-    def is_dir(self) -> bool:
+    @override
+    def is_dir(self, *, follow_symlinks: bool = True) -> bool:
+        if not follow_symlinks and sys.version_info >= (3, 13):
+            return self._as_path().is_dir(follow_symlinks=follow_symlinks)
         return self._as_path().is_dir()
 
-    # override
-    def is_file(self) -> bool:
+    @override
+    def is_file(self, *, follow_symlinks: bool = True) -> bool:
+        if not follow_symlinks and sys.version_info >= (3, 13):
+            return self._as_path().is_file(follow_symlinks=follow_symlinks)
         return self._as_path().is_file()
 
-    # override
+    @override
     def is_symlink(self) -> bool:
         return self._as_path().is_symlink()
 
-    # override
+    @override
     def is_block_device(self) -> bool:
         return self._as_path().is_block_device()
 
-    # override
+    @override
     def is_char_device(self) -> bool:
         return self._as_path().is_char_device()
 
-    # override
+    @override
     def is_fifo(self) -> bool:
         return self._as_path().is_fifo()
 
-    # override
+    @override
     def is_socket(self) -> bool:
         return self._as_path().is_socket()
 
     # Path.open in pathlib has multiple overloads in typeshed. We use a
     # simplified delegation signature here.
-    # override
+    @override
     def open(  # pyrefly: ignore[bad-override]
         self,
         mode: str = "r",
@@ -344,31 +360,87 @@ class Path(pathlib.Path):
             newline=newline,
         )
 
-    # override
+    @override
     def read_bytes(self) -> bytes:
         return self._as_path().read_bytes()
 
-    # override
-    def read_text(self, encoding: str | None = None, errors: str | None = None) -> str:
+    @override
+    def read_text(
+        self,
+        encoding: str | None = None,
+        errors: str | None = None,
+        newline: str | None = None,
+    ) -> str:
+        if sys.version_info >= (3, 13) and newline is not None:
+            return self._as_path().read_text(
+                encoding=encoding,
+                errors=errors,
+                newline=newline,
+            )
         return self._as_path().read_text(encoding=encoding, errors=errors)
 
-    # override
+    @override
     def iterdir(self) -> Generator[Self, None, None]:
         resolved = self._as_path()
         for p in resolved.iterdir():
             yield self / p.name
 
-    # override
-    def glob(self, pattern: str) -> Generator[Self, None, None]:
+    # Return types and keyword arguments vary across Python versions in typeshed.
+    @override
+    def glob(  # pyrefly: ignore[bad-override]
+        self,
+        pattern: str,
+        *,
+        case_sensitive: bool | None = None,
+        recurse_symlinks: bool = False,
+    ) -> Iterator[Self]:
         resolved = self._as_path()
-        for p in resolved.glob(pattern):
+        if sys.version_info >= (3, 13):
+            it = resolved.glob(
+                pattern,
+                case_sensitive=case_sensitive,
+                recurse_symlinks=recurse_symlinks,
+            )
+        elif sys.version_info >= (3, 12):
+            it = resolved.glob(pattern, case_sensitive=case_sensitive)
+        else:
+            it = resolved.glob(pattern)
+        for p in it:
             yield self / p.relative_to(resolved)
 
-    # override
-    def rglob(self, pattern: str) -> Generator[Self, None, None]:
+    # Return types and keyword arguments vary across Python versions in typeshed.
+    @override
+    def rglob(  # pyrefly: ignore[bad-override]
+        self,
+        pattern: str,
+        *,
+        case_sensitive: bool | None = None,
+        recurse_symlinks: bool = False,
+    ) -> Iterator[Self]:
         resolved = self._as_path()
-        for p in resolved.rglob(pattern):
+        if sys.version_info >= (3, 13):
+            it = resolved.rglob(
+                pattern,
+                case_sensitive=case_sensitive,
+                recurse_symlinks=recurse_symlinks,
+            )
+        elif sys.version_info >= (3, 12):
+            it = resolved.rglob(pattern, case_sensitive=case_sensitive)
+        else:
+            it = resolved.rglob(pattern)
+        for p in it:
             yield self / p.relative_to(resolved)
+
+    @override
+    def match(
+        self,
+        path_pattern: str,
+        *,
+        case_sensitive: bool | None = None,
+    ) -> bool:
+        if sys.version_info >= (3, 12):
+            return self._as_path().match(path_pattern, case_sensitive=case_sensitive)
+        return self._as_path().match(path_pattern)
 
     def __repr__(self) -> str:
         return "runfiles.Path({!r})".format(self.runfile_path)

@@ -25,6 +25,8 @@ Before drafting any pull request description, strictly adhere to the rules in
   (`.github/workflows/`).
 * `tests:`: Test-only changes and test-helper fixes (never `fix:` or
   `fix(tests):`).
+* `agents:` / `agents(<scope>):`: Agent rules, skills, and prompts
+  (`.agents/`).
 
 ## PR Commit Workflow Invariant
 * Once a Pull Request is created, always make new commits or merge commits.
