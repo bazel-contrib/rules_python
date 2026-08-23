@@ -172,6 +172,13 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
         name = pkg["name"]
         version = pkg["version"]
         norm_name = normalize_name(name)
+        dependencies = pkg.get("dependencies", [])
+        if dependencies:
+            dependencies = [
+                "{name}; {marker}".format(**dep) if "marker" in dep else dep["name"]
+                for dep in dependencies
+            ]
+
         entry = uv_packages.setdefault(norm_name, {
             "distribution": name,
             "resolved_srcs": [],
@@ -282,6 +289,7 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
             )
             entry["resolved_srcs"].append(struct(
                 distribution = name,
+                dependencies = dependencies,
                 extra_pip_args = extra_pip_args or [],
                 requirement_line = requirement_line,
                 target_platforms = plats,
@@ -524,6 +532,7 @@ def _package_srcs(
                 key,
                 struct(
                     distribution = name,
+                    dependencies = [],
                     extra_pip_args = r.extra_pip_args,
                     requirement_line = req_line,
                     target_platforms = [],
