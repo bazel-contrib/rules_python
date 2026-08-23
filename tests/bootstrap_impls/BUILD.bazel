@@ -17,6 +17,7 @@ load("//python:py_test.bzl", "py_test")
 load("//tests/support:py_reconfig.bzl", "py_reconfig_binary", "py_reconfig_test")
 load("//tests/support:sh_py_run_test.bzl", "sh_py_run_test")
 load("//tests/support:support.bzl", "SUPPORTS_BOOTSTRAP_SCRIPT")
+load("//tests/support/pytest_test:pytest_test.bzl", "pytest_test")
 load(":venv_relative_path_tests.bzl", "relative_path_test_suite")
 
 py_reconfig_binary(
@@ -125,6 +126,18 @@ py_reconfig_test(
     imports = ["./USER_IMPORT/site-packages"],
     main = "sys_path_order_test.py",
     target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
+)
+
+pytest_test(
+    name = "stdlib_symlink_syspath_bootstrap_script_test",
+    srcs = ["stdlib_symlink_syspath_test.py"],
+    config_settings = {
+        "//python/config_settings:bootstrap_impl": "script",
+    },
+    target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
+    deps = [
+        "//python/runfiles",
+    ],
 )
 
 py_reconfig_test(
