@@ -311,13 +311,13 @@ class Path(pathlib.Path):
 
     @override
     def is_dir(self, *, follow_symlinks: bool = True) -> bool:
-        if not follow_symlinks and sys.version_info >= (3, 12):
+        if not follow_symlinks and sys.version_info >= (3, 13):
             return self._as_path().is_dir(follow_symlinks=follow_symlinks)
         return self._as_path().is_dir()
 
     @override
     def is_file(self, *, follow_symlinks: bool = True) -> bool:
-        if not follow_symlinks and sys.version_info >= (3, 12):
+        if not follow_symlinks and sys.version_info >= (3, 13):
             return self._as_path().is_file(follow_symlinks=follow_symlinks)
         return self._as_path().is_file()
 
@@ -371,9 +371,11 @@ class Path(pathlib.Path):
         errors: str | None = None,
         newline: str | None = None,
     ) -> str:
-        if newline is not None:
+        if sys.version_info >= (3, 13) and newline is not None:
             return self._as_path().read_text(
-                encoding=encoding, errors=errors, newline=newline
+                encoding=encoding,
+                errors=errors,
+                newline=newline,
             )
         return self._as_path().read_text(encoding=encoding, errors=errors)
 
@@ -384,7 +386,7 @@ class Path(pathlib.Path):
             yield self / p.name
 
     @override
-    def glob(
+    def glob(  # pyrefly: ignore[bad-override]
         self,
         pattern: str,
         *,
@@ -406,7 +408,7 @@ class Path(pathlib.Path):
             yield self / p.relative_to(resolved)
 
     @override
-    def rglob(
+    def rglob(  # pyrefly: ignore[bad-override]
         self,
         pattern: str,
         *,
