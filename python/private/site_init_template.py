@@ -288,6 +288,15 @@ def _fixup_stdlib_paths():
         if _in_runfiles(old_prefix):
             continue
 
+        # Only remap prefixes leaked from Bazel (external repositories, repo
+        # cache, or execution root). This avoids remapping system or platform
+        # Python runtimes (e.g. /usr) when using runtime_env_toolchain.
+        norm_prefix = _norm_path(old_prefix)
+        if not any(
+            marker in norm_prefix for marker in ("/external/", "/cache/", "/execroot/")
+        ):
+            continue
+
         old_prefixes.add(old_prefix)
 
         _print_verbose(f"remap sys.{attr}:", old_prefix, "->", target_root)
