@@ -427,6 +427,17 @@ class Path(pathlib.Path):
         for p in it:
             yield self / p.relative_to(resolved)
 
+    @override
+    def match(
+        self,
+        path_pattern: str,
+        *,
+        case_sensitive: bool | None = None,
+    ) -> bool:
+        if sys.version_info >= (3, 12):
+            return self._as_path().match(path_pattern, case_sensitive=case_sensitive)
+        return self._as_path().match(path_pattern)
+
     def __repr__(self) -> str:
         return "runfiles.Path({!r})".format(self.runfile_path)
 
