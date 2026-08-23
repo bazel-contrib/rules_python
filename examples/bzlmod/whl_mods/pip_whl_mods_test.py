@@ -131,7 +131,7 @@ class PipWhlModsTest(unittest.TestCase):
         self.assertEqual(content, "Hello world from requests")
 
     def test_patches(self):
-        current_wheel_version = "2.25.1"
+        current_wheel_version = "2.33.0"
 
         # This test verifies that the patches are applied to the wheel.
         r = runfiles.Create()

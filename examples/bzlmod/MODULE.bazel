@@ -277,7 +277,7 @@ pip.parse(
 #
 # The patches have to be in the unified-diff format.
 pip.override(
-    file = "requests-2.25.1-py2.py3-none-any.whl",
+    file = "requests-2.33.0-py3-none-any.whl",
     patch_strip = 1,
     patches = [
         "@//patches:empty.patch",
