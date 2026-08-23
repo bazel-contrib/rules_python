@@ -266,6 +266,16 @@ def _fixup_stdlib_paths():
         norm = path_str.replace("\\", "/").rstrip("/")
         return norm == runfiles_norm or norm.startswith(runfiles_prefix)
 
+    # Fast path: only remap if runtime_root in runfiles actually contains a
+    # standard library (avoiding remapping system/platform Python runtimes).
+    has_stdlib = False
+    for entry in ("lib", "lib64", "Lib", "DLLs"):
+        if os.path.exists(os.path.join(runtime_root, entry)):
+            has_stdlib = True
+            break
+    if not has_stdlib:
+        return
+
     target_root = _get_windows_path_with_unc_prefix(runtime_root)
     if _is_windows():
         target_root = target_root.replace("/", os.sep)
