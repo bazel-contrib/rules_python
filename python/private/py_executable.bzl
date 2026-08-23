@@ -594,6 +594,7 @@ def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root
             "%add_runfiles_root_to_sys_path%": add_runfiles_root_to_sys_path,
             "%coverage_tool%": _get_coverage_tool_runfiles_path(ctx, runtime),
             "%import_all%": "True" if read_possibly_native_flag(ctx, "python_import_all_repositories") else "False",
+            "%interpreter_actual_path%": interpreter_actual_path,
             "%site_init_runfiles_path%": runfiles_root_path(ctx, site_init.short_path),
             "%workspace_name%": ctx.workspace_name,
         },
