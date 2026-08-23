@@ -7,6 +7,7 @@ globs:
   - "uv.lock"
   - "pyproject.toml"
   - "*constraints*.txt"
+  - "*gazelle_python*.yaml"
 ---
 
 # Lockfile & Dependency Rules
@@ -19,7 +20,17 @@ globs:
 * Linux/macOS `.update` targets do not update Windows lockfiles.
 * **Never overwrite** Windows lockfiles with non-Windows lockfiles.
 * Update only changed package blocks and hashes; preserve Windows dependencies
-  (`colorama`) and `# via` comments.
+  (`colorama`).
+* When migrating requirement inputs (e.g., `requirements.in` to
+  `pyproject.toml`), update `# via` comments in Windows lockfiles or run
+  Windows `.update` targets (e.g.,
+  `//examples:bzlmod_requirements_*_windows.update`).
+
+## Gazelle Python Manifests (`gazelle_python*.yaml`)
+* After changing requirement lockfiles, run
+  `bazel run //:gazelle_python_manifest.update` (and
+  `:gazelle_python_manifest_with_types.update` if present) to refresh manifest
+  integrity hashes.
 
 ## Dependabot & Dependency Bumps
 When dependencies bump, manually synchronize:
