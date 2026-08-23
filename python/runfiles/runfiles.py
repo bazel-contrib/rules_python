@@ -385,6 +385,7 @@ class Path(pathlib.Path):
         for p in resolved.iterdir():
             yield self / p.name
 
+    # Return types and keyword arguments vary across Python versions in typeshed.
     @override
     def glob(  # pyrefly: ignore[bad-override]
         self,
@@ -407,6 +408,7 @@ class Path(pathlib.Path):
         for p in it:
             yield self / p.relative_to(resolved)
 
+    # Return types and keyword arguments vary across Python versions in typeshed.
     @override
     def rglob(  # pyrefly: ignore[bad-override]
         self,
