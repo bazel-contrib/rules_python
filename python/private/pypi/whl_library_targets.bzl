@@ -14,8 +14,11 @@
 
 """Macro to generate all of the targets present in a {obj}`whl_library`."""
 
-load(":whl_library_deps_targets.bzl", "whl_library_deps_targets")
-load(":whl_library_srcs.bzl", "whl_library_srcs")
+load(":whl_library_deps_targets.bzl", _whl_library_deps_targets = "whl_library_deps_targets")
+load(":whl_library_srcs.bzl", _whl_library_srcs = "whl_library_srcs")
+
+whl_library_deps_targets = _whl_library_deps_targets
+whl_library_srcs = _whl_library_srcs
 
 def whl_library_targets(
         *,
