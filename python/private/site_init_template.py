@@ -283,8 +283,18 @@ def _fixup_stdlib_paths():
     if _is_windows():
         target_root = target_root.replace("/", os.sep)
 
+    # When running in a virtual environment (sys.prefix != sys.base_prefix),
+    # sys.prefix points to the .venv directory (which on Windows may reside
+    # outside the runfiles tree). Never overwrite sys.prefix / sys.exec_prefix
+    # with the base Python stdlib root in a venv.
+    in_venv = sys.prefix != sys.base_prefix
+    attrs = (
+        ("base_prefix", "base_exec_prefix")
+        if in_venv
+        else ("base_prefix", "base_exec_prefix", "prefix", "exec_prefix")
+    )
     old_prefixes = set()
-    for attr in ("base_prefix", "base_exec_prefix", "prefix", "exec_prefix"):
+    for attr in attrs:
         old_prefix = getattr(sys, attr)
         if _in_runfiles(old_prefix):
             continue
