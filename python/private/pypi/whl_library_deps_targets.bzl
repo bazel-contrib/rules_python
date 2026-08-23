@@ -168,7 +168,7 @@ def whl_library_deps_targets(
                 package_deps = package_deps,
                 tmpl = dep_template.format(name = "{}", target = PY_LIBRARY_PUBLIC_LABEL),
             ),
-            # do not precomple `pyc` because this does not have any sources. The sources
+            # do not precompile `pyc` because this does not have any sources. The sources
             # will be pre-compiled in the srcs folder once and for all.
             precompile = "disabled",
             tags = tags,
