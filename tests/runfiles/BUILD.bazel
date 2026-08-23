@@ -1,5 +1,6 @@
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load("@rules_python//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
+load("//tests/support:support.bzl", "SUPPORTS_BZLMOD")
 load("//tests/support/pytest_test:pytest_test.bzl", "pytest_test")
 
 pytest_test(
@@ -18,6 +19,7 @@ pytest_test(
         "3.13",
         "3.14",
     ],
+    target_compatible_with = SUPPORTS_BZLMOD,
     deps = ["//python/runfiles"],
 )
 
@@ -31,6 +33,7 @@ pytest_test(
         "3.13",
         "3.14",
     ],
+    target_compatible_with = SUPPORTS_BZLMOD,
     deps = ["//python/runfiles"],
 )
 

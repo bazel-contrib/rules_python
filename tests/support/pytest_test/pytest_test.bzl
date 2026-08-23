@@ -4,9 +4,6 @@ load("//python:py_test.bzl", "py_test")
 
 _DEFAULT_PYTEST = Label("//tests/support/pytest_test:default_pytest")
 _DEFAULT_PYTEST_BAZEL = Label("//tests/support/pytest_test:default_pytest_bazel")
-_DEFAULT_EXCEPTIONGROUP = Label(
-    "//tests/support/pytest_test:default_exceptiongroup",
-)
 
 def pytest_test(
         *,
@@ -117,7 +114,6 @@ def _single_pytest_test(
         deps = deps + [
             pytest,
             pytest_bazel,
-            _DEFAULT_EXCEPTIONGROUP,
         ],
         **kwargs
     )

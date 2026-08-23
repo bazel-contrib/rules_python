@@ -27,9 +27,3 @@ alias(
     name = "default_pytest_bazel",
     actual = "@pypi//pytest_bazel",
 )
-
-# These aliases are used to avoid duplicate targets in the deps list
-alias(
-    name = "default_exceptiongroup",
-    actual = "@pypi//exceptiongroup",
-)
