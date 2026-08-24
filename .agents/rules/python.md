@@ -26,6 +26,9 @@
   link to its definition in the docstring.
 
 ## Type Checking & Annotations
+* **Version differences**: Guard version-specific arguments or APIs with runtime
+  checks (e.g. `if sys.version_info >= (3, 13):`) instead of
+  `# pyrefly: ignore[...]` comments.
 * **`importlib.metadata` `PackagePath`**: `f.locate()` is typed as `PathLike`.
   Wrap with `pathlib.Path(f.locate())` to call `.exists()`, `.is_file()`, etc.
 * **In-file disables vs target skipping**: Prefer
