@@ -130,7 +130,7 @@ def _validate_srcs(ctx):
 
         found_match = False
         for file in files:
-            if file.is_directory or file.extension in ("py", "py3"):
+            if file.is_directory or file.extension in ("py", "py3", "pyc"):
                 found_match = True
                 break
 

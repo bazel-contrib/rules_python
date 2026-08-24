@@ -204,7 +204,7 @@ def filter_to_py_srcs(srcs):
     # TODO(b/203567235): Get the set of recognized extensions from
     # elsewhere, as there may be others. e.g. Bazel recognizes .py3
     # as a valid extension.
-    return [f for f in srcs if f.extension == "py"]
+    return [f for f in srcs if f.extension in ("py", "py3", "pyc")]
 
 def collect_cc_info(ctx, extra_deps = []):
     """Collect C++ information from dependencies for Bazel.

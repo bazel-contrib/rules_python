@@ -106,6 +106,9 @@ def _precompile(ctx, src, *, use_pycache):
     if ctx.label.package != src.owner.package:
         return None
 
+    if src.is_directory or src.extension in ("pyc", "pyo"):
+        return None
+
     exec_tools_info = ctx.toolchains[EXEC_TOOLS_TOOLCHAIN_TYPE].exec_tools
     target_toolchain = ctx.toolchains[TARGET_TOOLCHAIN_TYPE].py3_runtime
 

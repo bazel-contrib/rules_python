@@ -331,7 +331,7 @@ as part of a runnable program (packaging rules may include them, however).
             allow_files = True,
         ),
         "srcs": lambda: attrb.LabelList(
-            allow_files = [".py", ".py3"],
+            allow_files = [".py", ".py3", ".pyc"],
             # Necessary for --compile_one_dependency to work.
             flags = ["DIRECT_COMPILE_TIME_INPUT"],
             doc = """
