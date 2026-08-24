@@ -31,11 +31,10 @@ load(":platform.bzl", _plat = "platform")
 load(":pypi_cache.bzl", "pypi_cache")
 load(":simpleapi_download.bzl", "simpleapi_download")
 load(":unified_hub_repo.bzl", "unified_hub_repo")
-load(":whl_library.bzl", "whl_library")
 load(":whl_archive.bzl", "whl_archive")
 load(":whl_deps_repo.bzl", "whl_deps_repo")
+load(":whl_library.bzl", "whl_library")
 load(":whl_repo_name.bzl", "whl_repo_name")
-load(":pep508_requirement.bzl", "requirement")
 
 def _whl_mods_impl(whl_mods_dict):
     """Implementation of the pip.whl_mods tag class.
@@ -542,13 +541,12 @@ def _create_unified_hub_repo(mods):
     )
 
 def register_whl_libraries(
-        registrations, 
+        registrations,
         rules = struct(
-            whl_library=whl_library,
-            whl_deps_repo=whl_deps_repo,
-            whl_archive=whl_archive,
-        ),
-    ):
+            whl_library = whl_library,
+            whl_deps_repo = whl_deps_repo,
+            whl_archive = whl_archive,
+        )):
     """Register all of the whl libraries that where produced by the extension.
 
     Args:
@@ -557,6 +555,7 @@ def register_whl_libraries(
         rules: {type}`struct` used to inject different implementations used to
             create instances. Used for testing.
     """
+
     # we first check which wheels are ambiguous - belong to the same hub repository, indicated
     # by the `dep_template`, but have different (URL, index_url) pairs for each whl.
     urls = {}
@@ -590,6 +589,8 @@ def register_whl_libraries(
         url = args["urls"][0]
         index_url = args["index_url"]
 
+        # TODO @aignas 2026-08-24: have different levels, register at hub level, register
+        # globally and fallback. This can be done by storing different keys.
         hub_name, _, _ = args["dep_template"].partition("//")
         hub_name = hub_name.strip("@")
 
@@ -642,7 +643,7 @@ def register_whl_libraries(
             registered_srcs[key] = extract_repo_name
             rules.whl_archive(
                 name = extract_repo_name,
-                **extract_args,
+                **extract_args
             )
 
         deps_args = {
