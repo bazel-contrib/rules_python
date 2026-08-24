@@ -35,6 +35,7 @@ load(
     "create_output_group_info",
     "create_py_info",
     "filter_to_py_srcs",
+    "is_py_source",
 )
 load(":common_labels.bzl", "labels")
 load(":flags.bzl", "AddSrcsToRunfilesFlag", "PrecompileFlag", "VenvsSitePackages")
@@ -130,7 +131,7 @@ def _validate_srcs(ctx):
 
         found_match = False
         for file in files:
-            if file.is_directory or file.extension in ("py", "py3", "pyc"):
+            if file.is_directory or is_py_source(file) or file.extension == "pyc":
                 found_match = True
                 break
 
@@ -139,8 +140,8 @@ def _validate_srcs(ctx):
 
         fail(
             ("{} does not produce any py_library srcs files " +
-             "(expected .py or .py3) and is not an empty target providing " +
-             "PyInfo").format(
+             "(expected .py, .pyc, or directory) and is not an empty target " +
+             "providing PyInfo").format(
                 target.label,
             ),
             attr = "srcs",
