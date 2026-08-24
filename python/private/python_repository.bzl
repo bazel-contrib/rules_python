@@ -245,7 +245,7 @@ def _python_repository_impl(rctx):
     if release and release >= 20250517:
         # Starting with 20250517 we have python3 linked statically
         # https://github.com/astral-sh/python-build-standalone/issues/941
-        python3_statically_links_libpython = False
+        python3_statically_links_libpython = True
     else:
         python3_statically_links_libpython = True
 
