@@ -608,6 +608,17 @@ bzl_library(
 )
 
 bzl_library(
+    name = "register_whl_libraries",
+    srcs = ["register_whl_libraries.bzl"],
+    deps = [
+        ":whl_archive",
+        ":whl_deps_repo",
+        ":whl_library",
+        ":whl_repo_name",
+    ],
+)
+
+bzl_library(
     name = "argparse",
     srcs = ["argparse.bzl"],
 )
