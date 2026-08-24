@@ -125,14 +125,23 @@ def register_whl_libraries(
             **deps_args
         )
 
-def _can_split(args):
-    if "urls" not in args or "filename" not in args:
-        # only enabled with bazel downloader
-        return False
+def _can_split(
+        args,
+        need_args = [
+            "urls",
+            "filename",
+            "integrity",
+        ],
+        cannot_split = ["annotation", "whl_patches"]):
+    for arg in need_args:
+        if arg not in args:
+            # missing args for splitting logic
+            return False
 
-    if "annotation" in args or "whl_patches" in args:
-        # No support for patched repos yet
-        return False
+    for arg in cannot_split:
+        if arg in args:
+            # cannot split if any of these exist
+            return False
 
     return True
 
