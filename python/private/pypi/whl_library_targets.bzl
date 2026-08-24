@@ -87,7 +87,6 @@ def whl_library_targets(
     )
 
     if dep_template:
-        # allow to not define the targets if we invoke `whl_archive` without dep_template
         whl_library_deps_targets(
             name = name,
             metadata_name = metadata_name,
