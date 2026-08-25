@@ -345,6 +345,10 @@ Allowed file types:
 
 Library targets belong in `deps`. Other binary files that may be needed at run
 time belong in `data`.
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+Allowed `.pyc` and directory inputs in `srcs`.
+:::
 """,
         ),
         "srcs_version": lambda: attrb.String(
