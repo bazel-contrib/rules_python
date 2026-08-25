@@ -157,19 +157,18 @@ def py_library_impl(ctx):
         A list of modern providers to propagate.
     """
     _validate_srcs(ctx)
-    direct_sources = filter_to_py_srcs(ctx.files.srcs)
-    direct_py_and_pyc_srcs = [
+    direct_sources = [
         f
         for f in ctx.files.srcs
-        if is_py_source(f) or f.extension == "pyc"
+        if f.is_directory or is_py_source(f) or f.extension == "pyc"
     ]
 
-    precompile_result = maybe_precompile(ctx, direct_py_and_pyc_srcs)
+    precompile_result = maybe_precompile(ctx, direct_sources)
 
     required_py_files = filter_to_py_srcs(precompile_result.keep_srcs)
     required_pyc_files = []
     implicit_pyc_files = []
-    implicit_pyc_source_files = direct_sources
+    implicit_pyc_source_files = filter_to_py_srcs(direct_sources)
 
     precompile_attr = ctx.attr.precompile
     precompile_flag = ctx.attr._precompile_flag[BuildSettingInfo].value

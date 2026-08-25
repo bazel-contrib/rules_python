@@ -134,7 +134,9 @@ def _test_srcs_can_contain_tree_artifact(name, config):
     )
 
 def _test_srcs_can_contain_tree_artifact_impl(env, target):
-    env.expect.that_target(target).default_outputs().contains_exactly([])
+    env.expect.that_target(target).default_outputs().contains_exactly([
+        "{package}/{test_name}_tree.dir",
+    ])
 
 _tests.append(_test_srcs_can_contain_tree_artifact)
 

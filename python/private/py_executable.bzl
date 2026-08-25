@@ -1199,18 +1199,17 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
     # precompiled pyc below) so the test-main validation can statically analyze
     # the original source.
     main_py_source = main_py
-    direct_sources = filter_to_py_srcs(ctx.files.srcs)
-    direct_py_and_pyc_srcs = [
+    direct_sources = [
         f
         for f in ctx.files.srcs
-        if is_py_source(f) or f.extension == "pyc"
+        if f.is_directory or is_py_source(f) or f.extension == "pyc"
     ]
-    precompile_result = maybe_precompile(ctx, direct_py_and_pyc_srcs)
+    precompile_result = maybe_precompile(ctx, direct_sources)
 
     required_py_files = filter_to_py_srcs(precompile_result.keep_srcs)
     required_pyc_files = []
     implicit_pyc_files = []
-    implicit_pyc_source_files = direct_sources
+    implicit_pyc_source_files = filter_to_py_srcs(direct_sources)
 
     if ctx.attr.precompile == PrecompileAttr.ENABLED:
         required_pyc_files.extend(precompile_result.pyc_files)
