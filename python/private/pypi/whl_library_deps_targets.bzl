@@ -23,8 +23,8 @@ def whl_library_deps_targets(
         repo,
         aliases = None,
         metadata_name,
-        requires_dist,
-        extras,
+        requires_dist = [],
+        extras = [],
         include = [],
         group_deps = [],
         group_name = None,
@@ -40,25 +40,32 @@ def whl_library_deps_targets(
 
     Args:
         name: {type}`str` The wheel filename
-        metadata_name: {type}`str` The package name as written in wheel `METADATA`.
+        metadata_name: {type}`str` The package name as written in wheel
+            `METADATA`.
         group_deps: {type}`list[str]` names of fellow members of the group (if
             any). These will be excluded from generated deps lists so as to avoid
             direct cycles. These dependencies will be provided at runtime by the
             group rules which wrap this library and its fellows together.
         requires_dist: {type}`list[str]` The list of `Requires-Dist` values from
-            the whl `METADATA`.
-        extras: {type}`list[str]` The list of requested extras. This essentially includes extra transitive dependencies in the final targets depending on the wheel `METADATA`.
+            the whl `METADATA`. Optional because some packages don't have them.
+        extras: {type}`list[str]` The list of requested extras. This essentially
+            includes extra transitive dependencies in the final targets
+            depending on the wheel `METADATA`. Optional because some packages
+            don't request them.
         include: {type}`list[str]` The list of packages to include.
         group_name: {type}`str | None` name of the dependency group (if any).
         dep_template: {type}`str | None` The dep_template to use.
         tags: {type}`list[str]` The tags set on the targets.
-        repo: {type}`str | Label | None` The BUILD.bazel label to the parent repo that has the
-            sources. If none, then will take the targets from the current dir.
-        aliases: {type}`dict[str, str] | None` The list of aliases to create in the parent repo. If None, will create
-            the default values. Empty list means no aliases.
+        repo: {type}`str | Label | None` The BUILD.bazel label to the parent
+            repo that has the sources. If none, then will take the targets from
+            the current dir.
+        aliases: {type}`dict[str, str] | None` The list of aliases to create in
+            the parent repo. If None, will create the default values. Empty list
+            means no aliases.
         visibility: {type}`list[str]` The visibility of the targets.
         native: {type}`native` The native struct for overriding in tests.
-        rules: {type}`struct` A struct with references to rules for creating targets.
+        rules: {type}`struct` A struct with references to rules for creating
+            targets.
     """
     repo_label = Label(repo).same_package_label if repo else (lambda x: x)
     if aliases == None:
@@ -168,6 +175,9 @@ def whl_library_deps_targets(
                 package_deps = package_deps,
                 tmpl = dep_template.format(name = "{}", target = PY_LIBRARY_PUBLIC_LABEL),
             ),
+            # Disable precompilation on this wrapper target to prevent duplicate
+            # pyc generation; the underlying PY_SRCS_LABEL target handles it.
+            precompile = "disabled",
             tags = tags,
             visibility = impl_vis,
         )
