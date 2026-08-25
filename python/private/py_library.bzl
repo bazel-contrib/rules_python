@@ -158,10 +158,15 @@ def py_library_impl(ctx):
     """
     _validate_srcs(ctx)
     direct_sources = filter_to_py_srcs(ctx.files.srcs)
+    direct_py_and_pyc_srcs = [
+        f
+        for f in ctx.files.srcs
+        if is_py_source(f) or f.extension == "pyc"
+    ]
 
-    precompile_result = maybe_precompile(ctx, direct_sources)
+    precompile_result = maybe_precompile(ctx, direct_py_and_pyc_srcs)
 
-    required_py_files = precompile_result.keep_srcs
+    required_py_files = filter_to_py_srcs(precompile_result.keep_srcs)
     required_pyc_files = []
     implicit_pyc_files = []
     implicit_pyc_source_files = direct_sources

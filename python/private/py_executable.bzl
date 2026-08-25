@@ -52,6 +52,7 @@ load(
     "csv",
     "filter_to_py_srcs",
     "is_bool",
+    "is_py_source",
     "is_windows_platform",
     "maybe_create_repo_mapping",
     "relative_path",
@@ -1199,9 +1200,14 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
     # the original source.
     main_py_source = main_py
     direct_sources = filter_to_py_srcs(ctx.files.srcs)
-    precompile_result = maybe_precompile(ctx, direct_sources)
+    direct_py_and_pyc_srcs = [
+        f
+        for f in ctx.files.srcs
+        if is_py_source(f) or f.extension == "pyc"
+    ]
+    precompile_result = maybe_precompile(ctx, direct_py_and_pyc_srcs)
 
-    required_py_files = precompile_result.keep_srcs
+    required_py_files = filter_to_py_srcs(precompile_result.keep_srcs)
     required_pyc_files = []
     implicit_pyc_files = []
     implicit_pyc_source_files = direct_sources

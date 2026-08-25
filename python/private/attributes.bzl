@@ -336,10 +336,15 @@ as part of a runnable program (packaging rules may include them, however).
             flags = ["DIRECT_COMPILE_TIME_INPUT"],
             doc = """
 The list of Python source files that are processed to create the target. This
-includes all your checked-in code and may include generated source files. The
-`.py` files, `.pyc` files, and directory artifacts belong in `srcs`. Library
-targets belong in `deps`. Other binary files that may be needed at run time
-belong in `data`.
+includes all your checked-in code and may include generated source files.
+
+Allowed file types:
+* `.py`
+* `.pyc`
+* directories
+
+Library targets belong in `deps`. Other binary files that may be needed at run
+time belong in `data`.
 """,
         ),
         "srcs_version": lambda: attrb.String(

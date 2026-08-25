@@ -631,6 +631,7 @@ def _test_pyc_source_input_impl(env, target):
     target.default_outputs().contains_at_least_predicates([
         matching.file_path_matches("__pycache__/lib.fakepy-45.pyc"),
         matching.file_path_matches("/lib.py"),
+        matching.file_path_matches("/" + env.ctx.label.name + "_foo.pyc"),
     ])
     py_info = target.provider(PyInfo, factory = py_info_subject)
     py_info.direct_pyc_files().contains_exactly([
