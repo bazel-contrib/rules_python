@@ -1,6 +1,7 @@
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
 load("//python:py_library.bzl", "py_library")
 load("//tests/support:py_reconfig.bzl", "py_reconfig_test")
+load("//tests/support:support.bzl", "SUPPORTS_BZLMOD")
 load("//tests/support/pytest_test:pytest_test.bzl", "pytest_test")
 
 py_library(
@@ -107,6 +108,7 @@ pytest_test(
         "3.13",
         "3.14",
     ],
+    target_compatible_with = SUPPORTS_BZLMOD,
     deps = [
         "@whl_with_data1//:pkg",
     ],
