@@ -53,7 +53,25 @@ foreach ($line in $lines) {
     } elseif ($rest.StartsWith("platlib/")) {
         $outLines.Add($quote + $platlibRepl + $rest.Substring(8))
     } elseif ($rest.StartsWith("scripts/")) {
-        $outLines.Add($quote + $scriptsRepl + $rest.Substring(8))
+        $entry = $rest.Substring(8)
+        if ($TargetOs -eq "windows") {
+            if ($quote -eq "`"") {
+                $idx = $entry.IndexOf("`"")
+                $spath = $entry.Substring(0, $idx)
+                $suffix = $entry.Substring($idx)
+            } else {
+                $idx = $entry.IndexOf(",")
+                $spath = $entry.Substring(0, $idx)
+                $suffix = $entry.Substring($idx)
+            }
+            $bname = $spath.Split("/")[-1]
+            if (-not $bname.Contains(".")) {
+                $spath = "$spath.bat"
+            }
+            $outLines.Add($quote + $scriptsRepl + $spath + $suffix)
+        } else {
+            $outLines.Add($quote + $scriptsRepl + $entry)
+        }
     } elseif ($rest.StartsWith("headers/")) {
         $outLines.Add($quote + $headersRepl + $rest.Substring(8))
     } elseif ($rest.StartsWith("data/")) {

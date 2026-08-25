@@ -29,7 +29,8 @@ awk -v data_prefix="$DATA_PREFIX" \
     -v headers_repl="$HEADERS_REPL" \
     -v platlib_repl="$PLATLIB_REPL" \
     -v purelib_repl="$PURELIB_REPL" \
-    -v scripts_repl="$SCRIPTS_REPL" '
+    -v scripts_repl="$SCRIPTS_REPL" \
+    -v target_os="$TARGET_OS" '
 {
   line = $0
   quote = ""
@@ -48,7 +49,29 @@ awk -v data_prefix="$DATA_PREFIX" \
   } else if (substr(rest, 1, 8) == "platlib/") {
     print quote platlib_repl substr(rest, 9)
   } else if (substr(rest, 1, 8) == "scripts/") {
-    print quote scripts_repl substr(rest, 9)
+    entry = substr(rest, 9)
+    if (target_os == "windows") {
+      if (quote == "\"") {
+        idx = index(entry, "\"")
+        spath = substr(entry, 1, idx - 1)
+        suffix = substr(entry, idx)
+      } else {
+        idx = index(entry, ",")
+        spath = substr(entry, 1, idx - 1)
+        suffix = substr(entry, idx)
+      }
+      bname = spath
+      n = split(spath, parts, "/")
+      if (n > 0) {
+        bname = parts[n]
+      }
+      if (index(bname, ".") == 0) {
+        spath = spath ".bat"
+      }
+      print quote scripts_repl spath suffix
+    } else {
+      print quote scripts_repl entry
+    }
   } else if (substr(rest, 1, 8) == "headers/") {
     print quote headers_repl substr(rest, 9)
   } else if (substr(rest, 1, 5) == "data/") {
