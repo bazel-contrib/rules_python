@@ -346,7 +346,7 @@ Allowed file types:
 Library targets belong in `deps`. Other binary files that may be needed at run
 time belong in `data`.
 
-:::{versionchanged} VERSION_NEXT_FEATURE
+:::{versionchanged} VERSION_NEXT_PATCH
 Allowed `.pyc` and directory inputs in `srcs`.
 :::
 """,
