@@ -100,6 +100,13 @@ pytest_test(
             "@rules_python//python/config_settings:venvs_site_packages": "yes",
         },
     }),
+    python_versions = [
+        "3.10",
+        "3.11",
+        "3.12",
+        "3.13",
+        "3.14",
+    ],
     deps = [
         "@whl_with_data1//:pkg",
     ],
