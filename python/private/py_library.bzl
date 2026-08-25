@@ -34,8 +34,8 @@ load(
     "create_instrumented_files_info",
     "create_output_group_info",
     "create_py_info",
+    "filter_to_direct_sources",
     "filter_to_py_srcs",
-    "is_py_source",
 )
 load(":common_labels.bzl", "labels")
 load(":flags.bzl", "AddSrcsToRunfilesFlag", "PrecompileFlag", "VenvsSitePackages")
@@ -129,13 +129,7 @@ def _validate_srcs(ctx):
         ):
             continue
 
-        found_match = False
-        for file in files:
-            if file.is_directory or is_py_source(file) or file.extension == "pyc":
-                found_match = True
-                break
-
-        if found_match:
+        if filter_to_direct_sources(files):
             continue
 
         fail(
@@ -157,11 +151,7 @@ def py_library_impl(ctx):
         A list of modern providers to propagate.
     """
     _validate_srcs(ctx)
-    direct_sources = [
-        f
-        for f in ctx.files.srcs
-        if f.is_directory or is_py_source(f) or f.extension == "pyc"
-    ]
+    direct_sources = filter_to_direct_sources(ctx.files.srcs)
 
     precompile_result = maybe_precompile(ctx, direct_sources)
 

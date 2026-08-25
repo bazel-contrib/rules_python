@@ -98,7 +98,7 @@ def _precompile(ctx, src, *, use_pycache):
             file.
 
     Returns:
-        File of the generated pyc file.
+        File of the generated pyc file, or None if the source file was skipped.
     """
 
     # Generating a file in another package is an error, so we have to skip

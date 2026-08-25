@@ -206,6 +206,14 @@ def filter_to_py_srcs(srcs):
     """Filters .py files from the given list of files"""
     return [f for f in srcs if is_py_source(f)]
 
+def filter_to_direct_sources(srcs):
+    """Filters Python sources, pyc files, and directory artifacts from srcs."""
+    return [
+        f
+        for f in srcs
+        if f.is_directory or is_py_source(f) or f.extension == "pyc"
+    ]
+
 def collect_cc_info(ctx, extra_deps = []):
     """Collect C++ information from dependencies for Bazel.
 

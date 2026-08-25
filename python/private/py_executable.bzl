@@ -50,9 +50,9 @@ load(
     "create_py_info",
     "create_windows_exe_launcher",
     "csv",
+    "filter_to_direct_sources",
     "filter_to_py_srcs",
     "is_bool",
-    "is_py_source",
     "is_windows_platform",
     "maybe_create_repo_mapping",
     "relative_path",
@@ -1199,11 +1199,7 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
     # precompiled pyc below) so the test-main validation can statically analyze
     # the original source.
     main_py_source = main_py
-    direct_sources = [
-        f
-        for f in ctx.files.srcs
-        if f.is_directory or is_py_source(f) or f.extension == "pyc"
-    ]
+    direct_sources = filter_to_direct_sources(ctx.files.srcs)
     precompile_result = maybe_precompile(ctx, direct_sources)
 
     required_py_files = filter_to_py_srcs(precompile_result.keep_srcs)
