@@ -23,6 +23,7 @@ load(
     "pkg_aliases",
 )  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:whl_config_setting.bzl", "whl_config_setting")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:whl_library_deps_targets.bzl", "whl_library_deps_targets")  # buildifier: disable=bzl-visibility
 
 _tests = []
 
@@ -32,7 +33,7 @@ def _test_legacy_aliases(env):
         name = "foo",
         actual = "repo",
         native = struct(
-            alias = lambda name, actual: got.update({name: actual}),
+            alias = lambda name, actual, visibility = None: got.update({name: actual}),
         ),
         extra_aliases = ["my_special"],
     )
@@ -41,6 +42,8 @@ def _test_legacy_aliases(env):
     want = {
         "foo": ":pkg",
         "pkg": "@repo//:pkg",
+        "srcs": "@repo//:srcs",
+        "whl_file": "@repo//:whl_file",
         "whl": "@repo//:whl",
         "data": "@repo//:data",
         "dist_info": "@repo//:dist_info",
@@ -245,10 +248,184 @@ def _test_group_aliases(env):
             "name": "whl",
             "actual": "//_groups:my_group_whl",
         },
+        {
+            "name": "srcs",
+            "actual": "@repo//:srcs",
+            "visibility": ["//visibility:private"],
+        },
+        {
+            "name": "whl_file",
+            "actual": "@repo//:whl_file",
+            "visibility": ["//visibility:private"],
+        },
     ]
     env.expect.that_collection(actual).contains_exactly(want)
 
 _tests.append(_test_group_aliases)
+
+def _test_deps_and_aliases(env):
+    # Use this function as it is used in pip_repository
+    actual_aliases = []
+    actual_deps_targets = {}
+
+    # buildifier: disable=unsorted-dict-items
+    want_aliases = [
+        {
+            "name": "foo",
+            "actual": ":pkg",
+        },
+        {
+            "name": "data",
+            "actual": "@repo//:data",
+        },
+        {
+            "name": "dist_info",
+            "actual": "@repo//:dist_info",
+        },
+        {
+            "name": "extracted_whl_files",
+            "actual": "@repo//:extracted_whl_files",
+        },
+        {
+            "name": "pkg",
+            "actual": "//_groups:my_group_pkg",
+        },
+        {
+            "name": "whl",
+            "actual": "//_groups:my_group_whl",
+        },
+        {
+            "name": "srcs",
+            "actual": "@repo//:srcs",
+            "visibility": ["//visibility:private"],
+        },
+        {
+            "name": "whl_file",
+            "actual": "@repo//:whl_file",
+            "visibility": ["//visibility:private"],
+        },
+    ]
+    want_deps_targets = {
+        "aliases": {},
+        "dep_template": "//{name}:{target}",
+        "extras": [],
+        "group_deps": ["bar", "foo"],
+        "group_name": "my_group",
+        "include": [],
+        "metadata_name": "foo",
+        "repo": None,
+        "requires_dist": ["bar", "baz; python_version > \"3.10\""],
+        "visibility": ["//visibility:public"],
+    }
+
+    pkg_aliases(
+        name = "foo",
+        actual = "repo",
+        group_name = "my_group",
+        group_deps = [
+            "bar",
+            "foo",
+        ],
+        requires_dist = [
+            "bar",
+            "baz; python_version > \"3.10\"",
+        ],
+        native = struct(
+            alias = lambda **kwargs: actual_aliases.append(kwargs),
+        ),
+        rules = struct(
+            whl_library_deps_targets = lambda **kwargs: actual_deps_targets.update(kwargs),
+        ),
+    )
+    env.expect.that_collection(actual_aliases).contains_exactly(want_aliases)
+    env.expect.that_dict(actual_deps_targets).contains_at_least(want_deps_targets)
+
+_tests.append(_test_deps_and_aliases)
+
+def _test_deps_and_aliases_integration(env):
+    # Use this function as it is used in pip_repository
+    actual_aliases = []
+    actual_env_marker_settings = []
+    actual_py_library = {}
+
+    # buildifier: disable=unsorted-dict-items
+    want_aliases = [
+        {
+            "name": "foo",
+            "actual": ":pkg",
+        },
+        {
+            "name": "data",
+            "actual": "@repo//:data",
+        },
+        {
+            "name": "dist_info",
+            "actual": "@repo//:dist_info",
+        },
+        {
+            "name": "extracted_whl_files",
+            "actual": "@repo//:extracted_whl_files",
+        },
+        {
+            "name": "pkg",
+            "actual": "//_groups:my_group_pkg",
+        },
+        {
+            "name": "whl",
+            "actual": "//_groups:my_group_whl",
+        },
+        {
+            "name": "srcs",
+            "actual": "@repo//:srcs",
+            "visibility": ["//visibility:private"],
+        },
+        {
+            "name": "whl_file",
+            "actual": "@repo//:whl_file",
+            "visibility": ["//visibility:private"],
+        },
+    ]
+
+    # buildifier: disable=unsorted-dict-items
+    want_settings = [
+        {
+            "name": "include_baz",
+            "expression": "python_version > \"3.10\"",
+            "visibility": ["//visibility:private"],
+        },
+    ]
+
+    # buildifier: disable=unsorted-dict-items
+    want_library = {
+        "name": "pkg",
+        "deps": ["srcs", "//bar:pkg"] + select({":is_include_baz_true": ["//baz:pkg"], "//conditions:default": []}),
+        "srcs": ["srcs"],
+        "tags": [],
+        "visibility": ["//:__subpackages__"],
+    }
+
+    pkg_aliases(
+        name = "foo",
+        actual = "repo",
+        group_name = "my_group",
+        requires_dist = [
+            "bar",
+            "baz; python_version > \"3.10\"",
+        ],
+        native = struct(
+            alias = lambda **kwargs: actual_aliases.append(kwargs),
+        ),
+        rules = struct(
+            whl_library_deps_targets = whl_library_deps_targets,
+            env_marker_setting = lambda **kwargs: actual_env_marker_settings.append(kwargs),
+            py_library = lambda **kwargs: actual_py_library.update(kwargs),
+        ),
+    )
+    env.expect.that_collection(actual_aliases).contains_exactly(want_aliases)
+    env.expect.that_collection(actual_env_marker_settings).contains_exactly(want_settings)
+    env.expect.that_dict(actual_py_library).contains_at_least(want_library)
+
+_tests.append(_test_deps_and_aliases_integration)
 
 def _test_multiplatform_whl_aliases_empty(env):
     # Check that we still work with an empty requirements.txt

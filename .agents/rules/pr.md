@@ -27,6 +27,8 @@ Before drafting any pull request description, strictly adhere to the rules in
   `fix(tests):`).
 * `agents:` / `agents(<scope>):`: Agent rules, skills, and prompts
   (`.agents/`).
+* `refactor:`: Internal refactoring and fixes for unreleased changes. Never use
+  `fix:` or `feat:` unless modifying released, user-visible behavior.
 
 ## PR Commit Workflow Invariant
 * Once a Pull Request is created, always make new commits or merge commits.
