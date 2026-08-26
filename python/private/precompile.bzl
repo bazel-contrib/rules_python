@@ -15,6 +15,7 @@
 
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load(":attributes.bzl", "PrecompileAttr", "PrecompileInvalidationModeAttr", "PrecompileSourceRetentionAttr")
+load(":common.bzl", "actions_run")
 load(":flags.bzl", "PrecompileFlag")
 load(":py_interpreter_program.bzl", "PyInterpreterProgramInfo")
 load(":toolchain_types.bzl", "EXEC_TOOLS_TOOLCHAIN_TYPE", "TARGET_TOOLCHAIN_TYPE")
@@ -108,25 +109,8 @@ def _precompile(ctx, src, *, use_pycache):
     exec_tools_info = ctx.toolchains[EXEC_TOOLS_TOOLCHAIN_TYPE].exec_tools
     target_toolchain = ctx.toolchains[TARGET_TOOLCHAIN_TYPE].py3_runtime
 
-    # These args control starting the precompiler, e.g., when run as a worker,
-    # these args are only passed once.
-    precompiler_startup_args = ctx.actions.args()
-
-    env = {}
-    tools = []
-
     precompiler = exec_tools_info.precompiler
-    if PyInterpreterProgramInfo in precompiler:
-        precompiler_executable = exec_tools_info.exec_interpreter[DefaultInfo].files_to_run
-        program_info = precompiler[PyInterpreterProgramInfo]
-        env.update(program_info.env)
-        precompiler_startup_args.add_all(program_info.interpreter_args)
-        default_info = precompiler[DefaultInfo]
-        precompiler_startup_args.add(default_info.files_to_run.executable)
-        tools.append(default_info.files_to_run)
-    elif precompiler[DefaultInfo].files_to_run:
-        precompiler_executable = precompiler[DefaultInfo].files_to_run
-    else:
+    if PyInterpreterProgramInfo not in precompiler and not precompiler[DefaultInfo].files_to_run:
         fail(("Unrecognized precompiler: target '{}' does not provide " +
               "PyInterpreterProgramInfo nor appears to be executable").format(
             precompiler,
@@ -159,12 +143,6 @@ def _precompile(ctx, src, *, use_pycache):
         else:
             invalidation_mode = PrecompileInvalidationModeAttr.CHECKED_HASH
 
-    # Though --modify_execution_info exists, it can only set keys with
-    # empty values, which doesn't work for persistent worker settings.
-    execution_requirements = {}
-    if testing.ExecutionInfo in precompiler:
-        execution_requirements.update(precompiler[testing.ExecutionInfo].requirements)
-
     # These args are passed for every precompilation request, e.g. as part of
     # a request to a worker process.
     precompile_request_args = ctx.actions.args()
@@ -188,20 +166,13 @@ def _precompile(ctx, src, *, use_pycache):
     python_version = "{}.{}".format(version_info.major, version_info.minor)
     precompile_request_args.add("--python_version", python_version)
 
-    ctx.actions.run(
-        executable = precompiler_executable,
-        arguments = [precompiler_startup_args, precompile_request_args],
+    actions_run(
+        ctx,
+        executable = precompiler,
+        arguments = [precompile_request_args],
         inputs = [src],
         outputs = [pyc],
         mnemonic = "PyCompile",
         progress_message = "Python precompiling %{input} into %{output}",
-        tools = tools,
-        env = env | {
-            "PYTHONHASHSEED": "0",  # Helps avoid non-deterministic behavior
-            "PYTHONNOUSERSITE": "1",  # Helps avoid non-deterministic behavior
-            "PYTHONSAFEPATH": "1",  # Helps avoid incorrect import issues
-        },
-        execution_requirements = execution_requirements,
-        toolchain = EXEC_TOOLS_TOOLCHAIN_TYPE,
     )
     return pyc

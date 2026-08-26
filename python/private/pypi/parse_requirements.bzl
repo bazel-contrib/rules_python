@@ -227,7 +227,11 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
         git_struct = None
         if pkg.get("source", {}).get("git"):
             url = pkg["source"]["git"]
-            _, _, filename = url.rpartition("/")
+
+            # Keep the revision in the URL, but exclude it from the repository filename.
+            url_path, _, _ = url.partition("?")
+            url_path, _, _ = url_path.partition("#")
+            _, _, filename = url_path.rpartition("/")
             git_struct = struct(
                 filename = filename,
                 url = url,

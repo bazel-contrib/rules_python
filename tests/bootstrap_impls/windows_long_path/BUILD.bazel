@@ -1,0 +1,33 @@
+load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
+load("//python:py_test.bzl", "py_test")
+
+# buildifier: disable=bzl-visibility
+load("//python/cc:py_extension.bzl", "py_extension")
+
+_LONG_IMPORT_PATH = "/".join([
+    "long_path_segment_000000000000000000000000000001",
+    "long_path_segment_000000000000000000000000000002",
+    "long_path_segment_000000000000000000000000000003",
+    "long_path_segment_000000000000000000000000000004",
+])
+
+py_extension(
+    name = "ext_long_path_source",
+    srcs = ["ext_long_path.c"],
+    target_compatible_with = ["@platforms//os:windows"],
+)
+
+copy_file(
+    name = "ext_long_path",
+    src = ":ext_long_path_source",
+    out = _LONG_IMPORT_PATH + "/ext_long_path.pyd",
+    target_compatible_with = ["@platforms//os:windows"],
+)
+
+py_test(
+    name = "py_extension_long_path_test",
+    srcs = ["py_extension_long_path_test.py"],
+    data = [":ext_long_path"],
+    imports = [_LONG_IMPORT_PATH],
+    target_compatible_with = ["@platforms//os:windows"],
+)

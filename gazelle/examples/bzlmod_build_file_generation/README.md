@@ -14,7 +14,7 @@ $ bazel run //:gazelle update
 ```
 
 The are other targets that allow you to update the gazelle dependency management
-when you update the requirements.in file.  See:
+when you update the pyproject.toml file.  See:
 
 ```bash
 bazel run //:gazelle_python_manifest.update

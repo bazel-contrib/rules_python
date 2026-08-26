@@ -23,20 +23,34 @@ dependency graphs under bzlmod.
 :::
 """
 
+from __future__ import annotations
+
 import inspect
 import os
 import pathlib
 import posixpath
 import sys
 from collections import defaultdict
-from typing import Dict, Generator, Optional, Tuple, Union
+from collections.abc import Generator, Iterator
+from typing import cast
+
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing import TypeVar
+
+    _FuncT = TypeVar("_FuncT")
+
+    def override(func: _FuncT) -> _FuncT:
+        return func
+
 
 if sys.version_info >= (3, 11):
     from typing import Self
 elif sys.version_info >= (3, 10):
     from typing import TypeAlias
 
-    Self: TypeAlias = "Path"  # type: ignore
+    Self: TypeAlias = "Path"  # pyrefly: ignore[invalid-type-form]
 else:
     from typing import Any as Self
 
@@ -50,8 +64,8 @@ class _RepositoryMapping:
 
     def __init__(
         self,
-        exact_mappings: Dict[Tuple[str, str], str],
-        prefixed_mappings: Dict[Tuple[str, str], str],
+        exact_mappings: dict[tuple[str, str], str],
+        prefixed_mappings: dict[tuple[str, str], str],
     ) -> None:
         """Initialize repository mapping with exact and prefixed mappings.
 
@@ -72,7 +86,7 @@ class _RepositoryMapping:
             )
 
     @staticmethod
-    def create_from_file(repo_mapping_path: Optional[str]) -> "_RepositoryMapping":
+    def create_from_file(repo_mapping_path: str | None) -> _RepositoryMapping:
         """Create RepositoryMapping from a repository mapping manifest file.
 
         Args:
@@ -107,7 +121,7 @@ class _RepositoryMapping:
 
         return _RepositoryMapping(exact_mappings, prefixed_mappings)
 
-    def lookup(self, source_repo: Optional[str], target_apparent: str) -> Optional[str]:
+    def lookup(self, source_repo: str | None, target_apparent: str) -> str | None:
         """Look up repository mapping for the given source and target.
 
         This handles both exact mappings and prefix-based mappings introduced by the
@@ -159,33 +173,31 @@ class Path(pathlib.Path):
     using the associated `Runfiles` instance when converted to a string.
     """
 
-    # Mypy isn't smart enough to realize `self` in the methods
+    # Static type checkers may not realize `self` in the methods
     # refers to our Path class instead of pathlib.Path
-    _runfiles: Optional["Runfiles"]
-    _source_repo: Optional[str]
+    _runfiles: Runfiles | None
+    _source_repo: str | None
 
     # For Python < 3.12 compatibility when subclassing Path directly
     _flavour = getattr(type(pathlib.Path()), "_flavour", None)
 
     def __new__(
         cls,
-        *args: Union[str, os.PathLike],
-        runfiles: Optional["Runfiles"] = None,
-        source_repo: Optional[str] = None,
+        *args: str | os.PathLike,
+        runfiles: Runfiles | None = None,
+        source_repo: str | None = None,
     ) -> Self:
         """Private constructor. Use Runfiles.root() to create instances."""
-        obj = super().__new__(cls, *args)
-        # Type checkers might complain about adding attributes to Path,
-        # but this is standard for pathlib subclasses.
-        obj._runfiles = runfiles  # type: ignore
-        obj._source_repo = source_repo  # type: ignore
-        return obj
+        obj = cast("Path", super().__new__(cls, *args))
+        obj._runfiles = runfiles
+        obj._source_repo = source_repo
+        return cast(Self, obj)
 
     def __init__(
         self,
-        *args: Union[str, os.PathLike],
-        runfiles: Optional["Runfiles"] = None,
-        source_repo: Optional[str] = None,
+        *args: str | os.PathLike,
+        runfiles: Runfiles | None = None,
+        source_repo: str | None = None,
     ) -> None:
         # In Python 3.12+, pathlib was refactored and Path.__init__ now accepts
         # *args. Prior to 3.12, Path did not define __init__, so
@@ -201,7 +213,7 @@ class Path(pathlib.Path):
     # __new__ or with_segments(), the runfiles state is preserved. We delegate
     # to self._as_path() because super().resolve() creates intermediate objects
     # that would otherwise crash during internal stat() calls.
-    # override
+    @override
     def resolve(self, strict: bool = False) -> Self:
         return type(self)(
             self._as_path().resolve(strict=strict),
@@ -209,7 +221,7 @@ class Path(pathlib.Path):
             source_repo=self._source_repo,
         )
 
-    # override
+    @override
     def absolute(self) -> Self:
         return type(self)(
             self._as_path().absolute(),
@@ -217,8 +229,8 @@ class Path(pathlib.Path):
             source_repo=self._source_repo,
         )
 
-    # override
-    def with_segments(self, *pathsegments: Union[str, os.PathLike]) -> Self:
+    @override
+    def with_segments(self, *pathsegments: str | os.PathLike) -> Self:
         """Used by Python 3.12+ pathlib to create new path objects."""
         return type(self)(
             *pathsegments,
@@ -227,16 +239,17 @@ class Path(pathlib.Path):
         )
 
     # For Python < 3.12
-    # override
-    def _make_child(self, args: Tuple[str, ...]) -> Self:
-        obj = super()._make_child(args)  # type: ignore
-        obj._runfiles = self._runfiles  # type: ignore
-        obj._source_repo = self._source_repo  # type: ignore
-        return obj
+    def _make_child(self, args: tuple[str, ...]) -> Self:
+        # _make_child is an internal CPython method in Python < 3.12 omitted from
+        # typeshed stubs. We ignore [missing-attribute] for pyrefly.
+        obj = cast("Path", super()._make_child(args))  # pyrefly: ignore[missing-attribute]
+        obj._runfiles = self._runfiles
+        obj._source_repo = self._source_repo
+        return cast(Self, obj)
 
-    # override
     @property
-    def parents(self) -> Tuple[Self, ...]:
+    @override
+    def parents(self) -> tuple[Self, ...]:
         return tuple(
             type(self)(
                 p,
@@ -246,8 +259,8 @@ class Path(pathlib.Path):
             for p in super().parents
         )
 
-    # override
     @property
+    @override
     def parent(self) -> Self:
         return type(self)(
             super().parent,
@@ -263,7 +276,7 @@ class Path(pathlib.Path):
             return ""
         return path_posix
 
-    # override
+    @override
     def with_name(self, name: str) -> Self:
         return type(self)(
             super().with_name(name),
@@ -271,7 +284,7 @@ class Path(pathlib.Path):
             source_repo=self._source_repo,
         )
 
-    # override
+    @override
     def with_suffix(self, suffix: str) -> Self:
         return type(self)(
             super().with_suffix(suffix),
@@ -282,54 +295,62 @@ class Path(pathlib.Path):
     def _as_path(self) -> pathlib.Path:
         return pathlib.Path(str(self))
 
-    # override
+    @override
     def stat(self, *, follow_symlinks: bool = True) -> os.stat_result:
         return self._as_path().stat(follow_symlinks=follow_symlinks)
 
-    # override
+    @override
     def lstat(self) -> os.stat_result:
         return self._as_path().lstat()
 
-    # override
-    def exists(self) -> bool:
+    @override
+    def exists(self, *, follow_symlinks: bool = True) -> bool:
+        if not follow_symlinks and sys.version_info >= (3, 12):
+            return self._as_path().exists(follow_symlinks=follow_symlinks)
         return self._as_path().exists()
 
-    # override
-    def is_dir(self) -> bool:
+    @override
+    def is_dir(self, *, follow_symlinks: bool = True) -> bool:
+        if not follow_symlinks and sys.version_info >= (3, 13):
+            return self._as_path().is_dir(follow_symlinks=follow_symlinks)
         return self._as_path().is_dir()
 
-    # override
-    def is_file(self) -> bool:
+    @override
+    def is_file(self, *, follow_symlinks: bool = True) -> bool:
+        if not follow_symlinks and sys.version_info >= (3, 13):
+            return self._as_path().is_file(follow_symlinks=follow_symlinks)
         return self._as_path().is_file()
 
-    # override
+    @override
     def is_symlink(self) -> bool:
         return self._as_path().is_symlink()
 
-    # override
+    @override
     def is_block_device(self) -> bool:
         return self._as_path().is_block_device()
 
-    # override
+    @override
     def is_char_device(self) -> bool:
         return self._as_path().is_char_device()
 
-    # override
+    @override
     def is_fifo(self) -> bool:
         return self._as_path().is_fifo()
 
-    # override
+    @override
     def is_socket(self) -> bool:
         return self._as_path().is_socket()
 
-    # override
-    def open(
+    # Path.open in pathlib has multiple overloads in typeshed. We use a
+    # simplified delegation signature here.
+    @override
+    def open(  # pyrefly: ignore[bad-override]
         self,
         mode: str = "r",
         buffering: int = -1,
-        encoding: Optional[str] = None,
-        errors: Optional[str] = None,
-        newline: Optional[str] = None,
+        encoding: str | None = None,
+        errors: str | None = None,
+        newline: str | None = None,
     ):
         return self._as_path().open(
             mode=mode,
@@ -339,55 +360,111 @@ class Path(pathlib.Path):
             newline=newline,
         )
 
-    # override
+    @override
     def read_bytes(self) -> bytes:
         return self._as_path().read_bytes()
 
-    # override
+    @override
     def read_text(
-        self, encoding: Optional[str] = None, errors: Optional[str] = None
+        self,
+        encoding: str | None = None,
+        errors: str | None = None,
+        newline: str | None = None,
     ) -> str:
+        if sys.version_info >= (3, 13) and newline is not None:
+            return self._as_path().read_text(
+                encoding=encoding,
+                errors=errors,
+                newline=newline,
+            )
         return self._as_path().read_text(encoding=encoding, errors=errors)
 
-    # override
+    @override
     def iterdir(self) -> Generator[Self, None, None]:
         resolved = self._as_path()
         for p in resolved.iterdir():
             yield self / p.name
 
-    # override
-    def glob(self, pattern: str) -> Generator[Self, None, None]:
+    # Return types and keyword arguments vary across Python versions in typeshed.
+    @override
+    def glob(  # pyrefly: ignore[bad-override]
+        self,
+        pattern: str,
+        *,
+        case_sensitive: bool | None = None,
+        recurse_symlinks: bool = False,
+    ) -> Iterator[Self]:
         resolved = self._as_path()
-        for p in resolved.glob(pattern):
+        if sys.version_info >= (3, 13):
+            it = resolved.glob(
+                pattern,
+                case_sensitive=case_sensitive,
+                recurse_symlinks=recurse_symlinks,
+            )
+        elif sys.version_info >= (3, 12):
+            it = resolved.glob(pattern, case_sensitive=case_sensitive)
+        else:
+            it = resolved.glob(pattern)
+        for p in it:
             yield self / p.relative_to(resolved)
 
-    # override
-    def rglob(self, pattern: str) -> Generator[Self, None, None]:
+    # Return types and keyword arguments vary across Python versions in typeshed.
+    @override
+    def rglob(  # pyrefly: ignore[bad-override]
+        self,
+        pattern: str,
+        *,
+        case_sensitive: bool | None = None,
+        recurse_symlinks: bool = False,
+    ) -> Iterator[Self]:
         resolved = self._as_path()
-        for p in resolved.rglob(pattern):
+        if sys.version_info >= (3, 13):
+            it = resolved.rglob(
+                pattern,
+                case_sensitive=case_sensitive,
+                recurse_symlinks=recurse_symlinks,
+            )
+        elif sys.version_info >= (3, 12):
+            it = resolved.rglob(pattern, case_sensitive=case_sensitive)
+        else:
+            it = resolved.rglob(pattern)
+        for p in it:
             yield self / p.relative_to(resolved)
+
+    @override
+    def match(
+        self,
+        path_pattern: str,
+        *,
+        case_sensitive: bool | None = None,
+    ) -> bool:
+        if sys.version_info >= (3, 12):
+            return self._as_path().match(path_pattern, case_sensitive=case_sensitive)
+        return self._as_path().match(path_pattern)
 
     def __repr__(self) -> str:
         return "runfiles.Path({!r})".format(self.runfile_path)
 
     def __str__(self) -> str:
+        assert self._runfiles is not None  # type assert
         path_posix = super().__str__().replace("\\", "/")
         if not path_posix or path_posix == ".":
             # pylint: disable=protected-access
-            return self._runfiles._python_runfiles_root  # type: ignore
-        resolved = self._runfiles.Rlocation(path_posix, source_repo=self._source_repo)  # type: ignore
+            return self._runfiles._python_runfiles_root  # pyrefly: ignore[missing-attribute]
+        resolved = self._runfiles.Rlocation(path_posix, source_repo=self._source_repo)
         if resolved is not None:
             return resolved
 
         # pylint: disable=protected-access
-        return posixpath.join(self._runfiles._python_runfiles_root, path_posix)  # type: ignore
+        return posixpath.join(self._runfiles._python_runfiles_root, path_posix)  # pyrefly: ignore[missing-attribute]
 
     def __fspath__(self) -> str:
         return str(self)
 
-    def runfiles_root(self) -> Self:
+    def runfiles_root(self) -> "Path":
         """Returns a Path object representing the runfiles root."""
-        return self._runfiles.root(source_repo=self._source_repo)  # type: ignore
+        assert self._runfiles is not None  # type assert
+        return self._runfiles.root(source_repo=self._source_repo)
 
 
 class _ManifestBased:
@@ -401,7 +478,7 @@ class _ManifestBased:
         self._path = path
         self._runfiles = _ManifestBased._LoadRunfiles(path)
 
-    def RlocationChecked(self, path: str) -> Optional[str]:
+    def RlocationChecked(self, path: str) -> str | None:
         """Returns the runtime path of a runfile."""
         exact_match = self._runfiles.get(path)
         if exact_match:
@@ -420,7 +497,7 @@ class _ManifestBased:
                 return prefix_match + "/" + path[prefix_end + 1 :]
 
     @staticmethod
-    def _LoadRunfiles(path: str) -> Dict[str, str]:
+    def _LoadRunfiles(path: str) -> dict[str, str]:
         """Loads the runfiles manifest."""
         result = {}
         with open(path, "r", encoding="utf-8", newline="\n") as f:
@@ -452,7 +529,7 @@ class _ManifestBased:
             return self._path[: -len("_manifest")]
         return ""
 
-    def EnvVars(self) -> Dict[str, str]:
+    def EnvVars(self) -> dict[str, str]:
         directory = self._GetRunfilesDir()
         return {
             "RUNFILES_MANIFEST_FILE": self._path,
@@ -482,7 +559,7 @@ class _DirectoryBased:
     def _GetRunfilesDir(self) -> str:
         return self._runfiles_root
 
-    def EnvVars(self) -> Dict[str, str]:
+    def EnvVars(self) -> dict[str, str]:
         return {
             "RUNFILES_DIR": self._runfiles_root,
             # TODO(laszlocsomor): remove JAVA_RUNFILES once the Java launcher can
@@ -497,14 +574,14 @@ class Runfiles:
     Runfiles are data-dependencies of Bazel-built binaries and tests.
     """
 
-    def __init__(self, strategy: Union[_ManifestBased, _DirectoryBased]) -> None:
+    def __init__(self, strategy: _ManifestBased | _DirectoryBased) -> None:
         self._strategy = strategy
         self._python_runfiles_root = strategy._GetRunfilesDir()
         self._repo_mapping = _RepositoryMapping.create_from_file(
             strategy.RlocationChecked("_repo_mapping")
         )
 
-    def root(self, source_repo: Optional[str] = None) -> Path:
+    def root(self, source_repo: str | None = None) -> Path:
         """Returns a Path object representing the runfiles root.
 
         The repository mapping used by the returned Path object is that of the
@@ -514,7 +591,7 @@ class Runfiles:
             source_repo = self.CurrentRepository(frame=2)
         return Path(runfiles=self, source_repo=source_repo)
 
-    def Rlocation(self, path: str, source_repo: Optional[str] = None) -> Optional[str]:
+    def Rlocation(self, path: str, source_repo: str | None = None) -> str | None:
         """Returns the runtime path of a runfile.
 
         Runfiles are data-dependencies of Bazel-built binaries and tests.
@@ -591,7 +668,7 @@ class Runfiles:
         # we're not using Bzlmod
         return self._strategy.RlocationChecked(path)
 
-    def EnvVars(self) -> Dict[str, str]:
+    def EnvVars(self) -> dict[str, str]:
         """Returns environment variables for subprocesses.
 
         The caller should set the returned key-value pairs in the environment of
@@ -693,7 +770,7 @@ class Runfiles:
     # TODO: Update return type to Self when 3.11 is the min version
     # https://peps.python.org/pep-0673/
     @staticmethod
-    def Create(env: Optional[Dict[str, str]] = None) -> Optional["Runfiles"]:
+    def Create(env: dict[str, str] | None = None) -> Runfiles | None:
         """Returns a new `Runfiles` instance.
 
         The returned object is either:
@@ -728,6 +805,46 @@ class Runfiles:
 
         return None
 
+    # TODO: Update return type to Self when 3.11 is the min version
+    # https://peps.python.org/pep-0673/
+    @staticmethod
+    def CreateOrRaise(env: dict[str, str] | None = None) -> Runfiles:
+        """Returns a new `Runfiles` instance, or raises an error.
+
+        The returned object is either:
+        - manifest-based, meaning it looks up runfile paths from a manifest
+          file, or
+        - directory-based, meaning it looks up runfile paths under a given
+          directory path
+
+        If `env` contains "RUNFILES_MANIFEST_FILE" with non-empty value, this
+        method returns a manifest-based implementation. The object eagerly
+        reads and caches the whole manifest file upon instantiation; this may
+        be relevant for performance consideration.
+
+        Otherwise, if `env` contains "RUNFILES_DIR" with non-empty value
+        (checked in this priority order), this method returns a directory-based
+        implementation.
+
+        If neither cases apply, this method raises a `RuntimeError`.
+
+        Args:
+          env: {string: string}; optional; the map of environment variables. If
+            None, this function uses the environment variable map of this
+            process.
+        Raises:
+          RuntimeError: if runfiles cannot be found.
+
+        :::{versionadded} VERSION_NEXT_FEATURE
+        :::
+        """
+        runfiles = Runfiles.Create(env=env)
+        if runfiles is None:
+            raise RuntimeError(
+                "Cannot create Runfiles: $RUNFILES_MANIFEST_FILE and $RUNFILES_DIR are both unset or empty"
+            )
+        return runfiles
+
 
 # Support legacy imports by defining a private symbol.
 _Runfiles = Runfiles
@@ -741,5 +858,14 @@ def CreateDirectoryBased(runfiles_dir_path: str) -> Runfiles:
     return Runfiles.CreateDirectoryBased(runfiles_dir_path)
 
 
-def Create(env: Optional[Dict[str, str]] = None) -> Optional[Runfiles]:
+def Create(env: dict[str, str] | None = None) -> Runfiles | None:
     return Runfiles.Create(env)
+
+
+def CreateOrRaise(env: dict[str, str] | None = None) -> Runfiles:
+    """Refer to `Runfiles.CreateOrRaise`.
+
+    :::{versionadded} VERSION_NEXT_FEATURE
+    :::
+    """
+    return Runfiles.CreateOrRaise(env)

@@ -171,9 +171,9 @@ _tests.append(_test_content_type_from_description)
 def _test_config_settings(name):
     rt_util.helper_target(
         native.config_setting,
-        name = "is_py_39",
+        name = "is_py_310",
         flag_values = {
-            labels.PYTHON_VERSION_MAJOR_MINOR: "3.9",
+            labels.PYTHON_VERSION_MAJOR_MINOR: "3.10",
         },
     )
     rt_util.helper_target(
@@ -181,11 +181,11 @@ def _test_config_settings(name):
         name = name + "_subject",
         distribution = "mydist_" + name,
         version = select({
-            ":is_py_39": "3.9",
-            "//conditions:default": "not-3.9",
+            ":is_py_310": "3.10",
+            "//conditions:default": "not-3.10",
         }),
         config_settings = {
-            labels.PYTHON_VERSION: "3.9",
+            labels.PYTHON_VERSION: "3.10",
         },
     )
     analysis_test(
@@ -202,7 +202,7 @@ def _test_config_settings_impl(env, target):
     env.expect.that_target(target).attr(
         "version",
         factory = subjects.str,
-    ).equals("3.9")
+    ).equals("3.10")
 
 _tests.append(_test_config_settings)
 

@@ -15,6 +15,7 @@ from tools.private.release.utils import (
     determine_next_version,
     get_latest_rc_tag,
     semver_type,
+    set_github_output,
 )
 
 
@@ -76,9 +77,10 @@ class Promote:
             if not latest_rc:
                 print(f"Error: No release candidate tags found matching {version}-rc*")
                 return 1
-            commit_sha = self.git.get_commit_sha(latest_rc)
+            rc_commit_sha = self.git.get_commit_sha(latest_rc)
         else:
             latest_rc = None
+            rc_commit_sha = None
 
         # Verify issue can be found and read it early
         print(f"Verifying tracking issue #{issue_num} format...")
@@ -101,16 +103,17 @@ class Promote:
             return 1
 
         if is_first_release:
-            if commit_sha != branch_sha:
+            assert rc_commit_sha is not None  # type assert
+            if rc_commit_sha != branch_sha:
                 print(
-                    f"Error: The latest RC tag {latest_rc} ({commit_sha[:8]}) is not at"
+                    f"Error: The latest RC tag {latest_rc} ({rc_commit_sha[:8]}) is not at"
                     f" the head of release branch {remote_branch} ({branch_sha[:8]})."
                 )
                 metadata = {
                     "status": "error-rc-tag-not-branch-head",
                     "rc": latest_rc,
                     "branch_commit": branch_sha[:8],
-                    "tag_commit": commit_sha[:8],
+                    "tag_commit": rc_commit_sha[:8],
                 }
                 try:
                     updated_body = update_task_in_body(
@@ -129,6 +132,7 @@ class Promote:
                         f" error status."
                     )
                 return 1
+            commit_sha = rc_commit_sha
         else:
             # Patch release: tag branch head directly
             commit_sha = branch_sha
@@ -170,9 +174,7 @@ class Promote:
         self.git.tag(version, commit_sha)
         self.git.push(args.remote, version)
 
-        if github_output := os.environ.get("GITHUB_OUTPUT"):
-            with open(github_output, "a", encoding="utf-8") as f:
-                f.write(f"version={version}\n")
+        set_github_output("version", version)
 
         print(f"Updating tracking issue #{issue_num} checklist...")
         self.gh.update_issue_body(issue_num, updated_body)

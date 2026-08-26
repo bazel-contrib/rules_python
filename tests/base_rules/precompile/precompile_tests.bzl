@@ -14,6 +14,7 @@
 
 """Tests for precompiling behavior."""
 
+load("@bazel_skylib//rules:write_file.bzl", "write_file")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "matching")
@@ -509,6 +510,24 @@ def _test_precompile_attr_inherit_pyc_collection_disabled_precompile_flag_enable
     )
 
 _tests.append(_test_precompile_attr_inherit_pyc_collection_disabled_precompile_flag_enabled)
+
+# buildifier: disable=function-docstring-header
+def _test_precompile_enabled_succeeds(name):
+    """Verify that a `py_test` target actually builds and runs with
+    precompiling (the above `analysis_test`s only check declared providers).
+    """
+    write_file(
+        name = name + "_main",
+        out = name + "_main.py",
+    )
+    py_test(
+        name = name,
+        srcs = [name + "_main.py"],
+        main = name + "_main.py",
+        precompile = "enabled",
+    )
+
+_tests.append(_test_precompile_enabled_succeeds)
 
 def runfiles_contains_at_least_predicates(runfiles, predicates):
     for predicate in predicates:

@@ -345,7 +345,7 @@ extra_requires[example]==0.0.1
 
 # py_wheel can use text files to specify their requirements. This
 # can be convenient for users of `compile_pip_requirements` who have
-# granular `requirements.in` files per package. This target shows
+# granular `pyproject.toml` files per package. This target shows
 # how to provide this file.
 py_wheel(
     name = "requires_files",
@@ -354,7 +354,7 @@ py_wheel(
     python_tag = "py3",
     # py_wheel can use text files to specify their requirements. This
     # can be convenient for users of `compile_pip_requirements` who have
-    # granular `requirements.in` files per package.
+    # granular `pyproject.toml` files per package.
     requires_file = ":requires.txt",
     version = "0.0.1",
     deps = [":example_pkg"],
@@ -394,7 +394,7 @@ py_wheel(
     python_tag = "py3",
     # py_wheel can use text files to specify their requirements. This
     # can be convenient for users of `compile_pip_requirements` who have
-    # granular `requirements.in` files per package.
+    # granular `pyproject.toml` files per package.
     requires = [
         "tomli>=2.0.0",
         "starlark",
@@ -475,7 +475,8 @@ py_test(
 
 compile_pip_requirements(
     name = "requirements_server",
-    src = "requirements_server.in",
+    src = "pyproject.toml",
+    requirements_txt = "requirements_server.txt",
 )
 
 py_test(

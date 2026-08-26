@@ -119,6 +119,76 @@ def test_self_include_deps_from_previously_visited(env):
 
 _tests.append(test_self_include_deps_from_previously_visited)
 
+def test_self_extras_chain_is_fully_resolved(env):
+    # 'all' pulls in 'b', which in turn pulls in 'c'. The first round discovers
+    # exactly one new extra, which is also the number of extras known at the
+    # start of the round, so a fixed point must not be declared yet.
+    got = deps(
+        "foo",
+        requires_dist = [
+            "bar",
+            "foo[b]; extra == 'all'",
+            "foo[c]; extra == 'b'",
+            "b_dep; extra == 'b'",
+            "c_dep; extra == 'c'",
+        ],
+        extras = ["all"],
+    )
+
+    env.expect.that_collection(got.deps).contains_exactly(["bar", "b_dep", "c_dep"])
+    env.expect.that_dict(got.deps_select).contains_exactly({})
+
+_tests.append(test_self_extras_chain_is_fully_resolved)
+
+def test_self_extras_chain_with_multiple_requested_extras(env):
+    # Two requested extras, and the first round discovers exactly two new ones
+    # ('a' and 'b'), so the count of newly found extras again matches the number
+    # known at the start of the round while 'c' is still undiscovered.
+    got = deps(
+        "foo",
+        requires_dist = [
+            "bar",
+            "foo[a]; extra == 'x'",
+            "foo[b]; extra == 'y'",
+            "foo[c]; extra == 'a'",
+            "a_dep; extra == 'a'",
+            "b_dep; extra == 'b'",
+            "c_dep; extra == 'c'",
+        ],
+        extras = ["x", "y"],
+    )
+
+    env.expect.that_collection(got.deps).contains_exactly(["bar", "a_dep", "b_dep", "c_dep"])
+    env.expect.that_dict(got.deps_select).contains_exactly({})
+
+_tests.append(test_self_extras_chain_with_multiple_requested_extras)
+
+def test_self_extras_chain_resolved_beyond_the_first_round(env):
+    # Here the counts only coincide on the second round: round one grows the set
+    # from {all} to {all, p, q}, round two finds {p, q, r} -- three extras, which
+    # matches the three known at the start of that round -- while 't' is only
+    # reachable from 'r' on a third round.
+    got = deps(
+        "foo",
+        requires_dist = [
+            "bar",
+            "foo[p]; extra == 'all'",
+            "foo[q]; extra == 'all'",
+            "foo[r]; extra == 'p'",
+            "foo[t]; extra == 'r'",
+            "p_dep; extra == 'p'",
+            "q_dep; extra == 'q'",
+            "r_dep; extra == 'r'",
+            "t_dep; extra == 't'",
+        ],
+        extras = ["all"],
+    )
+
+    env.expect.that_collection(got.deps).contains_exactly(["bar", "p_dep", "q_dep", "r_dep", "t_dep"])
+    env.expect.that_dict(got.deps_select).contains_exactly({})
+
+_tests.append(test_self_extras_chain_resolved_beyond_the_first_round)
+
 def _test_can_get_deps_based_on_specific_python_version(env):
     requires_dist = [
         "bar",

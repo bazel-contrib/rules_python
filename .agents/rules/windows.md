@@ -18,4 +18,25 @@
 ## Windows Platform Tag Derivation
 * Windows platform tags for Python C extensions evaluate to `win_amd64`
   (x86_64/amd64), `win_arm64` (aarch64/arm64), or `win32` (32-bit x86).
+* **`platform.machine()` Normalization**: On Windows,
+  `platform.machine()` returns uppercase (`"AMD64"`, `"ARM64"`). Always
+  normalize with `.lower()` when deriving PEP 508 markers or resolving platform
+  tags.
 * **Citation**: [PEP 425 — Compatibility Tags for Built Distributions](https://peps.python.org/pep-0425/).
+
+## Windows CPython SOABI & ABI Infix Support
+* CPython on Windows natively supports loading ABI-tagged `.pyd` files
+  containing platform tags (e.g., `foo.cp314-win_amd64.pyd`,
+  `foo.cp311-win_amd64.pyd`).
+* SOABI on Windows includes both the ABI prefix and platform tag (e.g.,
+  `cp311-win_amd64`).
+
+## Extended Paths (`\\?\`)
+* **Test Path Lengths**: Keep source directories short so MSVC `cl.exe` params
+  files stay under 260 chars (`MAX_PATH`, avoids `D8022`). Rely on runfiles
+  expansion (`.exe.runfiles/_main/...`) to exceed `MAX_PATH` at runtime.
+* **No `..` Segments**: Win32 ignores `..` on `\\?\` paths. Always call
+  `os.path.normpath(...)` before accessing files (e.g., wheel `RECORD` paths).
+* **Comparing Executables**: Subprocesses may drop `\\?\` or `\\?\UNC\`
+  prefixes. Strip prefixes and compare via
+  `os.path.normcase(os.path.normpath(...))`.

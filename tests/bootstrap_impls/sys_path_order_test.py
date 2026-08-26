@@ -67,7 +67,7 @@ class SysPathOrderTest(unittest.TestCase):
             f"{i}: ({category}) {value}"
             for i, (category, value) in enumerate(categorized_paths)
         )
-        if None in (last_stdlib, first_user, first_runtime_site):
+        if last_stdlib is None or first_user is None or first_runtime_site is None:
             self.fail(
                 "Failed to find position for one of:\n"
                 + f"{last_stdlib=} {first_user=} {first_runtime_site=}\n"

@@ -72,19 +72,19 @@ class TestCase(unittest.TestCase):
         }
 
     def run_bazel(self, *args: str, check: bool = True) -> ExecuteResult:
-        args = [str(self.bazel), *args]
+        cmd_args = [str(self.bazel), *args]
         env = self.bazel_env
-        _logger.info("executing: %s", shlex.join(args))
+        _logger.info("executing: %s", shlex.join(cmd_args))
         cwd = self.repo_root
         proc_result = subprocess.run(
-            args=args,
+            args=cmd_args,
             text=True,
             capture_output=True,
             cwd=cwd,
             env=env,
             check=False,
         )
-        exec_result = ExecuteResult(args, env, cwd, proc_result)
+        exec_result = ExecuteResult(cmd_args, env, cwd, proc_result)
         if check and exec_result.exit_code:
             raise ExecuteError(exec_result)
         else:

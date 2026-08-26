@@ -1,4 +1,52 @@
+import pathlib
 import re
+from typing import Any
+
+
+def load_release_tracking_template(
+    version: str | None = None,
+    template_path: pathlib.Path | None = None,
+) -> str:
+    """Loads the release tracking issue template, stripping non-patch tasks for patch releases.
+
+    Args:
+        version: Optional version string (e.g. '1.2.1'). If provided and represents a
+            patch release (i.e. does not end in '.0'), strips .0-only release tasks
+            ('Prepare Release', 'Create Release branch', and 'Tag RC' tasks) from the template.
+        template_path: Optional path to the template file. Defaults to
+            .github/ISSUE_TEMPLATE/release_tracking_template.md.
+
+    Returns:
+        The template content string.
+    """
+    if template_path is None:
+        template_path = pathlib.Path(
+            ".github/ISSUE_TEMPLATE/release_tracking_template.md"
+        )
+    if not template_path.exists():
+        raise FileNotFoundError(f"Template file not found at {template_path}")
+    template_content = template_path.read_text(encoding="utf-8")
+
+    is_patch = version is not None and not version.endswith(".0")
+    if is_patch:
+        lines = template_content.splitlines()
+        filtered_lines = []
+        for line in lines:
+            parsed = parse_metadata_line(line)
+            if parsed:
+                name_lower = parsed["name"].lower()
+                if "prepare release" in name_lower:
+                    continue
+                if "create release branch" in name_lower:
+                    continue
+                if re.match(r"^tag rc\d+", name_lower):
+                    continue
+            filtered_lines.append(line)
+        template_content = "\n".join(filtered_lines)
+        if not template_content.endswith("\n"):
+            template_content += "\n"
+
+    return template_content
 
 
 class BackportTask:
@@ -248,9 +296,13 @@ def parse_backports(body):
     for line in lines:
         parsed = parse_metadata_line(line)
         if parsed:
+            name = parsed["name"].strip()
+            # Ignore empty or placeholder checklist items (e.g. '#PR_NUMBER')
+            if not re.match(r"^#?\d+$", name):
+                continue
             items.append(
                 BackportTask(
-                    pr_ref=parsed["name"],
+                    pr_ref=name,
                     checked=parsed["checked"],
                     status=parsed["metadata"].get("status", "pending"),
                     rc=parsed["metadata"].get("rc"),
@@ -261,7 +313,7 @@ def parse_backports(body):
     return items
 
 
-def add_backports_to_body(body: str, items: list[dict]) -> str:
+def add_backports_to_body(body: str, items: list[dict[str, Any]]) -> str:
     """Adds new backport checklist items to the ## Backports section.
 
     Args:
@@ -277,6 +329,15 @@ def add_backports_to_body(body: str, items: list[dict]) -> str:
         raise ValueError("Could not find '## Backports' section in issue body.")
 
     section_content = match.group(2)
+
+    # Filter out empty or placeholder checklist items (e.g. "- [ ] #PR_NUMBER")
+    cleaned_lines = []
+    for line in section_content.splitlines():
+        parsed = parse_metadata_line(line)
+        if parsed and not re.match(r"^#?\d+$", parsed["name"].strip()):
+            continue
+        cleaned_lines.append(line)
+    section_content = "\n".join(cleaned_lines)
 
     # Parse existing backports to avoid duplicates
     existing_items = parse_backports(body)
@@ -300,7 +361,10 @@ def add_backports_to_body(body: str, items: list[dict]) -> str:
         )
 
     if not new_lines:
-        return body
+        section_content_clean = section_content.rstrip("\n")
+        updated_section = section_content_clean + "\n\n"
+        start, end = match.span(2)
+        return body[:start] + updated_section + body[end:]
 
     # Append new lines to the section content.
     section_content_clean = section_content.rstrip("\n")

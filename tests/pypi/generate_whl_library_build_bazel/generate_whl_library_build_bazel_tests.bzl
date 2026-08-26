@@ -241,6 +241,34 @@ package_metadata(
 
 _tests.append(_test_all_with_loads)
 
+def _test_deps_targets(env):
+    want = """\
+load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
+load("@rules_python//python/private/pypi:whl_library_deps_targets.bzl", "whl_library_deps_targets")
+
+package(default_visibility = ["//visibility:public"])
+
+whl_library_deps_targets(
+    metadata_name = "foo",
+    name = "foo.whl",
+    repo = "@some_repo",
+    tags = [
+        "pypi_name=foo",
+        "pypi_version=0",
+    ],
+)
+"""
+    actual = generate_whl_library_build_bazel(
+        metadata_version = "0",
+        metadata_name = "foo",
+        name = "foo.whl",
+        repo = "@some_repo",
+        config_load = "",
+    )
+    env.expect.that_str(actual.replace("@@", "@")).equals(want)
+
+_tests.append(_test_deps_targets)
+
 def generate_whl_library_build_bazel_test_suite(name):
     """Create the test suite.
 

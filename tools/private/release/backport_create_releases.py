@@ -1,7 +1,6 @@
 """Subcommand to initiate releases for verified backports."""
 
 import argparse
-import pathlib
 import re
 from dataclasses import dataclass
 
@@ -10,6 +9,7 @@ from tools.private.release.gh import GitHub
 from tools.private.release.release_issue import (
     add_backports_to_body,
     add_sync_changelog_task_to_body,
+    load_release_tracking_template,
     parse_metadata_line,
     update_task_in_body,
 )
@@ -70,14 +70,6 @@ def is_release_eligible(version, target_minors, verify_statuses):
     return True, "Eligible"
 
 
-def _load_release_template() -> str:
-    """Loads the release tracking issue template."""
-    template_path = pathlib.Path(".github/ISSUE_TEMPLATE/release_tracking_template.md")
-    if not template_path.exists():
-        raise FileNotFoundError(f"Template file not found at {template_path}")
-    return template_path.read_text(encoding="utf-8")
-
-
 class BackportCreateReleases:
     """Class to initiate releases for verified backports."""
 
@@ -112,9 +104,6 @@ class BackportCreateReleases:
             list(verify_statuses.keys()), key=lambda m: [int(x) for x in m.split(".")]
         )
 
-        # We need the templates for release issues
-        template_content = _load_release_template()
-
         updated_body = body
         changes_made = False
 
@@ -144,17 +133,7 @@ class BackportCreateReleases:
                     )
                 else:
                     # Create the issue
-                    is_first_release = version.endswith(".0")
-                    if is_first_release:
-                        issue_template = template_content
-                    else:
-                        lines = template_content.splitlines()
-                        lines = [
-                            line for line in lines if not re.search(r"Tag RC\d+", line)
-                        ]
-                        issue_template = "\n".join(lines)
-                        if template_content.endswith("\n"):
-                            issue_template += "\n"
+                    issue_template = load_release_tracking_template(version=version)
 
                     if args.dry_run:
                         print(

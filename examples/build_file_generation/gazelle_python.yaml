@@ -7,21 +7,22 @@
 manifest:
   modules_mapping:
     alabaster: alabaster
-    babel: Babel
+    babel: babel
+    blinker: blinker
     certifi: certifi
     charset_normalizer: charset_normalizer
     click: click
     docutils: docutils
-    flask: Flask
+    flask: flask
     idna: idna
     imagesize: imagesize
-    importlib_metadata: importlib_metadata
     itsdangerous: itsdangerous
-    jinja2: Jinja2
-    markupsafe: MarkupSafe
+    jinja2: jinja2
+    markupsafe: markupsafe
     packaging: packaging
-    pygments: Pygments
+    pygments: pygments
     requests: requests
+    roman_numerals: roman_numerals
     snowballstemmer: snowballstemmer
     sphinx: sphinx
     sphinxcontrib.applehelp: sphinxcontrib_applehelp
@@ -31,8 +32,7 @@ manifest:
     sphinxcontrib.qthelp: sphinxcontrib_qthelp
     sphinxcontrib.serializinghtml: sphinxcontrib_serializinghtml
     urllib3: urllib3
-    werkzeug: Werkzeug
-    zipp: zipp
+    werkzeug: werkzeug
   pip_repository:
     name: pip
-integrity: 19c0e03a9cf1d6bbb2dfe301325fefc59a30c3f967f84c2f1baaf915c2805da7
+integrity: b50a3e8b0d0fd2c648b1ae93e081c2c32a5f289d2df5a12aa1679ee4b6fd809c
