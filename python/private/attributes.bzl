@@ -346,6 +346,11 @@ Allowed file types:
 Library targets belong in `deps`. Other binary files that may be needed at run
 time belong in `data`.
 
+:::{versionchanged} 2.3.2
+As an exception, empty targets in `srcs` that provide {obj}`PyInfo` are
+allowed. Ordinary library dependencies should remain in `deps`.
+:::
+
 :::{versionchanged} VERSION_NEXT_PATCH
 Allowed `.pyc` and directory inputs in `srcs`.
 :::

@@ -309,7 +309,7 @@ def create_py_library_rule_builder():
         {obj}`ruleb.Rule` with the necessary settings
         for creating a `py_library` rule.
     """
-    builder = ruleb.Rule(
+    return ruleb.Rule(
         implementation = py_library_impl,
         doc = _DEFAULT_PY_LIBRARY_DOC,
         exec_groups = dict(REQUIRED_EXEC_GROUP_BUILDERS),
@@ -321,13 +321,3 @@ def create_py_library_rule_builder():
             ruleb.ToolchainType(EXEC_TOOLS_TOOLCHAIN_TYPE, mandatory = False),
         ],
     )
-    srcs_attr = builder.attrs.get("srcs")
-    srcs_attr.set_allow_files(True)
-    srcs_attr.set_doc(srcs_attr.doc() + """
-
-:::{versionchanged} 2.3.2
-As an exception, empty targets in `srcs` that provide {obj}`PyInfo` are
-allowed. Ordinary library dependencies should remain in `deps`.
-:::
-""")
-    return builder
