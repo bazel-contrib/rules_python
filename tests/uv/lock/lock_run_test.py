@@ -258,7 +258,7 @@ class LockTests(unittest.TestCase):
     def test_requirements_directory_run_script_has_expected_args(self):
         """Verify the .run script template for directory attribute has --directory embedded."""
         run_script_path = _relative_rpath("requirements_directory.run")
-        content = run_script_path.read_text()
+        content = run_script_path.read_text().replace("\\", "/")
 
         self.assertIn("--directory=tests/uv/lock/testdata", content)
         self.assertIn("BUILD_WORKSPACE_DIRECTORY", content)
@@ -267,7 +267,7 @@ class LockTests(unittest.TestCase):
     def test_uv_lock_directory_run_script_has_expected_args(self):
         """Verify the uv lock .run script with directory has --directory embedded."""
         run_script_path = _relative_rpath("uv_lock_directory_test.run")
-        content = run_script_path.read_text()
+        content = run_script_path.read_text().replace("\\", "/")
 
         self.assertIn("--directory=tests/uv/lock/testdata", content)
         self.assertIn("BUILD_WORKSPACE_DIRECTORY", content)
