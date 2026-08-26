@@ -77,11 +77,11 @@ def _whl_split(env):
         "config_load": "config_load",
         "requirement": "pkg[extra1]",
         "dep_template": "@hub_name//{name}:{pkg}",
-        "metadata_file": "@hub_name_pkg_0_0_1_deadbeef_py3_none_any//:metadata.json",
+        "metadata_file": "@pkg_0_0_1_deadbeef_py3_none_any//:metadata.json",
     }})
 
     # buildifier: @unsorted-dict-items
-    got.whl_archive_calls().contains_exactly({"hub_name_pkg_0_0_1_deadbeef_py3_none_any": {
+    got.whl_archive_calls().contains_exactly({"pkg_0_0_1_deadbeef_py3_none_any": {
         "filename": "pkg-0.0.1+deadbeef-py3-none-any.whl",
         "urls": ["url"],
         "index_url": "pypi",

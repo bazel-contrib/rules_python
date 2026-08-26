@@ -56,18 +56,29 @@ def register_whl_libraries(
 
         # for now we include the hub_name in the key since the reuse is done for each
         # hub_name separately.
-        key = (hub_name, filename, integrity)
+        key = (None, filename, integrity)
+        hkey = (hub_name, filename, integrity)
         value = (url, index_url)
 
-        if (filename, integrity) in fallback:
+        if key in fallback:
             continue
 
         got = urls.setdefault(key, value)
-        if got != value:
+        if got != value and got != None:
             urls.pop(key)
-            fallback.setdefault((filename, integrity), None)
+            urls.setdefault(key, None)
+            got = None
 
-        separate_srcs[name] = key
+        got2 = urls.setdefault(hkey, value)
+        if got2 != value and got2 != None:
+            urls.pop(hkey)
+            urls.setdefault(hkey, None)
+            got2 = None
+
+        if got != None:
+            separate_srcs[name] = key
+        elif got2 != None:
+            separate_srcs[name] = hkey
 
     for name, args in registrations.items():
         if name in separate_srcs:
@@ -95,10 +106,10 @@ def register_whl_libraries(
         # The extras do not affect the extraction, so normalize the requirement
         # to allow the same wheel to be extracted only once.
         extract_args["requirement"] = _without_extras(extract_args["requirement"])
-        extract_repo_name = "{}_{}".format(
-            hub_name,
-            whl_repo_name(filename, ""),
-        )
+        extract_repo_name = whl_repo_name(filename, "")
+        if hub_name:
+            extract_repo_name = "{}_{}".format(hub_name, extract_repo_name)
+
         if key not in registered_srcs:
             registered_srcs[key] = extract_repo_name
             rules.whl_archive(
@@ -128,6 +139,7 @@ def register_whl_libraries(
 def _can_split(
         args,
         need_args = [
+            "dep_template",
             "urls",
             "filename",
             "integrity",
