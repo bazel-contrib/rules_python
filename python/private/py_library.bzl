@@ -34,6 +34,7 @@ load(
     "create_instrumented_files_info",
     "create_output_group_info",
     "create_py_info",
+    "filter_to_direct_sources",
     "filter_to_py_srcs",
 )
 load(":common_labels.bzl", "labels")
@@ -128,19 +129,13 @@ def _validate_srcs(ctx):
         ):
             continue
 
-        found_match = False
-        for file in files:
-            if file.is_directory or file.extension in ("py", "py3"):
-                found_match = True
-                break
-
-        if found_match:
+        if filter_to_direct_sources(files):
             continue
 
         fail(
             ("{} does not produce any py_library srcs files " +
-             "(expected .py or .py3) and is not an empty target providing " +
-             "PyInfo").format(
+             "(expected .py, .pyc, or directory) and is not an empty target " +
+             "providing PyInfo").format(
                 target.label,
             ),
             attr = "srcs",
@@ -156,14 +151,14 @@ def py_library_impl(ctx):
         A list of modern providers to propagate.
     """
     _validate_srcs(ctx)
-    direct_sources = filter_to_py_srcs(ctx.files.srcs)
+    direct_sources = filter_to_direct_sources(ctx.files.srcs)
 
     precompile_result = maybe_precompile(ctx, direct_sources)
 
-    required_py_files = precompile_result.keep_srcs
+    required_py_files = filter_to_py_srcs(precompile_result.keep_srcs)
     required_pyc_files = []
     implicit_pyc_files = []
-    implicit_pyc_source_files = direct_sources
+    implicit_pyc_source_files = filter_to_py_srcs(direct_sources)
 
     precompile_attr = ctx.attr.precompile
     precompile_flag = ctx.attr._precompile_flag[BuildSettingInfo].value
@@ -314,7 +309,7 @@ def create_py_library_rule_builder():
         {obj}`ruleb.Rule` with the necessary settings
         for creating a `py_library` rule.
     """
-    builder = ruleb.Rule(
+    return ruleb.Rule(
         implementation = py_library_impl,
         doc = _DEFAULT_PY_LIBRARY_DOC,
         exec_groups = dict(REQUIRED_EXEC_GROUP_BUILDERS),
@@ -326,13 +321,3 @@ def create_py_library_rule_builder():
             ruleb.ToolchainType(EXEC_TOOLS_TOOLCHAIN_TYPE, mandatory = False),
         ],
     )
-    srcs_attr = builder.attrs.get("srcs")
-    srcs_attr.set_allow_files(True)
-    srcs_attr.set_doc(srcs_attr.doc() + """
-
-:::{versionchanged} 2.3.2
-As an exception, empty targets in `srcs` that provide {obj}`PyInfo` are
-allowed. Ordinary library dependencies should remain in `deps`.
-:::
-""")
-    return builder
