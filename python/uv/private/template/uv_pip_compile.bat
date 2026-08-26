@@ -8,12 +8,5 @@ exit /b %ERRORLEVEL%
 :build
 set "out={{out}}"
 if exist "{{src_out}}" copy /Y "{{src_out}}" "%out%" >nul
-set "__srcs="$SRCS""
-if defined __srcs (
-    for %%s in (%__srcs%) do (
-        for %%d in ("{{rootdir}}\%%s") do mkdir "%%~dpd" >nul 2>&1
-        copy /Y "%%s" "{{rootdir}}\%%s" >nul
-    )
-)
 "{{args}}"
 exit /b %ERRORLEVEL%
