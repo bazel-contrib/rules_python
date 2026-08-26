@@ -77,16 +77,16 @@ def _reroot(x, directory):
 
     if hasattr(x, "path"):
         x = x.path
-    elif hasattr(x, "short_path"):
-        x = x.short_path
-
     if x == directory:
         return "."
 
     if x.startswith(directory + "/"):
         return x[len(directory) + 1:]
 
-    fail("File '{}' does not start with directory prefix '{}'".format(x, directory))
+    fail("File '{}' does not start with directory prefix '{}'".format(
+        x,
+        directory,
+    ))
 
 def _reroot_all(xs, directory):
     return [
@@ -174,7 +174,9 @@ def _common_lock(ctx, locker):
     args.add("--quiet")
 
     project_dir = project or ctx.label.package
-    project_lock = "{}/uv.lock".format(project_dir) if project_dir else "uv.lock"
+    project_lock = (
+        "{}/uv.lock".format(project_dir) if project_dir else "uv.lock"
+    )
 
     if ctx.files.existing_output:
         src_out = ctx.files.existing_output[0].path
@@ -196,9 +198,13 @@ def _common_lock(ctx, locker):
         path_sep = "/"
         ext = ""
 
-    output_path = output.path.replace("/", path_sep) if is_windows else output.path
+    output_path = (
+        output.path.replace("/", path_sep) if is_windows else output.path
+    )
     src_out_path = src_out.replace("/", path_sep) if is_windows else src_out
-    project_lock_path = project_lock.replace("/", path_sep) if is_windows else project_lock
+    project_lock_path = (
+        project_lock.replace("/", path_sep) if is_windows else project_lock
+    )
 
     # On Windows, all args must be embedded in the .bat script because
     # arguments are not passed on the command line.
@@ -322,7 +328,7 @@ _common_attrs = {
         doc = "Public, see the docs in the macro.",
     ),
     "directory": attr.string(
-        doc = """\
+        doc = """
 Sets the --directory flag if provided. Will fail if at least one of the files
 does not start with the given prefix of the directory.
 """,
@@ -618,9 +624,9 @@ def lock(
             is passed as is and the environment variables are not expanded.
         build_constraints: {type}`list[Label]` The list of build constraints to use.
         constraints: {type}`list[Label]` The list of constraints files to use.
-        directory: {type}`str` The directory into which we should cd when running
-            the command.
-            {versionadded} VERSION_NEXT_MINOR
+        directory: {type}`str` The directory into which we should cd when
+            running the command.
+            {versionadded} VERSION_NEXT_FEATURE
         generate_hashes: {type}`bool` Generate hashes for all of the
             requirements. Only meaningful for `requirements.txt` style output.
             Defaults to `True`.

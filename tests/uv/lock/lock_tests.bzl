@@ -25,12 +25,18 @@ _basic_tests = []
 
 def _test_reroot(env):
     reroot = lock_testing.reroot
-    env.expect.that_str(reroot("dev/requirements.in", "dev")).equals("requirements.in")
+    env.expect.that_str(
+        reroot("dev/requirements.in", "dev"),
+    ).equals("requirements.in")
     env.expect.that_str(reroot("dev/sub/pkg.txt", "dev")).equals("sub/pkg.txt")
     env.expect.that_str(reroot("dev", "dev")).equals(".")
     env.expect.that_str(reroot("a/b/c/foo.txt", "a/b")).equals("c/foo.txt")
-    env.expect.that_str(reroot("requirements.in", None)).equals("requirements.in")
-    env.expect.that_str(reroot("requirements.in", "")).equals("requirements.in")
+    env.expect.that_str(
+        reroot("requirements.in", None),
+    ).equals("requirements.in")
+    env.expect.that_str(
+        reroot("requirements.in", ""),
+    ).equals("requirements.in")
 
 _basic_tests.append(_test_reroot)
 
@@ -47,7 +53,9 @@ def _test_up(env):
     env.expect.that_str(up("foo/bar", None)).equals("foo/bar")
     env.expect.that_str(up("foo/bar", "")).equals("foo/bar")
     env.expect.that_str(up("foo/bar", "dev")).equals("../foo/bar")
-    env.expect.that_str(up("foo/bar", "examples/bzlmod")).equals("../../foo/bar")
+    env.expect.that_str(
+        up("foo/bar", "examples/bzlmod"),
+    ).equals("../../foo/bar")
     env.expect.that_str(up("foo/bar", "a/b/c")).equals("../../../foo/bar")
 
 _basic_tests.append(_test_up)
