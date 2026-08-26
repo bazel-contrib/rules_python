@@ -342,6 +342,7 @@ bzl_library(
     srcs = ["pkg_aliases.bzl"],
     deps = [
         ":labels",
+        ":whl_library_deps_targets",
         "//python/private:common_labels",
         "//python/private:text_util",
         "@bazel_skylib//lib:selects",

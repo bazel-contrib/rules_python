@@ -17,4 +17,7 @@ basis:
   .agents/scripts/setup_triangle_branch.sh <branch>
   ```
 * Never use `git push -u` or `--set-upstream` (it breaks upstream tracking).
+* When pushing to a checked-out PR branch from an external fork, push
+  explicitly to that remote (`git push <remote> HEAD:<branch>`). Do not rely on
+  a bare `git push`.
 
