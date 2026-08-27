@@ -613,6 +613,9 @@ def lock(
     All of the targets have `manual` tags as locking results cannot be cached.
     :::
 
+    :::{versionadded} VERSION_NEXT_FEATURE
+    :::
+
     Args:
         name: {type}`str` The prefix of all targets created by this macro.
         srcs: {type}`list[Label]` The sources that will be used. Add all of the
@@ -626,7 +629,6 @@ def lock(
         constraints: {type}`list[Label]` The list of constraints files to use.
         directory: {type}`str` The directory into which we should cd when
             running the command.
-            {versionadded} VERSION_NEXT_FEATURE
         generate_hashes: {type}`bool` Generate hashes for all of the
             requirements. Only meaningful for `requirements.txt` style output.
             Defaults to `True`.
