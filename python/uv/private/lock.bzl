@@ -40,21 +40,32 @@ def _args(ctx):
     run_shell_list = []
     args = ctx.actions.args()
 
-    def _add(arg, maybe_value = None):
-        run_info.append(arg)
-        run_shell_list.append(arg)
-        args.add(arg)
-        if maybe_value != None:
-            run_info.append(maybe_value)
-            run_shell_list.append(maybe_value)
-            args.add(maybe_value)
+    def _add(arg, maybe_value = None, format = None):
+        if format != None:
+            formatted = format % arg
+            run_info.append(formatted)
+            run_shell_list.append(formatted)
+            args.add(arg, format = format)
+        else:
+            run_info.append(arg)
+            run_shell_list.append(arg)
+            args.add(arg)
+            if maybe_value != None:
+                run_info.append(maybe_value)
+                run_shell_list.append(maybe_value)
+                args.add(maybe_value)
 
-    def _add_run_shell(arg, maybe_value = None):
-        run_shell_list.append(arg)
-        args.add(arg)
-        if maybe_value != None:
-            run_shell_list.append(maybe_value)
-            args.add(maybe_value)
+    def _add_run_shell(arg, maybe_value = None, format = None):
+        if format != None:
+            formatted = format % arg
+            run_shell_list.append(formatted)
+            args.add(arg, format = format)
+        else:
+            run_shell_list.append(arg)
+            args.add(arg)
+            if maybe_value != None:
+                run_shell_list.append(maybe_value)
+                args.add(maybe_value)
 
     def _add_run_info(arg):
         if type(arg) == "list":
@@ -154,7 +165,7 @@ def _common_lock(ctx, locker):
     if project:
         rerooted_project = _reroot(project, directory)
         if rerooted_project:
-            args.add("--project", rerooted_project)
+            args.add(rerooted_project, format = "--project=%s")
 
     for arg in ctx.attr.args:
         args.add(arg)
