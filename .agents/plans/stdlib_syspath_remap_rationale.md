@@ -89,3 +89,25 @@ This guarantees that:
 * Host system Python prefixes (`/usr`, etc.) are never in the symlink chain of
   the wrapper script, so they are cleanly ignored without modifying host paths.
 * Zero internal Bazel directory naming conventions are assumed.
+
+## Discarded Alternatives
+
+### Checking for "Special" Bazel Path Markers (`/external/`, `/cache/`, `/execroot/`)
+
+An earlier alternative filtered candidate prefixes by checking for Bazel path
+substrings:
+```python
+if not any(
+    marker in norm_prefix for marker in ("/external/", "/cache/", "/execroot/")
+):
+    continue
+```
+
+**Why this was discarded**:
+* Substrings like `/external/`, `/cache/`, and `/execroot/` are internal Bazel
+  details that rules_python shouldn't hardcode or rely on.
+* Paths like `/external/` and `/execroot/` are specific to Bazel's execution
+  environment and are not applicable at arbitrary runtime (e.g. when executing
+  binaries outside the sandbox or across different deployment environments).
+* It introduces brittle heuristic string matching instead of relying on
+  concrete filesystem relationships.
