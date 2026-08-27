@@ -252,15 +252,39 @@ def _fixup_stdlib_paths():
     if not _RUNFILES_ROOT:
         return
 
-    abs_interpreter = os.path.join(_RUNFILES_ROOT, _INTERPRETER_ACTUAL_PATH)
-    parent = os.path.dirname(abs_interpreter)
-    if os.path.basename(parent).lower() in ("bin", "scripts"):
-        runtime_root = os.path.dirname(parent)
-    else:
-        runtime_root = parent
-
     def _norm_path(path_str):
         return os.path.normcase(path_str).replace("\\", "/").rstrip("/")
+
+    abs_interpreter = os.path.join(_RUNFILES_ROOT, _INTERPRETER_ACTUAL_PATH)
+
+    def _get_runtime_root(interp_path):
+        parent = os.path.dirname(interp_path)
+        if os.path.basename(parent).lower() in ("bin", "scripts"):
+            return os.path.dirname(parent)
+        return parent
+
+    def _get_symlink_roots(path_str):
+        roots = set()
+        curr = path_str
+        while True:
+            roots.add(_norm_path(_get_runtime_root(curr)))
+            roots.add(_norm_path(_get_runtime_root(os.path.realpath(curr))))
+            if not os.path.islink(curr):
+                break
+            try:
+                target = os.readlink(curr)
+            except OSError:
+                break
+            if not os.path.isabs(target):
+                target = os.path.join(os.path.dirname(curr), target)
+            target = os.path.abspath(target)
+            if target == curr:
+                break
+            curr = target
+        return roots
+
+    runtime_root = _get_runtime_root(abs_interpreter)
+    symlink_roots = _get_symlink_roots(abs_interpreter)
 
     runfiles_norm = _norm_path(_RUNFILES_ROOT)
     runfiles_prefix = runfiles_norm + "/"
@@ -288,13 +312,11 @@ def _fixup_stdlib_paths():
         if _in_runfiles(old_prefix):
             continue
 
-        # Only remap prefixes leaked from Bazel (external repositories, repo
-        # cache, or execution root). This avoids remapping system or platform
-        # Python runtimes (e.g. /usr) when using runtime_env_toolchain.
-        norm_prefix = _norm_path(old_prefix)
-        if not any(
-            marker in norm_prefix for marker in ("/external/", "/cache/", "/execroot/")
-        ):
+        # Only remap prefixes that match a runtime root in the interpreter's
+        # symlink chain. This ensures we remap leaked hermetic toolchain
+        # directories while ignoring host system or platform Python runtimes
+        # (e.g. /usr) when using runtime_env_toolchain.
+        if _norm_path(old_prefix) not in symlink_roots:
             continue
 
         old_prefixes.add(old_prefix)
@@ -321,7 +343,7 @@ def _fixup_stdlib_paths():
 
     if hasattr(site, "PREFIXES"):
         for i, prefix in enumerate(site.PREFIXES):
-            if not _in_runfiles(prefix):
+            if not _in_runfiles(prefix) and _norm_path(prefix) in symlink_roots:
                 _print_verbose("remap site.PREFIXES:", prefix, "->", target_root)
                 site.PREFIXES[i] = target_root
 
