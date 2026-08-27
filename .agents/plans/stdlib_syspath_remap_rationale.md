@@ -1,4 +1,4 @@
-# Rationale: Stdlib sys.path Runfiles Remapping and System Python Filtering
+# Rationale & Plan: Stdlib sys.path Runfiles Remapping and Toolchain Filtering
 
 ## Problem Background
 
@@ -51,51 +51,49 @@ Because `runtime.interpreter` is a `File` label rather than an absolute
    stdlib imports fail (`ModuleNotFoundError: No module named 'contextlib'`,
    `ModuleNotFoundError: No module named 'pkgutil'`).
 
-## The Solution: Symlink Chain Root Matching
+## Proposed Solution: Build-Time Signal via Starlark
 
-Instead of hardcoding or matching against Bazel-specific directory markers
-(e.g. `/external/`, `/cache/`, or `/execroot/`), we follow the interpreter's
-actual symlink resolution chain from `abs_interpreter` at runtime and collect all
-intermediate and final runtime roots into `symlink_roots`:
+The determination of whether the runtime's standard library is staged into
+runfiles (hermetic runtime) versus living on the host system (system /
+environment runtime) is known statically at build/analysis time in Starlark:
 
-```python
-def _get_symlink_roots(path_str):
-    roots = set()
-    curr = path_str
-    while True:
-        roots.add(_norm_path(_get_runtime_root(curr)))
-        roots.add(_norm_path(_get_runtime_root(os.path.realpath(curr))))
-        if not os.path.islink(curr):
-            break
-        try:
-            target = os.readlink(curr)
-        except OSError:
-            break
-        if not os.path.isabs(target):
-            target = os.path.join(os.path.dirname(curr), target)
-        target = os.path.abspath(target)
-        if target == curr:
-            break
-        curr = target
-    return roots
-```
+1. **In `python/private/py_executable.bzl` (`_create_venv`)**:
+   * Inspect the selected runtime from `runtime_details`.
+   * For **hermetic toolchains** (where standard library files are staged in
+     runfiles), pass `%interpreter_actual_path%` as the runfiles-relative path.
+   * For **system / environment toolchains** (e.g. `runtime_env_toolchain` or
+     runtimes using `interpreter_path`), pass `%interpreter_actual_path%` as `""`
+     (or an absolute path).
 
-We only remap an `old_prefix` when `_norm_path(old_prefix) in symlink_roots`.
-
-This guarantees that:
-* Hermetic CPython runtimes whose symlinks resolved through repository cache or
-  external repository directories are recognized because their runtime roots
-  belong to the interpreter's symlink chain.
-* Host system Python prefixes (`/usr`, etc.) are never in the symlink chain of
-  the wrapper script, so they are cleanly ignored without modifying host paths.
-* Zero internal Bazel directory naming conventions are assumed.
+2. **In `python/private/site_init_template.py` (`_fixup_stdlib_paths`)**:
+   * If `_INTERPRETER_ACTUAL_PATH` is empty or absolute, return immediately on
+     line 1 (0 stats, 0 filesystem calls).
+   * For hermetic toolchains, perform direct string remapping of non-runfiles
+     prefixes (`sys.base_prefix`, `sys.base_exec_prefix`, stdlib `sys.path`
+     entries, and `site.PREFIXES`) to the runfiles runtime root.
+   * Zero filesystem `stat`, `readlink`, or loop overhead during Python startup.
 
 ## Discarded Alternatives
 
-### Checking for "Special" Bazel Path Markers (`/external/`, `/cache/`, `/execroot/`)
+### 1. Runtime Symlink Chain Traversal (`_get_symlink_roots`)
 
-An earlier alternative filtered candidate prefixes by checking for Bazel path
-substrings:
+Traversing the interpreter's symlink chain dynamically at runtime via
+`os.readlink()` and `os.path.realpath()` to collect valid candidate runtime
+roots.
+
+**Why this was discarded**:
+* **Complicated**: Adds complex path traversal and cycle-detection logic to the
+  critical startup path of every Python binary.
+* **Expensive**: Requires multiple `os.stat()`, `os.readlink()`, and
+  `os.path.realpath()` syscalls in a loop during site initialization.
+* **Conceptually Flawed**: Following symlinks is the very reason why incorrect
+  paths ended up in `sys.path` and `sys.base_prefix` in the first place; adding
+  more symlink resolution at runtime compounds the issue rather than fixing it
+  at the source.
+
+### 2. Checking for "Special" Bazel Path Markers (`/external/`, `/cache/`, `/execroot/`)
+
+Filtering candidate prefixes by checking for Bazel path substrings:
 ```python
 if not any(
     marker in norm_prefix for marker in ("/external/", "/cache/", "/execroot/")
@@ -104,10 +102,11 @@ if not any(
 ```
 
 **Why this was discarded**:
-* Substrings like `/external/`, `/cache/`, and `/execroot/` are internal Bazel
-  details that rules_python shouldn't hardcode or rely on.
-* Paths like `/external/` and `/execroot/` are specific to Bazel's execution
-  environment and are not applicable at arbitrary runtime (e.g. when executing
-  binaries outside the sandbox or across different deployment environments).
-* It introduces brittle heuristic string matching instead of relying on
-  concrete filesystem relationships.
+* **Internal Leaks**: Substrings like `/external/`, `/cache/`, and `/execroot/`
+  are internal Bazel details that rules_python shouldn't hardcode or rely on.
+* **Environment Specificity**: Paths like `/external/` and `/execroot/` are
+  specific to Bazel's execution sandbox and are not applicable at arbitrary
+  runtime (e.g. when executing binaries outside the sandbox or across different
+  deployment environments).
+* **Brittle Heuristics**: Introduces brittle string pattern matching instead of
+  relying on concrete build-time or architectural declarations.
