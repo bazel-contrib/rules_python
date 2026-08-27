@@ -10,7 +10,10 @@ param(
     [string]$TargetOs,
 
     [Parameter(Position=3, Mandatory=$true)]
-    [string]$DataDirBasename
+    [string]$DataDirBasename,
+
+    [Parameter(Position=4, ValueFromRemainingArguments=$true)]
+    [string[]]$RewrittenScripts
 )
 
 $ErrorActionPreference = "Stop"
@@ -30,6 +33,13 @@ if ($TargetOs -eq "windows") {
     $platlibRepl = ""
     $purelibRepl = ""
     $scriptsRepl = "../../../bin/"
+}
+
+$rewrittenSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+if ($RewrittenScripts) {
+    foreach ($s in $RewrittenScripts) {
+        $null = $rewrittenSet.Add($s)
+    }
 }
 
 $lines = Get-Content -Path $InFile
@@ -64,8 +74,7 @@ foreach ($line in $lines) {
                 $spath = $entry.Substring(0, $idx)
                 $suffix = $entry.Substring($idx)
             }
-            $bname = $spath.Split("/")[-1]
-            if (-not $bname.Contains(".")) {
+            if ($rewrittenSet.Contains($spath)) {
                 $spath = "$spath.bat"
             }
             $outLines.Add($quote + $scriptsRepl + $spath + $suffix)

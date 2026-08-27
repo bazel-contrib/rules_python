@@ -5,6 +5,7 @@ IN="$1"
 OUT="$2"
 TARGET_OS="$3"
 DATA_DIR_BASENAME="$4"
+shift 4
 
 DATA_PREFIX="${DATA_DIR_BASENAME}/"
 QUOTED_DATA_PREFIX="\"${DATA_DIR_BASENAME}/"
@@ -31,6 +32,12 @@ awk -v data_prefix="$DATA_PREFIX" \
     -v purelib_repl="$PURELIB_REPL" \
     -v scripts_repl="$SCRIPTS_REPL" \
     -v target_os="$TARGET_OS" '
+BEGIN {
+  for (i = 2; i < ARGC; i++) {
+    rewritten[ARGV[i]] = 1
+  }
+  ARGC = 2
+}
 {
   line = $0
   quote = ""
@@ -60,12 +67,7 @@ awk -v data_prefix="$DATA_PREFIX" \
         spath = substr(entry, 1, idx - 1)
         suffix = substr(entry, idx)
       }
-      bname = spath
-      n = split(spath, parts, "/")
-      if (n > 0) {
-        bname = parts[n]
-      }
-      if (index(bname, ".") == 0) {
+      if (spath in rewritten) {
         spath = spath ".bat"
       }
       print quote scripts_repl spath suffix
@@ -80,4 +82,4 @@ awk -v data_prefix="$DATA_PREFIX" \
     print line
   }
 }
-' "$IN" > "$OUT"
+' "$IN" "$@" > "$OUT"

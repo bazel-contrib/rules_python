@@ -40,6 +40,7 @@ def test_importlib_metadata_files():
             scripts_prefix + "overlap/both.sh",
             scripts_prefix + "overlap/script1.sh",
             scripts_prefix + "whl_script.sh",
+            scripts_prefix + "whl_shell_tool",
             scripts_prefix + "whl_with_data1_script" + shebang_script_ext,
             headers_prefix + "data_overlap.h",
             data_prefix + "include/data_overlap.h",

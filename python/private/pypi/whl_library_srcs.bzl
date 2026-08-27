@@ -100,6 +100,7 @@ def whl_library_srcs(
     for p in native.glob(["bin/*"], allow_empty = True):
         existing_bin_names[p[len("bin/"):].lower()] = None
 
+    rewritten_script_names = []
     for src_path in native.glob(["rewrite-bin/*"], allow_empty = True):
         script_name = src_path[len("rewrite-bin/"):]
         if script_name.lower() in existing_bin_names:
@@ -112,6 +113,7 @@ def whl_library_srcs(
         )
         bins_for_data_label.append(rewrite_target_name)
         data.append(rewrite_target_name)
+        rewritten_script_names.append(script_name)
 
     record_srcs = native.glob(["rewrite-record/*/RECORD"], allow_empty = True)
     record_target_name = "record"
@@ -119,6 +121,7 @@ def whl_library_srcs(
         rules.gen_wheel_record(
             name = record_target_name,
             srcs = record_srcs,
+            rewritten_scripts = rewritten_script_names,
             tags = ["manual"],
         )
         data.append(record_target_name)
