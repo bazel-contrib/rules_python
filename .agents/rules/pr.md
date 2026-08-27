@@ -38,3 +38,5 @@ Before drafting any pull request description, strictly adhere to the rules in
   individual file modifications in PR descriptions or commit messages.
 * High-level overview only: state *why* the change is made and *how* at a
   conceptual level. Link related issues (e.g. `Work towards #<issue>`).
+* **Conciseness & Style (Strunk & White)**: Omit needless words. Use clear,
+  active, and direct phrasing for *why* and *how*.
