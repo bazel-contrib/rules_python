@@ -256,35 +256,11 @@ def _fixup_stdlib_paths():
         return os.path.normcase(path_str).replace("\\", "/").rstrip("/")
 
     abs_interpreter = os.path.join(_RUNFILES_ROOT, _INTERPRETER_ACTUAL_PATH)
-
-    def _get_runtime_root(interp_path):
-        parent = os.path.dirname(interp_path)
-        if os.path.basename(parent).lower() in ("bin", "scripts"):
-            return os.path.dirname(parent)
-        return parent
-
-    def _get_symlink_roots(path_str):
-        roots = set()
-        curr = path_str
-        while True:
-            roots.add(_norm_path(_get_runtime_root(curr)))
-            roots.add(_norm_path(_get_runtime_root(os.path.realpath(curr))))
-            if not os.path.islink(curr):
-                break
-            try:
-                target = os.readlink(curr)
-            except OSError:
-                break
-            if not os.path.isabs(target):
-                target = os.path.join(os.path.dirname(curr), target)
-            target = os.path.abspath(target)
-            if target == curr:
-                break
-            curr = target
-        return roots
-
-    runtime_root = _get_runtime_root(abs_interpreter)
-    symlink_roots = _get_symlink_roots(abs_interpreter)
+    parent = os.path.dirname(abs_interpreter)
+    if os.path.basename(parent).lower() in ("bin", "scripts"):
+        runtime_root = os.path.dirname(parent)
+    else:
+        runtime_root = parent
 
     runfiles_norm = _norm_path(_RUNFILES_ROOT)
     runfiles_prefix = runfiles_norm + "/"
@@ -306,32 +282,37 @@ def _fixup_stdlib_paths():
         attrs = ("base_prefix", "base_exec_prefix")
     else:
         attrs = ("base_prefix", "base_exec_prefix", "prefix", "exec_prefix")
-    old_prefixes = set()
+
+    candidate_prefixes = {}
     for attr in attrs:
         old_prefix = getattr(sys, attr)
-        if _in_runfiles(old_prefix):
-            continue
+        if not _in_runfiles(old_prefix):
+            candidate_prefixes[attr] = old_prefix
 
-        # Only remap prefixes that match a runtime root in the interpreter's
-        # symlink chain. This ensures we remap leaked hermetic toolchain
-        # directories while ignoring host system or platform Python runtimes
-        # (e.g. /usr) when using runtime_env_toolchain.
-        if _norm_path(old_prefix) not in symlink_roots:
-            continue
-
-        old_prefixes.add(old_prefix)
-
-        _print_verbose(f"remap sys.{attr}:", old_prefix, "->", target_root)
-        setattr(sys, attr, target_root)
-
-    # Fast path: if no runtime prefixes were replaced, no paths leaked outside
-    # the tree and no further remapping is needed.
-    if not old_prefixes:
+    if not candidate_prefixes:
         return
 
+    # First, verify if any candidate prefix has matching paths that physically
+    # exist in the runfiles tree.
+    remapped_prefixes = set()
+    for p in sys.path:
+        norm_p = _norm_path(p)
+        for old_prefix in candidate_prefixes.values():
+            norm_old = _norm_path(old_prefix)
+            if norm_p == norm_old or norm_p.startswith(norm_old + "/"):
+                candidate = target_root + p[len(old_prefix) :]
+                if os.path.exists(candidate):
+                    remapped_prefixes.add(old_prefix)
+                    break
+
+    if not remapped_prefixes:
+        return
+
+    # Remap all sys.path entries under the verified prefixes (including default
+    # CPython virtual paths like pythonXY.zip that may not exist on disk).
     for i, p in enumerate(sys.path):
         norm_p = _norm_path(p)
-        for old_prefix in old_prefixes:
+        for old_prefix in remapped_prefixes:
             norm_old = _norm_path(old_prefix)
             if norm_p == norm_old or norm_p.startswith(norm_old + "/"):
                 new_path = target_root + p[len(old_prefix) :]
@@ -339,11 +320,16 @@ def _fixup_stdlib_paths():
                 sys.path[i] = new_path
                 break
 
+    for attr, old_prefix in candidate_prefixes.items():
+        if old_prefix in remapped_prefixes:
+            _print_verbose(f"remap sys.{attr}:", old_prefix, "->", target_root)
+            setattr(sys, attr, target_root)
+
     import site
 
     if hasattr(site, "PREFIXES"):
         for i, prefix in enumerate(site.PREFIXES):
-            if not _in_runfiles(prefix) and _norm_path(prefix) in symlink_roots:
+            if not _in_runfiles(prefix) and prefix in remapped_prefixes:
                 _print_verbose("remap site.PREFIXES:", prefix, "->", target_root)
                 site.PREFIXES[i] = target_root
 
