@@ -48,10 +48,50 @@ class MergerTest(unittest.TestCase):
         self.assertEqual(
             {
                 "_pytest": "pytest",
-                "_pytest.__init__": "pytest",
-                "_pytest._argcomplete": "pytest",
-                "_pytest.config.argparsing": "pytest",
                 "django_types": "django_types",
+            },
+            json.loads(output_path.read_text()),
+        )
+
+    def test_merger_keeps_distinct_namespace_package_submodules(self):
+        # Regression test for https://github.com/bazel-contrib/rules_python/issues/3528.
+        #
+        # Two wheels ("bosdyn_client" and "bosdyn_orbit") both contribute to the
+        # "bosdyn" namespace package, each shipping their own "bosdyn" entry
+        # (from the namespace package's __init__.py) alongside their own
+        # wheel-specific submodule. Since https://github.com/bazel-contrib/rules_python/pull/3415,
+        # each wheel's mapping is generated (and, before this fix, simplified)
+        # independently, so the merge must not let one wheel's "bosdyn" entry
+        # clobber the other's more specific submodule entries.
+        output_path = self.tmppath / "output.json"
+        merge_modules_mappings(
+            [
+                self.make_input(
+                    {
+                        "bosdyn": "bosdyn_client",
+                        "bosdyn.client": "bosdyn_client",
+                        "bosdyn.client.control": "bosdyn_client",
+                    }
+                ),
+                self.make_input(
+                    {
+                        "bosdyn": "bosdyn_orbit",
+                        "bosdyn.orbit": "bosdyn_orbit",
+                        "bosdyn.orbit.util": "bosdyn_orbit",
+                    }
+                ),
+            ],
+            output_path,
+        )
+
+        # "bosdyn.orbit"/"bosdyn.orbit.util" are redundant with the top-level
+        # "bosdyn" -> "bosdyn_orbit" entry and get collapsed away, but
+        # "bosdyn.client" must survive since it resolves to a different wheel
+        # than the top-level "bosdyn" entry.
+        self.assertEqual(
+            {
+                "bosdyn": "bosdyn_orbit",
+                "bosdyn.client": "bosdyn_client",
             },
             json.loads(output_path.read_text()),
         )
