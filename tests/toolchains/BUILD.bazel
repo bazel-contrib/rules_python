@@ -36,7 +36,7 @@ py_reconfig_test(
 build_test(
     name = "build_test",
     targets = [
-        "@python_3_11//:python_headers",
+        "@python_3_14//:python_headers",
     ],
 )
 

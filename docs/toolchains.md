@@ -200,9 +200,9 @@ folder.  Look for the examples that contain a `MODULE.bazel` file.
 
 The `python.toolchain()` call makes its contents available under a repo named
 `python_X_Y`, where X and Y are the major and minor versions. For example,
-`python.toolchain(python_version="3.11")` creates the repo `@python_3_11`.
+`python.toolchain(python_version="3.14")` creates the repo `@python_3_14`.
 Remember to call `use_repo()` to make repos visible to your module:
-`use_repo(python, "python_3_11")`.
+`use_repo(python, "python_3_14")`.
 
 
 :::{deprecated} 1.1.0
