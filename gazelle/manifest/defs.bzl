@@ -70,6 +70,7 @@ def gazelle_python_manifest(
                 native.package_name(),
                 name,
             ))
+
         # buildifier: disable=print
         print("DEPRECATED requirements in //{}:{}. Please use lockfiles instead.".format(
             native.package_name(),

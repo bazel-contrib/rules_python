@@ -40,11 +40,11 @@ modules_mapping(
 #   the manifest doesn't need to be updated
 gazelle_python_manifest(
     name = "gazelle_python_manifest",
-    modules_mapping = ":modules_map",
-    pip_repository_name = "pip",
     # NOTE: We can pass a list just like in `bzlmod_build_file_generation` example
     # but we keep a single target here for regression testing.
     lockfiles = "//:requirements_lock.txt",
+    modules_mapping = ":modules_map",
+    pip_repository_name = "pip",
 )
 
 # Our gazelle target points to the python gazelle binary.
