@@ -615,6 +615,26 @@ def _test_default_index_setting(env):
             ],
             want_index_url = "https://pypi.org/simple",
         ),
+        struct(
+            modules = [
+                _mod(
+                    name = "my_module",
+                    default = [
+                        _default(
+                            index_url = "https://pypi.internal.org/simple",
+                        ),
+                    ],
+                    parse = [
+                        _parse(
+                            hub_name = "pypi_a",
+                            python_version = "3.15",
+                            requirements_lock = "requirements.txt",
+                        ),
+                    ],
+                ),
+            ],
+            want_index_url = "https://pypi.org/simple",
+        ),
     ]:
         pypi = _parse_modules(
             env,
