@@ -4,6 +4,8 @@ py_test(
     name = "test_dummy",
     srcs = ["test_dummy.py"],
     data = [
+        # Add the twine binary to ensure that the lock file
+        # stays the same if users use this in their tree.
         "@rules_python//tools/publish:twine",
     ],
     deps = [
