@@ -580,6 +580,70 @@ def _test_extension_dep_coexists_with_concrete_hub(env):
 
 _tests.append(_test_extension_dep_coexists_with_concrete_hub)
 
+def _test_default_index_setting(env):
+    def mock_simpleapi_download(*_, attr, **_kwargs):
+        digest_in_lock_file = "sha256:deadbeef"
+        return {
+            "simple": struct(
+                whls = {
+                    digest_in_lock_file: struct(
+                        yanked = None,
+                        filename = "simple-0.0.1-py3-none-any.whl",
+                        digest = digest_in_lock_file,
+                        url = "file://simple-0.0.1-py3-none-any.whl",
+                    ),
+                },
+                sdists = {},
+                hashes_by_version = {},
+                index_url = attr.index_url,
+            ),
+        }
+
+    for test in [
+        struct(
+            default = _default_tags_default,
+            parse = [
+                _parse(
+                    hub_name = "pypi_a",
+                    python_version = "3.15",
+                    requirements_lock = "requirements.txt",
+                ),
+            ],
+            want_index_url = "https://pypi.org/simple",
+        ),
+    ]:
+        pypi = _parse_modules(
+            env,
+            module_ctx = _pypi_mock_mctx(
+                _mod(
+                    name = "my_module",
+                    default = test.default,
+                    parse = test.parse,
+                ),
+                os_name = "linux",
+                arch_name = "x86_64",
+            ),
+            available_interpreters = {
+                "python_3_15_host": "unit_test_interpreter_target",
+            },
+            minor_mapping = {"3.15": "3.15.19"},
+            simpleapi_download = mock_simpleapi_download,
+        )
+
+        pypi.whl_libraries().contains_exactly({
+            "pypi_a_315_simple_py3_none_any_deadbeef": {
+                "config_load": "@pypi_a//:config.bzl",
+                "dep_template": "@pypi_a//{name}:{target}",
+                "filename": "simple-0.0.1-py3-none-any.whl",
+                "index_url": test.want_index_url,
+                "integrity": "sha256-3q2+7w==",
+                "requirement": "simple==0.0.1",
+                "urls": ["file://simple-0.0.1-py3-none-any.whl"],
+            },
+        })
+
+_tests.append(_test_default_index_setting)
+
 def extension_test_suite(name):
     """Create the test suite.
 
