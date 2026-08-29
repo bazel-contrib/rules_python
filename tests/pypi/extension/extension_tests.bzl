@@ -601,12 +601,16 @@ def _test_default_index_setting(env):
 
     for test in [
         struct(
-            default = _default_tags_default,
-            parse = [
-                _parse(
-                    hub_name = "pypi_a",
-                    python_version = "3.15",
-                    requirements_lock = "requirements.txt",
+            modules = [
+                _mod(
+                    name = "my_module",
+                    parse = [
+                        _parse(
+                            hub_name = "pypi_a",
+                            python_version = "3.15",
+                            requirements_lock = "requirements.txt",
+                        ),
+                    ],
                 ),
             ],
             want_index_url = "https://pypi.org/simple",
@@ -615,13 +619,9 @@ def _test_default_index_setting(env):
         pypi = _parse_modules(
             env,
             module_ctx = _pypi_mock_mctx(
-                _mod(
-                    name = "my_module",
-                    default = test.default,
-                    parse = test.parse,
-                ),
                 os_name = "linux",
                 arch_name = "x86_64",
+                *test.modules
             ),
             available_interpreters = {
                 "python_3_15_host": "unit_test_interpreter_target",
