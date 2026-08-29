@@ -1,6 +1,7 @@
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
+load("@rules_python//python:py_test.bzl", "py_test")
 load("//sphinxdocs:sphinx.bzl", "sphinx_build_binary", "sphinx_docs")
-load(":defs.bzl", "gen_directory")
+load(":defs.bzl", "custom_docs_library", "gen_directory")
 
 # We only build for Linux and Mac because:
 # 1. The actual doc process only runs on Linux
@@ -21,24 +22,73 @@ sphinx_docs(
     ],
     config = "conf.py",
     formats = ["html"],
+    renamed_srcs = {
+        ":gen_binary_asset": "binary_asset.bin",
+    },
     sphinx = ":sphinx-build",
+    strip_prefix = package_name() + "/",
     target_compatible_with = _TARGET_COMPATIBLE_WITH,
+    deps = [":custom_docs"],
+)
+
+genrule(
+    name = "gen_binary_asset",
+    outs = ["binary_asset.bin"],
+    cmd = "printf '\\x00\\xff\\xfe\\xfd\\x80\\x90\\x00\\x01\\x02\\x03\\x04' > $@",
 )
 
 gen_directory(
     name = "generated_directory",
 )
 
+custom_docs_library(
+    name = "custom_docs",
+    page_name = "custom_page",
+    prefix = "custom/",
+    transitive_deps = [
+        ":custom_docs_transitive",
+    ],
+    deps = [
+        ":custom_docs_dep",
+        ":custom_docs_empty",
+        ":gen_binary_asset",
+    ],
+)
+
+# The parent's prefix must not be applied to a dep's files.
+custom_docs_library(
+    name = "custom_docs_dep",
+    page_name = "custom_dep_page",
+    prefix = "custom_dep/",
+)
+
+custom_docs_library(
+    name = "custom_docs_transitive",
+    page_name = "custom_transitive_page",
+    prefix = "custom_transitive/",
+)
+
+custom_docs_library(
+    name = "custom_docs_empty",
+)
+
 sphinx_build_binary(
     name = "sphinx-build",
     tags = ["manual"],  # Only needed as part of sphinx doc building
     deps = [
-        "@dev_pip//myst_parser",
-        "@dev_pip//sphinx",
+        "@pypi//myst_parser",
+        "@pypi//sphinx",
     ],
 )
 
 build_test(
     name = "docs_build_test",
     targets = [":docs"],
+)
+
+py_test(
+    name = "sphinx_docs_output_test",
+    srcs = ["sphinx_docs_output_test.py"],
+    data = [":docs"],
+    deps = ["@pypi//absl_py"],
 )

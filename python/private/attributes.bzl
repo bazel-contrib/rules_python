@@ -331,14 +331,29 @@ as part of a runnable program (packaging rules may include them, however).
             allow_files = True,
         ),
         "srcs": lambda: attrb.LabelList(
-            allow_files = [".py", ".py3"],
+            allow_files = True,
             # Necessary for --compile_one_dependency to work.
             flags = ["DIRECT_COMPILE_TIME_INPUT"],
             doc = """
 The list of Python source files that are processed to create the target. This
-includes all your checked-in code and may include generated source files.  The
-`.py` files belong in `srcs` and library targets belong in `deps`. Other binary
-files that may be needed at run time belong in `data`.
+includes all your checked-in code and may include generated source files.
+
+Allowed file types:
+* `.py`
+* `.pyc`
+* directories
+
+Library targets belong in `deps`. Other binary files that may be needed at run
+time belong in `data`.
+
+:::{versionchanged} 2.3.2
+As an exception, empty targets in `srcs` that provide {obj}`PyInfo` are
+allowed. Ordinary library dependencies should remain in `deps`.
+:::
+
+:::{versionchanged} VERSION_NEXT_PATCH
+Allowed `.pyc` and directory inputs in `srcs`.
+:::
 """,
         ),
         "srcs_version": lambda: attrb.String(
@@ -554,6 +569,14 @@ AGNOSTIC_TEST_ATTRS = _init_agnostic_test_attrs()
 # not accept Python sources (e.g. some packaged-version of a py_test/py_binary),
 # but still accept Python source-agnostic settings.
 AGNOSTIC_BINARY_ATTRS = dicts.add(AGNOSTIC_EXECUTABLE_ATTRS)
+
+WINDOWS_CONSTRAINTS_PLAIN_ATTRS = {
+    "_windows_constraints": attr.label_list(
+        default = [
+            "@platforms//os:windows",
+        ],
+    ),
+}
 
 WINDOWS_CONSTRAINTS_ATTRS = {
     "_windows_constraints": lambda: attrb.LabelList(

@@ -4,7 +4,7 @@ load("@rules_python//python:pip.bzl", "compile_pip_requirements")
 # override in the MODULE.bazel.
 compile_pip_requirements(
     name = "requirements",
-    src = "requirements.in",
+    src = "pyproject.toml",
     python_version = "3.11",
     requirements_txt = "requirements_lock_3_11.txt",
 )

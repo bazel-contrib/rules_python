@@ -1,0 +1,50 @@
+load("//python:py_library.bzl", "py_library")
+load("//tests/support:support.bzl", "NOT_WINDOWS")
+load("//tests/support/pytest_test:pytest_test.bzl", "pytest_test")
+
+py_library(
+    name = "on_comment",
+    testonly = True,
+    srcs = ["//.github/workflows:on_comment.py"],
+    imports = ["../../.github/workflows"],
+    target_compatible_with = NOT_WINDOWS,
+)
+
+pytest_test(
+    name = "on_comment_test",
+    srcs = ["on_comment_test.py"],
+    target_compatible_with = NOT_WINDOWS,
+    deps = [
+        ":on_comment",
+        "@pypi//pytest_mock",
+    ],
+)
+
+py_library(
+    name = "on_pr_closed",
+    testonly = True,
+    srcs = ["//.github/workflows:on_pr_closed.py"],
+    imports = ["../../.github/workflows"],
+    target_compatible_with = NOT_WINDOWS,
+)
+
+pytest_test(
+    name = "on_pr_closed_test",
+    srcs = ["on_pr_closed_test.py"],
+    target_compatible_with = NOT_WINDOWS,
+    deps = [
+        ":on_pr_closed",
+        "@pypi//pytest_mock",
+    ],
+)
+
+pytest_test(
+    name = "workflow_permissions_test",
+    srcs = ["workflow_permissions_test.py"],
+    data = ["//.github/workflows:all_files"],
+    target_compatible_with = NOT_WINDOWS,
+    deps = [
+        "//python/runfiles",
+        "@pypi//pyyaml",
+    ],
+)

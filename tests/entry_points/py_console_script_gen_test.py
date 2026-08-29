@@ -162,7 +162,7 @@ class RunTest(unittest.TestCase):
             raise
 
         if __name__ == "__main__":
-            sys.exit(baz())  # type: ignore
+            sys.exit(baz())  # pyrefly: ignore[not-callable]
         """
         )
         self.assertEqual(want, got)

@@ -264,6 +264,10 @@ def test_replace_version_next_excludes_bazel_dirs(release_tool_env):
 blabla
 :::
 """
+    agents_dir = release_tool_env.git_root / ".agents"
+    agents_dir.mkdir()
+    (agents_dir / "mock_file.md").write_text(mock_file_content)
+
     bazel_dir = release_tool_env.git_root / "bazel-rules_python"
     bazel_dir.mkdir()
     (bazel_dir / "mock_file.bzl").write_text(mock_file_content)
@@ -282,6 +286,9 @@ blabla
     utils.replace_version_next(version)
 
     # Assert
+    new_content = (agents_dir / "mock_file.md").read_text()
+    assert "VERSION_NEXT_FEATURE" in new_content
+
     new_content = (bazel_dir / "mock_file.bzl").read_text()
     assert "VERSION_NEXT_FEATURE" in new_content
 
@@ -290,3 +297,70 @@ blabla
 
     new_content = (tests_dir / "mock_file.bzl").read_text()
     assert "VERSION_NEXT_FEATURE" in new_content
+
+
+def test_determine_next_version_ignores_agents_markers(mocker, release_tool_env):
+    mocker.patch(
+        "tools.private.release.git.Git.get_current_branch", return_value="main"
+    )
+    mocker.patch("tools.private.release.utils.get_latest_version", return_value="1.2.3")
+    agents_dir = release_tool_env.git_root / ".agents"
+    agents_dir.mkdir()
+    (agents_dir / "mock_file.md").write_text(":::{versionadded} VERSION_NEXT_FEATURE")
+
+    next_version = utils.determine_next_version()
+
+    assert next_version == "1.2.4"
+
+
+def test_replace_version_next_in_files(release_tool_env):
+    file1 = release_tool_env.git_root / "file1.py"
+    file1.write_text("v = 'VERSION_NEXT_FEATURE'\n", encoding="utf-8")
+
+    file2 = release_tool_env.git_root / "file2.py"
+    file2.write_text("v = 'VERSION_NEXT_PATCH'\n", encoding="utf-8")
+
+    file3 = release_tool_env.git_root / "file3.py"
+    file3.write_text("v = '1.0.0'\n", encoding="utf-8")
+
+    modified = utils.replace_version_next_in_files([file1, file2, file3], "2.3.0")
+
+    assert modified == [file1, file2]
+    assert file1.read_text(encoding="utf-8") == "v = '2.3.0'\n"
+    assert file2.read_text(encoding="utf-8") == "v = '2.3.0'\n"
+    assert file3.read_text(encoding="utf-8") == "v = '1.0.0'\n"
+
+
+def test_determine_next_version_on_main_with_is_patch(mocker, release_tool_env):
+    mocker.patch(
+        "tools.private.release.git.Git.get_current_branch", return_value="main"
+    )
+    mocker.patch("tools.private.release.utils.get_latest_version", return_value="1.2.3")
+    (release_tool_env.git_root / "mock_file.bzl").write_text(
+        ":::{versionadded} VERSION_NEXT_FEATURE"
+    )
+
+    # Without is_patch, feature marker causes minor bump
+    assert utils.determine_next_version(is_patch=False) == "1.3.0"
+    # With is_patch=True, it produces a patch bump
+    assert utils.determine_next_version(is_patch=True) == "1.2.4"
+
+
+def test_format_exception_no_notes():
+    e = ValueError("something went wrong")
+    assert utils.format_exception(e) == "something went wrong"
+
+
+def test_format_exception_with_notes():
+    e = RuntimeError("failed to execute")
+    e.add_note("Note 1: additional details")
+    e.add_note("Note 2: more info")
+    assert utils.format_exception(e) == (
+        "failed to execute\nNote 1: additional details\nNote 2: more info"
+    )
+
+
+def test_format_exception_empty_message_with_notes():
+    e = Exception()
+    e.add_note("Note only")
+    assert utils.format_exception(e) == "Note only"

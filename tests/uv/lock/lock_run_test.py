@@ -7,6 +7,7 @@ from pathlib import Path
 from python import runfiles
 
 rfiles = runfiles.Create()
+assert rfiles is not None, "Failed to create runfiles"
 
 
 def _relative_rpath(path: str) -> Path:

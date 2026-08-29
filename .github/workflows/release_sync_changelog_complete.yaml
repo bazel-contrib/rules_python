@@ -1,0 +1,45 @@
+name: "Release: Sync Changelog: Complete"
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: 'The merged sync-changelog PR number (optional; extracted from GITHUB_EVENT_PATH if omitted)'
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      pr:
+        description: 'The merged sync-changelog PR number (optional; extracted from GITHUB_EVENT_PATH if omitted)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: read
+
+jobs:
+  complete_sync_changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bazel
+        uses: bazel-contrib/setup-bazel@0.19.0
+        with:
+          bazelisk-version: 1.20.0
+
+      - name: Configure Git Identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Complete Sync Changelog
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bazel run //tools/private/release -- complete-sync-changelog

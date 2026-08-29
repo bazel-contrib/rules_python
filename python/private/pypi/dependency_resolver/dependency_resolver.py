@@ -14,13 +14,14 @@
 
 "Set defaults for the pip-compile command to run it under Bazel"
 
+from __future__ import annotations
+
 import atexit
 import functools
 import os
 import shutil
 import sys
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 import click
 import piptools.writer as piptools_writer
@@ -32,7 +33,7 @@ from python.runfiles import runfiles
 
 # Replace the os.replace function with shutil.copy to work around os.replace not being able to
 # replace or move files across filesystems.
-os.replace = shutil.copy
+os.replace = shutil.copy  # pyrefly: ignore[bad-assignment]
 
 # Next, we override the annotation_style_split and annotation_style_line functions to replace the
 # backslashes in the paths with forward slashes. This is so that we can have the same requirements
@@ -91,13 +92,13 @@ def _locate(bazel_runfiles, file):
 @click.option("--requirements-windows")
 @click.argument("extra_args", nargs=-1, type=click.UNPROCESSED)
 def main(
-    srcs: Tuple[str, ...],
+    srcs: tuple[str, ...],
     requirements_txt: str,
     target_label_prefix: str,
-    requirements_linux: Optional[str],
-    requirements_darwin: Optional[str],
-    requirements_windows: Optional[str],
-    extra_args: Tuple[str, ...],
+    requirements_linux: str | None,
+    requirements_darwin: str | None,
+    requirements_windows: str | None,
+    extra_args: tuple[str, ...],
 ) -> None:
     bazel_runfiles = runfiles.Create()
 
@@ -137,6 +138,7 @@ def main(
     os.environ["LANG"] = "C.UTF-8"
 
     argv = []
+    requirements_out = requirements_file_relative
 
     UPDATE = True
     # Detect if we are running under `bazel test`.
@@ -172,9 +174,7 @@ def main(
     os.environ["CUSTOM_COMPILE_COMMAND"] = update_command
     os.environ["PIP_CONFIG_FILE"] = os.getenv("PIP_CONFIG_FILE") or os.devnull
 
-    argv.append(
-        f"--output-file={requirements_file_relative if UPDATE else requirements_out}"
-    )
+    argv.append(f"--output-file={requirements_out}")
     argv.extend(
         (src_relative if Path(src_relative).exists() else resolved_src)
         for src_relative, resolved_src in zip(srcs_relative, resolved_srcs)
@@ -230,9 +230,9 @@ def main(
 
 
 def run_pip_compile(
-    args: List[str],
+    args: list[str],
     *,
-    srcs_relative: List[str],
+    srcs_relative: list[str],
     verbose_command: str,
 ) -> None:
     try:

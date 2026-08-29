@@ -87,14 +87,14 @@ pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
 # Define concrete hub 'pypi_a'
 pip.parse(
     hub_name = "pypi_a",
-    python_version = "3.11",
+    python_version = "3.14",
     requirements_lock = "//:requirements_a.txt",
 )
 
 # Define concrete hub 'pypi_b'
 pip.parse(
     hub_name = "pypi_b",
-    python_version = "3.11",
+    python_version = "3.14",
     requirements_lock = "//:requirements_b.txt",
 )
 
@@ -241,9 +241,9 @@ Let's say you have two requirements files:
 ```
 # requirements.linux_x86_64.txt
 --platform=manylinux_2_17_x86_64
---python-version=39
+--python-version=314
 --implementation=cp
---abi=cp39
+--abi=cp314
 
 foo==0.0.1 --hash=sha256:deadbeef
 bar==0.0.1 --hash=sha256:deadb00f
@@ -252,9 +252,9 @@ bar==0.0.1 --hash=sha256:deadb00f
 ```
 # requirements.osx_aarch64.txt contents
 --platform=macosx_10_9_arm64
---python-version=39
+--python-version=314
 --implementation=cp
---abi=cp39
+--abi=cp314
 
 foo==0.0.3 --hash=sha256:deadbaaf
 ```
@@ -263,7 +263,7 @@ With these 2 files your {bzl:obj}`pip.parse` could look like:
 ```starlark
 pip.parse(
     hub_name = "pip",
-    python_version = "3.9",
+    python_version = "3.14",
     # Tell `pip` to ignore sdists
     download_only = True,
     requirements_by_platform = {
@@ -274,9 +274,9 @@ pip.parse(
 ```
 
 With this, `pip.parse` will create a hub repository that is going to
-support only two platforms - `cp39_osx_aarch64` and `cp39_linux_x86_64` - and it
-will only use `wheels` and ignore any sdists that it may find on the PyPI-
-compatible indexes.
+support only two platforms - `cp314_osx_aarch64` and
+`cp314_linux_x86_64` - and it will only use `wheels` and ignore any sdists
+that it may find on the PyPI-compatible indexes.
 
 :::{warning}
 Because bazel is not aware what exactly is downloaded, the same wheel may be downloaded

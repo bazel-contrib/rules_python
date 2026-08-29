@@ -44,14 +44,23 @@ def test_create_releases_all_success(release_tool_env, mock_gh):
     assert 1002 in gh.issues
     assert 1003 in gh.issues
 
-    # 1.7.2 (patch) should not have Tag RC0
+    # 1.7.2 (patch) should not have Tag RC0, Prepare Release, or Create Release branch
     assert gh.issues[1001]["title"] == "Release 1.7.2"
     assert "Tag RC0" not in gh.issues[1001]["body"]
-    assert "## Backports\n- [ ] #456" in gh.issues[1001]["body"]
+    assert "Prepare Release" not in gh.issues[1001]["body"]
+    assert "Create Release branch" not in gh.issues[1001]["body"]
+    assert "Tag Final" in gh.issues[1001]["body"]
+    assert "- [ ] #456" in gh.issues[1001]["body"]
+    assert "- [ ] Sync Changelog #456" in gh.issues[1001]["body"]
 
-    # 1.9.0 (minor) should have Tag RC0
+    # 1.9.0 (minor) should have Tag RC0, Prepare Release, and Create Release branch
     assert gh.issues[1003]["title"] == "Release 1.9.0"
     assert "Tag RC0" in gh.issues[1003]["body"]
+    assert "Prepare Release" in gh.issues[1003]["body"]
+    assert "Create Release branch" in gh.issues[1003]["body"]
+    assert "Tag Final" in gh.issues[1003]["body"]
+    assert "- [ ] #456" in gh.issues[1003]["body"]
+    assert "- [ ] Sync Changelog #456" in gh.issues[1003]["body"]
 
     # Verify backport issue updated
     expected_updated_backport_body = """* PR: #456

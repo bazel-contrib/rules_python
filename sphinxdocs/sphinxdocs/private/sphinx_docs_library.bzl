@@ -1,27 +1,18 @@
 """Implementation of sphinx_docs_library."""
 
-load(":sphinx_docs_library_info.bzl", "SphinxDocsLibraryInfo")
+load(
+    ":sphinx_docs_library_info.bzl",
+    "SphinxDocsLibraryInfo",
+    "create_sphinx_docs_library_info",
+)
 
 def _sphinx_docs_library_impl(ctx):
-    strip_prefix = ctx.attr.strip_prefix or (ctx.label.package + "/")
-    direct_entries = []
-    if ctx.files.srcs:
-        entry = struct(
-            strip_prefix = strip_prefix,
-            prefix = ctx.attr.prefix,
-            files = ctx.files.srcs,
-        )
-        direct_entries.append(entry)
-
     return [
-        SphinxDocsLibraryInfo(
-            strip_prefix = strip_prefix,
-            prefix = ctx.attr.prefix,
+        create_sphinx_docs_library_info(
             files = ctx.files.srcs,
-            transitive = depset(
-                direct = direct_entries,
-                transitive = [t[SphinxDocsLibraryInfo].transitive for t in ctx.attr.deps],
-            ),
+            prefix = ctx.attr.prefix,
+            strip_prefix = ctx.attr.strip_prefix or (ctx.label.package + "/"),
+            deps = ctx.attr.deps,
         ),
         DefaultInfo(
             files = depset(ctx.files.srcs),

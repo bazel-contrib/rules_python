@@ -13,10 +13,13 @@ python.toolchain(
 )
 use_repo(python, pbs_host = "python_3_14_host")
 
-pip_archive = use_repo_rule("@rules_python//python/private/pypi:whl_library.bzl", "pip_archive")
+pip_archive = use_repo_rule("@rules_python//python/private/pypi:pip_archive.bzl", "pip_archive")
+
+DEP_TEMPLATE = "@integration_test//:{name}_{target}"
 
 pip_archive(
     name = "pip_sdist_archive",
+    dep_template = DEP_TEMPLATE,
     filename = "requests-2.34.2.tar.gz",
     python_interpreter_target = "@pbs_host//:python",
     requirement = "requests",
@@ -29,15 +32,16 @@ pip_archive(
 
 pip_archive(
     name = "pip_archive",
+    dep_template = DEP_TEMPLATE,
     python_interpreter_target = "@pbs_host//:python",
     requirement = "requests",
 )
 
-whl_archive = use_repo_rule("@rules_python//python/private/pypi:whl_library.bzl", "whl_archive")
+whl_archive = use_repo_rule("@rules_python//python/private/pypi:whl_archive.bzl", "whl_archive")
 
 whl_archive(
     name = "whl_archive",
-    dep_template = "@integration_test//:{name}_{target}",
+    dep_template = DEP_TEMPLATE,
     filename = "requests-2.34.2-py3-none-any.whl",
     # https://pypi.org/project/requests/#requests-2.34.2-py3-none-any.whl
     requirement = "requests",
@@ -47,11 +51,11 @@ whl_archive(
     ],
 )
 
-whl_deps_library = use_repo_rule("@rules_python//python/private/pypi:whl_library.bzl", "whl_deps_library")
+whl_deps_repo = use_repo_rule("@rules_python//python/private/pypi:whl_deps_repo.bzl", "whl_deps_repo")
 
-whl_deps_library(
-    name = "whl_deps_library",
-    dep_template = "@integration_test//:{name}_{target}",
+whl_deps_repo(
+    name = "whl_deps_repo",
+    dep_template = DEP_TEMPLATE,
     metadata_file = "@whl_archive//:metadata.json",
     requirement = "requests",
 )

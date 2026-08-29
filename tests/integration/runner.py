@@ -63,10 +63,10 @@ env \\
 {env} \\
   {args}
 RESULT: exit_code: {self.exit_code}
-===== STDOUT START =====
-{self.stdout}{maybe_stdout_nl}===== STDOUT END   =====
-===== STDERR START =====
-{self.stderr}{maybe_stderr_nl}===== STDERR END   =====
+==================== STDOUT BEGIN ====================
+{self.stdout}{maybe_stdout_nl}==================== STDOUT END ====================
+==================== STDERR BEGIN ====================
+{self.stderr}{maybe_stderr_nl}==================== STDERR END ====================
 """
 
 
@@ -74,7 +74,17 @@ class TestCase(unittest.TestCase):
     def setUp(self):
         super().setUp()
         self.repo_root = pathlib.Path(os.environ["BIT_WORKSPACE_DIR"])
-        self.bazel = pathlib.Path(os.environ["BIT_BAZEL_BINARY"])
+        bazel = pathlib.Path(os.environ["BIT_BAZEL_BINARY"])
+        # Windows doesn't interpret shebangs, so prepend any script interpreter.
+        interpreter = []
+        if os.name == "nt":
+            with bazel.open("rb") as f:
+                first_line = f.readline()
+            if first_line.startswith(b"#!"):
+                interpreter = first_line[2:].decode().split()
+                if interpreter and interpreter[0].endswith("/env"):
+                    interpreter = interpreter[1:]
+        self.bazel_cmd = (*interpreter, str(bazel))
         outer_test_tmpdir = pathlib.Path(os.environ["TEST_TMPDIR"])
         self.test_tmp_dir = outer_test_tmpdir / "bit_test_tmp"
         # Put the global tmp not under the test tmp to better match how a real
@@ -103,19 +113,19 @@ class TestCase(unittest.TestCase):
         Returns:
             An `ExecuteResult` from running Bazel
         """
-        args = [str(self.bazel), *args]
+        cmd_args = [*self.bazel_cmd, *args]
         env = self.bazel_env
-        _logger.info("executing: %s", shlex.join(args))
+        _logger.info("executing: %s", shlex.join(cmd_args))
         cwd = self.repo_root
         proc_result = subprocess.run(
-            args=args,
+            args=cmd_args,
             text=True,
             capture_output=True,
             cwd=cwd,
             env=env,
             check=False,
         )
-        exec_result = ExecuteResult(args, env, cwd, proc_result)
+        exec_result = ExecuteResult(cmd_args, env, cwd, proc_result)
         if check and exec_result.exit_code:
             raise ExecuteError(exec_result)
         else:

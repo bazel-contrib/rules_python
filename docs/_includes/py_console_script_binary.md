@@ -40,14 +40,15 @@ py_console_script_binary(
 :::{rubric} Using a specific Python version
 :::
 
-A specific Python version can be forced by passing the desired Python version, e.g. to force Python 3.9:
+A specific Python version can be forced by passing the desired Python version,
+e.g. to force Python 3.14:
 ```starlark
 load("@rules_python//python/entry_points:py_console_script_binary.bzl", "py_console_script_binary")
 
 py_console_script_binary(
     name = "yamllint",
     pkg = "@pip//yamllint",
-    python_version = "3.9",
+    python_version = "3.14",
 )
 ```
 
@@ -75,8 +76,10 @@ Python interpreter is available in the environment.
 :::{rubric} Using a specific Python Version directly from a Toolchain
 :::
 :::{deprecated} 1.1.0
-The toolchain-specific `py_binary` and `py_test` symbols are aliases to the regular rules.
-For example, `load("@python_versions//3.11:defs.bzl", "py_binary")` and `load("@python_versions//3.11:defs.bzl", "py_test")` are deprecated.
+The toolchain-specific `py_binary` and `py_test` symbols are aliases to the
+regular rules. For example, `load("@python_versions//3.14:defs.bzl",
+"py_binary")` and `load("@python_versions//3.14:defs.bzl", "py_test")` are
+deprecated.
 
 You should instead specify the desired Python version with `python_version`; see the example above.
 :::
@@ -84,7 +87,7 @@ Alternatively, the {obj}`py_console_script_binary.binary_rule` arg can be passed
 the version-bound `py_binary` symbol, or any other `py_binary`-compatible rule
 of your choosing:
 ```starlark
-load("@python_versions//3.9:defs.bzl", "py_binary")
+load("@python_versions//3.14:defs.bzl", "py_binary")
 load("@rules_python//python/entry_points:py_console_script_binary.bzl", "py_console_script_binary")
 
 py_console_script_binary(

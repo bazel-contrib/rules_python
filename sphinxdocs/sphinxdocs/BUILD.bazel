@@ -64,6 +64,13 @@ bzl_library(
 )
 
 bzl_library(
+    name = "sphinx_docs_library_info",
+    srcs = ["sphinx_docs_library_info.bzl"],
+    visibility = ["//visibility:public"],
+    deps = ["//sphinxdocs/private:sphinx_docs_library_info"],
+)
+
+bzl_library(
     name = "sphinx_stardoc",
     srcs = ["sphinx_stardoc.bzl"],
     visibility = ["//visibility:public"],

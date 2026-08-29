@@ -113,15 +113,20 @@ gazelle_python_manifest(
     # python libraries are loaded in BUILD files.
     pip_repository_name = "pip",
 
-    # This should point to wherever we declare our python dependencies
-    # (the same as what we passed to the modules_mapping rule in WORKSPACE)
+    # This should point to the lockfile for our Python dependencies.
     # This argument is optional. If provided, the `.test` target is very
     # fast because it just has to check an integrity field. If not provided,
     # the integrity field is not added to the manifest which can help avoid
     # merge conflicts in large repos.
-    requirements = "//:requirements_lock.txt",
+    # `lockfiles` accepts one file or a list, including a `uv.lock` file.
+    lockfiles = "//:uv.lock",
 )
 ```
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+The `requirements` argument is deprecated in favor of `lockfiles`, which can
+refer to any dependency lockfile, including `uv.lock`.
+:::
 
 Finally, you create a target that you'll invoke to run the Gazelle tool
 with the `rules_python` extension included. This typically goes in your root

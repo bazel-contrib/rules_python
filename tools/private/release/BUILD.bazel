@@ -34,6 +34,7 @@ py_binary(
     name = "release",
     srcs = ["release.py"],
     main = "release.py",
+    python_version = "3.14",
     deps = [
         ":release_lib",
     ],
