@@ -34,10 +34,15 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 
 [2.3.3]: https://github.com/bazel-contrib/rules_python/releases/tag/2.3.3
 
+{#v2-3-3-changed}
+### Changed
+* (publish): The twine packages are now configured for three major platforms.
+
 {#v2-3-3-fixed}
 ### Fixed
 * (zipapp) Fixed handling of {obj}`PyRuntimeInfo` with `files = None` so creating
   zipapp archives does not error.
+
 
 
 {#v2-3-2}
