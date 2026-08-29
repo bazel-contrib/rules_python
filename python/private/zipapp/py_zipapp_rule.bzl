@@ -133,7 +133,8 @@ def _create_zip(ctx, py_runtime, py_executable, stage2_bootstrap):
 
     runfiles = builders.RunfilesBuilder()
 
-    runfiles.add(py_runtime.files)
+    if py_runtime.files != None:
+        runfiles.add(py_runtime.files)
     if py_executable.venv_python_exe:
         runfiles.add(py_executable.venv_python_exe)
 
