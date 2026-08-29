@@ -633,7 +633,29 @@ def _test_default_index_setting(env):
                     ],
                 ),
             ],
-            want_index_url = "https://pypi.org/simple",
+            want_index_url = "https://pypi.internal.org/simple",
+        ),
+        struct(
+            modules = [
+                _mod(
+                    name = "my_module",
+                    default = [
+                        _default(
+                            index_url = "https://pypi.internal.org/simple",
+                        ),
+                    ],
+                    parse = [
+                        _parse(
+                            hub_name = "pypi_a",
+                            python_version = "3.15",
+                            requirements_lock = "requirements_with_index_url.txt",
+                        ),
+                    ],
+                ),
+            ],
+            # We want the file to have lower precedence than our default if the
+            # `my_module` is setting the default.
+            want_index_url = "https://pypi.internal.org/simple",
         ),
     ]:
         pypi = _parse_modules(
@@ -641,6 +663,18 @@ def _test_default_index_setting(env):
             module_ctx = _pypi_mock_mctx(
                 os_name = "linux",
                 arch_name = "x86_64",
+                mock_files = {
+                    "requirements.txt": """\
+simple==0.0.1 \
+    --hash=sha256:deadbeef \
+    --hash=sha256:deadbaaf""",
+                    "requirements_with_index_url.txt": """\
+--index-url="https://pypi.org/simple"
+
+simple==0.0.1 \
+    --hash=sha256:deadbeef \
+    --hash=sha256:deadbaaf""",
+                },
                 *test.modules
             ),
             available_interpreters = {
