@@ -11,7 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 load("//python:py_binary.bzl", "py_binary")
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")  # buildifier: disable=bzl-visibility
 
 package(default_visibility = ["//visibility:public"])
 
@@ -24,16 +26,8 @@ py_binary(
     deps = ["@pypi__packaging//:lib"],
 )
 
-filegroup(
+distribution_filegroup(
     name = "distribution",
-    srcs = [
-        "BUILD.bazel",
-        "wheelmaker.py",
-        "//tools/launcher:distribution",
-        "//tools/precompiler:distribution",
-        "//tools/private:distribution",
-        "//tools/publish:distribution",
-        "//tools/zipapp:distribution",
-    ],
-    visibility = ["//:__pkg__"],
+    # dev-only tools
+    exclude = ["private"],
 )

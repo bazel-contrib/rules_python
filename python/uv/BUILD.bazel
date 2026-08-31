@@ -15,16 +15,13 @@
 # EXPERIMENTAL: This is experimental and may be removed without notice
 
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
 load("//python/uv/private:current_toolchain.bzl", "current_toolchain")
 
 package(default_visibility = ["//:__subpackages__"])
 
-filegroup(
+distribution_filegroup(
     name = "distribution",
-    srcs = glob(["**"]) + [
-        "//python/uv/private:distribution",
-    ],
-    visibility = ["//:__subpackages__"],
 )
 
 toolchain_type(

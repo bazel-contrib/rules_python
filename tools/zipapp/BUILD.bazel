@@ -1,4 +1,5 @@
 load("//python:py_library.bzl", "py_library")
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")  # buildifier: disable=bzl-visibility
 load("//python/private:py_interpreter_program.bzl", "py_interpreter_program")  # buildifier: disable=bzl-visibility
 load("//python/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")  # buildifier: disable=bzl-visibility
 
@@ -45,7 +46,6 @@ py_library(
     srcs = ["zip_main_maker.py"],
 )
 
-filegroup(
+distribution_filegroup(
     name = "distribution",
-    srcs = glob(["**"]),
 )

@@ -1,6 +1,7 @@
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
 load("@pythons_hub//:versions.bzl", "DEFAULT_PYTHON_VERSION", "MINOR_MAPPING", "PYTHON_VERSIONS")
 load("@rules_python_internal//:rules_python_config.bzl", "config")
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
 load(
     "//python/private:flags.bzl",
     "AddSrcsToRunfilesFlag",
@@ -19,15 +20,15 @@ load("//python/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")  # buildifier: di
 load("//python/private/pypi:flags.bzl", "define_pypi_internal_flags")
 load(":config_settings.bzl", "construct_config_settings")
 
+package(default_visibility = ["//:__subpackages__"])
+
 # We don't generate bzl_library for these because they aren't public targets
 # and should be moved
 # gazelle:exclude config_settings.bzl
 # gazelle:exclude transition.bzl
 
-filegroup(
+distribution_filegroup(
     name = "distribution",
-    srcs = glob(["**"]),
-    visibility = ["//python:__pkg__"],
 )
 
 construct_config_settings(

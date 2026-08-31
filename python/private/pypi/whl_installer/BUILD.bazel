@@ -1,5 +1,8 @@
 load("//python:py_binary.bzl", "py_binary")
 load("//python:py_library.bzl", "py_library")
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
+
+package(default_visibility = ["//:__subpackages__"])
 
 py_library(
     name = "lib",
@@ -26,8 +29,6 @@ py_binary(
     deps = [":lib"],
 )
 
-filegroup(
+distribution_filegroup(
     name = "distribution",
-    srcs = glob(["*"]),
-    visibility = ["//:__subpackages__"],
 )

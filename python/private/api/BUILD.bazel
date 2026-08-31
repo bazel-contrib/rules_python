@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
 load("//python/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")
 load(":py_common_api.bzl", "py_common_api")
 
@@ -20,9 +21,8 @@ package(
     default_visibility = ["//:__subpackages__"],
 )
 
-filegroup(
+distribution_filegroup(
     name = "distribution",
-    srcs = glob(["**"]),
 )
 
 py_common_api(

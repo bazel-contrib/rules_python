@@ -1,5 +1,6 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
 load("//python/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")
 
 package(
@@ -8,9 +9,8 @@ package(
 
 licenses(["notice"])
 
-filegroup(
+distribution_filegroup(
     name = "distribution",
-    srcs = glob(["**"]),
 )
 
 # An empty cc target for use when a cc target is needed to satisfy

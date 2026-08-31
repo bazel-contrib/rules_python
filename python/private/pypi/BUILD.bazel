@@ -14,6 +14,7 @@
 
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("//python:py_binary.bzl", "py_binary")
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
 
 package(default_visibility = ["//:__subpackages__"])
 
@@ -70,16 +71,8 @@ exports_files(
     visibility = ["//:__subpackages__"],
 )
 
-filegroup(
+distribution_filegroup(
     name = "distribution",
-    srcs = glob(
-        ["**"],
-        exclude = ["requirements.txt"],
-    ) + [
-        "//python/private/pypi/dependency_resolver:distribution",
-        "//python/private/pypi/whl_installer:distribution",
-    ],
-    visibility = ["//python/private:__pkg__"],
 )
 
 # Filegroup of bzl files that can be used by downstream rules for documentation generation

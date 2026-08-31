@@ -15,11 +15,12 @@
 load("//python:packaging.bzl", "py_wheel")
 load("//python:py_library.bzl", "py_library")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
 
-filegroup(
+package(default_visibility = ["//:__subpackages__"])
+
+distribution_filegroup(
     name = "distribution",
-    srcs = glob(["**"]),
-    visibility = ["//python:__pkg__"],
 )
 
 filegroup(

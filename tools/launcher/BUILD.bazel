@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-filegroup(
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")  # buildifier: disable=bzl-visibility
+
+package(default_visibility = ["//:__subpackages__"])
+
+distribution_filegroup(
     name = "distribution",
-    srcs = glob(["**"]),
-    visibility = ["//:__subpackages__"],
 )
 
 alias(
