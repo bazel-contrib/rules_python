@@ -12,7 +12,6 @@ lock(
         "--universal",
         "--upgrade",
     ],
-    directory = "dev",
     # NOTE @aignas 2025-08-17: here we select the lowest actively supported
     # version so that the requirements file is generated to be compatible with
     # Python version 3.10 or greater.
@@ -25,7 +24,6 @@ lock(
     name = "uv_lock",
     srcs = ["pyproject.toml"],
     out = "uv.lock",
-    directory = "dev",
     python_version = "3.10",
     visibility = ["//:__subpackages__"],
 )

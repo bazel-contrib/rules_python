@@ -700,6 +700,8 @@ def lock(
         lock_target_kwargs["build_constraints"] = build_constraints
     if constraints:
         lock_target_kwargs["constraints"] = constraints
+    if directory == None:
+        directory = native.package_directory()
     if directory:
         lock_target_kwargs["directory"] = directory
 
