@@ -86,7 +86,7 @@ jobs:
           path: reviewbot
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v9.0.0
+        uses: astral-sh/setup-uv@v10.0.1
 
       - name: Run Antigravity Review
         # Run inside reviewbot directory so execution context is the trusted base branch.

@@ -119,10 +119,11 @@ def _test_py_cc_toolchain_impl(env, target):
         matching.str_matches("/libpython3."),
     )
 
-    # ===== Verify PEP 508 platform markers =====
+    # ===== Verify PEP 508 platform markers & SOABI =====
     toolchain.sys_platform().equals("linux")
     toolchain.platform_machine().equals("x86_64")
     toolchain.platform_tag().equals("x86_64-linux-gnu")
+    toolchain.soabi().equals("cpython-3999-x86_64-linux-gnu")
 
 _tests.append(_test_py_cc_toolchain)
 
@@ -148,6 +149,7 @@ def _test_custom_pep508_markers_impl(env, target):
     toolchain.sys_platform().equals("darwin")
     toolchain.platform_machine().equals("arm64")
     toolchain.platform_tag().equals("darwin")
+    toolchain.soabi().equals("cpython-311-darwin")
 
 _tests.append(_test_custom_pep508_markers)
 

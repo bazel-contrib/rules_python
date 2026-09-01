@@ -325,7 +325,7 @@ Enabling this requires the exec tools toolchain (with an exec interpreter) to
 be registered, which is the case for the default hermetic toolchains.
 :::
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.3.0
 :::
 ::::
 

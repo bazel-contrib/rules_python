@@ -1,0 +1,12 @@
+package(default_visibility = ["//tests:__subpackages__"])
+
+exports_files(
+    glob(["*"]),
+    visibility = ["//tests:__subpackages__"],
+)
+
+filegroup(
+    name = "all_files",
+    srcs = glob(["*"]),
+    visibility = ["//tests:__subpackages__"],
+)

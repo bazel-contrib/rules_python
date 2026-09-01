@@ -51,6 +51,7 @@ sphinx_stardocs(
         "//sphinxdocs:readthedocs",
         "//sphinxdocs:sphinx",
         "//sphinxdocs:sphinx_docs_library",
+        "//sphinxdocs:sphinx_docs_library_info",
         "//sphinxdocs:sphinx_stardoc",
         "//sphinxdocs/private:sphinx_docs_library",
     ],

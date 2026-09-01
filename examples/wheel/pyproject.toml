@@ -1,0 +1,7 @@
+[project]
+name = "example_wheel"
+version = "0.0.0"
+dependencies = [
+    # This is for running publishing tests
+    "pypiserver>=2.2.0",
+]

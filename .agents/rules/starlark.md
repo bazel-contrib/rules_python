@@ -1,3 +1,9 @@
+---
+trigger: glob
+description: Starlark Language, Macro, and Testing Invariants
+globs: "*.bzl,BUILD,BUILD.bazel,*.bazel"
+---
+
 # Starlark Language & Macro Invariants
 
 ## Macro Target Canonicalization
@@ -6,6 +12,12 @@
   macro's module context rather than the caller's repository context.
 * Note that `python/private/common_labels.bzl` defines `labels`, a struct
   containing common canonicalized label strings used across the project.
+
+## Manual Tag on Internal Macro Helper Targets
+* When macros instantiate internal helper targets (such as private rule targets
+  for artifact extraction or linking support), always include `tags = ["manual"]`.
+* **Why**: This prevents internal helper targets from being implicitly built when
+  wildcard target patterns (e.g., `//...`) are expanded.
 
 ## Private Alias Pattern when Appending to User `deps`
 * When macros append internal helper targets to user-provided dependency lists
@@ -21,6 +33,10 @@
 * **Why**: This avoids inlining the normalization as part of a complex
   expression later in the macro expansion.
 
+## native.test_suite API
+* Don't forward target `tags` to `native.test_suite`; tags on test suites filter
+  tests instead of setting target execution behavior.
+
 ## Control Flow & Algorithmic Restrictions
 * **Iterative Algorithms Only (No Recursion)**: Starlark does not support
   recursive function calls; always implement iterative algorithms using bounded
@@ -28,7 +44,20 @@
 * **Iterable `for` Loops Only (No `while` Loops)**: Starlark does not support
   `while` loops; iterate over fixed-size ranges or explicit collections.
 
+## Depset Element Invariants & Optimizations
+* **Providers over Structs for Depset Elements**: Use `provider()` (without
+  `-Info` suffix, e.g. `*Fileset`) instead of `struct()` for composite objects
+  in depsets; providers perform key sharing and reduce memory overhead.
+* **Depset Element Immutability**: All depset elements and nested provider
+  fields must be immutable when `depset()` is called (eager check before rule
+  freeze). Use `tuple[T]` or `depset[T]` in providers placed into depsets; do
+  not use mutable `list[T]`.
+
 ## Code Style & Conventions
+* **Dict union (`|`)**: Use `|` instead of `dicts.add(...)` from
+  `@bazel_skylib//lib:dicts.bzl` when merging dictionaries.
+* **Non-Info Provider Naming**: Add `# buildifier: disable=name-conventions`
+  above `provider()` declarations that do not end in `Info` (e.g. `*Fileset`).
 * **Docstring Formatting Invariants**: Use triple-quoted strings for multi-line
   docstrings without trailing backslashes (`\`) for line continuation.
 * **No Bazel Copyright Headers**: Do not add Bazel copyright headers to new or

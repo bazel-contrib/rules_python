@@ -35,9 +35,10 @@ def start_repl():
             compiled_code = compile(source_code, filename=startup_file, mode="exec")
             eval(compiled_code, new_globals)
 
-    bazel_runfiles = runfiles.Create()
+    bazel_runfiles = runfiles.CreateOrRaise()
+    stub_path = bazel_runfiles.root() / STUB_PATH
     runpy.run_path(
-        bazel_runfiles.Rlocation(STUB_PATH),
+        str(stub_path),
         init_globals=new_globals,
         run_name="__main__",
     )

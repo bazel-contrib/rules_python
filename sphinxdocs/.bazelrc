@@ -31,3 +31,7 @@ build --lockfile_mode=update
 common:fast-tests --build_tests_only=true
 common:fast-tests --build_tag_filters=-large,-enormous,-integration-test
 common:fast-tests --test_tag_filters=-large,-enormous,-integration-test
+
+build --config=pyrefly
+build:pyrefly --aspects=//tests/support/pyrefly:pyrefly.bzl%pyrefly_aspect
+build:pyrefly --output_groups=+pyrefly

@@ -33,6 +33,7 @@ on:
 permissions:
   contents: write
   issues: write
+  pull-requests: write
 
 jobs:
   process_backports:
@@ -74,3 +75,12 @@ jobs:
             --remote origin \
             --no-dry-run \
             "${ARGS[@]}"
+
+  call_sync_changelog:
+    needs: process_backports
+    uses: ./.github/workflows/release_sync_changelog.yaml
+    with:
+      issue: ${{ inputs.issue }}
+    secrets: inherit
+
+

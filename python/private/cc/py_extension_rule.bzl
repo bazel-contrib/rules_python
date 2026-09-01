@@ -5,7 +5,6 @@
 """
 
 load("@bazel_skylib//lib:dicts.bzl", "dicts")
-load("@rules_cc//cc/common:cc_shared_library_info.bzl", "CcSharedLibraryInfo")
 load("//python/private:attr_builders.bzl", "attrb")
 load("//python/private:attributes.bzl", "COMMON_ATTRS", "IMPORTS_ATTRS", "WINDOWS_CONSTRAINTS_ATTRS")
 load("//python/private:builders.bzl", "builders")
@@ -27,11 +26,9 @@ def _py_extension_wrapper_impl(ctx):
     else:
         py_toolchain = ctx.toolchains[PY_CC_TOOLCHAIN_TYPE]
         py_cc_toolchain = py_toolchain.py_cc_toolchain
-        platform_tag = _get_platform(ctx)
-        output_filename = "{module_name}.{abi_tag}-{platform}.{ext}".format(
+        output_filename = "{module_name}.{soabi}.{ext}".format(
             module_name = module_name,
-            abi_tag = py_cc_toolchain.abi_tag,
-            platform = platform_tag,
+            soabi = py_cc_toolchain.soabi,
             ext = ext,
         )
 
@@ -78,7 +75,6 @@ PY_EXTENSION_WRAPPER_ATTRS = dicts.add(
         ),
         "src": lambda: attrb.Label(
             mandatory = True,
-            providers = [CcSharedLibraryInfo],
             doc = "The cc_shared_library target to wrap.",
         ),
     },
@@ -114,22 +110,26 @@ def _get_extension(ctx):
     """
     return "pyd" if is_windows_platform(ctx) else "so"
 
-def _get_platform(ctx):
-    """Derives the PEP 3149 platform tag from the active Python C++ toolchain.
-
-    Args:
-        ctx: The rule context.
-
-    Returns:
-        The platform tag, e.g. "x86_64-linux-gnu" or "win_amd64"
-    """
+def _py_extension_libs_impl(ctx):
     py_toolchain = ctx.toolchains[PY_CC_TOOLCHAIN_TYPE]
     py_cc_toolchain = py_toolchain.py_cc_toolchain
-    if not py_cc_toolchain.platform_tag:
-        fail(
-            ("ERROR: Unable to resolve platform_tag from Python C++ toolchain for {self}. " +
-             "Please ensure the active py_cc_toolchain provides a non-empty platform_tag.").format(
-                self = ctx.label,
-            ),
-        )
-    return py_cc_toolchain.platform_tag
+    cc_info = py_cc_toolchain.libs.providers_map["CcInfo"]
+    files = []
+    for input in cc_info.linking_context.linker_inputs.to_list():
+        for lib in input.libraries:
+            if lib.interface_library:
+                files.append(lib.interface_library)
+            elif lib.static_library:
+                files.append(lib.static_library)
+            elif lib.dynamic_library:
+                files.append(lib.dynamic_library)
+    link_files = [f for f in files if not f.path.endswith(".dll")]
+    return [DefaultInfo(files = depset(link_files))]
+
+py_extension_libs = rule(
+    implementation = _py_extension_libs_impl,
+    toolchains = [PY_CC_TOOLCHAIN_TYPE],
+    doc = """\
+Private internal helper rule for extracting Windows C/C++ library files from toolchain.
+""",
+)

@@ -6,6 +6,36 @@ import json
 from pathlib import Path
 
 
+def simplify(mapping: dict) -> dict:
+    """Collapse entries for submodules into entries for their parents
+    where possible.  For example, "a.b" and "a.c" become "a".
+
+    This must run over the fully merged mapping; a submodule is redundant only
+    when some ancestor resolves to the same wheel, and we can determine that
+    only once every wheel has contributed.
+
+    Args:
+        mapping: The fully merged module-to-wheel mapping to simplify.
+    Returns:
+        A new, simplified module-to-wheel mapping.
+    """
+    simplified = {}
+    for module, wheel_name in sorted(mapping.items(), key=lambda x: x[0]):
+        mod = module
+        while True:
+            if mod in simplified:
+                if simplified[mod] != wheel_name:
+                    break
+                wheel_name = ""
+                break
+            if mod.count(".") == 0:
+                break
+            mod = mod.rsplit(".", 1)[0]
+        if wheel_name:
+            simplified[module] = wheel_name
+    return simplified
+
+
 def merge_modules_mappings(input_files: list[Path], output_file: Path) -> None:
     """Merge multiple modules_mapping.json files into one.
 
@@ -20,7 +50,7 @@ def merge_modules_mappings(input_files: list[Path], output_file: Path) -> None:
         # if there are conflicts
         merged_mapping.update(mapping)
 
-    output_file.write_text(json.dumps(merged_mapping))
+    output_file.write_text(json.dumps(simplify(merged_mapping)))
 
 
 if __name__ == "__main__":

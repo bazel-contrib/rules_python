@@ -198,13 +198,21 @@ def csv(values):
     """Convert a list of strings to comma separated value string."""
     return ", ".join(sorted(values))
 
+def is_py_source(f):
+    """Whether the given file is considered a Python source file."""
+    return f.extension == "py"
+
 def filter_to_py_srcs(srcs):
     """Filters .py files from the given list of files"""
+    return [f for f in srcs if is_py_source(f)]
 
-    # TODO(b/203567235): Get the set of recognized extensions from
-    # elsewhere, as there may be others. e.g. Bazel recognizes .py3
-    # as a valid extension.
-    return [f for f in srcs if f.extension == "py"]
+def filter_to_direct_sources(srcs):
+    """Filters Python sources, pyc files, and directory artifacts from srcs."""
+    return [
+        f
+        for f in srcs
+        if f.is_directory or is_py_source(f) or f.extension == "pyc"
+    ]
 
 def collect_cc_info(ctx, extra_deps = []):
     """Collect C++ information from dependencies for Bazel.
@@ -398,7 +406,7 @@ def create_py_info(
             # longer supported in `deps`.
             files = target[DefaultInfo].files.to_list()
             for f in files:
-                if f.extension == "py":
+                if is_py_source(f):
                     py_info.transitive_sources.add(f)
                 py_info.merge_uses_shared_libraries(cc_helper.is_valid_shared_library_artifact(f))
     for target in ctx.attr.pyi_deps:

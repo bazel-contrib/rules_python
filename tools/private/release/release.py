@@ -1,6 +1,7 @@
 """A tool to perform release steps."""
 
 import argparse
+import logging
 import os
 import sys
 
@@ -16,7 +17,10 @@ from tools.private.release.determine_next_version import DetermineNextVersion
 from tools.private.release.on_pr_merged import OnPrMerged
 from tools.private.release.prepare import Prepare
 from tools.private.release.process_backports import ProcessBackports
+from tools.private.release.process_news import ProcessNews
 from tools.private.release.promote import Promote
+from tools.private.release.sync_changelog import SyncChangelog
+from tools.private.release.utils import format_exception
 
 cmds = [
     DetermineNextVersion,
@@ -27,6 +31,8 @@ cmds = [
     CreateReleaseBranch,
     AddBackports,
     ProcessBackports,
+    ProcessNews,
+    SyncChangelog,
     OnPrMerged,
     CreateRc,
     Promote,
@@ -51,7 +57,32 @@ def create_parser():
     return parser
 
 
+class GitHubActionsLogHandler(logging.Handler):
+    """Outputs GitHub Actions workflow command annotations for log records."""
+
+    def emit(self, record: logging.LogRecord) -> None:
+        if record.levelno >= logging.ERROR:
+            prefix = "::error::"
+        elif record.levelno >= logging.WARNING:
+            prefix = "::warning::"
+        elif record.levelno >= logging.INFO:
+            prefix = "::notice::"
+        else:
+            return
+        try:
+            msg = record.getMessage()
+            print(f"{prefix}{msg}", file=sys.stdout, flush=True)
+        except Exception:
+            self.handleError(record)
+
+
 def main():
+    logging.basicConfig(
+        format="%(levelname)s:%(filename)s:%(lineno)d: %(message)s",
+        level=logging.INFO,
+        stream=sys.stderr,
+    )
+    logging.getLogger().addHandler(GitHubActionsLogHandler())
     print(f"sys.argv: {sys.argv}")
     if "BUILD_WORKSPACE_DIRECTORY" in os.environ:
         os.chdir(os.environ["BUILD_WORKSPACE_DIRECTORY"])
@@ -64,10 +95,8 @@ def main():
         # args.command is the run_from_args classmethod of the selected command
         exit_code = args.command(args)
     except Exception as e:
-        print(f"Fatal error: {e}", file=sys.stderr)
-        if hasattr(e, "__notes__"):
-            for note in e.__notes__:
-                print(note, file=sys.stderr)
+        sys.stdout.flush()
+        print(f"Fatal error: {format_exception(e)}", file=sys.stderr)
         sys.exit(1)
 
     sys.exit(exit_code if exit_code is not None else 0)

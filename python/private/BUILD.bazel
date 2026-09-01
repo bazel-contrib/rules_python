@@ -469,6 +469,7 @@ bzl_library(
     srcs = ["precompile.bzl"],
     deps = [
         ":attributes",
+        ":common",
         ":flags",
         ":py_interpreter_program",
         ":toolchain_types",

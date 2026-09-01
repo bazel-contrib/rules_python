@@ -95,7 +95,7 @@ class PipWhlModsTest(unittest.TestCase):
         self.assertEqual(stdout, "Hello world from copied executable")
 
     def test_data_exclude_glob(self):
-        current_wheel_version = "0.40.0"
+        current_wheel_version = "0.46.2"
 
         r = runfiles.Create()
         dist_info_dir = "{}/site-packages/wheel-{}.dist-info".format(
@@ -131,7 +131,7 @@ class PipWhlModsTest(unittest.TestCase):
         self.assertEqual(content, "Hello world from requests")
 
     def test_patches(self):
-        current_wheel_version = "2.25.1"
+        current_wheel_version = "2.34.2"
 
         # This test verifies that the patches are applied to the wheel.
         r = runfiles.Create()

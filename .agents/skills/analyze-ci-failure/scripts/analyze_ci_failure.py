@@ -8,7 +8,29 @@ import sys
 import urllib.request
 
 
-def fetch_log(build_id, job_id, output_path):
+def fetch_log(job_name, build_id, job_id, output_path):
+    if (
+        "readthedocs" in job_name.lower()
+        or "readthedocs" in build_id.lower()
+        or "readthedocs" in job_id.lower()
+    ):
+        rtd_match = re.search(r"(\d+)", build_id) or re.search(r"(\d+)", job_id)
+        if rtd_match:
+            rtd_id = rtd_match.group(1)
+            rtd_url = f"https://app.readthedocs.org/api/v2/build/{rtd_id}.txt"
+            print(f"📥 Downloading ReadTheDocs failure log from {rtd_url}...")
+            req = urllib.request.Request(rtd_url, headers={"User-Agent": "ci-analyzer"})
+            try:
+                with urllib.request.urlopen(req) as resp:
+                    content = resp.read()
+                    with open(output_path, "wb") as f:
+                        f.write(content)
+                return True
+            except Exception as e:
+                print(
+                    f"⚠️ Failed to download RTD log from {rtd_url}: {e}", file=sys.stderr
+                )
+
     if build_id.startswith("http"):
         log_url = build_id
     elif job_id.startswith("http"):
@@ -17,9 +39,10 @@ def fetch_log(build_id, job_id, output_path):
         log_url = f"https://buildkite.com/organizations/bazel/pipelines/rules-python-python/builds/{build_id}/jobs/{job_id}/download.txt"
 
     # Check if this is a GitHub Actions job
-    gh_match = re.search(r"github\.com/.*/job/(\d+)", log_url) or re.search(
-        r"^(\d+)$", job_id
-    )
+    gh_match = re.search(r"github\.com/.*/job/(\d+)", log_url)
+    if not gh_match and "github" in job_name.lower() and re.match(r"^\d+$", job_id):
+        gh_match = re.match(r"^(\d+)$", job_id)
+
     if gh_match:
         gh_job_id = gh_match.group(1)
         print(f"📥 Fetching GitHub Action log for job {gh_job_id} using gh CLI...")
@@ -53,6 +76,9 @@ def fetch_log(build_id, job_id, output_path):
         return False
 
 
+ANSI_ESCAPE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+
+
 def parse_log(log_path):
     if not os.path.exists(log_path):
         return [f"Log file not found at {log_path}"]
@@ -62,28 +88,40 @@ def parse_log(log_path):
 
     errors = []
     for line in lines:
+        clean_line = ANSI_ESCAPE.sub("", line).strip()
+        # Clean buildkite timestamp prefix: _bk;t=...
+        clean_line = re.sub(r"^_bk;t=\d+\s*", "", clean_line)
         if any(
-            keyword in line
+            keyword.lower() in clean_line.lower()
             for keyword in [
-                "ERROR:",
-                "FAILED:",
-                "Critical Path",
-                "Traceback",
-                "Exception",
-                "FileNotFoundError",
+                "error:",
+                "failed:",
+                "critical path",
+                "traceback",
+                "exception",
+                "filenotfounderror",
                 "no such package",
                 "no such target",
                 "exit code",
                 "exit-code",
+                "status 125",
                 "fatal:",
                 "fatal",
                 "##[error]",
-                "Would reformat:",
+                "would reformat:",
                 "would be reformatted",
                 "error]",
+                "error waiting for container",
+                "error during connect:",
+                "user command error:",
+                "curl: (",
+                "connection reset by peer",
+                "input/output error",
+                "errno 5",
             ]
         ):
-            errors.append(line.strip())
+            if clean_line:
+                errors.append(clean_line)
 
     return errors[:30]
 
@@ -95,7 +133,56 @@ def create_plan(job_name, log_path, errors):
         else "No obvious keyword error lines matched. Please inspect the raw log file."
     )
 
+    is_flake = False
+    flake_reason = ""
+    if any(
+        "fatal: destination path '.' already exists and is not an empty directory." in e
+        for e in errors
+    ):
+        is_flake = True
+        flake_reason = "ReadTheDocs workspace checkout race / dirty container environment where target directory is not empty (`fatal: destination path '.' already exists`). This is an infrastructure flake, not a codebase failure."
+    elif any("exit code 2" in e.lower() for e in errors) and (
+        "docs" in job_name.lower() or "readthedocs" in job_name.lower()
+    ):
+        is_flake = True
+        flake_reason = "Known docs build flake with exit code 2."
+    elif any(
+        "error waiting for container" in e.lower()
+        or "status 125" in e.lower()
+        or "error during connect:" in e.lower()
+        or "docker-buildkite-plugin command hook exited with status 125" in e.lower()
+        for e in errors
+    ):
+        is_flake = True
+        flake_reason = "Buildkite agent / Docker runner infrastructure failure (dockerd disconnection / grpc context canceled / exit status 125). This is an infrastructure flake, not a codebase bug."
+    elif any(
+        "curl:" in e.lower()
+        or "recv failure: connection reset" in e.lower()
+        or "connection reset by peer" in e.lower()
+        for e in errors
+    ):
+        is_flake = True
+        flake_reason = "Network connection reset during runner bootstrap or artifact download (curl recv failure / connection reset). This is an infrastructure network flake."
+    elif any(
+        "input/output error" in e.lower() or "errno 5" in e.lower() for e in errors
+    ):
+        is_flake = True
+        flake_reason = "Transient runner host disk / Darwin sandbox I/O error (OSError: [Errno 5] Input/output error). This is an infrastructure flake, not a codebase defect."
+
+    classification = (
+        "⚡ **Classification**: **Infrastructure / Flake Issue** (Not a codebase bug)"
+        if is_flake
+        else "🔍 **Classification**: **Code / Configuration Issue**"
+    )
+    fix_advice = (
+        f"Retry the failed job (`buildkite-retry-job`). {flake_reason}"
+        if is_flake
+        else "Resolve the root cause in the relevant source / build files."
+    )
+
     plan = f"""# 🚨 CI Failure Analysis Report: {job_name}
+
+{classification}
 
 ## 📁 CI Log Path
 `{log_path}`
@@ -106,10 +193,9 @@ def create_plan(job_name, log_path, errors):
 ```
 
 ## 🛠️ Suggested Plan to Fix
-1. **Inspect Log**: Review the exact log snippets above or read the full raw log file at `{log_path}`.
-2. **Reproduce Locally**: Run `./replicate_ci "{job_name}"` or the matching `bazel build/test` command locally.
-3. **Apply Fix**: Resolve the root cause in the relevant `BUILD.bazel` or Starlark files.
-4. **Verify & Push**: Run local verification with `--config=fast-tests` and push the updated branch to trigger a clean pipeline.
+1. **Diagnosis**: {flake_reason if is_flake else "Review extracted errors."}
+2. **Action**: {fix_advice}
+3. **Verify**: Check the new build status once re-triggered.
 """
     return plan
 
@@ -131,7 +217,7 @@ def main():
     safe_jname = re.sub(r"[^a-zA-Z0-9]", "_", args.job_name)
     log_path = os.path.join(scratch_dir, f"ci_{safe_jname}_{args.job_id}.log")
 
-    fetch_log(args.build_id, args.job_id, log_path)
+    fetch_log(args.job_name, args.build_id, args.job_id, log_path)
 
     print(f"🚀 Analyzing CI failure log for '{args.job_name}' at '{log_path}'...")
     errors = parse_log(log_path)

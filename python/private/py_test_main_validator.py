@@ -24,25 +24,28 @@ import argparse
 import ast
 import sys
 
-# Statement node types that never run any code on their own, regardless of
-# their contents. A module whose top-level body consists solely of these (and
-# inert assignments/expressions/guards, see below) is considered inert.
-_INERT_NODE_TYPES = [
-    ast.FunctionDef,
-    ast.AsyncFunctionDef,
-    ast.ClassDef,
-    ast.Import,
-    ast.ImportFrom,
-    ast.Global,
-    ast.Pass,
-]
 
-# `ast.TypeAlias` (PEP 695, e.g. `type Alias = int`) only exists on Python
-# 3.12+. Add it dynamically so the validator still imports on older versions.
-if hasattr(ast, "TypeAlias"):
-    _INERT_NODE_TYPES.append(ast.TypeAlias)
+def _compute_inert_node_types() -> tuple[type[ast.AST], ...]:
+    # Statement node types that never run any code on their own, regardless of
+    # their contents. A module whose top-level body consists solely of these (and
+    # inert assignments/expressions/guards, see below) is considered inert.
+    node_types: list[type[ast.AST]] = [
+        ast.FunctionDef,
+        ast.AsyncFunctionDef,
+        ast.ClassDef,
+        ast.Import,
+        ast.ImportFrom,
+        ast.Global,
+        ast.Pass,
+    ]
+    # `ast.TypeAlias` (PEP 695, e.g. `type Alias = int`) only exists on Python
+    # 3.12+. Add it dynamically so the validator still imports on older versions.
+    if hasattr(ast, "TypeAlias"):
+        node_types.append(ast.TypeAlias)
+    return tuple(node_types)
 
-_INERT_NODE_TYPES = tuple(_INERT_NODE_TYPES)
+
+_INERT_NODE_TYPES = _compute_inert_node_types()
 
 # `ast.TryStar` (PEP 654, `try/except*`) only exists on Python 3.11+.
 _TRY_NODE_TYPES = (ast.Try, ast.TryStar) if hasattr(ast, "TryStar") else (ast.Try,)

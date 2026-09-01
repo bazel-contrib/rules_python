@@ -37,7 +37,7 @@ class ExampleTest(unittest.TestCase):
 
         # Let's run the entrypoint and check the tool version.
         #
-        # NOTE @aignas 2023-08-24: the Windows python launcher with Python 3.9 and bazel 6 is not happy if we start
+        # NOTE @aignas 2023-08-24: the Windows python launcher with Python 3.10 and bazel 6 is not happy if we start
         # passing extra files via `subprocess.run` and it starts to fail with an error that the file which is the
         # entry_point cannot be found. However, just calling `--version` seems to be fine.
         proc = subprocess.run(
@@ -46,7 +46,7 @@ class ExampleTest(unittest.TestCase):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        self.assertEqual(proc.stdout.decode("utf-8").strip(), "yamllint 1.28.0")
+        self.assertEqual(proc.stdout.decode("utf-8").strip(), "yamllint 1.38.0")
 
 
 if __name__ == "__main__":
