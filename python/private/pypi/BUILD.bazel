@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("//python:py_binary.bzl", "py_binary")
 
 package(default_visibility = ["//:__subpackages__"])
 
@@ -32,20 +33,34 @@ alias(
     visibility = ["//visibility:public"],
 )
 
+py_binary(
+    name = "venv_shebang_rewriter_py",
+    srcs = ["venv_shebang_rewriter.py"],
+    legacy_create_init = False,
+    main = "venv_shebang_rewriter.py",
+)
+
 alias(
     name = "venv_shebang_rewriter",
     actual = select({
         "@platforms//os:windows": "venv_shebang_rewriter.ps1",
-        "//conditions:default": "venv_shebang_rewriter.sh",
+        "//conditions:default": "venv_shebang_rewriter_py",
     }),
     visibility = ["//visibility:public"],
+)
+
+py_binary(
+    name = "wheel_record_rewriter_py",
+    srcs = ["wheel_record_rewriter.py"],
+    legacy_create_init = False,
+    main = "wheel_record_rewriter.py",
 )
 
 alias(
     name = "wheel_record_rewriter",
     actual = select({
         "@platforms//os:windows": "wheel_record_rewriter.ps1",
-        "//conditions:default": "wheel_record_rewriter.sh",
+        "//conditions:default": "wheel_record_rewriter_py",
     }),
     visibility = ["//visibility:public"],
 )

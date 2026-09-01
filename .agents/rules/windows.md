@@ -40,3 +40,10 @@
 * **Comparing Executables**: Subprocesses may drop `\\?\` or `\\?\UNC\`
   prefixes. Strip prefixes and compare via
   `os.path.normcase(os.path.normpath(...))`.
+
+## Windows Wheel Script Rewriting & RECORD Generation
+* **Shebang Rewriting**: On Windows, scripts that use shebangs are rewritten into
+  wrapper scripts with `.bat` file extensions.
+* **RECORD File Paths**: In `RECORD` files, append `.bat` only to the
+  shebang-rewritten scripts. Leave all other script paths unchanged.
+

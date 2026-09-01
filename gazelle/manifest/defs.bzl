@@ -23,21 +23,28 @@ load("@rules_python//python:defs.bzl", "py_binary")
 def gazelle_python_manifest(
         name,
         modules_mapping,
-        requirements = [],
+        requirements = None,
+        lockfiles = [],
         pip_repository_name = "",
         pip_deps_repository_name = "",
         manifest = ":gazelle_python.yaml",
         **kwargs):
     """A macro for defining the updating and testing targets for the Gazelle manifest file.
 
+    :::{versionchanged} VERSION_NEXT_FEATURE
+    The `requirements` argument is deprecated in favor of `lockfiles`, which
+    can refer to any dependency lockfile, including `uv.lock`.
+    :::
+
     Args:
         name: the name used as a base for the targets.
         modules_mapping: the target for the generated modules_mapping.json file.
-        requirements: the target for the requirements.txt file or a list of
-            requirements files that will be concatenated before passing on to
-            the manifest generator. If unset, no integrity field is added to the
-            manifest, meaning testing it is just as expensive as generating it,
-            but modifying it is much less likely to result in a merge conflict.
+        requirements: deprecated. Use lockfiles instead.
+        lockfiles: the target for a lockfile or a list of lockfiles that will be
+            concatenated before passing on to the manifest generator. If unset,
+            no integrity field is added to the manifest, meaning testing it is
+            just as expensive as generating it, but modifying it is much less
+            likely to result in a merge conflict.
         pip_repository_name: the name of the pip_install or pip_repository target.
         pip_deps_repository_name: deprecated - the old {bzl:obj}`pip_parse` target name.
         manifest: the Gazelle manifest file.
@@ -57,6 +64,20 @@ def gazelle_python_manifest(
         # This is a temporary check while pip_deps_repository_name exists as deprecated.
         fail("pip_repository_name must be set in //{}:{}".format(native.package_name(), name))
 
+    if requirements != None:
+        if lockfiles:
+            fail("only one of requirements or lockfiles may be set in //{}:{}".format(
+                native.package_name(),
+                name,
+            ))
+
+        # buildifier: disable=print
+        print("DEPRECATED requirements in //{}:{}. Please use lockfiles instead.".format(
+            native.package_name(),
+            name,
+        ))
+        lockfiles = requirements
+
     test_target = "{}.test".format(name)
     update_target = "{}.update".format(name)
     update_target_label = "//{}:{}".format(native.package_name(), update_target)
@@ -66,20 +87,19 @@ def gazelle_python_manifest(
     manifest_generator = Label("//manifest/generate:generate")
     manifest_generator_hash = Label("//manifest/generate:generate_lib_sources_hash")
 
-    if requirements and type(requirements) == "list":
-        # This runs if requirements is a list or is unset (default value is empty list)
+    if lockfiles and type(lockfiles) == "list":
         native.genrule(
-            name = name + "_requirements_gen",
-            srcs = sorted(requirements),
-            outs = [name + "_requirements.txt"],
+            name = name + "_lockfiles_gen",
+            srcs = sorted(lockfiles),
+            outs = [name + "_lockfiles.txt"],
             cmd_bash = "cat $(SRCS) > $@",
             cmd_bat = "type $(SRCS) > $@",
         )
-        requirements = name + "_requirements_gen"
+        lockfiles = name + "_lockfiles_gen"
 
     update_args = [
         "--manifest-generator-hash=$(execpath {})".format(manifest_generator_hash),
-        "--requirements=$(execpath {})".format(requirements) if requirements else "--requirements=",
+        "--requirements=$(execpath {})".format(lockfiles) if lockfiles else "--requirements=",
         "--pip-repository-name={}".format(pip_repository_name),
         "--modules-mapping=$(execpath {})".format(modules_mapping),
         "--output=$(execpath {})".format(generated_manifest),
@@ -94,7 +114,7 @@ def gazelle_python_manifest(
         srcs = [
             modules_mapping,
             manifest_generator_hash,
-        ] + ([requirements] if requirements else []),
+        ] + ([lockfiles] if lockfiles else []),
         tags = ["manual"],
     )
 
@@ -114,12 +134,12 @@ def gazelle_python_manifest(
         **{k: v for k, v in kwargs.items() if k != "tags"}
     )
 
-    if requirements:
+    if lockfiles:
         attrs = {
             "env": {
                 "_TEST_MANIFEST": "$(rlocationpath {})".format(manifest),
                 "_TEST_MANIFEST_GENERATOR_HASH": "$(rlocationpath {})".format(manifest_generator_hash),
-                "_TEST_REQUIREMENTS": "$(rlocationpath {})".format(requirements),
+                "_TEST_REQUIREMENTS": "$(rlocationpath {})".format(lockfiles),
             },
             "size": "small",
         }
@@ -128,7 +148,7 @@ def gazelle_python_manifest(
             srcs = [Label("//manifest/test:test.go")],
             data = [
                 manifest,
-                requirements,
+                lockfiles,
                 manifest_generator_hash,
             ],
             rundir = ".",
