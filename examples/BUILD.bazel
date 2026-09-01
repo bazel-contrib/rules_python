@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# The following is experimental API and currently not intended for use outside this example.
-load("@rules_python//python/uv/private:lock.bzl", "lock")  # buildifier: disable=bzl-visibility
+load("@rules_python//python/uv:lock.bzl", "lock")
 
 licenses(["notice"])  # Apache 2.0
 
@@ -35,8 +34,7 @@ lock(
     out = "bzlmod/requirements_windows_3_12.txt",
     args = [
         "--emit-index-url",
-        "--python-platform",
-        "windows",
+        "--python-platform=windows",
         "--python-version=3.12",
     ],
     python_version = "3.12",
@@ -60,8 +58,7 @@ lock(
     out = "bzlmod/requirements_windows_3_13.txt",
     args = [
         "--emit-index-url",
-        "--python-platform",
-        "windows",
+        "--python-platform=windows",
         "--python-version=3.13",
     ],
     python_version = "3.13",
@@ -85,8 +82,7 @@ lock(
     out = "bzlmod/requirements_windows_3_14.txt",
     args = [
         "--emit-index-url",
-        "--python-platform",
-        "windows",
+        "--python-platform=windows",
         "--python-version=3.14",
     ],
     python_version = "3.14",

@@ -40,3 +40,12 @@ pip.parse(
     requirements_lock = ":requirements_lock_3_11.txt",
 )
 use_repo(pip, "other_module_pip")
+
+# DO NOT MERGE: consider making uv auto-used before switching
+# everything over to it.
+uv = use_extension(
+    "@rules_python//python/uv:uv.bzl",
+    "uv",
+    dev_dependency = True,
+)
+uv.configure()

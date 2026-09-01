@@ -8,23 +8,37 @@
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load("@pip//:requirements.bzl", "all_data_requirements", "all_requirements", "all_whl_requirements", "requirement")
 load("@python_3_13//:defs.bzl", py_test_with_transition = "py_test")
-load("@python_versions//3.10:defs.bzl", compile_pip_requirements_3_10 = "compile_pip_requirements")
 load("@rules_python//python:py_binary.bzl", "py_binary")
 load("@rules_python//python:py_library.bzl", "py_library")
 load("@rules_python//python:py_test.bzl", "py_test")
+load("@rules_python//python/uv:lock.bzl", "lock")
 
 # This stanza calls a rule that generates targets for managing pip dependencies
-# with pip-compile for a particular python version.
-compile_pip_requirements_3_10(
+# with uv for a particular python version.
+lock(
     name = "requirements_3_10",
-    timeout = "moderate",
-    src = "pyproject.toml",
-    extra_args = [
-        "--extra-index-url",
-        "https://pypi.org/simple/",
+    srcs = ["pyproject.toml"],
+    out = "requirements_lock_3_10.txt",
+    args = [
+        "--emit-index-url",
+        "--extra-index-url=https://pypi.org/simple/",
+        "--universal",
+        "--python-version=3.10",
     ],
-    requirements_txt = "requirements_lock_3_10.txt",
-    requirements_windows = "requirements_windows_3_10.txt",
+    python_version = "3.10",
+)
+
+lock(
+    name = "requirements_windows_3_10",
+    srcs = ["pyproject.toml"],
+    out = "requirements_windows_3_10.txt",
+    args = [
+        "--emit-index-url",
+        "--extra-index-url=https://pypi.org/simple/",
+        "--python-platform=windows",
+        "--python-version=3.10",
+    ],
+    python_version = "3.10",
 )
 
 # The rules below are language specific rules defined in

@@ -10,6 +10,10 @@ bazel-testlogs
 # treated as directories with valid BUILD files for the main repo.
 # Any directory with a WORKSPACE in it should be added here, with
 # an entry like `bazel-{workspacename}`
+examples/build_file_generation/bazel-bin
+examples/build_file_generation/bazel-build_file_generation
+examples/build_file_generation/bazel-out
+examples/build_file_generation/bazel-testlogs
 examples/bzlmod/bazel-bin
 examples/bzlmod/bazel-bzlmod
 examples/bzlmod/bazel-out
@@ -28,7 +32,7 @@ gazelle/bazel-gazelle
 gazelle/examples/bzlmod_build_file_generation/bazel-bin
 gazelle/examples/bzlmod_build_file_generation/bazel-bzlmod_build_file_generation
 gazelle/examples/bzlmod_build_file_generation/bazel-out
-gazelle/examples/bzlmod_build_file_generation/bazel-testlog
+gazelle/examples/bzlmod_build_file_generation/bazel-testlogs
 sphinxdocs
 tests/integration/bzlmod_lockfile/bazel-bzlmod_lockfile
 tests/integration/compile_pip_requirements/bazel-compile_pip_requirements

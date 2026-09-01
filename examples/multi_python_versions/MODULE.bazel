@@ -76,3 +76,10 @@ bazel_dep(name = "rules_shell", version = "0.2.0", dev_dependency = True)
 # Only needed to make rules_python's CI happy. rules_java 8.3.0+ is needed so
 # that --java_runtime_version=remotejdk_11 works with Bazel 8.
 bazel_dep(name = "rules_java", version = "8.16.1")
+
+uv = use_extension(
+    "@rules_python//python/uv:uv.bzl",
+    "uv",
+    dev_dependency = True,
+)
+uv.configure()

@@ -39,3 +39,10 @@ pip.parse(
     requirements_windows = "//:requirements_windows.txt",
 )
 use_repo(pip, "pypi")
+
+uv = use_extension(
+    "@rules_python//python/uv:uv.bzl",
+    "uv",
+    dev_dependency = True,
+)
+uv.configure()

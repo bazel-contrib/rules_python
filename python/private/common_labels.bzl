@@ -18,6 +18,7 @@ labels = struct(
     NONE = str(Label("//python:none")),
     PIP_ENV_MARKER_CONFIG = str(Label("//python/config_settings:pip_env_marker_config")),
     PIP_WHL_OSX_VERSION = str(Label("//python/config_settings:pip_whl_osx_version")),
+    PLATFORMS_INCOMPATIBLE = str(Label("@platforms//:incompatible")),
     PLATFORMS_OS_MACOS = str(Label("@platforms//os:macos")),
     PLATFORMS_OS_WINDOWS = str(Label("@platforms//os:windows")),
     PRECOMPILE = str(Label("//python/config_settings:precompile")),

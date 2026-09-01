@@ -7,20 +7,33 @@
 # requirements.
 load("@bazel_gazelle//:def.bzl", "gazelle")
 load("@pip//:requirements.bzl", "all_whl_requirements")
-load("@rules_python//python:pip.bzl", "compile_pip_requirements")
 load("@rules_python//python:py_binary.bzl", "py_binary")
 load("@rules_python//python:py_library.bzl", "py_library")
 load("@rules_python//python:py_test.bzl", "py_test")
+load("@rules_python//python/uv:lock.bzl", "lock")
 load("@rules_python_gazelle_plugin//manifest:defs.bzl", "gazelle_python_manifest")
 load("@rules_python_gazelle_plugin//modules_mapping:def.bzl", "modules_mapping")
 
 # This stanza calls a rule that generates targets for managing pip dependencies
-# with pip-compile.
-compile_pip_requirements(
+# with uv.
+lock(
     name = "requirements",
-    src = "pyproject.toml",
-    requirements_txt = "requirements_lock.txt",
-    requirements_windows = "requirements_windows.txt",
+    srcs = ["pyproject.toml"],
+    out = "requirements_lock.txt",
+    args = [
+        "--emit-index-url",
+        "--universal",
+    ],
+)
+
+lock(
+    name = "requirements_windows",
+    srcs = ["pyproject.toml"],
+    out = "requirements_windows.txt",
+    args = [
+        "--emit-index-url",
+        "--python-platform=windows",
+    ],
 )
 
 # This repository rule fetches the metadata for python packages we
