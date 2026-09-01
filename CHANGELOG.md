@@ -40,8 +40,12 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 
 {#v2-3-3-fixed}
 ### Fixed
+* (gazelle) Fixed a regression from version 1.8.0 which broke module map
+  generation for old-style namespace packages.
+  ([#4135](https://github.com/bazel-contrib/rules_python/pull/4135)).
 * (zipapp) Fixed handling of {obj}`PyRuntimeInfo` with `files = None` so creating
   zipapp archives does not error.
+
 
 
 
