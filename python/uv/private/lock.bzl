@@ -90,6 +90,9 @@ def _reroot(x, directory):
     if hasattr(x, "path"):
         x = x.path
 
+    if x == directory:
+        return "."
+
     return paths.relativize(x, directory)
 
 def _reroot_all(xs, directory):
