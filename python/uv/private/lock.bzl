@@ -15,6 +15,7 @@
 """An implementation for a simple macro to lock the requirements.
 """
 
+load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("//python:py_binary.bzl", "py_binary")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
@@ -88,16 +89,8 @@ def _reroot(x, directory):
 
     if hasattr(x, "path"):
         x = x.path
-    if x == directory:
-        return "."
 
-    if x.startswith(directory + "/"):
-        return x[len(directory) + 1:]
-
-    fail("File '{}' does not start with directory prefix '{}'".format(
-        x,
-        directory,
-    ))
+    return paths.relativize(x, directory)
 
 def _reroot_all(xs, directory):
     return [
@@ -701,7 +694,7 @@ def lock(
     if constraints:
         lock_target_kwargs["constraints"] = constraints
     if directory == None:
-        directory = native.package_directory()
+        directory = native.package_name()
     if directory:
         lock_target_kwargs["directory"] = directory
 

@@ -196,7 +196,7 @@ colorama==0.4.6 \
     --hash=sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44 \
     --hash=sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6
     # via
-    #   example-bzlmod (examples/bzlmod/pyproject.toml)
+    #   example-bzlmod (pyproject.toml)
     #   pylint
     #   sphinx
 dill==0.4.1 \
@@ -386,17 +386,17 @@ pylint==2.17.7 \
     --hash=sha256:27a8d4c7ddc8c2f8c18aa0050148f89ffc09838142193fdbe98f172781a3ff87 \
     --hash=sha256:f4fcac7ae74cfe36bc8451e931d8438e4a476c20314b1101c458ad0f05191fad
     # via
-    #   example-bzlmod (examples/bzlmod/pyproject.toml)
+    #   example-bzlmod (pyproject.toml)
     #   pylint-print
 pylint-print==1.0.1 \
     --hash=sha256:30aa207e9718ebf4ceb47fb87012092e6d8743aab932aa07aa14a73e750ad3d0 \
     --hash=sha256:a2b2599e7887b93e551db2624c523c1e6e9e58c3be8416cd98d41e4427e2669b
-    # via example-bzlmod (examples/bzlmod/pyproject.toml)
+    # via example-bzlmod (pyproject.toml)
 python-dateutil==2.9.0.post0 \
     --hash=sha256:37dd54208da7e1cd875388217d5e00ebd4179249f90fb72437e91a35459a0ad3 \
     --hash=sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427
     # via
-    #   example-bzlmod (examples/bzlmod/pyproject.toml)
+    #   example-bzlmod (pyproject.toml)
     #   s3cmd
 python-magic==0.4.27 \
     --hash=sha256:c1ba14b08e4a5f5c31a302b7721239695b2f0f058d125bd5ce1ee36b9d9d3c3b \
@@ -481,12 +481,12 @@ requests==2.34.2 \
     --hash=sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0 \
     --hash=sha256:f288924cae4e29463698d6d60bc6a4da69c89185ad1e0bcc4104f584e960b9ed
     # via
-    #   example-bzlmod (examples/bzlmod/pyproject.toml)
+    #   example-bzlmod (pyproject.toml)
     #   sphinx
 s3cmd==2.1.0 \
     --hash=sha256:49cd23d516b17974b22b611a95ce4d93fe326feaa07320bd1d234fed68cbccfa \
     --hash=sha256:966b0a494a916fc3b4324de38f089c86c70ee90e8e1cae6d59102103a4c0cc03
-    # via example-bzlmod (examples/bzlmod/pyproject.toml)
+    # via example-bzlmod (pyproject.toml)
 six==1.17.0 \
     --hash=sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274 \
     --hash=sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81
@@ -498,7 +498,7 @@ snowballstemmer==3.1.1 \
 sphinx==7.3.7 \
     --hash=sha256:413f75440be4cacf328f580b4274ada4565fb2187d696a84970c23f77b64d8c3 \
     --hash=sha256:a4a7db75ed37531c05002d56ed6948d4c42f473a36f46e1382b0bd76ca9627bc
-    # via example-bzlmod (examples/bzlmod/pyproject.toml)
+    # via example-bzlmod (pyproject.toml)
 sphinxcontrib-applehelp==2.0.0 \
     --hash=sha256:2f29ef331735ce958efa4734873f084941970894c6090408b079c61b2e1c06d1 \
     --hash=sha256:4cd3f0ec4ac5dd9c17ec65e9ab272c9b867ea77425228e68ecf08d6b28ddbdb5
@@ -523,12 +523,12 @@ sphinxcontrib-serializinghtml==2.0.0 \
     --hash=sha256:6e2cb0eef194e10c27ec0023bfeb25badbbb5868244cf5bc5bdc04e4464bf331 \
     --hash=sha256:e9d912827f872c029017a53f0ef2180b327c3f7fd23c87229f7a8e8b70031d4d
     # via
-    #   example-bzlmod (examples/bzlmod/pyproject.toml)
+    #   example-bzlmod (pyproject.toml)
     #   sphinx
 tabulate==0.9.0 \
     --hash=sha256:0095b12bf5966de529c0feb1fa08671671b3368eec77d7ef7ab114be2c068b3c \
     --hash=sha256:024ca478df22e9340661486f85298cff5f6dcdba14f3813e8830015b9ed1948f
-    # via example-bzlmod (examples/bzlmod/pyproject.toml)
+    # via example-bzlmod (pyproject.toml)
 tomlkit==0.15.1 \
     --hash=sha256:177a05aece5a8ca5266fd3c448abb47b8d352f09d477d3ca8332db4d89b24304 \
     --hash=sha256:e25bbf38843005246210a12982776f27f99cb9be67160e14434d0c0d21ee1e97
@@ -646,11 +646,11 @@ websockets==17.0.1 \
     --hash=sha256:f47b0815af3948ec6a440b3afa02f05b18cc0939549e91b5c677b5d9c2c8472a \
     --hash=sha256:f991247276797d0c61ab7770bc9791eadc16f683b4d83517f624932adc1a8bab \
     --hash=sha256:ffad64ce7ad3703d652a3fd9af26238377d24ce52c6ad8ff35d26d82f61f493f
-    # via example-bzlmod (examples/bzlmod/pyproject.toml)
+    # via example-bzlmod (pyproject.toml)
 wheel==0.46.2 \
     --hash=sha256:33ae60725d69eaa249bc1982e739943c23b34b58d51f1cb6253453773aca6e65 \
     --hash=sha256:3d79e48fde9847618a5a181f3cc35764c349c752e2fe911e65fa17faab9809b0
-    # via example-bzlmod (examples/bzlmod/pyproject.toml)
+    # via example-bzlmod (pyproject.toml)
 wrapt==1.17.3 \
     --hash=sha256:02b551d101f31694fc785e58e0720ef7d9a10c4e62c1c9358ce6f63f23e30a56 \
     --hash=sha256:042ec3bb8f319c147b1301f2393bc19dba6e176b7da446853406d041c36c7828 \
@@ -737,4 +737,4 @@ wrapt==1.17.3 \
 yamllint==1.38.0 \
     --hash=sha256:09e5f29531daab93366bb061e76019d5e91691ef0a40328f04c927387d1d364d \
     --hash=sha256:fc394a5b3be980a4062607b8fdddc0843f4fa394152b6da21722f5d59013c220
-    # via example-bzlmod (examples/bzlmod/pyproject.toml)
+    # via example-bzlmod (pyproject.toml)

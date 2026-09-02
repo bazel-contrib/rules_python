@@ -14,6 +14,17 @@ multirun(
         ]
     ] + [
         "//dev:requirements.update",
+        "//dev:uv_lock.update",
+        "//examples:bzlmod_requirements_3_12.update",
+        "//examples:bzlmod_requirements_3_12_windows.update",
+        "//examples:bzlmod_requirements_3_13.update",
+        "//examples:bzlmod_requirements_3_13_windows.update",
+        "//examples:bzlmod_requirements_3_14.update",
+        "//examples:bzlmod_requirements_3_14_windows.update",
+        "//tests/multi_pypi/alpha:requirements.update",
+        "//tests/multi_pypi/beta:requirements.update",
+        "//tests/uv/lock/pyproject_toml:requirements.update",
+        "//tests/uv/lock/workspaces:requirements.update",
     ],
     tags = ["manual"],
 )

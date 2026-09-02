@@ -26,7 +26,9 @@ lock(
         "--universal",
         "--python-version=3.12",
     ],
+    directory = "examples/bzlmod",
     python_version = "3.12",
+    visibility = ["//:__subpackages__"],
 )
 
 lock(
@@ -39,7 +41,9 @@ lock(
         "windows",
         "--python-version=3.12",
     ],
+    directory = "examples/bzlmod",
     python_version = "3.12",
+    visibility = ["//:__subpackages__"],
 )
 
 lock(
@@ -51,7 +55,9 @@ lock(
         "--universal",
         "--python-version=3.13",
     ],
+    directory = "examples/bzlmod",
     python_version = "3.13",
+    visibility = ["//:__subpackages__"],
 )
 
 lock(
@@ -64,7 +70,9 @@ lock(
         "windows",
         "--python-version=3.13",
     ],
+    directory = "examples/bzlmod",
     python_version = "3.13",
+    visibility = ["//:__subpackages__"],
 )
 
 lock(
@@ -76,7 +84,9 @@ lock(
         "--universal",
         "--python-version=3.14",
     ],
+    directory = "examples/bzlmod",
     python_version = "3.14",
+    visibility = ["//:__subpackages__"],
 )
 
 lock(
@@ -89,5 +99,7 @@ lock(
         "windows",
         "--python-version=3.14",
     ],
+    directory = "examples/bzlmod",
     python_version = "3.14",
+    visibility = ["//:__subpackages__"],
 )
