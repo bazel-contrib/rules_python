@@ -6,9 +6,7 @@ package(
 
 filegroup(
     name = "distribution",
-    srcs = glob(["**"]) + [
-        "//tools/private/zipapp:distribution",
-    ],
+    srcs = glob(["**"]),
 )
 
 bzl_library(

@@ -227,7 +227,7 @@ accepting arbitrary Python versions.
         ),
         "_exe_zip_maker": lambda: attrb.Label(
             cfg = "exec",
-            default = "//tools/private/zipapp:exe_zip_maker",
+            default = "//tools/zipapp:exe_zip_maker",
         ),
         "_launcher": lambda: attrb.Label(
             cfg = "target",

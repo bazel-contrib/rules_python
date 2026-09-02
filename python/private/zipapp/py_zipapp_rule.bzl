@@ -362,7 +362,7 @@ Whether the output should be an executable zip file.
     ),
     "_exe_zip_maker": attr.label(
         cfg = "exec",
-        default = "//tools/private/zipapp:exe_zip_maker",
+        default = "//tools/zipapp:exe_zip_maker",
     ),
     "_launcher": attr.label(
         cfg = "target",
@@ -378,7 +378,7 @@ Whether the output should be an executable zip file.
     ),
     "_zip_main_maker": attr.label(
         cfg = "exec",
-        default = "//tools/private/zipapp:zip_main_maker",
+        default = "//tools/zipapp:zip_main_maker",
     ),
     "_zip_shell_template": attr.label(
         default = ":zip_shell_template",
@@ -386,7 +386,7 @@ Whether the output should be an executable zip file.
     ),
     "_zipper": attr.label(
         cfg = "exec",
-        default = "//tools/private/zipapp:zipper",
+        default = "//tools/zipapp:zipper",
     ),
 } | ({
     "_windows_launcher_maker": attr.label(

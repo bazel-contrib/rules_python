@@ -36,9 +36,6 @@ common --enable_platform_specific_config
 # See https://github.com/bazel-contrib/rules_python/issues/3655
 common --incompatible_strict_action_env=false
 
-# To work around bug on bazel 7
-common:ci --experimental_repository_cache_hardlinks=false
-
 # Windows makes use of runfiles for some rules
 build --enable_runfiles
 
@@ -47,12 +44,16 @@ common --enable_bzlmod
 
 # Local disk cache greatly speeds up builds if the regular cache is lost
 common --disk_cache=~/.cache/bazel/bazel-disk-cache
+# Shared repository cache avoids re-downloading external dependencies across workspaces
+common --repository_cache=~/.cache/bazel/bazel-repo-cache
+# Hardlinks save disk space and copy time when unpacking repositories
+common --experimental_repository_cache_hardlinks=true
+# To work around bug on bazel 7
+common:ci --experimental_repository_cache_hardlinks=false
 # Drop `experimental_` prefix once Bazel 7 is no longer supported
 common --experimental_downloader_config=downloader_config.cfg
 common --http_timeout_scaling=10.0
 common --experimental_repository_downloader_retries=10
-
-
 
 # Additional config to use for readthedocs builds.
 # See .readthedocs.yml for additional flags that can only be determined from

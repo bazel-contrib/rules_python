@@ -4,4 +4,5 @@ version = "0.0.0"
 dependencies = [
     # This is for running publishing tests
     "pypiserver>=2.2.0",
+    "legacy-cgi; python_version >= '3.13'",
 ]
