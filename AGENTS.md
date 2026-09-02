@@ -120,25 +120,23 @@ The `repository_ctx` API docs are at: https://bazel.build/rules/lib/builtins/rep
 
 * A `bzl_library` target should be defined for every `.bzl` file outside
   of the `tests/` directory.
-* They should have a single `srcs` file and be named after the file with `_bzl`
-  appended.
+* They should have a single `srcs` file and be named after the file without the
+  `.bzl` extension.
 * Their deps should be based on the `load()` statements in the source file
-  and refer to the `bzl_library` target containing the loaded file.
-  * For files in rules_python: replace `.bzl` with `_bzl`.
-    e.g. given `load("//foo:bar.bzl", ...)`, the target is `//foo:bar_bzl`.
-  * For files outside rules_python: remove the `.bzl` suffix. e.g. given
-    `load("@foo//foo:bar.bzl", ...)`, the target is `@foo//foo:bar`.
+  and refer to the `bzl_library` target containing the loaded file (remove the
+  `.bzl` suffix; e.g. `load("//foo:bar.bzl", ...)` becomes `//foo:bar`, and
+  `load("@foo//foo:bar.bzl", ...)` becomes `@foo//foo:bar`).
 
 Example:
 
 ```
 bzl_library(
-    name = "alpha_bzl",
+    name = "alpha",
     srcs = ["alpha.bzl"],
-    deps = [":beta_bzl"],
+    deps = [":beta"],
 )
 bzl_library(
-    name = "beta_bzl",
+    name = "beta",
     srcs = ["beta.bzl"]
 )
 ```
