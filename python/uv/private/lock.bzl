@@ -35,6 +35,8 @@ _RunLockInfo = provider(
     },
 )
 
+_DIRECTORY_AUTO = struct(_sentinel = True)
+
 def _args(ctx):
     """A small helper to ensure that the right args are pushed to the _RunLockInfo provider"""
     run_info = []
@@ -591,7 +593,7 @@ def lock(
         env = None,
         generate_hashes = True,
         python_version = None,
-        directory = None,
+        directory = _DIRECTORY_AUTO,
         project = None,
         strip_extras = False,
         **kwargs):
@@ -631,8 +633,9 @@ def lock(
             is passed as is and the environment variables are not expanded.
         build_constraints: {type}`list[Label]` The list of build constraints to use.
         constraints: {type}`list[Label]` The list of constraints files to use.
-        directory: {type}`str` The directory into which we should cd when
-            running the command.
+        directory: {type}`str | None` The directory into which we should cd when
+            running the command. Defaults to `native.package()`. Set to `None`
+            or `""` to restore behaviour before `VERSION_NEXT_FEATURE`.
             {versionadded} VERSION_NEXT_FEATURE
         generate_hashes: {type}`bool` Generate hashes for all of the
             requirements. Only meaningful for `requirements.txt` style output.
@@ -696,7 +699,7 @@ def lock(
         lock_target_kwargs["build_constraints"] = build_constraints
     if constraints:
         lock_target_kwargs["constraints"] = constraints
-    if directory == None:
+    if directory == _DIRECTORY_AUTO:
         directory = native.package_name()
     if directory:
         lock_target_kwargs["directory"] = directory
