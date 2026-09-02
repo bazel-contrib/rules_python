@@ -52,13 +52,13 @@ bazel_dep(name = "rules_python", version = "${TAG}")
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.toolchain(
-    python_version = "3.13",
+    python_version = "3.14",
 )
 
 pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
 pip.parse(
     hub_name = "pypi",
-    python_version = "3.13",
+    python_version = "3.14",
     requirements_lock = "//:requirements_lock.txt",
 )
 
