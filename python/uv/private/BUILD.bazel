@@ -72,6 +72,7 @@ bzl_library(
         "//python/private:bzlmod_enabled",
         "//python/private:common_labels",
         "//python/private:toolchain_types",
+        "@bazel_skylib//lib:paths",
         "@bazel_skylib//lib:shell",
     ],
 )
