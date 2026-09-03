@@ -114,6 +114,14 @@ def _generate_platforms():
             os_name = LINUX_NAME,
             arch = "x86_32",
         ),
+        "i686-pc-windows-msvc": platform_info(
+            compatible_with = [
+                "@platforms//os:windows",
+                "@platforms//cpu:x86_32",
+            ],
+            os_name = WINDOWS_NAME,
+            arch = "x86_32",
+        ),
         "ppc64le-unknown-linux-gnu": platform_info(
             compatible_with = [
                 "@platforms//os:linux",
