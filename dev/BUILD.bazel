@@ -58,21 +58,3 @@ multirun(
     tags = ["manual"],
     visibility = ["//:__subpackages__"],
 )
-
-alias(
-    name = "requirements_all.update",
-    actual = ":all_requirements.update",
-    tags = ["manual"],
-    visibility = ["//:__subpackages__"],
-)
-
-# NOTE: The requirements for the pip dependencies may sometimes break the build
-# process due to how `pip-compile` works (i.e. it sometimes needs to build
-# wheels to resolve the `pyproject.toml` file.  Hence we do not lump the
-# target with the other targets above.
-alias(
-    name = "whl_library_requirements.update",
-    actual = "//tools/private/update_deps:update_pip_deps",
-    tags = ["manual"],
-    visibility = ["//:__subpackages__"],
-)
