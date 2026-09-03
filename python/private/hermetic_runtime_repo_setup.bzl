@@ -23,6 +23,9 @@ load(":version.bzl", "version")
 
 _IS_FREETHREADED_YES = Label("//python/config_settings:_is_py_freethreaded_yes")
 _IS_FREETHREADED_NO = Label("//python/config_settings:_is_py_freethreaded_no")
+_IS_PY_RUNTIME_INCLUDE_LIBPYTHON_AUTO = Label("//python/config_settings:_is_py_runtime_include_libpython_auto")
+_IS_PY_RUNTIME_INCLUDE_LIBPYTHON_YES = Label("//python/config_settings:_is_py_runtime_include_libpython_yes")
+_IS_PY_RUNTIME_INCLUDE_LIBPYTHON_NO = Label("//python/config_settings:_is_py_runtime_include_libpython_no")
 
 def define_hermetic_runtime_toolchain_impl(
         *,
@@ -31,7 +34,8 @@ def define_hermetic_runtime_toolchain_impl(
         extra_files_glob_exclude,
         python_version,
         python_bin,
-        coverage_tool):
+        coverage_tool,
+        python3_statically_links_libpython = True):
     """Define a toolchain implementation for a python-build-standalone repo.
 
     It expected this macro is called in the top-level package of an extracted
@@ -51,6 +55,13 @@ def define_hermetic_runtime_toolchain_impl(
             repository.
         coverage_tool: {type}`str` optional target to the coverage tool to
             use.
+        python3_statically_links_libpython: {type}`bool` a flag to enable omitting libpython
+            from the py_runtime registration because it is statically linked into `python3`.
+            This is switched via config flag
+            {target}`//python/config_settings/py_runtime_include_libpython`. Do this per-target
+            via transitions or globally.
+            :::{versionadded} VERSION_NEXT_FEATURE
+            :::
     """
     _ = name  # @unused
     version_info = version.parse(python_version)
@@ -67,9 +78,11 @@ def define_hermetic_runtime_toolchain_impl(
     ]
     files_include += extra_files_glob_include
     files_exclude = [
-        # Unused shared libraries. `python` executable and the `:libpython` target
-        # depend on `libpython{python_version}.so.1.0`.
-        "lib/libpython{major}.{minor}*.so".format(**version_dict),
+        # Unused shared libraries.
+        # `python` executable and the `:libpython` target depend on
+        # `libpython{python_version}.so.1.0`.
+        # we include
+        "lib/libpython*",
         # static libraries
         "lib/**/*.a",
         # tests for the standard libraries.
@@ -80,13 +93,26 @@ def define_hermetic_runtime_toolchain_impl(
     ]
     files_exclude += extra_files_glob_exclude
 
-    native.filegroup(
+    native.alias(
         name = "files",
+        actual = "files_all",
+    )
+    native.filegroup(
+        name = "files_all",
         srcs = native.glob(
             include = files_include,
             # Platform-agnostic filegroup can't match on all patterns.
             allow_empty = True,
             exclude = files_exclude,
+        ),
+    )
+    native.filegroup(
+        name = "files_no_libpython",
+        srcs = native.glob(
+            include = files_include,
+            # Platform-agnostic filegroup can't match on all patterns.
+            allow_empty = True,
+            exclude = files_exclude + ["lib/libpython*"],
         ),
     )
     cc_import(
@@ -217,9 +243,22 @@ def define_hermetic_runtime_toolchain_impl(
             "rc": "candidate",
         }.get(version_info.pre[0])
 
+    if python3_statically_links_libpython:
+        no_libpython_requested = _IS_PY_RUNTIME_INCLUDE_LIBPYTHON_NO
+    else:
+        # We cannot omit it libpython even if the user requests it
+        no_libpython_requested = "@platforms//:incompatible"
+
     py_runtime(
         name = "py3_runtime",
-        files = [":files"],
+        files = select(
+            {
+                _IS_PY_RUNTIME_INCLUDE_LIBPYTHON_YES: [":files_all"],
+                _IS_PY_RUNTIME_INCLUDE_LIBPYTHON_AUTO: [":files_all"],
+                no_libpython_requested: [":files_no_libpython"],
+            },
+            no_match_error = "the archive does not support not including libpython",
+        ),
         interpreter = python_bin,
         interpreter_version_info = {
             "major": str(version_info.release[0]),
@@ -243,9 +282,7 @@ def define_hermetic_runtime_toolchain_impl(
         # On Windows, a symlink-style venv requires supporting .dll files.
         venv_bin_files = select({
             "@platforms//os:windows": native.glob(
-                include = [
-                    "*.dll",
-                ],
+                include = ["*.dll"],
                 # This must be true because glob empty-ness is checked
                 # during loading phase, before select() filters it out.
                 allow_empty = True,

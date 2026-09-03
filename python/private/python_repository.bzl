@@ -200,6 +200,17 @@ def _python_repository_impl(rctx):
     elif rctx.attr.distutils_content:
         rctx.file(distutils_path, rctx.attr.distutils_content)
 
+    # Support not including libraries into runtime
+    release = None
+    for url in urls:
+        head_and_release, _, _ = url.rpartition("/")
+        _, _, maybe_release = head_and_release.rpartition("/")
+        if not maybe_release.isdigit():
+            # Maybe this is some custom toolchain, so skip this
+            break
+
+        release = int(maybe_release)
+
     if "darwin" in platform and "osx" == repo_utils.get_platforms_os_name(rctx):
         # Fix up the Python distribution's LC_ID_DYLIB field.
         # It points to a build directory local to the GitHub Actions
@@ -218,26 +229,25 @@ def _python_repository_impl(rctx):
     _create_pycache_symlinks(rctx, logger)
     python_bin = "python.exe" if ("windows" in platform) else "bin/python3"
 
-    if "linux" in platform:
+    if "linux" in platform and release and release >= 20240224:
         # Workaround around https://github.com/astral-sh/python-build-standalone/issues/231
-        for url in urls:
-            head_and_release, _, _ = url.rpartition("/")
-            _, _, release = head_and_release.rpartition("/")
-            if not release.isdigit():
-                # Maybe this is some custom toolchain, so skip this
-                break
 
-            if int(release) >= 20240224:
-                # Starting with this release the Linux toolchains have infinite symlink loop
-                # on host platforms that are not Linux. Delete the files no
-                # matter the host platform so that the cross-built artifacts
-                # are the same irrespective of the host platform we are
-                # building on.
-                #
-                # Link to the first affected release:
-                # https://github.com/astral-sh/python-build-standalone/releases/tag/20240224
-                rctx.delete("share/terminfo")
-                break
+        # Starting with this release the Linux toolchains have infinite symlink loop
+        # on host platforms that are not Linux. Delete the files no
+        # matter the host platform so that the cross-built artifacts
+        # are the same irrespective of the host platform we are
+        # building on.
+        #
+        # Link to the first affected release:
+        # https://github.com/astral-sh/python-build-standalone/releases/tag/20240224
+        rctx.delete("share/terminfo")
+
+    if release and release >= 20250517:
+        # Starting with 20250517 we have python3 linked statically
+        # https://github.com/astral-sh/python-build-standalone/issues/941
+        python3_statically_links_libpython = True
+    else:
+        python3_statically_links_libpython = True
 
     glob_include = []
     glob_exclude = [
@@ -283,6 +293,7 @@ define_hermetic_runtime_toolchain_impl(
   python_version = {python_version},
   python_bin = {python_bin},
   coverage_tool = {coverage_tool},
+  python3_statically_links_libpython = {python3_statically_links_libpython}
 )
 """.format(
         extra_files_glob_exclude = render.list(glob_exclude),
@@ -290,6 +301,7 @@ define_hermetic_runtime_toolchain_impl(
         python_bin = render.str(python_bin),
         python_version = render.str(rctx.attr.python_version),
         coverage_tool = render.str(coverage_tool),
+        python3_statically_links_libpython = python3_statically_links_libpython,
     )
     rctx.delete("python")
     rctx.symlink(python_bin, "python")
