@@ -95,11 +95,11 @@ integration test.
 
 1. Modify the `./python/private/pypi/requirements.txt` file and run:
    ```
-   bazel run //private:whl_library_requirements.update
+   bazel run //dev:whl_library_requirements.update
    ```
 1. Run the following target to update `twine` dependencies:
    ```
-   bazel run //private:requirements.update
+   bazel run //dev:all_requirements.update
    ```
 1. Bump the coverage dependencies using the script using:
    ```
@@ -111,11 +111,11 @@ integration test.
 ## Updating tool dependencies
 
 It's suggested to routinely update the tool versions within our repo. Some of the
-tools are using requirement files compiled by `uv`, and others use other means. In order
-to have everything self-documented, we have a special target,
-`//private:requirements.update`, which uses `rules_multirun` to run all
-of the requirement-updating scripts in sequence in one go. This can be done once per release as
-we prepare for releases.
+tools are using requirement files compiled by `uv`, and others use other means.
+In order to have everything self-documented, we have a special target,
+`//dev:all_requirements.update`, which uses `rules_multirun` to run all of the
+requirement-updating scripts in sequence in one go. This can be done once per
+release as we prepare for releases.
 
 (creating-backport-prs)=
 ## Creating Backport PRs

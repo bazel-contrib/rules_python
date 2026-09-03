@@ -38,5 +38,5 @@ publish_deps(
         "--emit-index-url",
         "--upgrade",  # always upgrade
     ],
-    visibility = ["//private:__pkg__"],
+    visibility = ["//:__subpackages__"],
 )

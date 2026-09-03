@@ -1,3 +1,4 @@
+load("@rules_multirun//:defs.bzl", "multirun")
 load("//python/uv:lock.bzl", "lock")  # buildifier: disable=bzl-visibility
 
 licenses(["notice"])
@@ -25,5 +26,53 @@ lock(
     srcs = ["pyproject.toml"],
     out = "uv.lock",
     python_version = "3.10",
+    visibility = ["//:__subpackages__"],
+)
+
+# This target runs all dev-only dependency updaters across the repo.
+# Run: bazel run //dev:all_requirements.update
+multirun(
+    name = "all_requirements.update",
+    commands = [
+        "//tools/publish:{}.update".format(r)
+        for r in [
+            "requirements_universal",
+            "requirements_darwin",
+            "requirements_windows",
+            "requirements_linux",
+        ]
+    ] + [
+        ":requirements.update",
+        ":uv_lock.update",
+        "//examples:bzlmod_requirements_3_12.update",
+        "//examples:bzlmod_requirements_3_12_windows.update",
+        "//examples:bzlmod_requirements_3_13.update",
+        "//examples:bzlmod_requirements_3_13_windows.update",
+        "//examples:bzlmod_requirements_3_14.update",
+        "//examples:bzlmod_requirements_3_14_windows.update",
+        "//tests/multi_pypi/alpha:requirements.update",
+        "//tests/multi_pypi/beta:requirements.update",
+        "//tests/uv/lock/pyproject_toml:requirements.update",
+        "//tests/uv/lock/workspaces:requirements.update",
+    ],
+    tags = ["manual"],
+    visibility = ["//:__subpackages__"],
+)
+
+alias(
+    name = "requirements_all.update",
+    actual = ":all_requirements.update",
+    tags = ["manual"],
+    visibility = ["//:__subpackages__"],
+)
+
+# NOTE: The requirements for the pip dependencies may sometimes break the build
+# process due to how `pip-compile` works (i.e. it sometimes needs to build
+# wheels to resolve the `pyproject.toml` file.  Hence we do not lump the
+# target with the other targets above.
+alias(
+    name = "whl_library_requirements.update",
+    actual = "//tools/private/update_deps:update_pip_deps",
+    tags = ["manual"],
     visibility = ["//:__subpackages__"],
 )
