@@ -1,7 +1,7 @@
 import hashlib
 import stat
 
-from tools.private.zipapp import exe_zip_maker
+from tools.zipapp import exe_zip_maker
 
 
 def test_create_exe_zip(tmp_path):

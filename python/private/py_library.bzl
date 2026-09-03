@@ -34,6 +34,7 @@ load(
     "create_instrumented_files_info",
     "create_output_group_info",
     "create_py_info",
+    "filter_to_direct_sources",
     "filter_to_py_srcs",
 )
 load(":common_labels.bzl", "labels")
@@ -118,6 +119,28 @@ This allows optimizing the generation of symlinks to be cheaper at analysis time
     },
 )
 
+def _validate_srcs(ctx):
+    """Validate that srcs targets provide Python sources or Python metadata."""
+    for target in ctx.attr.srcs:
+        files = target[DefaultInfo].files.to_list()
+        if not files and (
+            PyInfo in target or
+            (BuiltinPyInfo != None and BuiltinPyInfo in target)
+        ):
+            continue
+
+        if filter_to_direct_sources(files):
+            continue
+
+        fail(
+            ("{} does not produce any py_library srcs files " +
+             "(expected .py, .pyc, or directory) and is not an empty target " +
+             "providing PyInfo").format(
+                target.label,
+            ),
+            attr = "srcs",
+        )
+
 def py_library_impl(ctx):
     """Abstract implementation of py_library rule.
 
@@ -127,14 +150,15 @@ def py_library_impl(ctx):
     Returns:
         A list of modern providers to propagate.
     """
-    direct_sources = filter_to_py_srcs(ctx.files.srcs)
+    _validate_srcs(ctx)
+    direct_sources = filter_to_direct_sources(ctx.files.srcs)
 
     precompile_result = maybe_precompile(ctx, direct_sources)
 
-    required_py_files = precompile_result.keep_srcs
+    required_py_files = filter_to_py_srcs(precompile_result.keep_srcs)
     required_pyc_files = []
     implicit_pyc_files = []
-    implicit_pyc_source_files = direct_sources
+    implicit_pyc_source_files = filter_to_py_srcs(direct_sources)
 
     precompile_attr = ctx.attr.precompile
     precompile_flag = ctx.attr._precompile_flag[BuildSettingInfo].value
@@ -285,7 +309,7 @@ def create_py_library_rule_builder():
         {obj}`ruleb.Rule` with the necessary settings
         for creating a `py_library` rule.
     """
-    builder = ruleb.Rule(
+    return ruleb.Rule(
         implementation = py_library_impl,
         doc = _DEFAULT_PY_LIBRARY_DOC,
         exec_groups = dict(REQUIRED_EXEC_GROUP_BUILDERS),
@@ -297,4 +321,3 @@ def create_py_library_rule_builder():
             ruleb.ToolchainType(EXEC_TOOLS_TOOLCHAIN_TYPE, mandatory = False),
         ],
     )
-    return builder

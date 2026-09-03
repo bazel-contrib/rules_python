@@ -2,7 +2,7 @@ import os
 import shutil
 import zipfile
 
-from tools.private.zipapp import zipper
+from tools.zipapp import zipper
 
 
 def symlink_target_path(p):

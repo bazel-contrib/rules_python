@@ -200,9 +200,9 @@ folder.  Look for the examples that contain a `MODULE.bazel` file.
 
 The `python.toolchain()` call makes its contents available under a repo named
 `python_X_Y`, where X and Y are the major and minor versions. For example,
-`python.toolchain(python_version="3.11")` creates the repo `@python_3_11`.
+`python.toolchain(python_version="3.14")` creates the repo `@python_3_14`.
 Remember to call `use_repo()` to make repos visible to your module:
-`use_repo(python, "python_3_11")`.
+`use_repo(python, "python_3_14")`.
 
 
 :::{deprecated} 1.1.0
@@ -457,17 +457,17 @@ To register a hermetic Python toolchain rather than rely on a system-installed i
 load("@rules_python//python:repositories.bzl", "python_register_toolchains")
 
 python_register_toolchains(
-    name = "python_3_11",
+    name = "python_3_14",
     # Available versions are listed in @rules_python//python:versions.bzl.
     # We recommend using the same version your team is already standardized on.
-    python_version = "3.11",
+    python_version = "3.14",
 )
 
 load("@rules_python//python:pip.bzl", "pip_parse")
 
 pip_parse(
     ...
-    python_interpreter_target = "@python_3_11_host//:python",
+    python_interpreter_target = "@python_3_14_host//:python",
     ...
 )
 ```
@@ -874,7 +874,7 @@ the executable pointing at the `python3` binary plus its relevant runfiles.
 
 ```console
 $ bazel run @rules_python//python/bin:python
-Python 3.11.1 (main, Jan 16 2023, 22:41:20) [Clang 15.0.7 ] on linux
+Python 3.14.4 (main, Jan 16 2026, 22:41:20) [Clang 15.0.7 ] on linux
 Type "help", "copyright", "credits" or "license" for more information.
 >>>
 $ bazel run @rules_python//python/bin:python --@rules_python//python/config_settings:python_version=3.12
@@ -886,15 +886,15 @@ Type "help", "copyright", "credits" or "license" for more information.
 You can also access a specific binary's interpreter this way by using the
 `@rules_python//python/bin:python_src` target. In the example below, it is
 assumed that the `@rules_python//tools/publish:twine` binary is fixed at Python
-3.11.
+3.14.
 
 ```console
 $ bazel run @rules_python//python/bin:python --@rules_python//python/bin:interpreter_src=@rules_python//tools/publish:twine
-Python 3.11.1 (main, Jan 16 2023, 22:41:20) [Clang 15.0.7 ] on linux
+Python 3.14.4 (main, Jan 16 2026, 22:41:20) [Clang 15.0.7 ] on linux
 Type "help", "copyright", "credits" or "license" for more information.
 >>>
 $ bazel run @rules_python//python/bin:python --@rules_python//python/bin:interpreter_src=@rules_python//tools/publish:twine --@rules_python//python/config_settings:python_version=3.12
-Python 3.11.1 (main, Jan 16 2023, 22:41:20) [Clang 15.0.7 ] on linux
+Python 3.14.4 (main, Jan 16 2026, 22:41:20) [Clang 15.0.7 ] on linux
 Type "help", "copyright", "credits" or "license" for more information.
 >>>
 ```

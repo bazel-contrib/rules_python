@@ -19,7 +19,7 @@ to a subagent. NEVER create or draft PRs directly in the main conversation.
    - **PR Title**: Conventional commits format (`agents:` prefix for agent
      rules/skills).
    - **PR Body**: Explain *why* and conceptual *how*. Wrap strictly at 72
-     columns max. Omit TAG/CONV.
+     columns max. Use concise, active phrasing (Strunk & White).
    - **Artifact Requirements**: Create `pr_info.md` with:
      - **User-facing**: Published directly in the user interface.
      - **Interactive feedback enabled**: Allows selecting lines and leaving

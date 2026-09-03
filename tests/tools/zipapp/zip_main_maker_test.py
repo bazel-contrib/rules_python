@@ -1,7 +1,7 @@
 import hashlib
 import os
 
-from tools.private.zipapp import zip_main_maker
+from tools.zipapp import zip_main_maker
 
 
 def test_creates_zip_main(tmp_path, monkeypatch):

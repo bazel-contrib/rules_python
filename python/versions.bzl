@@ -49,7 +49,7 @@ MINOR_MAPPING = {
     "3.12": "3.12.13",
     "3.13": "3.13.13",
     "3.14": "3.14.4",
-    "3.15": "3.15.0a8",
+    "3.15": "3.15.0rc1",
 }
 
 def _generate_platforms():
@@ -112,6 +112,14 @@ def _generate_platforms():
                 is_libc_glibc,
             ],
             os_name = LINUX_NAME,
+            arch = "x86_32",
+        ),
+        "i686-pc-windows-msvc": platform_info(
+            compatible_with = [
+                "@platforms//os:windows",
+                "@platforms//cpu:x86_32",
+            ],
+            os_name = WINDOWS_NAME,
             arch = "x86_32",
         ),
         "ppc64le-unknown-linux-gnu": platform_info(

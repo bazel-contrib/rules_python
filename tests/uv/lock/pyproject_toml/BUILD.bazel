@@ -17,9 +17,11 @@ lock(
         "//tests/uv/lock:testdata/constraints.txt",
         "//tests/uv/lock:testdata/constraints2.txt",
     ],
+    directory = "tests/uv/lock",
     # It seems that the CI remote executors for the RBE do not have network
     # connectivity due to current CI setup.
     tags = ["no-remote-exec"],
+    visibility = ["//:__subpackages__"],
 )
 
 diff_test(

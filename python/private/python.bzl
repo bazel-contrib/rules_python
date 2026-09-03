@@ -1210,10 +1210,10 @@ In order to use a different name than the above, you can use the following `MODU
 syntax:
 ```starlark
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
-python.defaults(python_version = "3.11")
-python.toolchain(python_version = "3.11")
+python.defaults(python_version = "3.14")
+python.toolchain(python_version = "3.14")
 
-use_repo(python, my_python_name = "python_3_11")
+use_repo(python, my_python_name = "python_3_14")
 ```
 
 Then the python interpreter will be available as `my_python_name`.

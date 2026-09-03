@@ -33,6 +33,7 @@ filegroup(
         "//tools/precompiler:distribution",
         "//tools/private:distribution",
         "//tools/publish:distribution",
+        "//tools/zipapp:distribution",
     ],
     visibility = ["//:__pkg__"],
 )

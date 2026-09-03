@@ -41,12 +41,12 @@ python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 # You can set different Python versions in this block.
 python.defaults(
     # The environment variable takes precedence if set.
-    python_version = "3.9",
+    python_version = "3.11",
     python_version_env = "BAZEL_PYTHON_VERSION",
 )
 python.toolchain(
     configure_coverage_tool = True,
-    python_version = "3.9",
+    python_version = "3.11",
 )
 
 # Use the extension, pip.parse, to call the `pip_repository` rule that invokes
@@ -67,7 +67,7 @@ pip.parse(
     # is used for both resolving dependencies and running tests/binaries.
     # If this isn't specified, then you'll get whatever is locally installed
     # on your system.
-    python_version = "3.9",
+    python_version = "3.11",
     requirements_lock = "//:requirements_lock.txt",
     requirements_windows = "//:requirements_windows.txt",
 )

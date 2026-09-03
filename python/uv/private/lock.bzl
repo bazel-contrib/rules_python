@@ -15,6 +15,7 @@
 """An implementation for a simple macro to lock the requirements.
 """
 
+load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("//python:py_binary.bzl", "py_binary")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
@@ -34,42 +35,85 @@ _RunLockInfo = provider(
     },
 )
 
+_DIRECTORY_AUTO = struct(_sentinel = True)
+
 def _args(ctx):
     """A small helper to ensure that the right args are pushed to the _RunLockInfo provider"""
     run_info = []
+    run_shell_list = []
     args = ctx.actions.args()
 
-    def _add_args(arg, maybe_value = None):
-        run_info.append(arg)
-        if maybe_value:
-            args.add(arg, maybe_value)
-            run_info.append(maybe_value)
+    def _add(arg, maybe_value = None, format = None):
+        if format != None:
+            formatted = format % arg
+            run_info.append(formatted)
+            run_shell_list.append(formatted)
+            args.add(arg, format = format)
         else:
+            run_info.append(arg)
+            run_shell_list.append(arg)
             args.add(arg)
+            if maybe_value != None:
+                run_info.append(maybe_value)
+                run_shell_list.append(maybe_value)
+                args.add(maybe_value)
 
-    def _add_all(name, all_args = None, **kwargs):
-        if not all_args and type(name) == "list":
-            all_args = name
-            name = None
-
-        before_each = kwargs.get("before_each")
-        if name:
-            args.add_all(name, all_args, **kwargs)
-            run_info.append(name)
+    def _add_run_shell(arg, maybe_value = None, format = None):
+        if format != None:
+            formatted = format % arg
+            run_shell_list.append(formatted)
+            args.add(arg, format = format)
         else:
-            args.add_all(all_args, **kwargs)
+            run_shell_list.append(arg)
+            args.add(arg)
+            if maybe_value != None:
+                run_shell_list.append(maybe_value)
+                args.add(maybe_value)
 
-        for arg in all_args:
-            if before_each:
-                run_info.append(before_each)
+    def _add_run_info(arg):
+        if type(arg) == "list":
+            run_info.extend(arg)
+        else:
             run_info.append(arg)
 
     return struct(
         run_info = run_info,
         run_shell = args,
-        add = _add_args,
-        add_all = _add_all,
+        run_shell_list = run_shell_list,
+        add = _add,
+        add_run_shell = _add_run_shell,
+        add_run_info = _add_run_info,
     )
+
+def _reroot(x, directory):
+    if not directory:
+        return x
+
+    if hasattr(x, "path"):
+        x = x.path
+
+    if x == directory:
+        return "."
+
+    return paths.relativize(x, directory)
+
+def _reroot_all(xs, directory):
+    return [
+        _reroot(x, directory)
+        for x in xs
+    ]
+
+def _up(x, directory, short_path = False):
+    if hasattr(x, "short_path") if short_path else hasattr(x, "path"):
+        x = x.short_path if short_path else x.path
+    elif hasattr(x, "path"):
+        x = x.path
+
+    if not directory:
+        return x
+
+    prefix = "/".join([".."] * len(directory.split("/")))
+    return "{}/{}".format(prefix, x)
 
 def _common_lock(ctx, locker):
     fname = "{}.out".format(ctx.label.name)
@@ -98,55 +142,58 @@ def _common_lock(ctx, locker):
     # * progress_message is the same
     srcs, output_filename, mnemonic, progress_message = locker(args, output)
 
-    args.add_all([
-        "--no-python-downloads",
-        "--no-cache",
-    ])
+    args.add("--no-python-downloads")
+    args.add("--no-cache")
 
-    project = None
-    if ctx.attr.project:
-        project = ctx.attr.project
-    else:
+    project = ctx.attr.project
+    if not project:
         # Autodetect the project based on the `pyproject.toml` location - it will be the first src that
         # we see that is named "pyproject.toml"
         for src in srcs:
             if src.basename == "pyproject.toml":
-                if project == None:
-                    project = src.dirname
-                elif len(project) > len(src.dirname):
+                if not project or len(project) > len(src.dirname):
                     # select the shortest match
                     project = src.dirname
 
-    if project == None:
-        project = ctx.label.package
+    directory = ctx.attr.directory
+    if directory:
+        args.add_run_shell("--directory={}".format(directory))
+        args.add_run_info("--directory={}".format(directory))
 
     if project:
-        args.add_all([project], before_each = "--project")
+        rerooted_project = _reroot(project, directory)
+        if rerooted_project:
+            args.add(rerooted_project, format = "--project=%s")
 
-    args.add_all(ctx.attr.args)
+    for arg in ctx.attr.args:
+        args.add(arg)
 
     exec_tools = ctx.toolchains[EXEC_TOOLS_TOOLCHAIN_TYPE].exec_tools
     runtime = exec_tools.exec_interpreter[platform_common.ToolchainInfo].py3_runtime
     python = runtime.interpreter or runtime.interpreter_path
     python_files = runtime.files or depset()
-    args.add("--python", python)
+
+    # Handle python
+    args.add_run_shell("--python", _up(python, directory))
+    args.add_run_info(["--python", _up(python, directory, short_path = True)])
 
     # These arguments does not change behaviour, but it reduces the output from
     # the command, which is especially verbose in stderr.
     args.add("--no-progress")
     args.add("--quiet")
 
+    project_dir = project or ctx.label.package
+    project_lock = (
+        "{}/uv.lock".format(project_dir) if project_dir else "uv.lock"
+    )
+
     if ctx.files.existing_output:
         src_out = ctx.files.existing_output[0].path
     elif output_filename:
         # special case - the output filename has to be in the source tree and it has to have a
         # special name, we use the project folder to determine this.
-
-        if not project:
-            fail("Cannot lock this if the project dir is unset or cannot be infered")
-
         src_out = "{project}/{out_filename}".format(
-            project = project,
+            project = project_dir,
             out_filename = output_filename,
         )
     else:
@@ -160,14 +207,19 @@ def _common_lock(ctx, locker):
         path_sep = "/"
         ext = ""
 
-    output_path = output.path.replace("/", path_sep) if is_windows else output.path
+    output_path = (
+        output.path.replace("/", path_sep) if is_windows else output.path
+    )
     src_out_path = src_out.replace("/", path_sep) if is_windows else src_out
+    project_lock_path = (
+        project_lock.replace("/", path_sep) if is_windows else project_lock
+    )
 
     # On Windows, all args must be embedded in the .bat script because
     # arguments are not passed on the command line.
     if is_windows:
         args_parts = []
-        for i, arg in enumerate(args.run_info):
+        for i, arg in enumerate(args.run_shell_list):
             if hasattr(arg, "path"):
                 arg = arg.path
 
@@ -177,19 +229,12 @@ def _common_lock(ctx, locker):
             if i == 0:
                 a = arg.replace("/", "\\")
             else:
-                a = arg
+                a = str(arg)
             a = a.replace('"', '""')
             args_parts.append('"' + a + '"')
-
-        # uv pip compile adds --output-file to run_shell (not run_info).
-        # For the lock case, output_filename is "uv.lock" and uv lock
-        # writes to the project directory without --output-file.
-        if not output_filename:
-            args_parts.append('"--output-file"')
-            args_parts.append('"' + output_path + '"')
         windows_args = " ".join(args_parts)
     else:
-        windows_args = " ".join([])
+        windows_args = ""
 
     script = ctx.actions.declare_file(ctx.label.name + "_lock" + ext)
     ctx.actions.expand_template(
@@ -197,6 +242,7 @@ def _common_lock(ctx, locker):
         substitutions = {
             '"{{args}}"': windows_args,
             "{{out}}": output_path,
+            "{{project_lock}}": project_lock_path,
             "{{src_out}}": src_out_path,
         },
         output = script,
@@ -242,7 +288,8 @@ def _common_lock(ctx, locker):
 
 def _pip_compile_impl(ctx):
     def _setup_args(args, output):
-        args.add_all(["pip", "compile"])
+        args.add("pip")
+        args.add("compile")
         pkg = ctx.label.package
         update_target = ctx.attr.update_target
         args.add("--custom-compile-command", "bazel run //{}:{}".format(pkg, update_target))
@@ -252,14 +299,19 @@ def _pip_compile_impl(ctx):
         if not ctx.attr.strip_extras:
             args.add("--no-strip-extras")
 
-        args.add_all(ctx.files.build_constraints, before_each = "--build-constraints")
-        args.add_all(ctx.files.constraints, before_each = "--constraints")
+        directory = ctx.attr.directory
 
-        args.run_shell.add("--output-file", output)
+        for constraint in _reroot_all(ctx.files.build_constraints, directory):
+            args.add("--build-constraints", constraint)
+        for constraint in _reroot_all(ctx.files.constraints, directory):
+            args.add("--constraints", constraint)
+
+        args.add_run_shell("--output-file", _up(output, directory))
         mnemonic = "PyRequirementsLockUv"
         progress_message = "Creating a requirements.txt with uv: %{label}"
 
-        args.add_all(ctx.files.srcs)
+        for src in _reroot_all(ctx.files.srcs, directory):
+            args.add(src)
         srcs = ctx.files.srcs + ctx.files.build_constraints + ctx.files.constraints
 
         return srcs, None, mnemonic, progress_message
@@ -283,6 +335,12 @@ _python_version_transition = transition(
 _common_attrs = {
     "args": attr.string_list(
         doc = "Public, see the docs in the macro.",
+    ),
+    "directory": attr.string(
+        doc = """
+Sets the --directory flag if provided. Will fail if at least one of the files
+does not start with the given prefix of the directory.
+""",
     ),
     "env": attr.string_dict(
         doc = "Public, see the docs in the macro.",
@@ -535,6 +593,7 @@ def lock(
         env = None,
         generate_hashes = True,
         python_version = None,
+        directory = _DIRECTORY_AUTO,
         project = None,
         strip_extras = False,
         **kwargs):
@@ -574,6 +633,10 @@ def lock(
             is passed as is and the environment variables are not expanded.
         build_constraints: {type}`list[Label]` The list of build constraints to use.
         constraints: {type}`list[Label]` The list of constraints files to use.
+        directory: {type}`str | None` The directory into which we should cd when
+            running the command. Defaults to `native.package()`. Set to `None`
+            or `""` to restore behaviour before `VERSION_NEXT_FEATURE`.
+            {versionadded} VERSION_NEXT_FEATURE
         generate_hashes: {type}`bool` Generate hashes for all of the
             requirements. Only meaningful for `requirements.txt` style output.
             Defaults to `True`.
@@ -636,6 +699,10 @@ def lock(
         lock_target_kwargs["build_constraints"] = build_constraints
     if constraints:
         lock_target_kwargs["constraints"] = constraints
+    if directory == _DIRECTORY_AUTO:
+        directory = native.package_name()
+    if directory:
+        lock_target_kwargs["directory"] = directory
 
     if out.endswith(".lock"):
         _lock(name = name, **lock_target_kwargs)
@@ -676,3 +743,9 @@ def lock(
         tags = tags,
         **kwargs
     )
+
+testing = struct(
+    reroot = _reroot,
+    reroot_all = _reroot_all,
+    up = _up,
+)

@@ -255,9 +255,26 @@ class LockTests(unittest.TestCase):
         self.assertIn("--output-file", content)
         self.assertIn("requirements.txt", content)
 
-    def test_requirements_run(self):
+    def test_requirements_directory_run_script_has_expected_args(self):
+        """Verify the .run script template for directory attribute has --directory embedded."""
+        run_script_path = _relative_rpath("requirements_directory.run")
+        content = run_script_path.read_text().replace("\\", "/")
+
+        self.assertIn("--directory=tests/uv/lock/testdata", content)
+        self.assertIn("BUILD_WORKSPACE_DIRECTORY", content)
+        self.assertIn("requirements_directory.txt", content)
+
+    def test_uv_lock_directory_run_script_has_expected_args(self):
+        """Verify the uv lock .run script with directory has --directory embedded."""
+        run_script_path = _relative_rpath("uv_lock_directory_test.run")
+        content = run_script_path.read_text().replace("\\", "/")
+
+        self.assertIn("--directory=tests/uv/lock/testdata", content)
+        self.assertIn("BUILD_WORKSPACE_DIRECTORY", content)
+
+    def test_requirements_directory_updating(self):
         # Given
-        copier_path = _relative_rpath("requirements.run")
+        copier_path = _relative_rpath("requirements_directory.update")
 
         # When
         with tempfile.TemporaryDirectory() as dir:
@@ -268,7 +285,40 @@ class LockTests(unittest.TestCase):
                 / "uv"
                 / "lock"
                 / "testdata"
-                / "requirements.txt"
+                / "requirements_directory.txt"
+            )
+            want_path.parent.mkdir(parents=True)
+
+            output = _run_binary(
+                copier_path,
+                capture_output=True,
+                env=self._subprocess_env(workspace_dir),
+            )
+
+            # Then
+            self.assertEqual(0, output.returncode)
+            stdout = output.stdout.decode("utf-8").replace("\\", "/")
+            self.assertIn(
+                "cp <bazel-sandbox>/tests/uv/lock/requirements_directory",
+                stdout,
+            )
+            self.assertTrue(want_path.exists(), "The path should exist after the test")
+            self.assertNotEqual(want_path.read_text(), "")
+
+    def test_requirements_directory_run(self):
+        # Given
+        copier_path = _relative_rpath("requirements_directory.run")
+
+        # When
+        with tempfile.TemporaryDirectory() as dir:
+            workspace_dir = Path(dir)
+            want_path = (
+                workspace_dir
+                / "tests"
+                / "uv"
+                / "lock"
+                / "testdata"
+                / "requirements_directory.txt"
             )
             want_path.parent.mkdir(parents=True)
 
@@ -283,7 +333,6 @@ class LockTests(unittest.TestCase):
             self.assertTrue(want_path.exists(), "The path should exist after the test")
             got_contents = want_path.read_text()
             self.assertNotEqual(got_contents, "")
-            # NOTE: stdout is typically empty because uv runs with --quiet --no-progress
 
 
 if __name__ == "__main__":

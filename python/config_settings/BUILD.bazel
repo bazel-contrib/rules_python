@@ -26,9 +26,7 @@ load(":config_settings.bzl", "construct_config_settings")
 
 filegroup(
     name = "distribution",
-    srcs = glob(["**"]) + [
-        "//python/config_settings/private:distribution",
-    ],
+    srcs = glob(["**"]),
     visibility = ["//python:__pkg__"],
 )
 

@@ -4,18 +4,12 @@ if not defined BUILD_WORKSPACE_DIRECTORY goto :not_in_workspace
 exit /b %ERRORLEVEL%
 
 :not_in_workspace
-
-if not exist "{{src_out}}" goto :no_src_out
-copy /y "{{src_out}}" "{{out}}"
-del /f "{{src_out}}"
-copy /y "{{out}}" "{{src_out}}"
+if exist "{{src_out}}" copy /y "{{src_out}}" "{{out}}" >nul
+if exist "{{out}}" (
+    for %%d in ("{{project_lock}}") do mkdir "%%~dpd" >nul 2>&1
+    copy /y "{{out}}" "{{project_lock}}" >nul
+)
 "{{args}}" %*
 set "exit_code=%ERRORLEVEL%"
-copy /y "{{src_out}}" "{{out}}"
-exit /b %exit_code%
-
-:no_src_out
-"{{args}}" %*
-set "exit_code=%ERRORLEVEL%"
-copy /y "{{src_out}}" "{{out}}"
+if exist "{{project_lock}}" copy /y "{{project_lock}}" "{{out}}" >nul
 exit /b %exit_code%

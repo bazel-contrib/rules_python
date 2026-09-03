@@ -108,7 +108,7 @@ _DEFAULT_RUNTIMES_MANIFEST = """
 9999999999999999999999999999999999999999999999999999999999999999  20241016/cpython-3.13.0+20241016-x86_64-unknown-linux-gnu-install_only.tar.gz
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  20260414/cpython-3.14.4+20260414-x86_64-unknown-linux-gnu-install_only.tar.gz
 bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb  20251031/cpython-3.14.0+20251031-x86_64-unknown-linux-gnu-install_only.tar.gz
-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc  20260414/cpython-3.15.0a8+20260414-x86_64-unknown-linux-gnu-install_only.tar.gz
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc  20260804/cpython-3.15.0rc1+20260804-x86_64-unknown-linux-gnu-install_only.tar.gz
 dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd  20241205/cpython-3.13.1+20241205-x86_64-unknown-linux-gnu-install_only.tar.gz
 """
 

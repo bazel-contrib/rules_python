@@ -24,11 +24,13 @@ Backports can be done to older releases, but only if newer releases also have
 the fix backported. For example, if the current release is 1.5, in order to
 patch 1.4, version 1.5 must be patched first.
 
-Backports can be requested by [creating an issue with the patch release
-template][patch-release-issue] or by sending a pull request performing the backport.
-See the dev guide for [how to create a backport PR](creating-backport-prs).
+Backports can be requested by [creating an issue with the release or backport
+tracking template][backport-issue] or by sending a pull request performing the
+backport. Creating an issue is preferred because it triggers automation to
+perform all necessary backporting steps. See the dev guide for
+[how to create a backport PR](creating-backport-prs).
 
-[patch-release-issue]: https://github.com/bazelbuild/rules_python/issues/new?template=patch_release_request.md
+[backport-issue]: https://github.com/bazel-contrib/rules_python/issues/new?template=release_tracking_template.md
 
 ## Supported Bazel Versions
 
@@ -67,8 +69,8 @@ guideline for different platform tiers:
   What is more, `windows_x86_64` is in this list, as we run tests in CI, but
   developing for Windows is more challenging, and features may come later to
   this platform.
-* Tier 2 - The rest of the platforms that may have a varying level of support, e.g.,
-  `linux_s390x`, `linux_ppc64le`, `windows_arm64`.
+* Tier 2 - Other platforms have varying levels of support, e.g.,
+  `linux_s390x`, `linux_ppc64le`, `windows_arm64`, `nix`.
 
 :::{note}
 Code to support Tier 2 platforms is allowed, but regressions will be fixed on a

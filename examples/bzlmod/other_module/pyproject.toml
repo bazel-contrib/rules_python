@@ -1,0 +1,6 @@
+[project]
+name = "other_module"
+version = "0.0.0"
+dependencies = [
+    "absl-py",
+]

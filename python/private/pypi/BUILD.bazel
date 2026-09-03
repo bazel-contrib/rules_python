@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("//python:py_binary.bzl", "py_binary")
 
 package(default_visibility = ["//:__subpackages__"])
 
@@ -32,20 +33,34 @@ alias(
     visibility = ["//visibility:public"],
 )
 
+py_binary(
+    name = "venv_shebang_rewriter_py",
+    srcs = ["venv_shebang_rewriter.py"],
+    legacy_create_init = False,
+    main = "venv_shebang_rewriter.py",
+)
+
 alias(
     name = "venv_shebang_rewriter",
     actual = select({
         "@platforms//os:windows": "venv_shebang_rewriter.ps1",
-        "//conditions:default": "venv_shebang_rewriter.sh",
+        "//conditions:default": "venv_shebang_rewriter_py",
     }),
     visibility = ["//visibility:public"],
+)
+
+py_binary(
+    name = "wheel_record_rewriter_py",
+    srcs = ["wheel_record_rewriter.py"],
+    legacy_create_init = False,
+    main = "wheel_record_rewriter.py",
 )
 
 alias(
     name = "wheel_record_rewriter",
     actual = select({
         "@platforms//os:windows": "wheel_record_rewriter.ps1",
-        "//conditions:default": "wheel_record_rewriter.sh",
+        "//conditions:default": "wheel_record_rewriter_py",
     }),
     visibility = ["//visibility:public"],
 )
@@ -342,6 +357,7 @@ bzl_library(
     srcs = ["pkg_aliases.bzl"],
     deps = [
         ":labels",
+        ":whl_library_deps_targets",
         "//python/private:common_labels",
         "//python/private:text_util",
         "@bazel_skylib//lib:selects",
@@ -500,17 +516,8 @@ bzl_library(
     name = "whl_library_targets",
     srcs = ["whl_library_targets.bzl"],
     deps = [
-        ":env_marker_setting",
-        ":gen_wheel_record",
-        ":labels",
-        ":namespace_pkgs",
-        ":pep508_deps",
-        ":venv_entry_point",
-        ":venv_rewrite_shebang",
-        "//python:py_binary",
-        "//python:py_library",
-        "//python/private:normalize_name",
-        "@bazel_skylib//rules:copy_file",
+        ":whl_library_deps_targets",
+        ":whl_library_srcs",
     ],
 )
 
@@ -587,6 +594,32 @@ bzl_library(
         ":whl_metadata",
         "//python/private:normalize_name",
         "//python/private:repo_utils",
+    ],
+)
+
+bzl_library(
+    name = "whl_library_deps_targets",
+    srcs = ["whl_library_deps_targets.bzl"],
+    deps = [
+        ":env_marker_setting",
+        ":labels",
+        ":pep508_deps",
+        "//python:py_library",
+        "//python/private:normalize_name",
+    ],
+)
+
+bzl_library(
+    name = "whl_library_srcs",
+    srcs = ["whl_library_srcs.bzl"],
+    deps = [
+        ":gen_wheel_record",
+        ":labels",
+        ":namespace_pkgs",
+        ":venv_entry_point",
+        ":venv_rewrite_shebang",
+        "//python:py_library",
+        "@bazel_skylib//rules:copy_file",
     ],
 )
 

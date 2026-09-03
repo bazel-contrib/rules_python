@@ -7,9 +7,9 @@ fi
 
 # Build action mode
 #
-# If the uv.lock exists, remove because the existing uv.lock file is read-only, then symlink so
-# that we can reuse the existing contents and not do a full relock all the time. If
-# nothing exists, just symlink.
+# If the uv.lock exists, remove because the existing uv.lock file is read-only,
+# then symlink so that we can reuse the existing contents and not do a full
+# relock all the time. If nothing exists, just symlink.
 #
 # On Windows we do it with file copies:
 # 1. If the file exists:
@@ -24,9 +24,10 @@ fi
 readonly out="{{out}}"
 if [[ -f "{{src_out}}" ]]; then
     cp "{{src_out}}" "$out"
-    rm "{{src_out}}"
-    ln -s "$(pwd)"/"$out" "{{src_out}}"
-else
-    ln -s "$(pwd)"/"$out" "{{src_out}}"
 fi
+if [[ -e "{{project_lock}}" ]]; then
+    rm -f "{{project_lock}}"
+fi
+mkdir -p "$(dirname "{{project_lock}}")"
+ln -s "$(pwd)"/"$out" "{{project_lock}}"
 exec "$@"

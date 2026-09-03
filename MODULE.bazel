@@ -47,14 +47,14 @@ python = use_extension("//python/extensions:python.bzl", "python")
 # NOTE: There must be a corresponding `python.toolchain()` call for the version
 # specified here.
 python.defaults(
-    python_version = "3.11",
+    python_version = "3.14",
 )
 python.toolchain(
-    python_version = "3.11",
+    python_version = "3.14",
 )
 use_repo(
     python,
-    "python_3_11",
+    "python_3_14",
     "pythons_hub",
     python = "python_versions",
 )
@@ -68,12 +68,20 @@ register_toolchains("@pythons_hub//:all")
 pip = use_extension("//python/extensions:pip.bzl", "pip")
 pip.parse(
     hub_name = "rules_python_publish_deps",
-    python_version = "3.11",
+    python_version = "3.14",
     requirements_by_platform = {
         "//tools/publish:requirements_darwin.txt": "osx_*",
         "//tools/publish:requirements_linux.txt": "linux_*",
         "//tools/publish:requirements_windows.txt": "windows_*",
     },
+    target_platforms = [
+        "linux_aarch64",
+        "linux_x86_64",
+        "osx_aarch64",
+        "osx_x86_64",
+        "windows_aarch64",
+        "windows_x86_64",
+    ],
 )
 use_repo(pip, "rules_python_publish_deps")
 
@@ -203,7 +211,6 @@ dev_pip = use_extension(
         uv_lock = "//dev:uv.lock",
     )
     for python_version in [
-        "3.9",
         "3.10",
         "3.11",
         "3.12",
@@ -215,17 +222,17 @@ dev_pip = use_extension(
 dev_pip.parse(
     download_only = True,
     hub_name = "pypiserver",
-    python_version = "3.11",
+    python_version = "3.14",
     requirements_lock = "//examples/wheel:requirements_server.txt",
 )
 dev_pip.parse(
     hub_name = "pypi_alpha",
-    python_version = "3.11",
+    python_version = "3.14",
     requirements_lock = "//tests/multi_pypi/alpha:requirements.txt",
 )
 dev_pip.parse(
     hub_name = "pypi_beta",
-    python_version = "3.11",
+    python_version = "3.14",
     requirements_lock = "//tests/multi_pypi/beta:requirements.txt",
 )
 use_repo(dev_pip, "dev_pip", "pypi", "pypi_alpha", "pypi_beta", "pypiserver")

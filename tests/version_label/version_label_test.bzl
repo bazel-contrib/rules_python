@@ -20,26 +20,26 @@ load("//python/private:version_label.bzl", "version_label")  # buildifier: disab
 _tests = []
 
 def _test_version_label_from_major_minor_version(env):
-    actual = version_label("3.9")
-    env.expect.that_str(actual).equals("39")
+    actual = version_label("3.10")
+    env.expect.that_str(actual).equals("310")
 
 _tests.append(_test_version_label_from_major_minor_version)
 
 def _test_version_label_from_major_minor_patch_version(env):
-    actual = version_label("3.9.3")
-    env.expect.that_str(actual).equals("39")
+    actual = version_label("3.10.3")
+    env.expect.that_str(actual).equals("310")
 
 _tests.append(_test_version_label_from_major_minor_patch_version)
 
 def _test_version_label_from_major_minor_version_custom_sep(env):
-    actual = version_label("3.9", sep = "_")
-    env.expect.that_str(actual).equals("3_9")
+    actual = version_label("3.10", sep = "_")
+    env.expect.that_str(actual).equals("3_10")
 
 _tests.append(_test_version_label_from_major_minor_version_custom_sep)
 
 def _test_version_label_from_complex_version(env):
-    actual = version_label("3.9.3-rc.0")
-    env.expect.that_str(actual).equals("39")
+    actual = version_label("3.10.3-rc.0")
+    env.expect.that_str(actual).equals("310")
 
 _tests.append(_test_version_label_from_complex_version)
 

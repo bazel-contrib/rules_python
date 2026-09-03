@@ -1,0 +1,6 @@
+[project]
+name = "uv_lock_test"
+version = "0.0.0"
+dependencies = [
+    "my-local-pkg==1.0.0",
+]

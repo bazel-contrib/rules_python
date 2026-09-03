@@ -110,6 +110,34 @@ def _test_gen_wheel_record_multiple_srcs_impl(env, target):
         any(["site-packages/delta-2.0.dist-info/RECORD" in p for p in paths]),
     ).equals(True)
 
+def _test_gen_wheel_record_rewritten_scripts(name):
+    rt_util.helper_target(
+        native.genrule,
+        name = name + "_src",
+        outs = [name + "_orig/epsilon-1.0.dist-info/RECORD"],
+        cmd = "echo 'epsilon-1.0.data/scripts/foo.sh' > $@",
+    )
+    rt_util.helper_target(
+        gen_wheel_record,
+        name = name + "_subject",
+        srcs = [":" + name + "_src"],
+        rewritten_scripts = ["foo", "my tool"],
+    )
+    analysis_test(
+        name = name,
+        target = name + "_subject",
+        impl = _test_gen_wheel_record_rewritten_scripts_impl,
+    )
+
+_tests.append(_test_gen_wheel_record_rewritten_scripts)
+
+def _test_gen_wheel_record_rewritten_scripts_impl(env, target):
+    files = target[DefaultInfo].files.to_list()
+    env.expect.that_collection(files).has_size(1)
+    action = env.expect.that_target(target).action_generating(files[0].short_path)
+    action.argv().contains("foo")
+    action.argv().contains("my tool")
+
 def whl_extract_test_suite(name):
     """Create the test suite.
 

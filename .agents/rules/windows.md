@@ -30,3 +30,20 @@
   `foo.cp311-win_amd64.pyd`).
 * SOABI on Windows includes both the ABI prefix and platform tag (e.g.,
   `cp311-win_amd64`).
+
+## Extended Paths (`\\?\`)
+* **Test Path Lengths**: Keep source directories short so MSVC `cl.exe` params
+  files stay under 260 chars (`MAX_PATH`, avoids `D8022`). Rely on runfiles
+  expansion (`.exe.runfiles/_main/...`) to exceed `MAX_PATH` at runtime.
+* **No `..` Segments**: Win32 ignores `..` on `\\?\` paths. Always call
+  `os.path.normpath(...)` before accessing files (e.g., wheel `RECORD` paths).
+* **Comparing Executables**: Subprocesses may drop `\\?\` or `\\?\UNC\`
+  prefixes. Strip prefixes and compare via
+  `os.path.normcase(os.path.normpath(...))`.
+
+## Windows Wheel Script Rewriting & RECORD Generation
+* **Shebang Rewriting**: On Windows, scripts that use shebangs are rewritten into
+  wrapper scripts with `.bat` file extensions.
+* **RECORD File Paths**: In `RECORD` files, append `.bat` only to the
+  shebang-rewritten scripts. Leave all other script paths unchanged.
+

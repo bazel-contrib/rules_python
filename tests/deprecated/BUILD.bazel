@@ -1,13 +1,13 @@
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load(
-    "@python//3.11:defs.bzl",
+    "@python//3.14:defs.bzl",
     hub_compile_pip_requirements = "compile_pip_requirements",
     hub_py_binary = "py_binary",
     hub_py_console_script_binary = "py_console_script_binary",
     hub_py_test = "py_test",
 )
 load(
-    "@python_3_11//:defs.bzl",
+    "@python_3_14//:defs.bzl",
     versioned_compile_pip_requirements = "compile_pip_requirements",
     versioned_py_binary = "py_binary",
     versioned_py_console_script_binary = "py_console_script_binary",
@@ -21,14 +21,14 @@ transition_py_binary(
     name = "transition_py_binary",
     srcs = ["dummy.py"],
     main = "dummy.py",
-    python_version = "3.11",
+    python_version = "3.14",
 )
 
 transition_py_test(
     name = "transition_py_test",
     srcs = ["dummy.py"],
     main = "dummy.py",
-    python_version = "3.11",
+    python_version = "3.14",
 )
 
 versioned_py_binary(
@@ -51,7 +51,7 @@ versioned_py_console_script_binary(
 
 versioned_compile_pip_requirements(
     name = "versioned_compile_pip_requirements",
-    src = "requirements.in",
+    src = "pyproject.toml",
     requirements_txt = "requirements.txt",
 )
 
@@ -75,7 +75,7 @@ hub_py_console_script_binary(
 
 hub_compile_pip_requirements(
     name = "hub_compile_pip_requirements",
-    src = "requirements.in",
+    src = "pyproject.toml",
     requirements_txt = "requirements_hub.txt",
 )
 

@@ -95,11 +95,11 @@ integration test.
 
 1. Modify the `./python/private/pypi/requirements.txt` file and run:
    ```
-   bazel run //private:whl_library_requirements.update
+   bazel run //dev:whl_library_requirements.update
    ```
 1. Run the following target to update `twine` dependencies:
    ```
-   bazel run //private:requirements.update
+   bazel run //dev:all_requirements.update
    ```
 1. Bump the coverage dependencies using the script using:
    ```
@@ -111,26 +111,34 @@ integration test.
 ## Updating tool dependencies
 
 It's suggested to routinely update the tool versions within our repo. Some of the
-tools are using requirement files compiled by `uv`, and others use other means. In order
-to have everything self-documented, we have a special target,
-`//private:requirements.update`, which uses `rules_multirun` to run all
-of the requirement-updating scripts in sequence in one go. This can be done once per release as
-we prepare for releases.
+tools are using requirement files compiled by `uv`, and others use other means.
+In order to have everything self-documented, we have a special target,
+`//dev:all_requirements.update`, which uses `rules_multirun` to run all of the
+requirement-updating scripts in sequence in one go. This can be done once per
+release as we prepare for releases.
 
 (creating-backport-prs)=
 ## Creating Backport PRs
 
+:::{note}
+Prefer filing a backport issue using the [release or backport tracking
+template][backport-issue], because it triggers automation to perform all
+necessary backporting steps.
+:::
+
 The steps to create a backport PR are:
 
-1.  Create an issue for the patch release; use the [patch release
-    template][patch-release-issue].
-2.  Create a fork of `rules_python`.
-3.  Checkout the `release/X.Y` branch.
-4.  Use `git cherry-pick -x` to cherry pick the desired fixes.
-5.  Update the release's `CHANGELOG.md` file:
-    * Add a Major.Minor.Patch section if one doesn't exist
-    * Copy the changelog text from `main` to the release's changelog.
-6.  Send a PR with the backport's changes.
+1.  Create a fork of `rules_python`.
+2.  Checkout the `release/X.Y` branch.
+3.  Use `git cherry-pick -x` to cherry pick the desired fixes.
+4.  Update the release's `CHANGELOG.md` file using the release tool's
+    `process-news` command:
+    ```shell
+    bazel run //tools/private/release -- process-news <VERSION> <PR_NUMBER>
+    ```
+    This merges the PR's news entries into `CHANGELOG.md`, deletes the news
+    files, and updates any `VERSION_NEXT_*` markers.
+5.  Send a PR with the backport's changes.
     * The title should be `backport: PR#N to Major.Minor`
     * The body must preserve the original PR's number, commit hash, description,
       and authorship.
@@ -145,7 +153,12 @@ The steps to create a backport PR are:
       ```
     * If the PR contains multiple backport commits, separate each's description
       with `-----`.
-7.  Send a PR to update the `main` branch's `CHANGELOG.md` to reflect the
-    changes done in the patched release.
+6.  Send a PR to update the `main` branch's `CHANGELOG.md` to reflect the
+    changes done in the patched release:
+    * Checkout the `main` branch.
+    * Run the `process-news` command as before:
+      ```shell
+      bazel run //tools/private/release -- process-news <VERSION> <PR_NUMBER>
+      ```
 
-[patch-release-issue]: https://github.com/bazelbuild/rules_python/issues/new?template=patch_release.md
+[backport-issue]: https://github.com/bazel-contrib/rules_python/issues/new?template=release_tracking_template.md
