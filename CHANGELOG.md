@@ -46,9 +46,6 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 * (zipapp) Fixed handling of {obj}`PyRuntimeInfo` with `files = None` so creating
   zipapp archives does not error.
 
-
-
-
 {#v2-3-2}
 ## [2.3.2] - 2026-08-22
 
