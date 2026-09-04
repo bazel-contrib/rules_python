@@ -92,7 +92,11 @@ def default_platforms():
                 "marker": "python_version >= '3.13'" if freethreaded else "",
                 "name": platform_name,
                 "os_name": "linux",
-                "whl_abi_tags": ["cp{major}{minor}t"] if freethreaded else [
+                "whl_abi_tags": [
+                    "none",
+                    "cp{major}{minor}t",
+                ] if freethreaded else [
+                    "none",
                     "abi3",
                     "cp{major}{minor}",
                 ],
@@ -122,7 +126,11 @@ def default_platforms():
                 "marker": "python_version >= '3.13'" if freethreaded else "",
                 "name": platform_name,
                 "os_name": "osx",
-                "whl_abi_tags": ["cp{major}{minor}t"] if freethreaded else [
+                "whl_abi_tags": [
+                    "none",
+                    "cp{major}{minor}t",
+                ] if freethreaded else [
+                    "none",
                     "abi3",
                     "cp{major}{minor}",
                 ],
@@ -148,7 +156,11 @@ def default_platforms():
             "marker": "python_version >= '3.13'" if freethreaded else "",
             "name": platform_name,
             "os_name": "windows",
-            "whl_abi_tags": ["cp{major}{minor}t"] if freethreaded else [
+            "whl_abi_tags": [
+                "none",
+                "cp{major}{minor}t",
+            ] if freethreaded else [
+                "none",
                 "abi3",
                 "cp{major}{minor}",
             ],
@@ -171,7 +183,11 @@ def default_platforms():
             "marker": "python_version >= '3.13'" if freethreaded else "python_version >= '3.11'",
             "name": platform_name,
             "os_name": "windows",
-            "whl_abi_tags": ["cp{major}{minor}t"] if freethreaded else [
+            "whl_abi_tags": [
+                "none",
+                "cp{major}{minor}t",
+            ] if freethreaded else [
+                "none",
                 "abi3",
                 "cp{major}{minor}",
             ],

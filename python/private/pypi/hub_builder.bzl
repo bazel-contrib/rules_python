@@ -459,17 +459,25 @@ def _platforms(module_ctx, *, python_version, config, target_platforms):
         if values.marker and not evaluate(values.marker, env = env_):
             continue
 
+        whl_abi_tags = [
+            v.format(
+                major = python_version.release[0],
+                minor = python_version.release[1],
+            )
+            for v in values.whl_abi_tags
+        ]
+        if "none" not in whl_abi_tags:
+            whl_abi_tags = ["none"] + whl_abi_tags
+
+        whl_platform_tags = list(values.whl_platform_tags)
+        if "any" not in whl_platform_tags:
+            whl_platform_tags = ["any"] + whl_platform_tags
+
         platforms[key] = struct(
             env = env_,
             triple = "{}_{}_{}".format(abi, values.os_name, values.arch_name),
-            whl_abi_tags = [
-                v.format(
-                    major = python_version.release[0],
-                    minor = python_version.release[1],
-                )
-                for v in values.whl_abi_tags
-            ],
-            whl_platform_tags = values.whl_platform_tags,
+            whl_abi_tags = whl_abi_tags,
+            whl_platform_tags = whl_platform_tags,
         )
     return platforms
 

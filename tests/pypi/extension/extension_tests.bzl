@@ -580,6 +580,22 @@ def _test_extension_dep_coexists_with_concrete_hub(env):
 
 _tests.append(_test_extension_dep_coexists_with_concrete_hub)
 
+def _test_default_platforms_whl_abi_tags(env):
+    """Verify that default_platforms includes 'none' in whl_abi_tags."""
+    platforms = default_platforms()
+    for name, plat in platforms.items():
+        env.expect.that_collection(
+            plat["whl_abi_tags"],
+            expr = "{}[whl_abi_tags]".format(name),
+        ).contains("none")
+        if "_freethreaded" not in name:
+            env.expect.that_collection(
+                plat["whl_abi_tags"],
+                expr = "{}[whl_abi_tags]".format(name),
+            ).contains("abi3")
+
+_tests.append(_test_default_platforms_whl_abi_tags)
+
 def extension_test_suite(name):
     """Create the test suite.
 

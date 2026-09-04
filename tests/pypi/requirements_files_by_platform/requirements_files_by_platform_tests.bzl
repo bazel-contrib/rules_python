@@ -328,6 +328,53 @@ def _test_uv_lock_only(env):
 
 _tests.append(_test_uv_lock_only)
 
+def _test_prerelease_python_version(env):
+    """Test that prerelease python_version prefixes platform names.
+
+    For example, 3.13.0rc1 prefixes platform names with cp313.0_.
+    """
+    got = requirements_files_by_platform(
+        requirements_lock = "requirements_lock",
+        python_version = "3.13.0rc1",
+    )
+    env.expect.that_dict(got).contains_exactly({
+        "requirements_lock": [
+            "cp313.0_linux_aarch64",
+            "cp313.0_linux_arm",
+            "cp313.0_linux_ppc",
+            "cp313.0_linux_s390x",
+            "cp313.0_linux_x86_64",
+            "cp313.0_osx_aarch64",
+            "cp313.0_osx_x86_64",
+            "cp313.0_windows_x86_64",
+        ],
+    })
+
+_tests.append(_test_prerelease_python_version)
+
+def _test_requirements_by_platform_exact_platform(env):
+    """Test requirements_by_platform with exact platform names.
+
+    Verifies behavior without trailing wildcard.
+    """
+    got = requirements_files_by_platform(
+        requirements_by_platform = {
+            "req_linux": "linux_x86_64",
+            "req_osx": "osx_x86_64",
+        },
+        platforms = [
+            "cp315.19_linux_x86_64",
+            "cp315.19_osx_x86_64",
+        ],
+        python_version = "3.15.19",
+    )
+    env.expect.that_dict(got).contains_exactly({
+        "req_linux": ["cp315.19_linux_x86_64"],
+        "req_osx": ["cp315.19_osx_x86_64"],
+    })
+
+_tests.append(_test_requirements_by_platform_exact_platform)
+
 def _test_uv_lock_with_platform_arg(env):
     """Verify that using uv_lock with --platform argument succeeds."""
     got = requirements_files_by_platform(

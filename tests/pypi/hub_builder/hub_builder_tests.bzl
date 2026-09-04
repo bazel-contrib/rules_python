@@ -1608,6 +1608,93 @@ Attempting to create a duplicate library pypi_315_foo for foo with different arg
 
 _tests.append(_test_err_duplicate_repos)
 
+def _test_platforms_without_none_or_any_tags(env):
+    """Verify hub_builder behavior when tags are missing.
+
+    Ensures 'none' is added to whl_abi_tags and 'any' to whl_platform_tags.
+    """
+
+    def mockread_simpleapi(*_, parse_index, **__):
+        if parse_index:
+            content = """<a href="/simple/>simple</a><br/>"""
+        else:
+            content = """\
+<a href="/simple-0.0.1-py3-none-any.whl#sha256=deadbeef">\
+simple-0.0.1-py3-none-any.whl</a><br/>\
+"""
+        return struct(
+            output = parse_simpleapi_html(
+                content = content,
+                parse_index = parse_index,
+            ),
+            success = True,
+        )
+
+    builder = hub_builder(
+        env,
+        config = struct(
+            netrc = None,
+            enable_pipstar_extract = True,
+            index_url = "https://pypi.org/simple",
+            auth_patterns = {},
+            platforms = {
+                "linux_x86_64": struct(
+                    name = "linux_x86_64",
+                    os_name = "linux",
+                    arch_name = "x86_64",
+                    config_settings = [
+                        "@platforms//os:linux",
+                        "@platforms//cpu:x86_64",
+                    ],
+                    env = {"implementation_name": "cpython"},
+                    marker = "",
+                    whl_abi_tags = ["cp{major}{minor}"],
+                    whl_platform_tags = ["linux_x86_64", "manylinux_*_x86_64"],
+                ),
+            },
+        ),
+        available_interpreters = {
+            "python_3_15_host": "unit_test_interpreter_target",
+        },
+        minor_mapping = {"3.15": "3.15.19"},
+        simpleapi_download_fn = lambda *args, **kwargs: simpleapi_download(
+            read_simpleapi = mockread_simpleapi,
+            *args,
+            **kwargs
+        ),
+    )
+    builder.pip_parse(
+        mocks.mctx(
+            mock_files = {
+                "requirements.txt": "simple==0.0.1 --hash=sha256:deadbeef",
+            },
+            os_name = "linux",
+            arch_name = "x86_64",
+        ),
+        _parse(
+            hub_name = "pypi",
+            python_version = "3.15",
+            experimental_index_url = "https://example.com",
+            requirements_lock = "requirements.txt",
+            target_platforms = ["linux_x86_64"],
+        ),
+    )
+    pypi = builder.build()
+
+    pypi.exposed_packages().contains_exactly(["simple"])
+    pypi.whl_map().contains_exactly({
+        "simple": {
+            "pypi_315_simple_py3_none_any_deadbeef": [
+                whl_config_setting(
+                    target_platforms = ["cp315_linux_x86_64"],
+                    version = "3.15",
+                ),
+            ],
+        },
+    })
+
+_tests.append(_test_platforms_without_none_or_any_tags)
+
 def hub_builder_test_suite(name):
     """Create the test suite.
 
