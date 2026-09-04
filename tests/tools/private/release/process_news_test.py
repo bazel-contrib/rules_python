@@ -45,6 +45,7 @@ def test_process_news_single_file(tmp_path, monkeypatch, mock_gh):
     args = argparse.Namespace(
         version="2.3.0",
         targets=[str(news_file)],
+        release_date=None,
     )
 
     result = ProcessNews(args, gh=mock_gh).run()
@@ -88,6 +89,7 @@ def test_process_news_pr_number(tmp_path, monkeypatch, mock_gh):
     args = argparse.Namespace(
         version="2.3.0",
         targets=["3997"],
+        release_date=None,
     )
 
     result = ProcessNews(args, gh=mock_gh).run()
@@ -126,6 +128,7 @@ def test_process_news_pr_ref_variants(tmp_path, monkeypatch, mock_gh):
     args = argparse.Namespace(
         version="2.3.0",
         targets=["#3997"],
+        release_date=None,
     )
 
     result = ProcessNews(args, gh=mock_gh).run()
@@ -149,6 +152,7 @@ def test_process_news_version_normalization(tmp_path, monkeypatch, mock_gh):
     args = argparse.Namespace(
         version="2.3",
         targets=[str(news_file)],
+        release_date=None,
     )
 
     result = ProcessNews(args, gh=mock_gh).run()
@@ -180,6 +184,7 @@ def test_process_news_multiple_mixed_targets(tmp_path, monkeypatch, mock_gh):
     args = argparse.Namespace(
         version="2.3.0",
         targets=[str(file1), "102"],
+        release_date=None,
     )
 
     result = ProcessNews(args, gh=mock_gh).run()
@@ -211,13 +216,13 @@ def test_process_news_preserves_target_order(tmp_path, monkeypatch, mock_gh, moc
     processed_order = []
     mocker.patch(
         "tools.private.release.process_news.process_pr_target",
-        side_effect=lambda target, ver, p: processed_order.append(
+        side_effect=lambda target, ver, p, **kwargs: processed_order.append(
             f"PR:{target.pr_num}"
         ),
     )
     mocker.patch(
         "tools.private.release.process_news.process_news_file_target",
-        side_effect=lambda target, ver, p: processed_order.append(
+        side_effect=lambda target, ver, p, **kwargs: processed_order.append(
             f"FILE:{target.path.name}"
         ),
     )
@@ -226,6 +231,7 @@ def test_process_news_preserves_target_order(tmp_path, monkeypatch, mock_gh, moc
     args = argparse.Namespace(
         version="2.3.0",
         targets=["102", str(file1)],
+        release_date=None,
     )
 
     result = ProcessNews(args, gh=mock_gh).run()
@@ -242,6 +248,7 @@ def test_process_news_missing_news_file(tmp_path, monkeypatch, mock_gh):
     args = argparse.Namespace(
         version="2.3.0",
         targets=["news/nonexistent.added.md"],
+        release_date=None,
     )
 
     result = ProcessNews(args, gh=mock_gh).run()
@@ -260,6 +267,7 @@ def test_process_news_invalid_target(tmp_path, monkeypatch, mock_gh):
     args = argparse.Namespace(
         version="2.3.0",
         targets=[str(invalid_file)],
+        release_date=None,
     )
 
     result = ProcessNews(args, gh=mock_gh).run()
@@ -275,6 +283,7 @@ def test_process_news_pr_no_files_found(tmp_path, monkeypatch, mock_gh):
     args = argparse.Namespace(
         version="2.3.0",
         targets=["9999"],
+        release_date=None,
     )
 
     result = ProcessNews(args, gh=mock_gh).run()
@@ -295,12 +304,70 @@ def test_process_news_version_not_in_changelog(tmp_path, monkeypatch, mock_gh):
     args = argparse.Namespace(
         version="3.9.0",
         targets=[str(news_file)],
+        release_date=None,
     )
 
     result = ProcessNews(args, gh=mock_gh).run()
 
-    assert result == 1
-    assert news_file.exists()
+    assert result == 0
+    assert not news_file.exists()
+    content = changelog.read_text(encoding="utf-8")
+    assert "{#v3-9-0}" in content
+    assert "## [3.9.0] -" in content
+    assert "* Some feature" in content
+
+
+def test_process_news_creates_version_when_missing_with_custom_release_date(
+    tmp_path, monkeypatch, mock_gh
+):
+    monkeypatch.chdir(tmp_path)
+    changelog = tmp_path / "CHANGELOG.md"
+    changelog.write_text(_CHANGELOG_TEMPLATE, encoding="utf-8")
+
+    news_dir = tmp_path / "news"
+    news_dir.mkdir()
+    news_file = news_dir / "3997.added.md"
+    news_file.write_text("Some feature", encoding="utf-8")
+
+    args = argparse.Namespace(
+        version="2.3.1",
+        targets=[str(news_file)],
+        release_date="2026-08-15",
+    )
+
+    result = ProcessNews(args, gh=mock_gh).run()
+
+    assert result == 0
+    assert not news_file.exists()
+    content = changelog.read_text(encoding="utf-8")
+    assert "{#v2-3-1}" in content
+    assert "## [2.3.1] - 2026-08-15" in content
+    assert "* Some feature" in content
+
+
+def test_process_news_creates_version_no_news_files(tmp_path, monkeypatch, mock_gh):
+    monkeypatch.chdir(tmp_path)
+    changelog = tmp_path / "CHANGELOG.md"
+    changelog.write_text(_CHANGELOG_TEMPLATE, encoding="utf-8")
+
+    code_file = tmp_path / "mod.py"
+    code_file.write_text("x = 'VERSION_NEXT_PATCH'\n", encoding="utf-8")
+    mock_gh.prs[5000] = {"files": [{"path": "mod.py"}]}
+
+    args = argparse.Namespace(
+        version="2.3.1",
+        targets=["5000"],
+        release_date="2026-08-15",
+    )
+
+    result = ProcessNews(args, gh=mock_gh).run()
+
+    assert result == 0
+    assert "x = '2.3.1'\n" == code_file.read_text(encoding="utf-8")
+    content = changelog.read_text(encoding="utf-8")
+    assert "{#v2-3-1}" in content
+    assert "## [2.3.1] - 2026-08-15" in content
+    assert "No notable changes." in content
 
 
 def test_process_news_cli_parser():
@@ -309,3 +376,15 @@ def test_process_news_cli_parser():
     assert args.version == "2.3.0"
     assert args.targets == ["news/3997.added.md", "3998"]
     assert args.command == ProcessNews.run_from_args
+    assert args.release_date is None
+
+    args_with_flags = parser.parse_args(
+        [
+            "process-news",
+            "2.3.1",
+            "news/3997.added.md",
+            "--release-date",
+            "2026-09-02",
+        ]
+    )
+    assert args_with_flags.release_date == "2026-09-02"

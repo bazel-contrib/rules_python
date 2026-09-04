@@ -1,7 +1,8 @@
-"""Subcommand to process news files and version markers for an existing release."""
+"""Subcommand to process news files and version markers for a release."""
 
 import argparse
 import dataclasses
+import datetime
 import logging
 import pathlib
 import re
@@ -131,13 +132,18 @@ def resolve_target(target: str, gh: GitHubInterface) -> ResolvedTarget:
 
 
 def process_news_file_target(
-    target: NewsFileTarget, version: str, changelog_path: pathlib.Path
+    target: NewsFileTarget,
+    version: str,
+    changelog_path: pathlib.Path,
+    release_date: str | None = None,
 ) -> None:
     """Processes a direct news file target."""
+    if release_date is None:
+        release_date = datetime.date.today().strftime("%Y-%m-%d")
     logger.info("Processing news file: %s", target.path)
     changelog_news.update_changelog(
         version=version,
-        release_date="0000-00-00",
+        release_date=release_date,
         changelog_path=changelog_path,
         news_files=[target.path],
         delete_news=True,
@@ -146,14 +152,19 @@ def process_news_file_target(
 
 
 def process_pr_target(
-    target: PrTarget, version: str, changelog_path: pathlib.Path
+    target: PrTarget,
+    version: str,
+    changelog_path: pathlib.Path,
+    release_date: str | None = None,
 ) -> None:
     """Processes a PR target: merges news files and updates version markers."""
+    if release_date is None:
+        release_date = datetime.date.today().strftime("%Y-%m-%d")
     logger.info("Processing PR #%d...", target.pr_num)
     if target.news_files:
         changelog_news.update_changelog(
             version=version,
-            release_date="0000-00-00",
+            release_date=release_date,
             changelog_path=changelog_path,
             news_files=list(target.news_files),
             delete_news=True,
@@ -180,7 +191,7 @@ def process_pr_target(
 
 
 class ProcessNews:
-    """Class to process news files into CHANGELOG.md for an existing version."""
+    """Class to process news files into CHANGELOG.md for a release."""
 
     def __init__(self, args, gh: GitHubInterface):
         self.args = args
@@ -202,16 +213,10 @@ class ProcessNews:
             )
             return 1
 
-        changelog_content = changelog_path.read_text(encoding="utf-8")
         header_version = version.replace(".", "-")
         version_anchor = f"{{#v{header_version}}}"
-        if version_anchor not in changelog_content:
-            print(
-                f"::error::Version {version} (anchor {version_anchor}) does not"
-                f" exist in {changelog_path}.",
-                file=sys.stderr,
-            )
-            return 1
+
+        release_date = args.release_date or datetime.date.today().strftime("%Y-%m-%d")
 
         # Phase 1: Resolve all targets in order
         resolved_targets: list[ResolvedTarget] = []
@@ -230,15 +235,33 @@ class ProcessNews:
         # Phase 2: Process all resolved targets in the given order
         for target in resolved_targets:
             if isinstance(target, NewsFileTarget):
-                process_news_file_target(target, version, changelog_path)
+                process_news_file_target(
+                    target, version, changelog_path, release_date=release_date
+                )
             elif isinstance(target, PrTarget):
-                process_pr_target(target, version, changelog_path)
+                process_pr_target(
+                    target, version, changelog_path, release_date=release_date
+                )
             else:
                 logger.warning(
                     "Unexpected target type encountered: %s (%r)",
                     type(target),
                     target,
                 )
+
+        current_changelog = changelog_path.read_text(encoding="utf-8")
+        if version_anchor not in current_changelog:
+            logger.info(
+                "Version anchor %s not created by targets; creating empty release section.",
+                version_anchor,
+            )
+            changelog_news.update_changelog(
+                version=version,
+                release_date=release_date,
+                changelog_path=changelog_path,
+                news_files=[],
+                delete_news=False,
+            )
 
         return 0
 
@@ -249,13 +272,13 @@ class ProcessNews:
             "process-news",
             help=(
                 "Process news files and update version-next markers into"
-                " CHANGELOG.md for an existing version."
+                " CHANGELOG.md for a release version."
             ),
         )
         parser.add_argument(
             "version",
             type=_release_version_type,
-            help="The target existing release version (e.g., 2.3.0 or 2.3).",
+            help="The target release version (e.g., 2.3.0 or 2.3).",
         )
         parser.add_argument(
             "targets",
@@ -264,6 +287,15 @@ class ProcessNews:
             help=(
                 "One or more news file paths (e.g., news/3997.added.md) or PR"
                 " references (e.g., 3997, #3997, or PR URL) to process."
+            ),
+        )
+        parser.add_argument(
+            "--release-date",
+            type=str,
+            default=None,
+            help=(
+                "Release date (YYYY-MM-DD) to use if creating a new version"
+                " section (defaults to today)."
             ),
         )
         parser.set_defaults(command=cls.run_from_args)

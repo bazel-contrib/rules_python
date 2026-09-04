@@ -2,6 +2,7 @@ import argparse
 from unittest.mock import MagicMock, call
 
 from tools.private.release.gh import CreatePrError
+from tools.private.release.release import create_parser
 from tools.private.release.sync_changelog import SyncChangelog
 
 pytest_plugins = ["tests.tools.private.release.release_test_helper"]
@@ -41,6 +42,7 @@ def test_sync_changelog_success(mocker, mock_git, mock_gh):
         issue=123,
         remote="origin",
         prs=None,
+        release_date=None,
     )
     mock_gh.issues[123] = {
         "title": "Release 2.0.0",
@@ -111,6 +113,7 @@ def test_sync_changelog_from_github_event_path(mocker, mock_git, mock_gh, gha):
         issue=None,
         remote="origin",
         prs=None,
+        release_date=None,
     )
     mock_gh.issues[123] = {
         "title": "Release 2.0.0",
@@ -143,6 +146,7 @@ def test_sync_changelog_branch_exists(mocker, mock_git, mock_gh):
         issue=123,
         remote="origin",
         prs=None,
+        release_date=None,
     )
     mock_gh.issues[123] = {
         "title": "Release 2.0.0",
@@ -181,6 +185,7 @@ def test_sync_changelog_auto_discover_issue(mocker, mock_git, mock_gh):
         issue=None,
         remote="origin",
         prs=None,
+        release_date=None,
     )
     mock_gh.issues[123] = {
         "number": 123,
@@ -208,6 +213,7 @@ def test_sync_changelog_multiple_open_issues_fails(mock_git, mock_gh):
         issue=None,
         remote="origin",
         prs=None,
+        release_date=None,
     )
     mock_gh.issues[123] = {
         "number": 123,
@@ -240,6 +246,7 @@ def test_sync_changelog_specific_prs_arg(mocker, mock_git, mock_gh):
         issue=123,
         remote="origin",
         prs=["#124", "125"],
+        release_date=None,
     )
     mock_gh.issues[123] = {
         "title": "Release 2.0.0",
@@ -271,6 +278,7 @@ def test_sync_changelog_no_changes(mocker, mock_git, mock_gh):
         issue=123,
         remote="origin",
         prs=None,
+        release_date=None,
     )
     mock_gh.issues[123] = {
         "title": "Release 2.0.0",
@@ -302,6 +310,7 @@ def test_sync_changelog_process_news_failure(mocker, mock_git, mock_gh):
         issue=123,
         remote="origin",
         prs=None,
+        release_date=None,
     )
     mock_gh.issues[123] = {
         "title": "Release 2.0.0",
@@ -336,6 +345,7 @@ def test_sync_changelog_create_pr_failure(mocker, mock_git, mock_gh):
         issue=123,
         remote="origin",
         prs=None,
+        release_date=None,
     )
     mock_gh.issues[123] = {
         "title": "Release 2.0.0",
@@ -359,3 +369,82 @@ def test_sync_changelog_create_pr_failure(mocker, mock_git, mock_gh):
         in mock_gh.issue_comments[123][0]
     )
     assert "Traceback" not in mock_gh.issue_comments[123][0]
+
+
+def test_sync_changelog_cli_parser():
+    parser = create_parser()
+    args = parser.parse_args(
+        [
+            "sync-changelog",
+            "--remote",
+            "origin",
+            "--issue",
+            "123",
+            "--release-date",
+            "2026-09-02",
+        ]
+    )
+    assert args.remote == "origin"
+    assert args.issue == 123
+    assert args.release_date == "2026-09-02"
+    assert args.command == SyncChangelog.run_from_args
+
+
+def test_sync_changelog_creates_missing_version_with_real_process_news(
+    tmp_path, monkeypatch, mock_git, mock_gh
+):
+    monkeypatch.chdir(tmp_path)
+    changelog = tmp_path / "CHANGELOG.md"
+    changelog.write_text(
+        """# rules_python Changelog
+
+{#unreleased}
+## Unreleased
+
+[unreleased]: https://github.com/bazel-contrib/rules_python/releases/tag/unreleased
+
+{#v2-3-2}
+## [2.3.2] - 2026-08-22
+
+[2.3.2]: https://github.com/bazel-contrib/rules_python/releases/tag/2.3.2
+""",
+        encoding="utf-8",
+    )
+
+    news_dir = tmp_path / "news"
+    news_dir.mkdir()
+    news_file = news_dir / "124.fixed.md"
+    news_file.write_text("* (pypi) Fixed something backported.", encoding="utf-8")
+
+    mock_gh.prs[124] = {"files": [{"path": "news/124.fixed.md"}]}
+    mock_gh.issues[123] = {
+        "title": "Release 2.3.3",
+        "body": """
+## Checklist
+- [ ] Sync Changelog #124
+""",
+        "labels": ["type: release"],
+    }
+    mock_git.branch_exists.return_value = False
+    mock_git.get_commit_sha.return_value = "main_sha"
+    mock_git.status.side_effect = ["", "M CHANGELOG.md\nD news/124.fixed.md"]
+
+    args = argparse.Namespace(
+        issue=123,
+        remote="origin",
+        prs=None,
+        release_date="2026-09-02",
+    )
+
+    result = SyncChangelog(args, mock_git, mock_gh).run()
+
+    assert result == 0
+    content = changelog.read_text(encoding="utf-8")
+    assert "{#v2-3-3}" in content
+    assert "## [2.3.3] - 2026-09-02" in content
+    assert "* (pypi) Fixed something backported." in content
+    assert not news_file.exists()
+    assert (
+        "- [ ] Sync Changelog #124 | status=pending pr=#1001"
+        in mock_gh.get_issue_body(123)
+    )

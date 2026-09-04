@@ -182,6 +182,7 @@ class SyncChangelog:
             process_news_args = argparse.Namespace(
                 version=version,
                 targets=[str(pr) for pr in sorted_prs],
+                release_date=args.release_date,
             )
             process_news_runner = ProcessNews(process_news_args, gh=self.gh)
             ret = process_news_runner.run()
@@ -294,6 +295,15 @@ class SyncChangelog:
             help=(
                 "PR references (numbers, #numbers, or URLs, comma/space"
                 " separated) to sync (optional)."
+            ),
+        )
+        parser.add_argument(
+            "--release-date",
+            type=str,
+            default=None,
+            help=(
+                "Release date (YYYY-MM-DD) to use if creating a new version"
+                " section in CHANGELOG.md."
             ),
         )
         parser.set_defaults(command=cls.run_from_args)
