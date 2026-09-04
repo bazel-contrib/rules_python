@@ -29,6 +29,26 @@ Unreleased changes are tracked as individual files in the [news/](./news)
 directory, or view the [latest generated
 changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 
+{#v2-3-3}
+## [2.3.3] - 2026-09-04
+
+[2.3.3]: https://github.com/bazel-contrib/rules_python/releases/tag/2.3.3
+
+{#v2-3-3-changed}
+### Changed
+* (publish): The twine packages are now configured for three major platforms.
+
+{#v2-3-3-fixed}
+### Fixed
+* (gazelle) Fixed a regression from version 1.8.0 which broke module map
+  generation for old-style namespace packages.
+  ([#4135](https://github.com/bazel-contrib/rules_python/pull/4135)).
+* (zipapp) Fixed handling of {obj}`PyRuntimeInfo` with `files = None` so creating
+  zipapp archives does not error.
+
+
+
+
 {#v2-3-2}
 ## [2.3.2] - 2026-08-22
 
