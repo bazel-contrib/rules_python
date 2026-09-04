@@ -26,6 +26,8 @@ Usage examples:
   cleanup.py --list
 """
 
+from __future__ import annotations
+
 import argparse
 import asyncio
 import dataclasses
@@ -36,7 +38,6 @@ import signal
 import stat
 import subprocess
 import sys
-from typing import Optional
 
 PROTECTED_BRANCHES = frozenset({"main", "master", "HEAD"})
 PROTECTED_REMOTES = frozenset({"upstream"})
@@ -48,7 +49,7 @@ class WorktreeInfo:
 
     path: str
     head: str
-    branch: Optional[str]
+    branch: str | None
     is_main: bool
 
 
@@ -56,9 +57,9 @@ class WorktreeInfo:
 class CleanupTarget:
     """Target resources identified for cleanup."""
 
-    worktree_path: Optional[str] = None
-    branch: Optional[str] = None
-    remote: Optional[str] = None
+    worktree_path: str | None = None
+    branch: str | None = None
+    remote: str | None = None
     remote_branch_exists: bool = False
     bazel_output_bases: list[str] = dataclasses.field(default_factory=list)
     is_main_worktree: bool = False
@@ -81,9 +82,9 @@ def log_error(msg: str) -> None:
 
 async def run_command(
     cmd: list[str],
-    cwd: Optional[str] = None,
+    cwd: str | None = None,
     capture_output: bool = True,
-    timeout: Optional[float] = None,
+    timeout: float | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """Executes a subprocess command asynchronously and safely."""
     stdout_pipe = asyncio.subprocess.PIPE if capture_output else None
@@ -128,7 +129,7 @@ async def run_command(
         )
 
 
-async def get_main_repo(cwd: Optional[str] = None) -> str:
+async def get_main_repo(cwd: str | None = None) -> str:
     """Finds the root directory of the primary Git repository."""
     res = await run_command(["git", "rev-parse", "--git-common-dir"], cwd=cwd)
     if res.returncode == 0 and res.stdout.strip():
@@ -144,7 +145,7 @@ async def get_main_repo(cwd: Optional[str] = None) -> str:
     raise RuntimeError("Not inside a Git repository.")
 
 
-async def get_current_worktree(cwd: Optional[str] = None) -> Optional[str]:
+async def get_current_worktree(cwd: str | None = None) -> str | None:
     """Returns the top-level directory of the current worktree, if any."""
     res = await run_command(["git", "rev-parse", "--show-toplevel"], cwd=cwd)
     if res.returncode == 0 and res.stdout.strip():
@@ -160,9 +161,9 @@ async def get_worktrees(main_repo: str) -> list[WorktreeInfo]:
         return []
 
     worktrees: list[WorktreeInfo] = []
-    current_wt: Optional[str] = None
+    current_wt: str | None = None
     current_head = ""
-    current_branch: Optional[str] = None
+    current_branch: str | None = None
 
     for line in res.stdout.splitlines():
         line = line.strip()
@@ -197,7 +198,7 @@ async def get_worktrees(main_repo: str) -> list[WorktreeInfo]:
     return worktrees
 
 
-def is_protected_branch(branch: Optional[str]) -> bool:
+def is_protected_branch(branch: str | None) -> bool:
     """Checks if a branch is protected from deletion."""
     if not branch:
         return True
@@ -482,9 +483,9 @@ async def delete_remote_branch(
 
 async def build_cleanup_target(
     main_repo: str,
-    worktree_path: Optional[str],
-    branch: Optional[str],
-    remote: Optional[str] = None,
+    worktree_path: str | None,
+    branch: str | None,
+    remote: str | None = None,
 ) -> CleanupTarget:
     """Assembles all resources associated with a target worktree/branch."""
     target = CleanupTarget(
