@@ -193,6 +193,11 @@ If a backport fails to process (e.g., due to cherry-pick conflicts):
     cherry-pick the PR, resolve conflicts, push to remote, and manually check
     the box on the tracking issue checklist with `status=done` metadata.
 
+If changelog syncing fails (or if you need to retrigger syncing to `main`):
+*   Comment `/sync-changelog` on the release tracking issue.
+*   Or trigger the `release_sync_changelog.yaml` workflow manually with the
+    issue number.
+
 ## Automated patch releases to multiple versions
 
 If you need to backport a PR to multiple older active release branches (e.g.,
@@ -316,6 +321,8 @@ The checklist items use metadata suffix: `| key=value key2=value2`.
     issue (or on the preparation PR) to mark the preparation task as done.
 *   **Create Release Branch**: Comment `/create-release-branch` on the tracking
     issue to cut and push the release branch.
+*   **Retry Changelog Sync**: Comment `/sync-changelog` on the tracking issue to
+    retrigger creating the sync PR to `main` for backports.
 *   **Force Task Done**: Check the box `- [x]` and add appropriate metadata (e.g. `status=done`).
 
 ## Secrets
