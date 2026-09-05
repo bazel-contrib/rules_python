@@ -35,4 +35,5 @@ labels = struct(
     VENVS_SITE_PACKAGES = str(Label("//python/config_settings:venvs_site_packages")),
     VENVS_USE_DECLARE_SYMLINK = str(Label("//python/config_settings:venvs_use_declare_symlink")),
     VISIBLE_FOR_TESTING = str(Label("//python/private:visible_for_testing")),
+    ZIP_STDLIB = str(Label("//python/config_settings:zip_stdlib")),
 )

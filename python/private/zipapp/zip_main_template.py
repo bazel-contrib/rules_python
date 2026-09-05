@@ -269,6 +269,8 @@ def execute_file(
     #   workspace after the process finishes so control must return here.
     try:
         subprocess_argv = [python_program]
+        if IS_WINDOWS:
+            subprocess_argv.append("-Xfrozen_modules=off")
         if not EXTRACT_ROOT:
             subprocess_argv.append(f"-XRULES_PYTHON_ZIP_DIR={dirname(runfiles_root)}")
         subprocess_argv.append(main_filename)
@@ -322,6 +324,38 @@ def finish_venv_setup(runfiles_root):
             # to directories, we have to write the full, absolute, path to PYTHONHOME
             # so that support directories (e.g. DLLs, libs) can be found.
             fp.write("home = {}\n".format(python_home))
+
+    if IS_WINDOWS:
+        python_home = join(runfiles_root, dirname(_PYTHON_BINARY_ACTUAL))
+        search_dirs = [venv_root, dirname(python_program), runfiles_root]
+        if python_home:
+            search_dirs.append(python_home)
+        zip_candidates = []
+        for sdir in search_dirs:
+            try:
+                for item in os.listdir(sdir):
+                    if item.startswith("python") and item.endswith(".zip"):
+                        candidate = join(sdir, item)
+                        if candidate not in zip_candidates:
+                            zip_candidates.append(candidate)
+            except OSError:
+                pass
+        targets = [venv_root]
+        for target_root in targets:
+            sig_path = join(target_root, "Lib", "encodings", "utf_8_sig.py")
+            if not os.path.exists(sig_path):
+                for zpath in zip_candidates:
+                    try:
+                        with zipfile.ZipFile(zpath, "r") as zf:
+                            for m in zf.namelist():
+                                if m.startswith("encodings/"):
+                                    zf.extract(m, join(target_root, "Lib"))
+                                elif m.startswith("Lib/encodings/"):
+                                    zf.extract(m, target_root)
+                    except (OSError, zipfile.BadZipFile):
+                        pass
+                    if os.path.exists(sig_path):
+                        break
 
     return python_program
 

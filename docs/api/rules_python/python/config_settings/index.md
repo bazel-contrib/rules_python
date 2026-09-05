@@ -427,6 +427,26 @@ is created.
 :::
 ::::
 
+::::{bzl:flag} zip_stdlib
+Controls whether the Python standard library is packaged into a zip file.
+
+When enabled (`yes`), hermetic toolchain runtimes package standard library
+`.py` files into a zip file (e.g. `python<major><minor>.zip` or
+`python<major><minor>t.zip` for free-threaded builds) and exclude them from
+individual on-disk runtime files.
+
+When disabled (`no`), standard library files are not zipped and remain on
+disk in the runfiles.
+
+Values:
+* `yes`: (default) Package the standard library into a zip file.
+* `no`: Do not package the standard library into a zip file; retain individual
+  files on disk.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+::::
+
 
 ## Removed Flags
 

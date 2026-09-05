@@ -13,6 +13,7 @@ load(
     "ValidateTestMainFlag",
     "VenvsSitePackages",
     "VenvsUseDeclareSymlinkFlag",
+    "ZipStdlibFlag",
     rp_string_flag = "string_flag",
 )
 load("//python/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")  # buildifier: disable=bzl-visibility
@@ -228,5 +229,13 @@ string_flag(
     name = "python_path",
     build_setting_default = "python",
     scope = "universal",
+    visibility = ["//visibility:public"],
+)
+
+string_flag(
+    name = "zip_stdlib",
+    build_setting_default = ZipStdlibFlag.YES,
+    scope = "universal",
+    values = ZipStdlibFlag.flag_values(),
     visibility = ["//visibility:public"],
 )

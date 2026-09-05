@@ -346,6 +346,7 @@ bzl_library(
     name = "config_settings",
     srcs = ["config_settings.bzl"],
     deps = [
+        ":common_labels",
         ":text_util",
         ":version",
         ":visibility",
@@ -397,8 +398,11 @@ bzl_library(
     name = "hermetic_runtime_repo_setup",
     srcs = ["hermetic_runtime_repo_setup.bzl"],
     deps = [
+        ":common_labels",
         ":py_exec_tools_toolchain",
+        ":util",
         ":version",
+        ":zip_stdlib",
         "//python:py_runtime",
         "//python:py_runtime_pair",
         "//python/cc:py_cc_toolchain",
@@ -822,6 +826,7 @@ bzl_library(
     srcs = ["rule_builders.bzl"],
     deps = [
         ":builders_util",
+        ":util",
         "@bazel_skylib//lib:types",
     ],
 )
@@ -1035,4 +1040,9 @@ bzl_library(
 bzl_library(
     name = "visibility",
     srcs = ["visibility.bzl"],
+)
+
+bzl_library(
+    name = "zip_stdlib",
+    srcs = ["zip_stdlib.bzl"],
 )

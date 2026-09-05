@@ -17,6 +17,7 @@
 
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
+load(":common_labels.bzl", "labels")
 load(":text_util.bzl", "render")
 load(":version.bzl", "version")
 load(":visibility.bzl", "NOT_ACTUALLY_PUBLIC")
@@ -176,6 +177,16 @@ def construct_config_settings(
     native.config_setting(
         name = "_is_py_freethreaded_no",
         flag_values = {freethreaded: "no"},
+        visibility = NOT_ACTUALLY_PUBLIC,
+    )
+    native.config_setting(
+        name = "_is_zip_stdlib_yes",
+        flag_values = {labels.ZIP_STDLIB: "yes"},
+        visibility = NOT_ACTUALLY_PUBLIC,
+    )
+    native.config_setting(
+        name = "_is_zip_stdlib_no",
+        flag_values = {labels.ZIP_STDLIB: "no"},
         visibility = NOT_ACTUALLY_PUBLIC,
     )
 

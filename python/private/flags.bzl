@@ -261,3 +261,12 @@ LibcFlag = FlagEnum(
     MUSL = "musl",
     get_value = _libc_flag_get_value,
 )
+
+# Decides if the standard library should be packaged into a zip file.
+# buildifier: disable=name-conventions
+ZipStdlibFlag = FlagEnum(
+    # Zip the standard library.
+    YES = "yes",
+    # Do not zip the standard library.
+    NO = "no",
+)

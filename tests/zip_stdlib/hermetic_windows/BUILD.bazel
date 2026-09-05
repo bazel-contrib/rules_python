@@ -1,0 +1,17 @@
+load(
+    "//python/private:hermetic_runtime_repo_setup.bzl",
+    "define_hermetic_runtime_toolchain_impl",
+)  # buildifier: disable=bzl-visibility
+load(":hermetic_windows_tests.bzl", "hermetic_windows_test_suite")
+
+define_hermetic_runtime_toolchain_impl(
+    name = "test_hermetic_windows",
+    coverage_tool = None,
+    extra_files_glob_exclude = [],
+    extra_files_glob_include = [],
+    python_bin = "python",
+    python_version = "3.11.8",
+    tags = ["manual"],
+)
+
+hermetic_windows_test_suite(name = "hermetic_windows_tests")
