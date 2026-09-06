@@ -79,6 +79,7 @@ filegroup(
         "internal_dev_setup.bzl",
         "version.bzl",
         "//command_line_option:distribution",
+        "//crates:distribution",
         "//python:distribution",
         "//tools:distribution",
     ],

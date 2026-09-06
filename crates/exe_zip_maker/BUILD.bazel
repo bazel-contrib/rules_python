@@ -1,0 +1,25 @@
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library")
+
+package(default_visibility = ["//:__subpackages__"])
+
+licenses(["notice"])
+
+rust_library(
+    name = "exe_zip_maker_lib",
+    srcs = ["src/lib.rs"],
+    edition = "2021",
+    deps = ["@crates//:sha2"],
+)
+
+rust_binary(
+    name = "exe_zip_maker",
+    srcs = ["src/main.rs"],
+    edition = "2021",
+    visibility = ["//visibility:public"],
+    deps = [":exe_zip_maker_lib"],
+)
+
+filegroup(
+    name = "distribution",
+    srcs = glob(["**"]),
+)

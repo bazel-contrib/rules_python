@@ -1,0 +1,10 @@
+package(default_visibility = ["//:__subpackages__"])
+
+licenses(["notice"])
+
+filegroup(
+    name = "distribution",
+    srcs = glob(["**"]) + [
+        "//crates/exe_zip_maker:distribution",
+    ],
+)

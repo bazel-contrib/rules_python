@@ -98,6 +98,20 @@ bazel_dep(name = "rules_shell", version = "0.3.0", dev_dependency = True)
 bazel_dep(name = "rules_multirun", version = "0.9.0", dev_dependency = True)
 bazel_dep(name = "bazel_ci_rules", version = "1.0.0", dev_dependency = True)
 bazel_dep(name = "rules_pkg", version = "1.2.0", dev_dependency = True)
+bazel_dep(name = "rules_rust", version = "0.73.0", dev_dependency = True)
+
+rust_crates = use_extension(
+    "@rules_rust//crate_universe:extensions.bzl",
+    "crate",
+    dev_dependency = True,
+)
+rust_crates.spec(
+    package = "sha2",
+    version = "0.10.8",
+)
+rust_crates.from_specs()
+use_repo(rust_crates, "crates")
+
 bazel_dep(name = "other", version = "0", dev_dependency = True)
 bazel_dep(name = "another_module", version = "0", dev_dependency = True)
 
