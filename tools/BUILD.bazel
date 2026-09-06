@@ -28,6 +28,4 @@ py_binary(
 
 distribution_filegroup(
     name = "distribution",
-    # dev-only tools
-    exclude = ["private"],
 )
