@@ -6,6 +6,7 @@ licenses(["notice"])
 
 rust_test(
     name = "exe_zip_maker_test",
+    size = "small",
     srcs = ["exe_zip_maker_test.rs"],
     deps = [
         "//crates/exe_zip_maker:exe_zip_maker_lib",

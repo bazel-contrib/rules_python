@@ -54,3 +54,4 @@ common --deleted_packages=tests/modules/other/simple_v1
 common --deleted_packages=tests/modules/other/simple_v2
 common --deleted_packages=tests/modules/other/with_external_data
 common --deleted_packages=tests/modules/rules_pyrefly_stub/pyrefly
+common --deleted_packages=tests/modules/rules_rust_stub/rust

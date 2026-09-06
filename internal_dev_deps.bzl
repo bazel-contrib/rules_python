@@ -114,6 +114,13 @@ def rules_python_internal_deps():
         path = "tests/modules/rules_pyrefly_stub",
     )
 
+    # Stub repository for rules_rust in WORKSPACE mode so that load()
+    # statements for @rules_rust resolve without requiring full rules_rust.
+    local_repository(
+        name = "rules_rust",
+        path = "tests/modules/rules_rust_stub",
+    )
+
     # The below two deps are required for the integration test with bazel
     # gazelle. Maybe the test should be moved to the `gazelle` workspace?
     http_archive(
