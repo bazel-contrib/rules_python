@@ -47,5 +47,5 @@ jobs:
           if [ -n "$ISSUE" ]; then
             ARGS+=("--issue=$ISSUE")
           fi
-          bazel run //tools/private/release -- \
+          bazel run //dev/release -- \
             prepare "${ARGS[@]}" --no-dry-run

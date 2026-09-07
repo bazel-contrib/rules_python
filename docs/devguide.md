@@ -134,7 +134,7 @@ The steps to create a backport PR are:
 4.  Update the release's `CHANGELOG.md` file using the release tool's
     `process-news` command:
     ```shell
-    bazel run //tools/private/release -- process-news <VERSION> <PR_NUMBER>
+    bazel run //dev/release -- process-news <VERSION> <PR_NUMBER>
     ```
     This merges the PR's news entries into `CHANGELOG.md`, deletes the news
     files, and updates any `VERSION_NEXT_*` markers.
@@ -158,7 +158,7 @@ The steps to create a backport PR are:
     * Checkout the `main` branch.
     * Run the `process-news` command as before:
       ```shell
-      bazel run //tools/private/release -- process-news <VERSION> <PR_NUMBER>
+      bazel run //dev/release -- process-news <VERSION> <PR_NUMBER>
       ```
 
 [backport-issue]: https://github.com/bazel-contrib/rules_python/issues/new?template=release_tracking_template.md

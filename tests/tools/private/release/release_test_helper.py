@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from dev.release.mock_gh import MockGitHub
 from python.runfiles import runfiles
-from tools.private.release.mock_gh import MockGitHub
 
 
 @dataclasses.dataclass
@@ -97,7 +97,7 @@ def fixture_mock_git():
     mock_git_inst.branch_exists.return_value = False
     mock_git_inst.tag_exists.return_value = False
 
-    with patch("tools.private.release.utils.Git", return_value=mock_git_inst):
+    with patch("dev.release.utils.Git", return_value=mock_git_inst):
         yield mock_git_inst
 
 

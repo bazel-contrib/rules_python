@@ -1,10 +1,12 @@
-load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+load("//python:py_binary.bzl", "py_binary")
+load("//python:py_library.bzl", "py_library")
 
-package(default_visibility = ["//visibility:public"])
+package(default_visibility = ["//:__subpackages__"])
 
 py_library(
     name = "changelog_news",
     srcs = ["changelog_news.py"],
+    imports = ["../.."],
 )
 
 py_library(
@@ -16,6 +18,7 @@ py_library(
             "mock_gh.py",
         ],
     ),
+    imports = ["../.."],
     deps = [
         ":changelog_news",
         "@dev_pip//packaging",
@@ -25,6 +28,7 @@ py_library(
 py_library(
     name = "mock_gh",
     srcs = ["mock_gh.py"],
+    imports = ["../.."],
     deps = [
         ":release_lib",
     ],
@@ -33,6 +37,7 @@ py_library(
 py_binary(
     name = "release",
     srcs = ["release.py"],
+    imports = ["../.."],
     main = "release.py",
     python_version = "3.14",
     deps = [

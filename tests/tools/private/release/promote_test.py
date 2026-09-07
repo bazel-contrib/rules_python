@@ -2,7 +2,7 @@ import argparse
 from pathlib import Path
 from unittest.mock import call, patch
 
-from tools.private.release.promote import Promote
+from dev.release.promote import Promote
 
 pytest_plugins = ["tests.tools.private.release.release_test_helper"]
 

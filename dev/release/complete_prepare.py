@@ -2,12 +2,12 @@
 
 import re
 
-from tools.private.release.gh import GitHub
-from tools.private.release.release_issue import (
+from dev.release.gh import GitHub
+from dev.release.release_issue import (
     parse_checklist_state,
     update_task_in_body,
 )
-from tools.private.release.utils import set_github_output
+from dev.release.utils import set_github_output
 
 
 class CompletePrepare:

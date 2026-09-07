@@ -4,17 +4,17 @@ import os
 import traceback
 from argparse import Namespace
 
-from tools.private.release.gh import GH_REACTION_THUMBS_DOWN, GitHub
-from tools.private.release.git import Git
-from tools.private.release.process_backports import ProcessBackports
-from tools.private.release.release_issue import (
+from dev.release.gh import GH_REACTION_THUMBS_DOWN, GitHub
+from dev.release.git import Git
+from dev.release.process_backports import ProcessBackports
+from dev.release.release_issue import (
     RELEASE_TITLE_RE,
     add_rc_task_to_body,
     parse_backports,
     parse_checklist_state,
     update_task_in_body,
 )
-from tools.private.release.utils import (
+from dev.release.utils import (
     REPO_URL,
     get_latest_rc_tag,
     set_github_output,

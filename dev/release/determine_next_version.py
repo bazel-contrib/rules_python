@@ -1,6 +1,6 @@
 """Subcommand to determine the next version."""
 
-from tools.private.release.utils import determine_next_version
+from dev.release.utils import determine_next_version
 
 
 class DetermineNextVersion:

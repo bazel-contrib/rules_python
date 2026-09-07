@@ -63,7 +63,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ needs.parse_pr.outputs.pr_number }}
         run: |
-          bazel run //tools/private/release -- on-pr-merged \
+          bazel run //dev/release -- on-pr-merged \
             "$PR_NUMBER" \
             --remote origin \
             --no-dry-run

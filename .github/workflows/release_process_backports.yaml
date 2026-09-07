@@ -70,7 +70,7 @@ jobs:
             ARGS+=("--triggering-comment=$COMMENT_ID")
           fi
           
-          bazel run //tools/private/release -- process-backports \
+          bazel run //dev/release -- process-backports \
             --issue "$ISSUE" \
             --remote origin \
             --no-dry-run \

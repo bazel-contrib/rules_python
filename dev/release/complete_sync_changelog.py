@@ -3,8 +3,8 @@
 import logging
 import re
 
-from tools.private.release.gh import GitHub, get_github_event_pr_number
-from tools.private.release.release_issue import (
+from dev.release.gh import GitHub, get_github_event_pr_number
+from dev.release.release_issue import (
     parse_checklist_state,
     update_task_in_body,
 )

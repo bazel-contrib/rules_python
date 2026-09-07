@@ -72,5 +72,5 @@ jobs:
               ARGS+=("--to-minor=$TO_MINOR")
             fi
           fi
-          bazel run //tools/private/release -- \
+          bazel run //dev/release -- \
             backport-prepare "${ARGS[@]}" --no-dry-run

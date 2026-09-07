@@ -8,14 +8,14 @@ import pathlib
 import re
 import sys
 
-from tools.private.release import changelog_news
-from tools.private.release.gh import (
+from dev.release import changelog_news
+from dev.release.gh import (
     GetPrError,
     GitHub,
     GitHubInterface,
     InvalidPrRefError,
 )
-from tools.private.release.utils import replace_version_next_in_files
+from dev.release.utils import replace_version_next_in_files
 
 logger = logging.getLogger(__name__)
 

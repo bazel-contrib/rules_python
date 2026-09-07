@@ -1,8 +1,8 @@
 import argparse
 from unittest.mock import ANY, call
 
-from tools.private.release.backport_prepare import BackportPrepare
-from tools.private.release.gh import BACKPORT_LABEL
+from dev.release.backport_prepare import BackportPrepare
+from dev.release.gh import BACKPORT_LABEL
 
 pytest_plugins = ["tests.tools.private.release.release_test_helper"]
 
@@ -45,10 +45,8 @@ def test_prepare_from_issue_success(mocker, mock_git, mock_gh):
     ]
     mock_git.get_current_branch.return_value = "work-branch"
 
-    mock_news = mocker.patch("tools.private.release.backport_prepare.changelog_news")
-    mock_det = mocker.patch(
-        "tools.private.release.backport_prepare.determine_next_version"
-    )
+    mock_news = mocker.patch("dev.release.backport_prepare.changelog_news")
+    mock_det = mocker.patch("dev.release.backport_prepare.determine_next_version")
     mock_det.side_effect = ["1.7.2", "1.8.1", "1.9.0"]
 
     # Act
@@ -123,10 +121,8 @@ def test_prepare_manual_success(mocker, mock_git, mock_gh):
     ]
     mock_git.get_current_branch.return_value = "work-branch"
 
-    mocker.patch("tools.private.release.backport_prepare.changelog_news")
-    mock_det = mocker.patch(
-        "tools.private.release.backport_prepare.determine_next_version"
-    )
+    mocker.patch("dev.release.backport_prepare.changelog_news")
+    mock_det = mocker.patch("dev.release.backport_prepare.determine_next_version")
     mock_det.side_effect = ["1.7.2", "1.8.1"]
 
     # Act
@@ -165,10 +161,8 @@ def test_prepare_manual_with_patch_versions(mocker, mock_git, mock_gh):
     ]
     mock_git.get_current_branch.return_value = "work-branch"
 
-    mocker.patch("tools.private.release.backport_prepare.changelog_news")
-    mock_det = mocker.patch(
-        "tools.private.release.backport_prepare.determine_next_version"
-    )
+    mocker.patch("dev.release.backport_prepare.changelog_news")
+    mock_det = mocker.patch("dev.release.backport_prepare.determine_next_version")
     mock_det.side_effect = ["1.7.2", "1.8.1"]
 
     # Act
@@ -210,10 +204,8 @@ def test_prepare_verify_failed(mocker, mock_git, mock_gh):
     ]
     mock_git.get_current_branch.return_value = "work-branch"
 
-    mock_news = mocker.patch("tools.private.release.backport_prepare.changelog_news")
-    mock_det = mocker.patch(
-        "tools.private.release.backport_prepare.determine_next_version"
-    )
+    mock_news = mocker.patch("dev.release.backport_prepare.changelog_news")
+    mock_det = mocker.patch("dev.release.backport_prepare.determine_next_version")
     mock_det.side_effect = ["1.7.2", "1.8.1"]
     mock_git.cherry_pick.side_effect = [Exception("Conflict"), None]
     mock_news.update_changelog.side_effect = [Exception("Changelog error")]

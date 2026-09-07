@@ -123,7 +123,7 @@ automatically add the PRs to the checklist and trigger processing.
 ### Method D: Release Tool CLI
 You can use the release tool to add backports from your local checkout:
 ```shell
-bazel run //tools/private/release -- add-backports <PR_REF> [<PR_REF> ...]
+bazel run //dev/release -- add-backports <PR_REF> [<PR_REF> ...]
 ```
 The `<PR_REF>` can be:
 *   A PR number (e.g., `124` or `#124`)
@@ -138,7 +138,7 @@ To process and merge news files into an existing release in `CHANGELOG.md`
 the PR:
 
 ```shell
-bazel run //tools/private/release -- \
+bazel run //dev/release -- \
     process-news <VERSION> <TARGET> [<TARGET> ...]
 ```
 
@@ -156,10 +156,10 @@ Examples:
 
 ```shell
 # Process a single news file
-bazel run //tools/private/release -- process-news 2.3.0 news/3997.added.md
+bazel run //dev/release -- process-news 2.3.0 news/3997.added.md
 
 # Process all news files and update version markers for a PR
-bazel run //tools/private/release -- process-news 2.3.0 3997
+bazel run //dev/release -- process-news 2.3.0 3997
 ```
 
 ### Syncing Changelog to Main
@@ -181,7 +181,7 @@ Or comment `/sync-changelog` on the release tracking issue, or run via the
 release tool CLI:
 
 ```shell
-bazel run //tools/private/release -- \
+bazel run //dev/release -- \
     sync-changelog --issue <ISSUE> --remote origin
 ```
 

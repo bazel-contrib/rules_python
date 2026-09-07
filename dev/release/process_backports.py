@@ -7,10 +7,10 @@ import traceback
 from dataclasses import dataclass
 from typing import Any
 
-from tools.private.release import changelog_news
-from tools.private.release.gh import GH_REACTION_THUMBS_DOWN, GitHub
-from tools.private.release.git import Git
-from tools.private.release.release_issue import (
+from dev.release import changelog_news
+from dev.release.gh import GH_REACTION_THUMBS_DOWN, GitHub
+from dev.release.git import Git
+from dev.release.release_issue import (
     RELEASE_TITLE_RE,
     add_backports_to_body,
     add_rc_task_to_body,
@@ -19,7 +19,7 @@ from tools.private.release.release_issue import (
     parse_checklist_state,
     update_task_in_body,
 )
-from tools.private.release.utils import (
+from dev.release.utils import (
     format_exception,
     get_latest_rc_tag,
     parse_pr_list,

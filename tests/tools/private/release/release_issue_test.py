@@ -1,4 +1,4 @@
-from tools.private.release.release_issue import (
+from dev.release.release_issue import (
     add_backports_to_body,
     add_sync_changelog_task_to_body,
     format_metadata_line,

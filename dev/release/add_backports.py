@@ -1,8 +1,8 @@
 import os
 
-from tools.private.release.gh import GitHub
-from tools.private.release.git import Git
-from tools.private.release.release_issue import (
+from dev.release.gh import GitHub
+from dev.release.git import Git
+from dev.release.release_issue import (
     RELEASE_TITLE_RE,
     add_backports_to_body,
     add_rc_task_to_body,
@@ -10,7 +10,7 @@ from tools.private.release.release_issue import (
     load_release_tracking_template,
     parse_checklist_state,
 )
-from tools.private.release.utils import determine_next_version
+from dev.release.utils import determine_next_version
 
 
 class AddBackports:

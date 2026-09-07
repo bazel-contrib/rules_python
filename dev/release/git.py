@@ -2,7 +2,7 @@
 
 import subprocess
 
-from tools.private.release.shell import run_cmd
+from dev.release.shell import run_cmd
 
 
 class Git:

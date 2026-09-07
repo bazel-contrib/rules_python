@@ -4,9 +4,9 @@ import argparse
 import re
 from dataclasses import dataclass
 
-from tools.private.release.backport_prepare import parse_backport_metadata
-from tools.private.release.gh import GitHub
-from tools.private.release.release_issue import (
+from dev.release.backport_prepare import parse_backport_metadata
+from dev.release.gh import GitHub
+from dev.release.release_issue import (
     add_backports_to_body,
     add_sync_changelog_task_to_body,
     load_release_tracking_template,

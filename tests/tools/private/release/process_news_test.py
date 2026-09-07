@@ -1,7 +1,7 @@
 import argparse
 
-from tools.private.release.process_news import ProcessNews
-from tools.private.release.release import create_parser
+from dev.release.process_news import ProcessNews
+from dev.release.release import create_parser
 
 pytest_plugins = ["tests.tools.private.release.release_test_helper"]
 
@@ -215,13 +215,13 @@ def test_process_news_preserves_target_order(tmp_path, monkeypatch, mock_gh, moc
 
     processed_order = []
     mocker.patch(
-        "tools.private.release.process_news.process_pr_target",
+        "dev.release.process_news.process_pr_target",
         side_effect=lambda target, ver, p, **kwargs: processed_order.append(
             f"PR:{target.pr_num}"
         ),
     )
     mocker.patch(
-        "tools.private.release.process_news.process_news_file_target",
+        "dev.release.process_news.process_news_file_target",
         side_effect=lambda target, ver, p, **kwargs: processed_order.append(
             f"FILE:{target.path.name}"
         ),

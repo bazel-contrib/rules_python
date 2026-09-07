@@ -1,13 +1,13 @@
 """Subcommand to create a release branch from a merged PR commit."""
 
-from tools.private.release.gh import GitHub
-from tools.private.release.git import Git
-from tools.private.release.release_issue import (
+from dev.release.gh import GitHub
+from dev.release.git import Git
+from dev.release.release_issue import (
     RELEASE_TITLE_RE,
     parse_checklist_state,
     update_task_in_body,
 )
-from tools.private.release.utils import REPO_URL
+from dev.release.utils import REPO_URL
 
 
 class CreateReleaseBranch:

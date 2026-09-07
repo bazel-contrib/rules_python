@@ -1,6 +1,6 @@
 import argparse
 
-from tools.private.release.add_backports import AddBackports
+from dev.release.add_backports import AddBackports
 
 pytest_plugins = ["tests.tools.private.release.release_test_helper"]
 

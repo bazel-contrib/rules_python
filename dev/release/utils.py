@@ -9,7 +9,7 @@ import re
 
 from packaging.version import parse as parse_version
 
-from tools.private.release.git import Git
+from dev.release.git import Git
 
 REPO_URL = "https://github.com/bazel-contrib/rules_python"
 
@@ -32,7 +32,7 @@ _EXCLUDE_PATTERNS = [
     "./bazel-*/*",
     "./CONTRIBUTING.md",
     "./RELEASING.md",
-    "./tools/private/release/*",
+    "./dev/release/*",
     "./tests/tools/private/release/*",
 ]
 

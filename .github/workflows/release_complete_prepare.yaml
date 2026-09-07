@@ -67,7 +67,7 @@ jobs:
             ARGS+=("--issue=$ISSUE")
           fi
           # Run the complete-prepare subcommand in the release tool to cleanly update checklist metadata
-          bazel run //tools/private/release -- \
+          bazel run //dev/release -- \
             complete-prepare "${ARGS[@]}"
 
   call_create_release_branch:

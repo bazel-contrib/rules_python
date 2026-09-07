@@ -58,7 +58,7 @@ jobs:
           if [ -n "$COMMENT_ID" ]; then
             ARGS+=("--triggering-comment=$COMMENT_ID")
           fi
-          bazel run //tools/private/release -- \
+          bazel run //dev/release -- \
             create-rc --issue "$ISSUE" --remote origin "${ARGS[@]}"
 
   call_release:

@@ -43,5 +43,5 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ISSUE: ${{ inputs.issue }}
         run: |
-          bazel run //tools/private/release -- \
+          bazel run //dev/release -- \
             backport-create-releases --issue=$ISSUE --no-dry-run

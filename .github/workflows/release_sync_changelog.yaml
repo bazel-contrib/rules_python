@@ -42,5 +42,5 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          bazel run //tools/private/release -- sync-changelog \
+          bazel run //dev/release -- sync-changelog \
             --remote origin

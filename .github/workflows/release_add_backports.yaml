@@ -53,6 +53,6 @@ jobs:
           # Convert CSV to array
           IFS=',' read -r -a pr_array <<< "$PRS"
           
-          bazel run //tools/private/release -- add-backports \
+          bazel run //dev/release -- add-backports \
             "${pr_array[@]}" \
             "${ARGS[@]}"

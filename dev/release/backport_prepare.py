@@ -5,10 +5,10 @@ import datetime
 import re
 from dataclasses import dataclass
 
-from tools.private.release import changelog_news
-from tools.private.release.gh import BACKPORT_LABEL, GitHub
-from tools.private.release.git import Git
-from tools.private.release.utils import determine_next_version
+from dev.release import changelog_news
+from dev.release.gh import BACKPORT_LABEL, GitHub
+from dev.release.git import Git
+from dev.release.utils import determine_next_version
 
 
 @dataclass

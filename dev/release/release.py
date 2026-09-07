@@ -5,22 +5,22 @@ import logging
 import os
 import sys
 
-from tools.private.release.add_backports import AddBackports
-from tools.private.release.backport_create_releases import BackportCreateReleases
-from tools.private.release.backport_prepare import BackportPrepare
-from tools.private.release.complete_prepare import CompletePrepare
-from tools.private.release.complete_sync_changelog import CompleteSyncChangelog
-from tools.private.release.create_rc import CreateRc
-from tools.private.release.create_release_branch import CreateReleaseBranch
-from tools.private.release.create_release_issue import CreateReleaseIssue
-from tools.private.release.determine_next_version import DetermineNextVersion
-from tools.private.release.on_pr_merged import OnPrMerged
-from tools.private.release.prepare import Prepare
-from tools.private.release.process_backports import ProcessBackports
-from tools.private.release.process_news import ProcessNews
-from tools.private.release.promote import Promote
-from tools.private.release.sync_changelog import SyncChangelog
-from tools.private.release.utils import format_exception
+from dev.release.add_backports import AddBackports
+from dev.release.backport_create_releases import BackportCreateReleases
+from dev.release.backport_prepare import BackportPrepare
+from dev.release.complete_prepare import CompletePrepare
+from dev.release.complete_sync_changelog import CompleteSyncChangelog
+from dev.release.create_rc import CreateRc
+from dev.release.create_release_branch import CreateReleaseBranch
+from dev.release.create_release_issue import CreateReleaseIssue
+from dev.release.determine_next_version import DetermineNextVersion
+from dev.release.on_pr_merged import OnPrMerged
+from dev.release.prepare import Prepare
+from dev.release.process_backports import ProcessBackports
+from dev.release.process_news import ProcessNews
+from dev.release.promote import Promote
+from dev.release.sync_changelog import SyncChangelog
+from dev.release.utils import format_exception
 
 cmds = [
     DetermineNextVersion,

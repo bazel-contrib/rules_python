@@ -1,8 +1,8 @@
 """Subcommand to create a release tracking issue."""
 
-from tools.private.release.gh import GitHub
-from tools.private.release.release_issue import load_release_tracking_template
-from tools.private.release.utils import determine_next_version, semver_type
+from dev.release.gh import GitHub
+from dev.release.release_issue import load_release_tracking_template
+from dev.release.utils import determine_next_version, semver_type
 
 
 class CreateReleaseIssue:

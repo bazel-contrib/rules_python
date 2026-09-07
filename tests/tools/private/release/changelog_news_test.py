@@ -2,7 +2,7 @@ import pathlib
 
 import pytest
 
-from tools.private.release import changelog_news
+from dev.release import changelog_news
 
 
 def test_update_changelog_with_news(tmp_path):

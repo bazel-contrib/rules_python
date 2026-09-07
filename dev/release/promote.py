@@ -4,13 +4,13 @@ import argparse
 import os
 import urllib.parse
 
-from tools.private.release.gh import GitHub
-from tools.private.release.git import Git
-from tools.private.release.release_issue import (
+from dev.release.gh import GitHub
+from dev.release.git import Git
+from dev.release.release_issue import (
     RELEASE_TITLE_RE,
     update_task_in_body,
 )
-from tools.private.release.utils import (
+from dev.release.utils import (
     REPO_URL,
     determine_next_version,
     get_latest_rc_tag,

@@ -6,20 +6,20 @@ import logging
 import os
 import traceback
 
-from tools.private.release.gh import (
+from dev.release.gh import (
     SYNC_CHANGELOG_LABEL,
     GitHub,
     GitHubInterface,
     get_github_event_issue_number,
 )
-from tools.private.release.git import Git
-from tools.private.release.process_news import ProcessNews
-from tools.private.release.release_issue import (
+from dev.release.git import Git
+from dev.release.process_news import ProcessNews
+from dev.release.release_issue import (
     RELEASE_TITLE_RE,
     parse_checklist_state,
     update_task_in_body,
 )
-from tools.private.release.utils import (
+from dev.release.utils import (
     format_exception,
     parse_pr_list,
 )

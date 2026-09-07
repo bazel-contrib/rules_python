@@ -4,7 +4,7 @@ import pathlib
 import tempfile
 from unittest.mock import call
 
-from tools.private.release.create_rc import CreateRc
+from dev.release.create_rc import CreateRc
 
 pytest_plugins = ["tests.tools.private.release.release_test_helper"]
 
@@ -271,7 +271,7 @@ def test_create_rc_auto_add_task(mock_git, mock_gh):
 
 def test_create_rc_calls_process_backports(mocker, mock_git, mock_gh):
     # Arrange
-    mock_pb_class = mocker.patch("tools.private.release.create_rc.ProcessBackports")
+    mock_pb_class = mocker.patch("dev.release.create_rc.ProcessBackports")
     mock_pb = mock_pb_class.return_value
     mock_pb.run.return_value = 0
 
@@ -308,7 +308,7 @@ def test_create_rc_calls_process_backports(mocker, mock_git, mock_gh):
 
 def test_create_rc_aborts_on_process_backports_failure(mocker, mock_git, mock_gh):
     # Arrange
-    mock_pb_class = mocker.patch("tools.private.release.create_rc.ProcessBackports")
+    mock_pb_class = mocker.patch("dev.release.create_rc.ProcessBackports")
     mock_pb = mock_pb_class.return_value
     mock_pb.run.return_value = 1
 
@@ -328,7 +328,7 @@ def test_create_rc_aborts_on_process_backports_failure(mocker, mock_git, mock_gh
 
 def test_create_rc_failure_reacts_to_comment(mocker, mock_git, mock_gh):
     # Arrange
-    mock_pb_class = mocker.patch("tools.private.release.create_rc.ProcessBackports")
+    mock_pb_class = mocker.patch("dev.release.create_rc.ProcessBackports")
     mock_pb = mock_pb_class.return_value
     mock_pb.run.return_value = 1  # Simulate failure
 
@@ -346,7 +346,7 @@ def test_create_rc_failure_reacts_to_comment(mocker, mock_git, mock_gh):
 
 def test_create_rc_failure_no_comment_no_reaction(mocker, mock_git, mock_gh):
     # Arrange
-    mock_pb_class = mocker.patch("tools.private.release.create_rc.ProcessBackports")
+    mock_pb_class = mocker.patch("dev.release.create_rc.ProcessBackports")
     mock_pb = mock_pb_class.return_value
     mock_pb.run.return_value = 1  # Simulate failure
 
@@ -364,7 +364,7 @@ def test_create_rc_failure_no_comment_no_reaction(mocker, mock_git, mock_gh):
 
 def test_create_rc_success_with_comment_no_reaction(mocker, mock_git, mock_gh):
     # Arrange
-    mock_pb_class = mocker.patch("tools.private.release.create_rc.ProcessBackports")
+    mock_pb_class = mocker.patch("dev.release.create_rc.ProcessBackports")
     mock_pb = mock_pb_class.return_value
     mock_pb.run.return_value = 0
 
@@ -394,7 +394,7 @@ def test_create_rc_success_with_comment_no_reaction(mocker, mock_git, mock_gh):
 
 def test_create_rc_precondition_failure_reacts_to_comment(mocker, mock_git, mock_gh):
     # Arrange
-    mock_pb_class = mocker.patch("tools.private.release.create_rc.ProcessBackports")
+    mock_pb_class = mocker.patch("dev.release.create_rc.ProcessBackports")
     mock_pb = mock_pb_class.return_value
     mock_pb.run.return_value = 0  # Backports succeed
 

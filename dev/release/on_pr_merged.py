@@ -3,10 +3,10 @@
 import argparse
 import re
 
-from tools.private.release.gh import GitHub
-from tools.private.release.git import Git
-from tools.private.release.process_backports import ProcessBackports
-from tools.private.release.release_issue import parse_backports
+from dev.release.gh import GitHub
+from dev.release.git import Git
+from dev.release.process_backports import ProcessBackports
+from dev.release.release_issue import parse_backports
 
 
 class OnPrMerged:

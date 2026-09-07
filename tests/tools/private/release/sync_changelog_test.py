@@ -1,9 +1,9 @@
 import argparse
 from unittest.mock import MagicMock, call
 
-from tools.private.release.gh import CreatePrError
-from tools.private.release.release import create_parser
-from tools.private.release.sync_changelog import SyncChangelog
+from dev.release.gh import CreatePrError
+from dev.release.release import create_parser
+from dev.release.sync_changelog import SyncChangelog
 
 pytest_plugins = ["tests.tools.private.release.release_test_helper"]
 
@@ -31,9 +31,7 @@ def test_sync_changelog_no_pending(mock_git, mock_gh):
 
 
 def test_sync_changelog_success(mocker, mock_git, mock_gh):
-    mock_process_news_class = mocker.patch(
-        "tools.private.release.sync_changelog.ProcessNews"
-    )
+    mock_process_news_class = mocker.patch("dev.release.sync_changelog.ProcessNews")
     mock_process_news_instance = MagicMock()
     mock_process_news_instance.run.return_value = 0
     mock_process_news_class.return_value = mock_process_news_instance
@@ -100,9 +98,7 @@ def test_sync_changelog_success(mocker, mock_git, mock_gh):
 
 
 def test_sync_changelog_from_github_event_path(mocker, mock_git, mock_gh, gha):
-    mock_process_news_class = mocker.patch(
-        "tools.private.release.sync_changelog.ProcessNews"
-    )
+    mock_process_news_class = mocker.patch("dev.release.sync_changelog.ProcessNews")
     mock_process_news_instance = MagicMock()
     mock_process_news_instance.run.return_value = 0
     mock_process_news_class.return_value = mock_process_news_instance
@@ -135,9 +131,7 @@ def test_sync_changelog_from_github_event_path(mocker, mock_git, mock_gh, gha):
 
 
 def test_sync_changelog_branch_exists(mocker, mock_git, mock_gh):
-    mock_process_news_class = mocker.patch(
-        "tools.private.release.sync_changelog.ProcessNews"
-    )
+    mock_process_news_class = mocker.patch("dev.release.sync_changelog.ProcessNews")
     mock_process_news_instance = MagicMock()
     mock_process_news_instance.run.return_value = 0
     mock_process_news_class.return_value = mock_process_news_instance
@@ -174,9 +168,7 @@ def test_sync_changelog_branch_exists(mocker, mock_git, mock_gh):
 
 
 def test_sync_changelog_auto_discover_issue(mocker, mock_git, mock_gh):
-    mock_process_news_class = mocker.patch(
-        "tools.private.release.sync_changelog.ProcessNews"
-    )
+    mock_process_news_class = mocker.patch("dev.release.sync_changelog.ProcessNews")
     mock_process_news_instance = MagicMock()
     mock_process_news_instance.run.return_value = 0
     mock_process_news_class.return_value = mock_process_news_instance
@@ -235,9 +227,7 @@ def test_sync_changelog_multiple_open_issues_fails(mock_git, mock_gh):
 
 
 def test_sync_changelog_specific_prs_arg(mocker, mock_git, mock_gh):
-    mock_process_news_class = mocker.patch(
-        "tools.private.release.sync_changelog.ProcessNews"
-    )
+    mock_process_news_class = mocker.patch("dev.release.sync_changelog.ProcessNews")
     mock_process_news_instance = MagicMock()
     mock_process_news_instance.run.return_value = 0
     mock_process_news_class.return_value = mock_process_news_instance
@@ -267,9 +257,7 @@ def test_sync_changelog_specific_prs_arg(mocker, mock_git, mock_gh):
 
 
 def test_sync_changelog_no_changes(mocker, mock_git, mock_gh):
-    mock_process_news_class = mocker.patch(
-        "tools.private.release.sync_changelog.ProcessNews"
-    )
+    mock_process_news_class = mocker.patch("dev.release.sync_changelog.ProcessNews")
     mock_process_news_instance = MagicMock()
     mock_process_news_instance.run.return_value = 0
     mock_process_news_class.return_value = mock_process_news_instance
@@ -299,9 +287,7 @@ def test_sync_changelog_no_changes(mocker, mock_git, mock_gh):
 
 
 def test_sync_changelog_process_news_failure(mocker, mock_git, mock_gh):
-    mock_process_news_class = mocker.patch(
-        "tools.private.release.sync_changelog.ProcessNews"
-    )
+    mock_process_news_class = mocker.patch("dev.release.sync_changelog.ProcessNews")
     mock_process_news_instance = MagicMock()
     mock_process_news_instance.run.return_value = 1
     mock_process_news_class.return_value = mock_process_news_instance
@@ -334,9 +320,7 @@ def test_sync_changelog_process_news_failure(mocker, mock_git, mock_gh):
 
 
 def test_sync_changelog_create_pr_failure(mocker, mock_git, mock_gh):
-    mock_process_news_class = mocker.patch(
-        "tools.private.release.sync_changelog.ProcessNews"
-    )
+    mock_process_news_class = mocker.patch("dev.release.sync_changelog.ProcessNews")
     mock_process_news_instance = MagicMock()
     mock_process_news_instance.run.return_value = 0
     mock_process_news_class.return_value = mock_process_news_instance

@@ -9,7 +9,7 @@ py_library(
     target_compatible_with = NOT_WINDOWS,
     deps = [
         ":release_test_helper",
-        "//tools/private/release:release_lib",
+        "//dev/release:release_lib",
         "@pypi//pytest_mock",
     ],
 )
@@ -21,9 +21,9 @@ py_library(
     data = ["//.github/ISSUE_TEMPLATE:release_tracking_template.md"],
     target_compatible_with = NOT_WINDOWS,
     deps = [
+        "//dev/release:mock_gh",
+        "//dev/release:release_lib",
         "//python/runfiles",
-        "//tools/private/release:mock_gh",
-        "//tools/private/release:release_lib",
         "@pypi//pytest",
     ],
 )
@@ -36,7 +36,7 @@ pytest_test(
     deps = [
         ":conftest",
         ":release_test_helper",
-        "//tools/private/release:release_lib",
+        "//dev/release:release_lib",
     ],
 )
 
@@ -48,7 +48,7 @@ pytest_test(
     deps = [
         ":conftest",
         ":release_test_helper",
-        "//tools/private/release:release_lib",
+        "//dev/release:release_lib",
     ],
 )
 
@@ -60,7 +60,7 @@ pytest_test(
     deps = [
         ":conftest",
         ":release_test_helper",
-        "//tools/private/release:release_lib",
+        "//dev/release:release_lib",
     ],
 )
 
@@ -72,7 +72,7 @@ pytest_test(
     deps = [
         ":conftest",
         ":release_test_helper",
-        "//tools/private/release:release_lib",
+        "//dev/release:release_lib",
     ],
 )
 
@@ -84,7 +84,7 @@ pytest_test(
     deps = [
         ":conftest",
         ":release_test_helper",
-        "//tools/private/release:release_lib",
+        "//dev/release:release_lib",
     ],
 )
 
@@ -96,7 +96,7 @@ pytest_test(
     deps = [
         ":conftest",
         ":release_test_helper",
-        "//tools/private/release:release_lib",
+        "//dev/release:release_lib",
     ],
 )
 
@@ -108,7 +108,7 @@ pytest_test(
     deps = [
         ":conftest",
         ":release_test_helper",
-        "//tools/private/release:release_lib",
+        "//dev/release:release_lib",
     ],
 )
 
@@ -120,7 +120,7 @@ pytest_test(
     deps = [
         ":conftest",
         ":release_test_helper",
-        "//tools/private/release:release_lib",
+        "//dev/release:release_lib",
     ],
 )
 
@@ -132,7 +132,7 @@ pytest_test(
     deps = [
         ":conftest",
         ":release_test_helper",
-        "//tools/private/release:release_lib",
+        "//dev/release:release_lib",
     ],
 )
 
@@ -144,7 +144,7 @@ pytest_test(
     deps = [
         ":conftest",
         ":release_test_helper",
-        "//tools/private/release:release_lib",
+        "//dev/release:release_lib",
     ],
 )
 
@@ -156,7 +156,7 @@ pytest_test(
     deps = [
         ":conftest",
         ":release_test_helper",
-        "//tools/private/release:release_lib",
+        "//dev/release:release_lib",
     ],
 )
 
@@ -168,7 +168,7 @@ pytest_test(
     deps = [
         ":conftest",
         ":release_test_helper",
-        "//tools/private/release:release_lib",
+        "//dev/release:release_lib",
     ],
 )
 
@@ -180,7 +180,7 @@ pytest_test(
     deps = [
         ":conftest",
         ":release_test_helper",
-        "//tools/private/release:release_lib",
+        "//dev/release:release_lib",
     ],
 )
 
@@ -192,7 +192,7 @@ pytest_test(
     deps = [
         ":conftest",
         ":release_test_helper",
-        "//tools/private/release:release_lib",
+        "//dev/release:release_lib",
     ],
 )
 
@@ -204,7 +204,7 @@ pytest_test(
     deps = [
         ":conftest",
         ":release_test_helper",
-        "//tools/private/release:release_lib",
+        "//dev/release:release_lib",
     ],
 )
 
@@ -216,7 +216,7 @@ pytest_test(
     deps = [
         ":conftest",
         ":release_test_helper",
-        "//tools/private/release:release_lib",
+        "//dev/release:release_lib",
     ],
 )
 
@@ -228,7 +228,7 @@ pytest_test(
     deps = [
         ":conftest",
         ":release_test_helper",
-        "//tools/private/release:release_lib",
+        "//dev/release:release_lib",
     ],
 )
 
@@ -240,7 +240,7 @@ pytest_test(
     deps = [
         ":conftest",
         ":release_test_helper",
-        "//tools/private/release:release_lib",
+        "//dev/release:release_lib",
     ],
 )
 
@@ -252,6 +252,6 @@ pytest_test(
     deps = [
         ":conftest",
         ":release_test_helper",
-        "//tools/private/release:release_lib",
+        "//dev/release:release_lib",
     ],
 )

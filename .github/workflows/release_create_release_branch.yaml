@@ -41,7 +41,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          bazel run //tools/private/release -- \
+          bazel run //dev/release -- \
             create-release-branch --issue "${{ inputs.issue }}" --remote origin
 
   # A no-op job that always runs to prevent "no jobs ran" failures

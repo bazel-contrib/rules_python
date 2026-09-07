@@ -12,8 +12,8 @@ from typing import (
     override,  # pyrefly: ignore[missing-module-attribute] -- override available in Python 3.12+
 )
 
-from tools.private.release.release_issue import BackportTask
-from tools.private.release.shell import run_cmd
+from dev.release.release_issue import BackportTask
+from dev.release.shell import run_cmd
 
 # GitHub label types
 RELEASE_LABEL = "type: release"

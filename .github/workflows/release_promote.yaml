@@ -60,7 +60,7 @@ jobs:
           ARGS+=("--remote=origin")
           ARGS+=("--no-dry-run")
           
-          bazel run //tools/private/release -- promote "${ARGS[@]}"
+          bazel run //dev/release -- promote "${ARGS[@]}"
 
   publish:
     needs: promote

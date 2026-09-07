@@ -42,7 +42,7 @@ py_binary(
     srcs = ["merge_changelog.py"],
     target_compatible_with = _TARGET_COMPATIBLE_WITH,
     deps = [
-        "//tools/private/release:changelog_news",
+        "//dev/release:changelog_news",
     ],
 )
 

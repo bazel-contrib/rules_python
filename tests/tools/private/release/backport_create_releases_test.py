@@ -1,6 +1,6 @@
 import argparse
 
-from tools.private.release.backport_create_releases import BackportCreateReleases
+from dev.release.backport_create_releases import BackportCreateReleases
 
 # Register pytest fixtures (such as release_tool_env) from release_test_helper
 pytest_plugins = ["tests.tools.private.release.release_test_helper"]

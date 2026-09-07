@@ -3,20 +3,20 @@
 import argparse
 import datetime
 
-from tools.private.release import changelog_news
-from tools.private.release.gh import (
+from dev.release import changelog_news
+from dev.release.gh import (
     RELEASE_PREPARED_LABEL,
     GitHub,
     MultipleTrackingIssuesError,
     NoTrackingIssueError,
 )
-from tools.private.release.git import Git
-from tools.private.release.release_issue import (
+from dev.release.git import Git
+from dev.release.release_issue import (
     load_release_tracking_template,
     parse_checklist_state,
     update_task_in_body,
 )
-from tools.private.release.utils import (
+from dev.release.utils import (
     determine_next_version,
     replace_version_next,
     semver_type,

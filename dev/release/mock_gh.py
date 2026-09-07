@@ -5,7 +5,7 @@ from typing import (
     override,  # pyrefly: ignore[missing-module-attribute] -- override available in Python 3.12+
 )
 
-from tools.private.release.gh import (
+from dev.release.gh import (
     RELEASE_LABEL,
     GetPrError,
     GitHubInterface,
@@ -16,7 +16,7 @@ from tools.private.release.gh import (
     PrDict,
     resolve_merge_commits_for_prs,
 )
-from tools.private.release.release_issue import BackportTask
+from dev.release.release_issue import BackportTask
 
 
 class MockGitHub(GitHubInterface):
