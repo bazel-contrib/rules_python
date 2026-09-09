@@ -626,7 +626,10 @@ def _process_single_version_platform_overrides(*, tag, _fail = fail, default):
         available_versions[tag.python_version] = {}
 
     if tag.coverage_tool:
-        available_versions[tag.python_version].setdefault("coverage_tool", {})[tag.platform] = tag.coverage_tool
+        # NOTE: tag.coverage_tool is a Label (so that it is resolved relative to the
+        # calling module), but downstream (python_repository.coverage_tool) it is
+        # consumed as a string, so convert it to its canonical string form here.
+        available_versions[tag.python_version].setdefault("coverage_tool", {})[tag.platform] = str(tag.coverage_tool)
     if tag.patch_strip:
         available_versions[tag.python_version].setdefault("patch_strip", {})[tag.platform] = tag.patch_strip
     if tag.patches:
