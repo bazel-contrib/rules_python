@@ -32,8 +32,7 @@ def py_toolchain_suite(
         prefix,
         user_repository_name,
         python_version,
-        set_python_version_constraint,
-        flag_values,
+        version_settings,
         target_settings = [],
         target_compatible_with = []):
     """For internal use only.
@@ -44,57 +43,21 @@ def py_toolchain_suite(
             implementation (it's assumed to have particular target names within
             it). Does not include the leading "@".
         python_version: The full (X.Y.Z) version of the interpreter.
-        set_python_version_constraint: True or False as a string.
-        flag_values: Extra flag values to match for this toolchain. These
-            are prepended to target_settings.
+        version_settings: Labels of the shared Python version predicates.
         target_settings: Extra target_settings to match for this toolchain.
         target_compatible_with: list constraints the toolchains are compatible with.
     """
 
-    # We have to use a String value here because bzlmod is passing in a
-    # string as we cannot have list of bools in build rule attributes.
-    # This if statement does not appear to work unless it is in the
-    # toolchain file.
-    if set_python_version_constraint in ["True", "False"]:
-        major_minor, _, _ = python_version.rpartition(".")
-        python_versions = [major_minor, python_version]
-        if set_python_version_constraint == "False":
-            python_versions.append("")
-
-        match_any = []
-        for i, v in enumerate(python_versions):
-            name = "{prefix}_{python_version}_{i}".format(
-                prefix = prefix,
-                python_version = python_version,
-                i = i,
-            )
-            match_any.append(name)
-            native.config_setting(
-                name = name,
-                flag_values = flag_values | {
-                    Label("@rules_python//python/config_settings:python_version"): v,
-                },
-                visibility = ["//visibility:private"],
-            )
-
-        name = "{prefix}_version_setting_{python_version}".format(
-            prefix = prefix,
-            python_version = python_version,
-            visibility = ["//visibility:private"],
-        )
-        selects.config_setting_group(
-            name = name,
-            match_any = match_any,
-            visibility = ["//visibility:private"],
-        )
-        target_settings = [name] + target_settings
-    else:
-        fail(("Invalid set_python_version_constraint value: got {} {}, wanted " +
-              "either the string 'True' or the string 'False'; " +
-              "(did you convert bool to string?)").format(
-            type(set_python_version_constraint),
-            repr(set_python_version_constraint),
-        ))
+    name = "{prefix}_version_setting_{python_version}".format(
+        prefix = prefix,
+        python_version = python_version,
+    )
+    selects.config_setting_group(
+        name = name,
+        match_any = version_settings,
+        visibility = ["//visibility:private"],
+    )
+    target_settings = [name] + target_settings
 
     _internal_toolchain_suite(
         prefix = prefix,
