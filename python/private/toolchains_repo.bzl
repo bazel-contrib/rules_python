@@ -218,7 +218,14 @@ def python_toolchain_build_file_content(
     return toolchain_suites_content(suites)
 
 def toolchain_suites_content(suites):
-    """Render shared version predicates followed by their toolchain suites."""
+    """Render shared version predicates followed by their toolchain suites.
+
+    Args:
+        suites: Toolchain suite data with version and platform settings.
+
+    Returns:
+        BUILD file content with shared config_setting predicates and suites.
+    """
     suite_settings = []
     for suite in suites:
         if suite.set_python_version_constraint not in ["True", "False"]:
