@@ -1634,17 +1634,31 @@ WARNING: Target {} is using implicit __init__.py creation.
     )
 
 def _write_build_data(ctx):
+    build_data_name = ctx.label.name + ".build_data.txt"
+
+    if not is_stamping_enabled(ctx):
+        # Without stamping there are no volatile inputs, so the content is known
+        # at analysis time. Write it directly. This skips a spawn per executable.
+        # It also skips the constant metadata output below, which never reports
+        # as up to date.
+        build_data = ctx.actions.declare_file(build_data_name)
+
+        ctx.actions.write(
+            output = build_data,
+            content = ctx.actions.args()
+                .set_param_file_format("multiline")
+                .add(str(ctx.label), format = "TARGET %s")
+                .add("STAMPED FALSE"),
+        )
+
+        return build_data
+
+    info_file = ctx.info_file
+    version_file = ctx.files._uncachable_version_file[0]
+
     inputs = builders.DepsetBuilder()
-    if is_stamping_enabled(ctx):
-        # NOTE: ctx.info_file is undocumented; see
-        # https://github.com/bazelbuild/bazel/issues/9363
-        info_file = ctx.info_file
-        version_file = ctx.files._uncachable_version_file[0]
-        inputs.add(info_file)
-        inputs.add(version_file)
-    else:
-        info_file = None
-        version_file = None
+    inputs.add(info_file)
+    inputs.add(version_file)
 
     # A "constant metadata" file is basically a special file that doesn't
     # support change detection logic and reports that it is unchanged. i.e., it
@@ -1670,9 +1684,15 @@ def _write_build_data(ctx):
     #     mostly works. Google's RBE, unfortunately, rejects it.
     #   * A binary's transitive closure may be so large that it exceeds
     #     Google RBE limits for action inputs.
+    #
+    # The cost is that this action never reports as up to date. Constant
+    # metadata cannot be restored from the action cache, so ActionCacheChecker
+    # stats the output instead. That stat fails when outputs are not downloaded,
+    # and the action re-runs. The trade is worth it here, because the inputs do
+    # really change every build.
     build_data = _py_builtins.declare_constant_metadata_file(
         ctx = ctx,
-        name = ctx.label.name + ".build_data.txt",
+        name = build_data_name,
         root = ctx.bin_dir,
     )
 
@@ -1698,13 +1718,13 @@ def _write_build_data(ctx):
         executable = action_exe,
         arguments = [action_args],
         env = {
-            "INFO_FILE": info_file.path if info_file else "",
+            "INFO_FILE": info_file.path,
             "OUTPUT": build_data.path,
             # Include this so it's explicit, otherwise, one has to detect
             # this by looking for the absense of info_file keys.
-            "STAMPED": "TRUE" if is_stamping_enabled(ctx) else "FALSE",
+            "STAMPED": "TRUE",
             "TARGET": str(ctx.label),
-            "VERSION_FILE": version_file.path if version_file else "",
+            "VERSION_FILE": version_file.path,
         },
         inputs = inputs.build(),
         outputs = [build_data],
