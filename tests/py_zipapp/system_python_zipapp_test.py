@@ -56,7 +56,7 @@ class PosixSignalZipAppTest(unittest.TestCase):
             process.kill()
             process.wait()
         try:
-            os.kill(application_pid, signal.SIGKILL)
+            os.kill(application_pid, signal.SIGTERM)
         except ProcessLookupError:
             pass
         if process.stdout is not None:
