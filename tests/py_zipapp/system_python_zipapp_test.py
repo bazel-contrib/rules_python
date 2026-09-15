@@ -6,6 +6,32 @@ import unittest
 
 
 class SystemPythonZipAppTest(unittest.TestCase):
+    def test_zipapp_runnable(self):
+        zipapp_path = os.environ["TEST_ZIPAPP"]
+
+        self.assertTrue(os.path.exists(zipapp_path))
+        self.assertTrue(os.path.isfile(zipapp_path))
+
+        try:
+            output = (
+                subprocess.check_output([zipapp_path], stderr=subprocess.STDOUT)
+                .decode("utf-8")
+                .strip()
+            )
+        except subprocess.CalledProcessError as e:
+            self.fail(
+                "exit code: {}\n"
+                " command: {}\n"
+                "===== stdout/stderr start ==={}===== stdout/stderr end ====".format(
+                    e.returncode, e.cmd, e.output.decode("utf-8")
+                )
+            )
+        self.assertIn("Hello from zipapp", output)
+        self.assertIn("dep:", output)
+
+
+@unittest.skipUnless(os.name == "posix", "POSIX signals are required")
+class PosixSignalZipAppTest(unittest.TestCase):
     def zipapp_command(self, *args, invoke_with_python=False):
         zipapp_path = os.environ["TEST_ZIPAPP"]
         command = [zipapp_path]
@@ -36,30 +62,6 @@ class SystemPythonZipAppTest(unittest.TestCase):
         if process.stdout is not None:
             process.stdout.close()
 
-    def test_zipapp_runnable(self):
-        zipapp_path = os.environ["TEST_ZIPAPP"]
-
-        self.assertTrue(os.path.exists(zipapp_path))
-        self.assertTrue(os.path.isfile(zipapp_path))
-
-        try:
-            output = (
-                subprocess.check_output([zipapp_path], stderr=subprocess.STDOUT)
-                .decode("utf-8")
-                .strip()
-            )
-        except subprocess.CalledProcessError as e:
-            self.fail(
-                "exit code: {}\n"
-                " command: {}\n"
-                "===== stdout/stderr start ==={}===== stdout/stderr end ====".format(
-                    e.returncode, e.cmd, e.output.decode("utf-8")
-                )
-            )
-        self.assertIn("Hello from zipapp", output)
-        self.assertIn("dep:", output)
-
-    @unittest.skipIf(os.name == "nt", "POSIX signals are required")
     def test_zipapp_forwards_sigterm(self):
         for invoke_with_python in (False, True):
             with self.subTest(invoke_with_python=invoke_with_python):
@@ -74,7 +76,6 @@ class SystemPythonZipAppTest(unittest.TestCase):
                 finally:
                     self.stop_process(process, application_pid)
 
-    @unittest.skipIf(os.name == "nt", "POSIX signals are required")
     def test_zipapp_preserves_signal_termination(self):
         for invoke_with_python in (False, True):
             with self.subTest(invoke_with_python=invoke_with_python):
@@ -91,7 +92,6 @@ class SystemPythonZipAppTest(unittest.TestCase):
                 finally:
                     self.stop_process(process, application_pid)
 
-    @unittest.skipIf(os.name == "nt", "POSIX signals are required")
     def test_zipapp_preserves_nonzero_exit_status(self):
         for invoke_with_python in (False, True):
             with self.subTest(invoke_with_python=invoke_with_python):
