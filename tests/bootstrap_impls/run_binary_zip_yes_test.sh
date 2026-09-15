@@ -42,3 +42,68 @@ if ! (echo "$actual" | grep "$expected_pattern" ) >/dev/null; then
   exit 1
 fi
 
+case "$(uname -s)" in
+  CYGWIN*|MINGW*|MSYS*) exit 0 ;;
+esac
+
+test_dir=$(mktemp -d)
+launcher_pid=""
+application_pid=""
+watchdog_pid=""
+
+cleanup() {
+  if [[ -n "${watchdog_pid}" ]]; then
+    kill "${watchdog_pid}" 2>/dev/null || true
+  fi
+  if [[ -n "${launcher_pid}" ]]; then
+    kill -KILL "${launcher_pid}" 2>/dev/null || true
+  fi
+  if [[ -n "${application_pid}" ]]; then
+    kill -KILL "${application_pid}" 2>/dev/null || true
+  fi
+  rm -rf "${test_dir}"
+}
+trap cleanup EXIT
+
+run_signal_case() {
+  local mode="$1"
+  local expected_exit="$2"
+  local expected_output="$3"
+  local log="${test_dir}/${mode}.log"
+
+  "$bin" "${mode}" >"${log}" 2>&1 &
+  launcher_pid=$!
+  for _ in {1..100}; do
+    if grep -F "ready:" "${log}" >/dev/null; then
+      break
+    fi
+    sleep 0.1
+  done
+  grep -F "ready:" "${log}" >/dev/null || return 1
+  application_pid=$(sed -n 's/^ready://p' "${log}")
+
+  kill -TERM "${launcher_pid}"
+  (
+    sleep 10
+    kill -KILL "${launcher_pid}" "${application_pid}" 2>/dev/null || true
+  ) &
+  watchdog_pid=$!
+  wait "${launcher_pid}"
+  exit_code=$?
+  kill "${watchdog_pid}" 2>/dev/null || true
+  watchdog_pid=""
+
+  if [[ "${exit_code}" != "${expected_exit}" ]]; then
+    echo "expected exit ${expected_exit}, got ${exit_code}" >&2
+    cat "${log}" >&2
+    return 1
+  fi
+  if [[ -n "${expected_output}" ]]; then
+    grep -F "${expected_output}" "${log}" >/dev/null || return 1
+  fi
+  launcher_pid=""
+  application_pid=""
+}
+
+run_signal_case handled 0 "received:15" || exit 1
+run_signal_case unhandled 143 "" || exit 1

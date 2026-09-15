@@ -77,12 +77,5 @@ command=(
   "$@"
 )
 
-# NOTE: because exec isn't used, signals don't propagate to the child
-# TODO: Use exec and let the program handle cleanup. Without exec,
-# signals don't propagate to the child nicely.
-# See https://github.com/bazel-contrib/rules_python/issues/2043#issuecomment-2215469971
-# for more information.
-"${command[@]}"
-# Explicit exit is needed because the implicit next line the zip file this
-# template is prepended to.
-exit 0
+# The stage 2 bootstrap removes the extracted runfiles when the program exits.
+exec "${command[@]}"
