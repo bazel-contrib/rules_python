@@ -17,6 +17,7 @@
 
 load("//python:versions.bzl", "FREETHREADED", "INSTALL_ONLY")
 load(":auth.bzl", "get_auth")
+load(":pbs_manifest.bzl", "is_astral_static_libpython_build")
 load(":repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
 load(":text_util.bzl", "render")
 
@@ -162,6 +163,7 @@ def _python_repository_impl(rctx):
         *python_version_info
     )
     urls = rctx.attr.urls or [rctx.attr.url]
+    interpreter_has_static_libpython = is_astral_static_libpython_build(urls, release_filename)
     auth = get_auth(rctx, urls)
 
     if INSTALL_ONLY in release_filename:
@@ -280,6 +282,7 @@ define_hermetic_runtime_toolchain_impl(
   name = "define_runtime",
   extra_files_glob_include = {extra_files_glob_include},
   extra_files_glob_exclude = {extra_files_glob_exclude},
+    interpreter_has_static_libpython = {interpreter_has_static_libpython},
   python_version = {python_version},
   python_bin = {python_bin},
   coverage_tool = {coverage_tool},
@@ -287,6 +290,7 @@ define_hermetic_runtime_toolchain_impl(
 """.format(
         extra_files_glob_exclude = render.list(glob_exclude),
         extra_files_glob_include = render.list(glob_include),
+        interpreter_has_static_libpython = str(interpreter_has_static_libpython),
         python_bin = render.str(python_bin),
         python_version = render.str(rctx.attr.python_version),
         coverage_tool = render.str(coverage_tool),

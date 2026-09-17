@@ -4,7 +4,7 @@ load("@bazel_skylib//lib:structs.bzl", "structs")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
-load("//python/private:pbs_manifest.bzl", "parse_filename", "parse_runtime_manifest")  # buildifier: disable=bzl-visibility
+load("//python/private:pbs_manifest.bzl", "is_astral_static_libpython_build", "parse_filename", "parse_runtime_manifest")  # buildifier: disable=bzl-visibility
 
 _tests = []
 
@@ -96,6 +96,47 @@ def _test_parse_filename_baseline_impl(env, target):
     })
 
 _tests.append(_test_parse_filename_baseline)
+
+def _test_is_astral_static_libpython_build(name):
+    rt_util.helper_target(
+        native.filegroup,
+        name = name + "_subject",
+    )
+    analysis_test(
+        name = name,
+        target = name + "_subject",
+        impl = _test_is_astral_static_libpython_build_impl,
+    )
+
+def _test_is_astral_static_libpython_build_impl(env, target):
+    _ = target  # @unused
+
+    github_url = "https://github.com/astral-sh/python-build-standalone/releases/download/20250604/archive.tar.gz"
+    mirror_url = "https://releases.astral.sh/github/python-build-standalone/releases/download/20250604/archive.tar.gz"
+    cutoff_filename = "cpython-3.13.4+20250604-x86_64-unknown-linux-gnu-install_only.tar.gz"
+
+    env.expect.that_bool(is_astral_static_libpython_build(
+        [github_url],
+        cutoff_filename,
+    )).equals(True)
+    env.expect.that_bool(is_astral_static_libpython_build(
+        [mirror_url],
+        cutoff_filename,
+    )).equals(True)
+    env.expect.that_bool(is_astral_static_libpython_build(
+        [github_url],
+        "cpython-3.13.3+20250531-x86_64-unknown-linux-gnu-install_only.tar.gz",
+    )).equals(False)
+    env.expect.that_bool(is_astral_static_libpython_build(
+        ["https://example.com/20250604/archive.tar.gz"],
+        cutoff_filename,
+    )).equals(False)
+    env.expect.that_bool(is_astral_static_libpython_build(
+        [github_url],
+        "custom-python.tar.gz",
+    )).equals(False)
+
+_tests.append(_test_is_astral_static_libpython_build)
 
 def _test_parse_runtime_manifest(name):
     """Sets up the manifest file parsing test.
