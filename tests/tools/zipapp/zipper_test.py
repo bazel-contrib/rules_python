@@ -171,9 +171,7 @@ def test_create_zip_with_sandboxed_source_symlink(tmp_path):
             is_symlink_file=True,
             target=target_path.name,
         )
-        assert_zip_file_content(
-            zf, "runfiles/my_ws/bin/python3.14", content="python"
-        )
+        assert_zip_file_content(zf, "runfiles/my_ws/bin/python3.14", content="python")
 
 
 def test_pathsep_normalization(tmp_path):

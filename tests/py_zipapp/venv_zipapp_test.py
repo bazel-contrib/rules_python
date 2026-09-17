@@ -86,8 +86,7 @@ class PyZipAppTest(unittest.TestCase):
             if os.name != "nt":
                 self.assertFalse(
                     any(
-                        "/lib/libpython" in name and ".so" in name
-                        for name in namelist
+                        "/lib/libpython" in name and ".so" in name for name in namelist
                     ),
                     "Statically linked Python should not bundle libpython",
                 )
