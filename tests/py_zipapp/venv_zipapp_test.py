@@ -84,12 +84,6 @@ class PyZipAppTest(unittest.TestCase):
 
             # On Windows, pyvenv.cfg and bin/python3 are generated at runtime.
             if os.name != "nt":
-                self.assertFalse(
-                    any(
-                        "/lib/libpython" in name and ".so" in name for name in namelist
-                    ),
-                    "Statically linked Python should not bundle libpython",
-                )
                 self.assertHasPathMatchingSuffix(namelist, "/pyvenv.cfg")
 
                 # The venv directory name depends on the target name, so find it

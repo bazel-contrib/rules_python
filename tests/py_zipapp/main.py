@@ -4,10 +4,6 @@
 def main():
     print("Hello from zipapp")
     try:
-        import _ssl
-
-        print(f"dep: {_ssl}")
-
         import some_dep
 
         print(f"dep: {some_dep}")

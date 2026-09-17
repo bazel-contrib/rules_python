@@ -67,10 +67,9 @@ def define_hermetic_runtime_toolchain_impl(
     ]
     files_include += extra_files_glob_include
     files_exclude = [
-        # The hermetic Linux interpreter includes libpython statically. Keep
-        # shared libraries available through :libpython for explicit users,
-        # but don't include them in every Python runtime's runfiles.
-        "lib/libpython*.so*",
+        # Unused shared libraries. `python` executable and the `:libpython` target
+        # depend on `libpython{python_version}.so.1.0`.
+        "lib/libpython{major}.{minor}*.so".format(**version_dict),
         # static libraries
         "lib/**/*.a",
         # tests for the standard libraries.
