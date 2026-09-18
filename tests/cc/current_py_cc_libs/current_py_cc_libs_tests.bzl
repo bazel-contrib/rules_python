@@ -105,7 +105,13 @@ def _test_shared_library(name):
         impl = _test_shared_library_impl,
         target = name + ".shared",
         config_settings = {
-            "//command_line_option:extra_toolchains": [str(native.package_relative_label(":" + name + ".toolchain"))],
+            # This transition replaces the C++ toolchain supplied by RBE.
+            "//command_line_option:extra_toolchains": [
+                str(native.package_relative_label(":" + name + ".toolchain")),
+                str(Label("//tests/support/cc_toolchains:linux_toolchain_definition")),
+                str(Label("//tests/support/cc_toolchains:mac_toolchain_definition")),
+                str(Label("//tests/support/cc_toolchains:windows_toolchain_definition")),
+            ],
         },
     )
 
