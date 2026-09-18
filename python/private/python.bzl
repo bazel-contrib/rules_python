@@ -612,6 +612,8 @@ def _process_single_version_overrides(*, tag, _fail = fail, default):
         kwargs.setdefault(tag.python_version, {})["distutils_content"] = tag.distutils_content
     if tag.distutils:
         kwargs.setdefault(tag.python_version, {})["distutils"] = tag.distutils
+    if tag.libpython and tag.libpython != "auto":
+        kwargs.setdefault(tag.python_version, {})["libpython"] = tag.libpython
 
 def _process_single_version_platform_overrides(*, tag, _fail = fail, default):
     if not _validate_version(tag.python_version, _fail = _fail):
@@ -641,6 +643,8 @@ def _process_single_version_platform_overrides(*, tag, _fail = fail, default):
 
     if tag.urls:
         available_versions[tag.python_version].setdefault("url", {})[tag.platform] = tag.urls
+    if tag.libpython and tag.libpython != "auto":
+        available_versions[tag.python_version].setdefault("libpython", {})[tag.platform] = tag.libpython
 
     # If platform is customized, or doesn't exist, (re)define one.
     if ((tag.target_compatible_with or tag.target_settings or tag.os_name or tag.arch) or
@@ -719,6 +723,7 @@ def _process_global_overrides(*, tag, default, _fail = fail):
 
     forwarded_attrs = sorted(AUTH_ATTRS) + [
         "base_urls",
+        "libpython",
         "register_all_versions",
     ]
     for key in forwarded_attrs:
@@ -1348,6 +1353,11 @@ dependencies are introduced.
             doc = """Deprecated; do not use. This attribute has no effect.""",
             mandatory = False,
         ),
+        "libpython": attr.string(
+            default = "auto",
+            doc = "Whether to include shared libpython files: auto, include, or exclude.",
+            values = ["auto", "include", "exclude"],
+        ),
         "minor_mapping": attr.string_dict(
             mandatory = False,
             doc = """\
@@ -1423,6 +1433,11 @@ class.
             doc = "A distutils.cfg file content to be included in the Python installation. " +
                   "Either {attr}`distutils` or {attr}`distutils_content` can be specified, but not both.",
             mandatory = False,
+        ),
+        "libpython": attr.string(
+            default = "auto",
+            doc = "Whether to include shared libpython files: auto, include, or exclude.",
+            values = ["auto", "include", "exclude"],
         ),
         "patch_strip": attr.int(
             mandatory = False,
@@ -1580,6 +1595,11 @@ Docs for [Registering custom runtimes]
 :::{versionadded} 1.5.0
 :::
 """,
+        ),
+        "libpython": attr.string(
+            default = "auto",
+            doc = "Whether to include shared libpython files: auto, include, or exclude.",
+            values = ["auto", "include", "exclude"],
         ),
         "urls": attr.string_list(
             mandatory = False,

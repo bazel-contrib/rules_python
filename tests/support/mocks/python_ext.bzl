@@ -32,6 +32,7 @@ def _override(**kwargs):
         "available_python_versions": [],
         "base_urls": ["https://github.com/astral-sh/python-build-standalone/releases/download"],
         "ignore_root_user_error": True,
+        "libpython": "auto",
         "minor_mapping": {},
         "register_all_versions": False,
         "runtime_manifest_sha": "",
@@ -53,6 +54,7 @@ def _single_version_override(**kwargs):
     attrs = {
         "distutils": None,
         "distutils_content": "",
+        "libpython": "auto",
         "patch_strip": 0,
         "patches": [],
         "python_version": "",
@@ -77,6 +79,7 @@ def _single_version_platform_override(**kwargs):
         "strip_prefix": "python",
         "target_compatible_with": [],
         "target_settings": [],
+        "libpython": "auto",
         "urls": [],
     }
     attrs.update(kwargs)

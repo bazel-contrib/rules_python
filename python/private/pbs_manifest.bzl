@@ -1,6 +1,6 @@
 """Helper functions to parse python-build-standalone manifests."""
 
-_ASTRAL_STATIC_LIBPYTHON_RELEASE = 20250604
+_ASTRAL_STATIC_LIBPYTHON_RELEASE = 20250517
 _ASTRAL_RELEASE_URL_PREFIXES = [
     "https://github.com/astral-sh/python-build-standalone/releases/download/",
     "https://releases.astral.sh/github/python-build-standalone/releases/download/",
@@ -120,6 +120,7 @@ def parse_filename(filename):
 
 # buildifier: disable=function-docstring-args
 # buildifier: disable=function-docstring-return
+# urls: list[str], release_filename: str -> bool
 def is_astral_static_libpython_build(urls, release_filename):
     """Whether an Astral build includes libpython statically in its interpreter."""
     parsed = parse_filename(release_filename)

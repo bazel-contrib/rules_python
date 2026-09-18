@@ -111,9 +111,9 @@ def _test_is_astral_static_libpython_build(name):
 def _test_is_astral_static_libpython_build_impl(env, target):
     _ = target  # @unused
 
-    github_url = "https://github.com/astral-sh/python-build-standalone/releases/download/20250604/archive.tar.gz"
-    mirror_url = "https://releases.astral.sh/github/python-build-standalone/releases/download/20250604/archive.tar.gz"
-    cutoff_filename = "cpython-3.13.4+20250604-x86_64-unknown-linux-gnu-install_only.tar.gz"
+    github_url = "https://github.com/astral-sh/python-build-standalone/releases/download/20250517/archive.tar.gz"
+    mirror_url = "https://releases.astral.sh/github/python-build-standalone/releases/download/20250517/archive.tar.gz"
+    cutoff_filename = "cpython-3.13.4+20250517-x86_64-unknown-linux-gnu-install_only.tar.gz"
 
     env.expect.that_bool(is_astral_static_libpython_build(
         [github_url],
@@ -125,7 +125,7 @@ def _test_is_astral_static_libpython_build_impl(env, target):
     )).equals(True)
     env.expect.that_bool(is_astral_static_libpython_build(
         [github_url],
-        "cpython-3.13.3+20250531-x86_64-unknown-linux-gnu-install_only.tar.gz",
+        "cpython-3.13.3+20250516-x86_64-unknown-linux-gnu-install_only.tar.gz",
     )).equals(False)
     env.expect.that_bool(is_astral_static_libpython_build(
         ["https://example.com/20250604/archive.tar.gz"],

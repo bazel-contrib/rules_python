@@ -163,7 +163,12 @@ def _python_repository_impl(rctx):
         *python_version_info
     )
     urls = rctx.attr.urls or [rctx.attr.url]
-    interpreter_has_static_libpython = is_astral_static_libpython_build(urls, release_filename)
+    if rctx.attr.libpython == "include":
+        interpreter_has_static_libpython = False
+    elif rctx.attr.libpython == "exclude":
+        interpreter_has_static_libpython = True
+    else:
+        interpreter_has_static_libpython = is_astral_static_libpython_build(urls, release_filename)
     auth = get_auth(rctx, urls)
 
     if INSTALL_ONLY in release_filename:
@@ -364,6 +369,11 @@ For more information see {attr}`py_runtime.coverage_tool`.
             default = True,
             doc = "Noop, will be removed in the next major release",
             mandatory = False,
+        ),
+        "libpython": attr.string(
+            default = "auto",
+            doc = "Whether to include shared libpython files: auto, include, or exclude.",
+            values = ["auto", "include", "exclude"],
         ),
         "netrc": attr.string(
             doc = ".netrc file to use for authentication; mirrors the eponymous attribute from http_archive",
