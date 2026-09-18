@@ -15,15 +15,24 @@
 """Implementation of current_py_cc_libs rule."""
 
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
+load("@rules_cc//cc/common:cc_shared_library_hint_info.bzl", "CcSharedLibraryHintInfo")
 
 def _current_py_cc_libs_impl(ctx):
     py_cc_toolchain = ctx.toolchains["//python/cc:toolchain_type"].py_cc_toolchain
-    return py_cc_toolchain.libs.providers_map.values()
+    providers = py_cc_toolchain.libs.providers_map
+    owners = {
+        linker_input.owner: None
+        for linker_input in providers["CcInfo"].linking_context.linker_inputs.to_list()
+    }
+    return providers.values() + [CcSharedLibraryHintInfo(
+        attributes = [],
+        owners = owners.keys() or [ctx.label],
+    )]
 
 current_py_cc_libs = rule(
     implementation = _current_py_cc_libs_impl,
     toolchains = ["//python/cc:toolchain_type"],
-    provides = [CcInfo],
+    provides = [CcInfo, CcSharedLibraryHintInfo],
     doc = """\
 Provides the currently active Python toolchain's C libraries.
 
@@ -39,5 +48,9 @@ cc_library(
     deps = ["@rules_python//python/cc:current_py_cc_libs"]
 )
 ```
+
+:::{versionchanged} VERSION_NEXT_PATCH
+Static libraries are included when this target is a dependency of `cc_shared_library`.
+:::
 """,
 )
