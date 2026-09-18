@@ -28,6 +28,7 @@ if (
 
 from os.path import abspath, dirname, join, basename, normpath
 import os
+import signal
 import shutil
 import subprocess
 
@@ -488,6 +489,43 @@ def runfiles_envvar(runfiles_root):
 
   return (None, None)
 
+def _run_subprocess(argv, env, cwd):
+  if IS_WINDOWS:
+    return subprocess.call(argv, env=env, cwd=cwd)
+
+  child = None
+  pending_signals = []
+
+  def forward_signal(signum, _frame):
+    if child is None:
+      pending_signals.append(signum)
+    else:
+      try:
+        # Keep wait() as the sole child reaper. Popen.send_signal() may call
+        # poll(), which can race wait() and lose the child's exit status.
+        os.kill(child.pid, signum)
+      except ProcessLookupError:
+        pass
+
+  previous_handlers = {}
+  for name in ("SIGHUP", "SIGINT", "SIGQUIT", "SIGTERM"):
+    signum = getattr(signal, name, None)
+    if signum is not None:
+      previous_handlers[signum] = signal.signal(signum, forward_signal)
+
+  try:
+    child = subprocess.Popen(argv, env=env, cwd=cwd)
+    for signum in pending_signals:
+      forward_signal(signum, None)
+    ret_code = child.wait()
+  finally:
+    for signum, handler in previous_handlers.items():
+      signal.signal(signum, handler)
+
+  if ret_code < 0:
+    return 128 - ret_code
+  return ret_code
+
 def execute_file(python_program, main_filename, args, env, runfiles_root,
                 workspace, delete_dirs):
   # type: (str, str, list[str], dict[str, str], str, str|None, str|None) -> ...
@@ -535,8 +573,7 @@ def execute_file(python_program, main_filename, args, env, runfiles_root,
   print_verbose("run: subproc: environ:", mapping=os.environ)
   print_verbose("run: subproc: cwd:", workspace)
   print_verbose("run: subproc: argv:", values=argv)
-  ret_code = subprocess.call(
-      argv, env=env, cwd=workspace)
+  ret_code = _run_subprocess(argv, env=env, cwd=workspace)
   print_verbose("run: subproc: exit code:", ret_code)
 
   if delete_dirs:
