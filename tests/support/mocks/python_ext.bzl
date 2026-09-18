@@ -70,6 +70,7 @@ def _single_version_platform_override(**kwargs):
     attrs = {
         "arch": "",
         "coverage_tool": None,
+        "libpython": "auto",
         "os_name": "",
         "patch_strip": 0,
         "patches": [],
@@ -79,7 +80,6 @@ def _single_version_platform_override(**kwargs):
         "strip_prefix": "python",
         "target_compatible_with": [],
         "target_settings": [],
-        "libpython": "auto",
         "urls": [],
     }
     attrs.update(kwargs)

@@ -1598,6 +1598,19 @@ Docs for [Registering custom runtimes]
 :::
 """,
         ),
+        "libpython": attr.string(
+            default = "auto",
+            doc = """Whether to include shared libpython files.
+
+Valid values are `auto`, `include`, and `exclude`. With `auto`, recognized
+Astral Python Standalone builds from 20250517 onward exclude the shared
+libraries; other runtimes retain them.
+
+:::{versionadded} VERSION_NEXT_PATCH
+:::
+""",
+            values = ["auto", "include", "exclude"],
+        ),
         "target_settings": attr.string_list(
             doc = """
 The `target_setings` values to use for the toolchain definition.
@@ -1611,19 +1624,6 @@ Docs for [Registering custom runtimes]
 :::{versionadded} 1.5.0
 :::
 """,
-        ),
-        "libpython": attr.string(
-            default = "auto",
-            doc = """Whether to include shared libpython files.
-
-Valid values are `auto`, `include`, and `exclude`. With `auto`, recognized
-Astral Python Standalone builds from 20250517 onward exclude the shared
-libraries; other runtimes retain them.
-
-:::{versionadded} VERSION_NEXT_PATCH
-:::
-""",
-            values = ["auto", "include", "exclude"],
         ),
         "urls": attr.string_list(
             mandatory = False,
