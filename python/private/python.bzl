@@ -1355,7 +1355,15 @@ dependencies are introduced.
         ),
         "libpython": attr.string(
             default = "auto",
-            doc = "Whether to include shared libpython files: auto, include, or exclude.",
+            doc = """Whether to include shared libpython files.
+
+Valid values are `auto`, `include`, and `exclude`. With `auto`, recognized
+Astral Python Standalone builds from 20250517 onward exclude the shared
+libraries; other runtimes retain them.
+
+:::{versionadded} VERSION_NEXT_PATCH
+:::
+""",
             values = ["auto", "include", "exclude"],
         ),
         "minor_mapping": attr.string_dict(
@@ -1436,7 +1444,15 @@ class.
         ),
         "libpython": attr.string(
             default = "auto",
-            doc = "Whether to include shared libpython files: auto, include, or exclude.",
+            doc = """Whether to include shared libpython files.
+
+Valid values are `auto`, `include`, and `exclude`. With `auto`, recognized
+Astral Python Standalone builds from 20250517 onward exclude the shared
+libraries; other runtimes retain them.
+
+:::{versionadded} VERSION_NEXT_PATCH
+:::
+""",
             values = ["auto", "include", "exclude"],
         ),
         "patch_strip": attr.int(
@@ -1598,7 +1614,15 @@ Docs for [Registering custom runtimes]
         ),
         "libpython": attr.string(
             default = "auto",
-            doc = "Whether to include shared libpython files: auto, include, or exclude.",
+            doc = """Whether to include shared libpython files.
+
+Valid values are `auto`, `include`, and `exclude`. With `auto`, recognized
+Astral Python Standalone builds from 20250517 onward exclude the shared
+libraries; other runtimes retain them.
+
+:::{versionadded} VERSION_NEXT_PATCH
+:::
+""",
             values = ["auto", "include", "exclude"],
         ),
         "urls": attr.string_list(

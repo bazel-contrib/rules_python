@@ -284,13 +284,13 @@ load("@rules_python//python/private:hermetic_runtime_repo_setup.bzl", "define_he
 package(default_visibility = ["//visibility:public"])
 
 define_hermetic_runtime_toolchain_impl(
-  name = "define_runtime",
-  extra_files_glob_include = {extra_files_glob_include},
-  extra_files_glob_exclude = {extra_files_glob_exclude},
+    name = "define_runtime",
+    extra_files_glob_include = {extra_files_glob_include},
+    extra_files_glob_exclude = {extra_files_glob_exclude},
     interpreter_has_static_libpython = {interpreter_has_static_libpython},
-  python_version = {python_version},
-  python_bin = {python_bin},
-  coverage_tool = {coverage_tool},
+    python_version = {python_version},
+    python_bin = {python_bin},
+    coverage_tool = {coverage_tool},
 )
 """.format(
         extra_files_glob_exclude = render.list(glob_exclude),
