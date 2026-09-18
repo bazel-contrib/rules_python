@@ -261,3 +261,18 @@ LibcFlag = FlagEnum(
     MUSL = "musl",
     get_value = _libc_flag_get_value,
 )
+
+# Used for selectively including the libpython into the targets. By default
+# the hermetic Python toolchain statically links python3 binary, so that it
+# may be optional to include the shared library unless there are extensions
+# dynamically linking, which requires this at runtime.
+#
+# buildifier: disable=name-conventions
+PyRuntimeIncludeLibPython = FlagEnum(
+    # Automatically do the right thing - currently the same as yes.
+    AUTO = "auto",
+    # Include libpython
+    YES = "yes",
+    # Do not include libpython
+    NO = "no",
+)
