@@ -17,6 +17,7 @@
 
 load("//python:versions.bzl", "FREETHREADED", "INSTALL_ONLY")
 load(":auth.bzl", "get_auth")
+load(":pbs_manifest.bzl", "is_astral_static_libpython_build")
 load(":repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
 load(":text_util.bzl", "render")
 
@@ -162,6 +163,12 @@ def _python_repository_impl(rctx):
         *python_version_info
     )
     urls = rctx.attr.urls or [rctx.attr.url]
+    if rctx.attr.libpython == "include":
+        interpreter_has_static_libpython = False
+    elif rctx.attr.libpython == "exclude":
+        interpreter_has_static_libpython = True
+    else:
+        interpreter_has_static_libpython = is_astral_static_libpython_build(urls, release_filename)
     auth = get_auth(rctx, urls)
 
     if INSTALL_ONLY in release_filename:
@@ -277,16 +284,18 @@ load("@rules_python//python/private:hermetic_runtime_repo_setup.bzl", "define_he
 package(default_visibility = ["//visibility:public"])
 
 define_hermetic_runtime_toolchain_impl(
-  name = "define_runtime",
-  extra_files_glob_include = {extra_files_glob_include},
-  extra_files_glob_exclude = {extra_files_glob_exclude},
-  python_version = {python_version},
-  python_bin = {python_bin},
-  coverage_tool = {coverage_tool},
+    name = "define_runtime",
+    extra_files_glob_include = {extra_files_glob_include},
+    extra_files_glob_exclude = {extra_files_glob_exclude},
+    interpreter_has_static_libpython = {interpreter_has_static_libpython},
+    python_version = {python_version},
+    python_bin = {python_bin},
+    coverage_tool = {coverage_tool},
 )
 """.format(
         extra_files_glob_exclude = render.list(glob_exclude),
         extra_files_glob_include = render.list(glob_include),
+        interpreter_has_static_libpython = str(interpreter_has_static_libpython),
         python_bin = render.str(python_bin),
         python_version = render.str(rctx.attr.python_version),
         coverage_tool = render.str(coverage_tool),
@@ -360,6 +369,11 @@ For more information see {attr}`py_runtime.coverage_tool`.
             default = True,
             doc = "Noop, will be removed in the next major release",
             mandatory = False,
+        ),
+        "libpython": attr.string(
+            default = "auto",
+            doc = "Whether to include shared libpython files: auto, include, or exclude.",
+            values = ["auto", "include", "exclude"],
         ),
         "netrc": attr.string(
             doc = ".netrc file to use for authentication; mirrors the eponymous attribute from http_archive",

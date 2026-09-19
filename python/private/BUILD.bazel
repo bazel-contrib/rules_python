@@ -780,6 +780,7 @@ bzl_library(
     srcs = ["python_repository.bzl"],
     deps = [
         ":auth",
+        ":pbs_manifest",
         ":repo_utils",
         ":text_util",
         "//python:versions",
