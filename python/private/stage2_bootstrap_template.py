@@ -520,6 +520,43 @@ def main():
         )
         _add_site_packages(site_packages)
 
+    if IS_WINDOWS:
+        base_dlls = os.path.join(sys.base_prefix, "DLLs")
+        if os.path.exists(base_dlls):
+            if base_dlls not in sys.path:
+                insert_idx = 0
+                for i, p in enumerate(sys.path):
+                    if p.endswith(".zip"):
+                        insert_idx = i + 1
+                        break
+                sys.path.insert(insert_idx, base_dlls)
+            if hasattr(os, "add_dll_directory"):
+                try:
+                    os.add_dll_directory(base_dlls)
+                except OSError:
+                    pass
+        prefix_dlls = os.path.join(sys.prefix, "DLLs")
+        if (
+            prefix_dlls != base_dlls
+            and os.path.exists(prefix_dlls)
+            and hasattr(os, "add_dll_directory")
+        ):
+            try:
+                os.add_dll_directory(prefix_dlls)
+            except OSError:
+                pass
+        for i, p in enumerate(list(sys.path)):
+            if p == sys.base_prefix:
+                has_stdlib_after = any(
+                    other.startswith(sys.base_prefix)
+                    and other != sys.base_prefix
+                    and not other.endswith("-packages")
+                    for other in sys.path[i + 1 :]
+                )
+                if has_stdlib_after:
+                    sys.path.remove(p)
+                break
+
     print_verbose("runfiles root:", runfiles_root)
 
     runfiles_envkey, runfiles_envvalue = runfiles_envvar(runfiles_root)

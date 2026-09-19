@@ -107,10 +107,10 @@ load(
     "kwargs_set_default_list",
     "kwargs_setter",
     "kwargs_setter_doc",
-    "list_add_unique",
     "normalize_transition_in_out_value",
     "normalize_transition_in_out_values",
 )
+load(":util.bzl", "list_add_unique")
 
 # Various string constants for kwarg key names used across two or more
 # functions, or in contexts with optional lookups (e.g. dict.dict, key in dict).

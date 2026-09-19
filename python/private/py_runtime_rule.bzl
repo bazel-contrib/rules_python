@@ -209,6 +209,7 @@ def _py_runtime_impl(ctx):
         site_init_template = ctx.file.site_init_template,
         supports_build_time_venv = ctx.attr.supports_build_time_venv,
         venv_bin_files = ctx.files.venv_bin_files,
+        zip_stdlib = ctx.file.zip_stdlib,
     ))
 
     providers = [
@@ -450,6 +451,15 @@ This becomes the entry point executed when `python foo.zip` is run.
 
 :::{seealso}
 The {obj}`PyRuntimeInfo.zip_main_template` field.
+:::
+""",
+            ),
+            "zip_stdlib": attr.label(
+                allow_single_file = True,
+                doc = """
+A zip file containing the standard library for this runtime.
+
+:::{versionadded} VERSION_NEXT_FEATURE
 :::
 """,
             ),
