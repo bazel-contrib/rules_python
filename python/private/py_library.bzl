@@ -46,6 +46,19 @@ load(":py_info.bzl", "PyInfo")
 load(":reexports.bzl", "BuiltinPyInfo")
 load(":rule_builders.bzl", "ruleb")
 load(
+    ":runfiles_groups.bzl",
+    "PyRunfilesGroupsInfo",
+    "RUNFILES_GROUP_ENABLED_LABEL",
+    "build_entries_depset",
+    "collect_data_entries",
+    "collect_dep_entries",
+    "collect_py_info_only_entries",
+    "collect_src_entries",
+    "library_entry",
+    "pyc_collection_enabled_by_default",
+    runfiles_groups_enabled = "is_enabled",
+)
+load(
     ":toolchain_types.bzl",
     "EXEC_TOOLS_TOOLCHAIN_TYPE",
     TOOLCHAIN_TYPE = "TARGET_TOOLCHAIN_TYPE",
@@ -115,6 +128,12 @@ This allows optimizing the generation of symlinks to be cheaper at analysis time
         ),
         "_add_srcs_to_runfiles_flag": lambda: attrb.Label(
             default = labels.ADD_SRCS_TO_RUNFILES,
+        ),
+        "_runfiles_group_enabled": lambda: attrb.Label(
+            default = RUNFILES_GROUP_ENABLED_LABEL,
+        ),
+        "_runfiles_groups_flag": lambda: attrb.Label(
+            default = labels.RUNFILES_GROUPS,
         ),
     },
 )
@@ -205,7 +224,66 @@ def py_library_impl(ctx):
     ]
     if builtins_py_info:
         providers.append(builtins_py_info)
+    if runfiles_groups_enabled(ctx):
+        providers.append(_create_runfiles_groups(
+            ctx,
+            required_py_files = required_py_files,
+            required_pyc_files = required_pyc_files,
+            implicit_pyc_files = implicit_pyc_files,
+            implicit_pyc_source_files = implicit_pyc_source_files,
+        ))
     return providers
+
+def _create_runfiles_groups(
+        ctx,
+        *,
+        required_py_files,
+        required_pyc_files,
+        implicit_pyc_files,
+        implicit_pyc_source_files):
+    """Creates the private PyRunfilesGroupsInfo provider.
+
+    Deliberately not the public RunfilesGroupInfo: the library's own entry
+    holds what it contributes to a consuming binary's runfiles (the sources
+    and pyc files a binary will add from this library's `PyInfo`, plus its
+    plain data files), which is more than the library's own runfiles. See
+    runfiles_groups.bzl for how the groups fit together.
+    """
+    pyc_collection_enabled = pyc_collection_enabled_by_default(ctx)
+    dep_entries = collect_dep_entries(
+        ctx,
+        ctx.attr.deps,
+        pyc_collection_enabled = pyc_collection_enabled,
+        include_plain_dep_py_files = True,
+    )
+    pyi_dep_entries = collect_py_info_only_entries(
+        ctx.attr.pyi_deps,
+        pyc_collection_enabled = pyc_collection_enabled,
+    )
+    src_entries = collect_src_entries(ctx.attr.srcs)
+    data_entries = collect_data_entries(ctx.attr.data)
+
+    own_files = builders.DepsetBuilder()
+    own_files.add(required_py_files)
+    own_files.add(required_pyc_files)
+    if pyc_collection_enabled:
+        own_files.add(implicit_pyc_files)
+    else:
+        own_files.add(implicit_pyc_source_files)
+    own_files.add(data_entries.own_files)
+
+    pypi_package, _ = _get_package_and_version(ctx)
+    own_entries = struct(
+        direct = [library_entry(ctx, pypi_package, own_files.build())],
+        transitive = [],
+    )
+    return PyRunfilesGroupsInfo(entries = build_entries_depset(
+        dep_entries,
+        pyi_dep_entries,
+        src_entries,
+        data_entries,
+        own_entries,
+    ))
 
 _DEFAULT_PY_LIBRARY_DOC = """
 A library of Python code that can be depended upon.
