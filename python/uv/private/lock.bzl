@@ -635,8 +635,8 @@ def lock(
         constraints: {type}`list[Label]` The list of constraints files to use.
         directory: {type}`str | None` The directory into which we should cd when
             running the command. Defaults to `native.package()`. Set to `None`
-            or `""` to restore behaviour before `VERSION_NEXT_FEATURE`.
-            {versionadded} VERSION_NEXT_FEATURE
+            or `""` to restore behaviour before `2.4.0`.
+            {versionadded} 2.4.0
         generate_hashes: {type}`bool` Generate hashes for all of the
             requirements. Only meaningful for `requirements.txt` style output.
             Defaults to `True`.

@@ -123,7 +123,7 @@ gazelle_python_manifest(
 )
 ```
 
-:::{versionchanged} VERSION_NEXT_FEATURE
+:::{versionchanged} 2.4.0
 The `requirements` argument is deprecated in favor of `lockfiles`, which can
 refer to any dependency lockfile, including `uv.lock`.
 :::
