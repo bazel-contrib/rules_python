@@ -20,6 +20,27 @@ class UnifiedPypiTest(runner.TestCase):
             "//:test_cli",
         )
 
+    def test_platform_specific_package(self):
+        for hub in ("auto", "pypi_b"):
+            with self.subTest(hub=hub):
+                self.run_bazel(
+                    "build",
+                    "--platforms=//:linux_x86_64",
+                    f"--@rules_python//python/config_settings:venv={hub}",
+                    "@pypi//six",
+                    "@pypi//six:whl",
+                )
+
+    def test_platform_specific_package_rejects_unsupported_platform(self):
+        result = self.run_bazel(
+            "cquery",
+            "--platforms=//:windows_x86_64",
+            "@pypi//six",
+            check=False,
+        )
+        self.assertNotEqual(result.exit_code, 0)
+        self.assert_result_matches(result, "No matching wheel")
+
     def test_disjoint_package_cquery_succeeds_but_build_fails(self):
         self.run_bazel("cquery", "//:bin_six_a")
         result = self.run_bazel("build", "//:bin_six_a", check=False)
