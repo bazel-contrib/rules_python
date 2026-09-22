@@ -120,10 +120,14 @@ go_test(
     name = "default_test",
     srcs = [
         "file_parser_test.go",
+        "parser_test.go",
         "std_modules_test.go",
     ],
     embed = [":python"],
     deps = [
+        "@com_github_emirpasic_gods//sets/treeset:go_default_library",
+        "@com_github_emirpasic_gods//utils:go_default_library",
         "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
     ],
 )
