@@ -242,6 +242,55 @@ The `auto` value
 The `omit_if_generated_source` value was removed
 ::::
 
+::::{bzl:flag} runfiles_groups
+Determines if `py_binary`, `py_test`, and `py_runtime` emit the
+`RunfilesGroupInfo` provider from
+[`rules_runfiles_group`](https://github.com/bazel-contrib/rules_runfiles_group).
+
+:::{include} /_includes/experimental_api.md
+:::
+
+When enabled, an executable's runfiles are split into named groups, which
+packaging rules can consume to produce layered artifacts (e.g. container
+images with a shared interpreter layer and one layer per third-party
+dependency). The groups emitted by a binary are:
+
+* `rules_python#runtime`: the interpreter and its standard library.
+* `rules_python#pypi/<package>`: one group per PyPI-provided dependency.
+* One group per other `py_library` dependency, named by its label.
+* `rules_python#venv`: the binary-specific venv symlinks and support files.
+* `rules_python#app`: the binary's own code, executable, and bootstrap files.
+* One group per rule target in `data` attributes, named by its label.
+
+`py_library` participates through a private rules_python provider rather
+than by emitting `RunfilesGroupInfo` itself; its sources reach a binary via
+{obj}`PyInfo`, not through its own runfiles, so only a binary can produce
+groups whose union equals its `DefaultInfo.default_runfiles` (the public
+provider's contract). That exactness has two exceptions, in which only the
+coarse `runtime`/`venv`/`app` grouping is emitted: a binary that sets the
+{obj}`pyc_collection` attribute to a value different from the configuration
+default, and the deprecated implicit `__init__.py` creation.
+
+Values:
+
+* `auto`: (default) Follow the ecosystem-wide
+  `@rules_runfiles_group//runfiles_group:enabled` flag (itself default
+  disabled).
+* `disabled`: Don't emit the providers, regardless of the ecosystem-wide
+  flag.
+* `enabled`: Emit the providers, regardless of the ecosystem-wide flag.
+
+:::{note}
+Requires Bazel 9+. On older versions both flags are inert no-ops: Bazel 8's
+autoload machinery cannot load `rules_runfiles_group` from `rules_python`
+without a load cycle
+([bazel#23043](https://github.com/bazelbuild/bazel/issues/23043)).
+:::
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+::::
+
 ::::{bzl:flag} validate_test_main
 Determines if `py_test` runs a build-time validation that its main module
 actually runs tests.
