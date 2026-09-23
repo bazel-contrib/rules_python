@@ -100,6 +100,9 @@ def _test_py_info_populated_impl(env, target):
         "{package}/lib2.pyi",
         "{package}/subject.pyi",
     ])
+    info.transitive_sources().contains_exactly([
+        "{package}/test_py_info_populated_subject.py",
+    ])
 
 _tests.append(_test_py_info_populated)
 

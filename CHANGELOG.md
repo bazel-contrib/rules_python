@@ -29,6 +29,9 @@ Unreleased changes are tracked as individual files in the [news/](./news)
 directory, or view the [latest generated
 changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 
+### Fixed
+* Fixed {attr}`py_library.pyi_deps` being erroneously included in {obj}`PyInfo.transitive_sources` and propagated into downstream binary and test runfiles.
+
 {#v2-4-0}
 ## [2.4.0] - 2026-09-22
 

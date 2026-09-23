@@ -519,6 +519,43 @@ def _test_py_runtime_info_provided_impl(env, target):
 
 _tests.append(_test_py_runtime_info_provided)
 
+def _test_pyi_deps_not_in_runfiles(name, config):
+    rt_util.helper_target(
+        py_library,
+        name = name + "_types",
+        srcs = [rt_util.empty_file(name + "_type_stub.py")],
+    )
+    rt_util.helper_target(
+        py_library,
+        name = name + "_lib",
+        srcs = [rt_util.empty_file(name + "_lib.py")],
+        pyi_deps = [name + "_types"],
+    )
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject",
+        srcs = [name + "_main.py"],
+        main = name + "_main.py",
+        deps = [name + "_lib"],
+    )
+    analysis_test(
+        name = name,
+        impl = _test_pyi_deps_not_in_runfiles_impl,
+        target = name + "_subject",
+    )
+
+def _test_pyi_deps_not_in_runfiles_impl(env, target):
+    target = env.expect.that_target(target)
+    target.runfiles().contains_at_least([
+        "{workspace}/{package}/{test_name}_main.py",
+        "{workspace}/{package}/{test_name}_lib.py",
+    ])
+    target.runfiles().not_contains(
+        "{workspace}/{package}/{test_name}_type_stub.py",
+    )
+
+_tests.append(_test_pyi_deps_not_in_runfiles)
+
 def _test_venv_output_prefix_with_path_separators(name, config):
     rt_util.helper_target(
         config.rule,
