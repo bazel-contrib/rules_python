@@ -199,6 +199,14 @@ py_library(
     ],
 )
 
+filegroup(
+    name = "exec_interpreter_template",
+    srcs = select({
+        "@platforms//os:windows": [":interpreter_template.bat"],
+        "//conditions:default": [":interpreter_template.sh"],
+    }),
+)
+
 # The current toolchain's interpreter as an excutable, usable with
 # executable=True attributes.
 current_interpreter_executable(
@@ -529,6 +537,7 @@ bzl_library(
     name = "py_exec_tools_toolchain",
     srcs = ["py_exec_tools_toolchain.bzl"],
     deps = [
+        ":common",
         ":common_labels",
         ":py_exec_tools_info",
         ":sentinel_impl",

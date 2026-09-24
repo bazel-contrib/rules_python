@@ -39,10 +39,13 @@ toolchain.
 :::
 
 :::{warning}
-This does not work correctly with RBE. Use {obj}`exec_runtime` instead.
+This may not work correctly with RBE. Use {obj}`exec_runtime` instead.
 
-Once [bazelbuild/bazel#23620](https://github.com/bazelbuild/bazel/issues/23620) is resolved this warning
-may be removed.
+A launcher script is now used to set `PYTHONHOME` and runfiles, which is
+expected to resolve RBE compatibility, but this still needs to be verified on
+RBE via CI. Once verified or once
+[bazelbuild/bazel#23620](https://github.com/bazelbuild/bazel/issues/23620) is
+resolved, this warning may be removed.
 :::
 """,
         "exec_runtime": """
