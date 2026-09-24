@@ -15,10 +15,12 @@
 
 load("@bazel_skylib//lib:dicts.bzl", "dicts")
 load("@bazel_skylib//lib:paths.bzl", "paths")
+load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@bazel_skylib//lib:structs.bzl", "structs")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
+load(":application.bzl", "APPLICATION_ATTRS", "create_application", "create_application_archive", "create_application_launcher", "is_default_bootstrap")
 load(":attr_builders.bzl", "attrb")
 load(
     ":attributes.bzl",
@@ -82,6 +84,7 @@ _INIT_PY = "__init__.py"
 EXECUTABLE_ATTRS = dicts.add(
     COMMON_ATTRS,
     AGNOSTIC_EXECUTABLE_ATTRS,
+    APPLICATION_ATTRS,
     PY_SRCS_ATTRS,
     IMPORTS_ATTRS,
     WINDOWS_CONSTRAINTS_ATTRS,
@@ -208,6 +211,10 @@ accepting arbitrary Python versions.
         "_allowlist_function_transition": lambda: attrb.Label(
             default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
         ),
+        "_bootstrap_cleanup": lambda: attrb.Label(
+            allow_single_file = True,
+            default = "//python/private:bootstrap_cleanup",
+        ),
         "_bootstrap_impl_flag": lambda: attrb.Label(
             default = labels.BOOTSTRAP_IMPL,
             providers = [BuildSettingInfo],
@@ -333,6 +340,7 @@ def _create_executable(
     # avoid collisions between targets like foo/tool, bar/tool, and foo_tool.
     venv_output_prefix = ctx.label.name
     venv = None
+    zip_main = None
 
     # The check for stage2_bootstrap_template is to support legacy
     # BuiltinPyRuntimeInfo providers, which is likely to come from
@@ -364,19 +372,23 @@ def _create_executable(
             build_data_file = runfiles_details.build_data_file,
         )
         extra_runfiles = ctx.runfiles(
-            [stage2_bootstrap] + (
+            [stage2_bootstrap, ctx.file._bootstrap_cleanup] + (
                 venv.files_without_interpreter if venv else []
             ),
         ).merge(venv.lib_runfiles)
-        zip_main = _create_zip_main(
+        application = create_application(
             ctx,
-            stage2_bootstrap = stage2_bootstrap,
-            runtime_details = runtime_details,
+            runtime = runtime_details.effective_runtime,
+            stage2 = stage2_bootstrap,
             venv = venv,
+            runfiles = runfiles_details.runfiles_without_exe,
+            interpreter_args = ctx.attr.interpreter_args,
         )
+        extra_runfiles = extra_runfiles.merge(application.runfiles)
     else:
         stage2_bootstrap = None
-        extra_runfiles = ctx.runfiles()
+        application = None
+        extra_runfiles = ctx.runfiles([ctx.file._bootstrap_cleanup])
         zip_main = ctx.actions.declare_file(base_executable_name + ".temp", sibling = executable)
         _create_stage1_bootstrap(
             ctx,
@@ -388,12 +400,21 @@ def _create_executable(
         )
 
     zip_file = ctx.actions.declare_file(base_executable_name + ".zip", sibling = executable)
-    _create_zip_file(
-        ctx,
-        output = zip_file,
-        zip_main = zip_main,
-        runfiles = runfiles_details.runfiles_without_exe.merge(extra_runfiles),
-    )
+    if application:
+        create_application_archive(
+            ctx,
+            application = application,
+            output = zip_file,
+            template = runtime_details.effective_runtime.zip_main_template,
+            cache = False,
+        )
+    else:
+        _create_zip_file(
+            ctx,
+            output = zip_file,
+            zip_main = zip_main,
+            runfiles = runfiles_details.runfiles_without_exe.merge(extra_runfiles),
+        )
 
     extra_default_outputs = []
 
@@ -464,6 +485,7 @@ WARNING: Target: {}
             ctx,
             output = executable,
             zip_file = zip_file,
+            application = application,
             stage2_bootstrap = stage2_bootstrap,
             runtime_details = runtime_details,
             venv = venv,
@@ -472,6 +494,7 @@ WARNING: Target: {}
         _create_stage1_bootstrap(
             ctx,
             output = bootstrap_output,
+            application = application,
             stage2_bootstrap = stage2_bootstrap,
             runtime_details = runtime_details,
             is_for_zip = False,
@@ -506,6 +529,7 @@ WARNING: Target: {}
         # depset[File] of additional files that should be included as default
         # outputs.
         extra_default_outputs = depset(extra_default_outputs),
+        application = application,
         # dict[str, depset[File]]; additional output groups that should be
         # returned.
         output_groups = {"python_zip_file": depset([zip_file])},
@@ -526,29 +550,6 @@ WARNING: Target: {}
         # depset[ExplicitSymlink]|None; symlinks that should be created
         venv_interpreter_symlinks = venv.interpreter_symlinks if venv else None,
     )
-
-def _create_zip_main(ctx, *, stage2_bootstrap, runtime_details, venv):
-    if venv.interpreter:
-        python_binary = runfiles_root_path(ctx, venv.interpreter.short_path)
-    else:
-        python_binary = ""
-    python_binary_actual = venv.interpreter_actual_path
-
-    # The location of this file doesn't really matter. It's added to
-    # the zip file as the top-level __main__.py file and not included
-    # elsewhere.
-    output = ctx.actions.declare_file(ctx.label.name + "_zip__main__.py")
-    ctx.actions.expand_template(
-        template = runtime_details.effective_runtime.zip_main_template,
-        output = output,
-        substitutions = {
-            "%python_binary%": python_binary,
-            "%python_binary_actual%": python_binary_actual,
-            "%stage2_bootstrap%": runfiles_root_path(ctx, stage2_bootstrap.short_path),
-            "%workspace_name%": ctx.workspace_name,
-        },
-    )
-    return output
 
 # Create a venv the executable can use.
 # For venv details and the venv startup process, see:
@@ -923,7 +924,8 @@ def _create_stage1_bootstrap(
         imports = None,
         is_for_zip,
         runtime_details,
-        venv = None):
+        venv = None,
+        application = None):
     """Create a legacy bootstrap script that is written in Python."""
     runtime = runtime_details.effective_runtime
 
@@ -947,7 +949,9 @@ def _create_stage1_bootstrap(
         resolve_python_binary_at_runtime = "1"
 
     subs = {
+        "%bootstrap_cleanup%": runfiles_root_path(ctx, ctx.file._bootstrap_cleanup.short_path),
         "%interpreter_args%": "\n".join(ctx.attr.interpreter_args),
+        "%interpreter_args_shell%": "\n".join([shell.quote(arg) for arg in ctx.attr.interpreter_args]),
         "%is_zipfile%": "1" if is_for_zip else "0",
         "%python_binary%": python_binary_path,
         "%python_binary_actual%": python_binary_actual,
@@ -994,13 +998,23 @@ def _create_stage1_bootstrap(
         subs["%imports%"] = ":".join(imports.to_list())
         subs["%main%"] = runfiles_root_path(ctx, main_py.short_path)
 
-    ctx.actions.expand_template(
-        template = template,
-        output = output,
-        substitutions = subs,
-        computed_substitutions = computed_subs,
-        is_executable = True,
-    )
+    if application and is_default_bootstrap(ctx, template):
+        create_application_launcher(
+            ctx,
+            application = application,
+            output = output,
+            shell_entry = template == ctx.file._application_default_shell,
+            archive = is_for_zip,
+            shebang = runtime.stub_shebang,
+        )
+    else:
+        ctx.actions.expand_template(
+            template = template,
+            output = output,
+            substitutions = subs,
+            computed_substitutions = computed_subs,
+            is_executable = True,
+        )
 
 def _map_runtime_venv_symlink(entry):
     return entry.venv_path + "|" + entry.link_to_path
@@ -1099,6 +1113,7 @@ def _create_executable_zip_file(
         *,
         output,
         zip_file,
+        application,
         stage2_bootstrap,
         runtime_details,
         venv):
@@ -1110,6 +1125,7 @@ def _create_executable_zip_file(
         _create_stage1_bootstrap(
             ctx,
             output = prelude,
+            application = application,
             stage2_bootstrap = stage2_bootstrap,
             runtime_details = runtime_details,
             is_for_zip = True,
@@ -1281,7 +1297,7 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
         )
     ))
 
-    providers = []
+    providers = [exec_result.application] if exec_result.application else []
 
     _add_provider_default_info(
         providers,

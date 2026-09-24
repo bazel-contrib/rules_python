@@ -4,6 +4,8 @@ load("//python:py_library.bzl", "py_library")
 load("//python:py_test.bzl", "py_test")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 load("//python/zipapp:py_zipapp_binary.bzl", "py_zipapp_binary")
+load("//python/zipapp:py_zipapp_test.bzl", "py_zipapp_test")
+load("//tests/bootstrap_impls:application_tests.bzl", "public_executable")
 
 py_binary(
     name = "venv_bin",
@@ -25,6 +27,21 @@ py_binary(
 py_zipapp_binary(
     name = "venv_zipapp",
     binary = ":venv_bin",
+)
+
+py_zipapp_test(
+    name = "application_zipapp_test",
+    binary = ":venv_bin",
+)
+
+public_executable(
+    name = "public_only_binary",
+    binary = ":venv_bin",
+)
+
+py_zipapp_test(
+    name = "public_provider_zipapp_test",
+    binary = ":public_only_binary",
 )
 
 py_test(

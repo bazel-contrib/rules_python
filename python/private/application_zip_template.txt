@@ -1,0 +1,35 @@
+"""Generated archive entry; only the private bootstrap is imported from ZIP."""
+
+import sys
+
+if not getattr(sys.flags, "safe_path", False) and not sys.flags.isolated and sys.path:
+    del sys.path[0]
+
+import importlib.machinery
+import importlib.util
+import json
+import os
+
+METADATA = json.loads(%archive_metadata%)
+BOOTSTRAP_PARENT = %bootstrap_parent%
+
+
+def load_bootstrap(archive):
+    spec = importlib.machinery.PathFinder.find_spec(
+        "_rules_python_bootstrap", [archive + "/runfiles/" + BOOTSTRAP_PARENT])
+    package = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = package
+    # Python 3.9 zipimporter implements get_code, but not exec_module.
+    exec(spec.loader.get_code(spec.name), package.__dict__)
+    from _rules_python_bootstrap import entry
+
+    return entry
+
+
+def shell_main(archive, arguments):
+    sys.exit(load_bootstrap(archive).shell_archive_main(archive, METADATA, arguments))
+
+
+if __name__ == "__main__":
+    archive = os.path.dirname(__file__)
+    sys.exit(load_bootstrap(archive).archive_main(archive, METADATA, sys.argv[1:]))

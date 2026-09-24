@@ -1,0 +1,52 @@
+%shebang%
+"""Generated directory entry; application behavior lives in the private package."""
+
+import sys
+
+if not getattr(sys.flags, "safe_path", False) and not sys.flags.isolated and sys.path:
+    del sys.path[0]
+
+import importlib.machinery
+import importlib.util
+import os
+
+SPEC = %application_spec%
+ENTRY = %entry%
+BOOTSTRAP_PARENT = %bootstrap_parent%
+
+
+def find_runfiles():
+    directory = os.environ.get("RUNFILES_DIR", "")
+    manifest = os.environ.get("RUNFILES_MANIFEST_FILE", "")
+    if not directory and manifest.endswith((".runfiles_manifest", ".runfiles/MANIFEST")):
+        directory = manifest[:-9]
+    if directory and os.path.isfile(os.path.join(directory, SPEC)):
+        return os.path.abspath(directory)
+    os.environ.pop("RUNFILES_DIR", None)
+    os.environ.pop("RUNFILES_MANIFEST_FILE", None)
+    filename = os.path.abspath(sys.argv[0])
+    while True:
+        for suffix in (".runfiles", ".exe.runfiles"):
+            directory = filename + suffix
+            if os.path.isfile(os.path.join(directory, SPEC)):
+                return directory
+        marker = ".runfiles" + os.sep
+        if marker in filename:
+            directory = filename.rsplit(marker, 1)[0] + ".runfiles"
+            if os.path.isfile(os.path.join(directory, SPEC)):
+                return directory
+        if not os.path.islink(filename):
+            raise RuntimeError("Cannot find application runfiles for " + sys.argv[0])
+        filename = os.path.abspath(os.path.join(os.path.dirname(filename), os.readlink(filename)))
+
+
+if __name__ == "__main__":
+    root = find_runfiles()
+    spec = importlib.machinery.PathFinder.find_spec(
+        "_rules_python_bootstrap", [os.path.join(root, BOOTSTRAP_PARENT)])
+    package = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = package
+    spec.loader.exec_module(package)
+    from _rules_python_bootstrap.entry import directory_main
+
+    sys.exit(directory_main(root, SPEC, sys.argv[1:]))
