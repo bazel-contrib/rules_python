@@ -392,6 +392,7 @@ bzl_library(
     deps = [
         ":argparse",
         ":whl_target_platforms",
+        "//python/private:version",
     ],
 )
 
