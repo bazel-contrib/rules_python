@@ -3,7 +3,7 @@
 ::::{envvar} RULES_PYTHON_ADDITIONAL_INTERPRETER_ARGS
 
 This variable allows for additional arguments to be provided to the Python interpreter
-at bootstrap time when the `bash` bootstrap is used. If
+at bootstrap time. If
 `RULES_PYTHON_ADDITIONAL_INTERPRETER_ARGS` were provided as `-Xaaa`, then the command
 would be:
 
@@ -20,6 +20,12 @@ in the command executed being:
 python /path/to/debugger.py --port 12345 --file /path/to/file.py
 ```
 
+The Bash entry point parses the first line with `read -a` and places these
+arguments before the target's `interpreter_args`. Python entry points use
+`shlex.split` and place them after the target arguments. This preserves each
+entry point's existing precedence. The variable is removed before the
+application runs, so nested launchers do not apply it again.
+
 :::{seealso}
 The {bzl:obj}`interpreter_args` attribute.
 
@@ -31,13 +37,16 @@ The guide on {any}`How to integrate a debugger`
 :::{versionchanged} 1.7.0
 Support added for {bzl:flag}`--bootstrap_impl=system_python`.
 :::
+:::{versionchanged} VERSION_NEXT_PATCH
+Target and additional interpreter arguments also apply to `python app.zip`.
+:::
 
 ::::
 
 :::{envvar} RULES_PYTHON_BOOTSTRAP_VERBOSE
 
 When `1`, debug information about bootstrapping of a program is printed to
-stderr.
+stderr. Temporary runtime directories are retained to help diagnose failures.
 :::
 
 :::{envvar} RULES_PYTHON_BZLMOD_DEBUG
@@ -57,22 +66,60 @@ be removed in a subsequent major `rules_python` version. Defaults to `0` if unse
 Directory to use as the root for creating files necessary for bootstrapping so
 that a binary can run.
 
-Only applicable when {bzl:flag}`--venvs_use_declare_symlink=no` is used.
+Applies to runtime-created virtual environments and to `py_zipapp_binary` and
+`py_zipapp_test`. Legacy executable ZIPs always use temporary extraction; their
+virtual environments cannot persist because they refer to that extraction.
 
-When set, a binary will attempt to find a unique, reusable, location within this
-directory for the files it needs to create to aid startup. The files may not be
-deleted upon program exit; it is the responsibility of the caller to ensure
-cleanup.
+When set, a binary reuses files beneath this directory. The caller owns their
+lifetime and must arrange cleanup. ZIP applications prepare a unique staging
+directory and publish it only after setup succeeds. Concurrent launches reuse
+the completed result. Startup refuses an incomplete existing cache rather than
+removing files another process may be using. Use a fresh extract root if an
+existing entry is damaged.
 
-Manually specifying the directory is useful to lower the overhead of
-extracting/creating files on every program execution. By using a location
-outside /tmp, longer lived programs don't have to worry about files in /tmp
-being cleaned up by the OS.
+Each new cache entry is a directory symlink to a completed image in a hidden
+backing directory beside it. Publishing the symlink cannot replace another
+entry, including one created concurrently. The backing belongs to the caller
+once published. Removing just the symlink does not reclaim its image; clean
+the extract root when its applications are no longer running. Older cache
+entries stored directly as directories remain readable.
 
-If not set, then a temporary directory will be created and deleted upon program
-exit.
+ZIP cache identities include application files, permissions, bootstrap code,
+interpreter options and resolved external-runtime facts. Updating a binary can
+leave older cache entries behind. Shell and Python entry points share the same
+image identity. Published directories follow the caller's umask.
+
+When unset, bootstraps create temporary runtime directories. Bash entry points
+use `TMPDIR` or `/tmp`; Python entry points follow `tempfile`'s directory
+selection. On POSIX, an independent process removes these directories
+asynchronously after the original interpreter PID exits, including across
+exec. The application keeps its native PID, signal delivery and terminal job.
+Windows waits for the application child before removing its runtime. Console
+Ctrl-C is delivered by Windows; the bootstrap waits for the application's own
+cleanup and exit status without forwarding another interrupt.
+
+The temporary lifetime ends with the original interpreter, even if a forked
+child outlives it. Such applications need a persistent extract root. Linux
+namespace PID 1 and child subreapers can adopt the cleanup process; waiting for
+every child can then block until application exit. Persistent extraction avoids
+that process. Namespace or cgroup shutdown can kill it before removal finishes,
+and SIGKILL during setup before registration cannot guarantee cleanup. On
+systems without a native exit watch or suitable Linux procfs, PID reuse can
+delay removal.
+
+The lifetime and publication behavior above applies to the default application
+launchers. Raw templates and older custom rules exposing only `PyExecutableInfo`
+retain their existing behavior. Their Windows ZIP adapter re-extracts a persistent
+cache on every launch; directory links can make a repeated launch fail. Use
+temporary extraction for that compatibility path.
 
 :::{versionadded} 1.2.0
+:::
+
+:::{versionchanged} VERSION_NEXT_PATCH
+Ordinary and ZIP entry points preserve native POSIX execution and share
+failure-safe temporary cleanup. ZIP caches are published after preparation and
+include bootstrap inputs in their identity.
 :::
 ::::
 

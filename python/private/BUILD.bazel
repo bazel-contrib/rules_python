@@ -106,6 +106,49 @@ filegroup(
 )
 
 filegroup(
+    name = "bootstrap_cleanup",
+    srcs = ["bootstrap_cleanup.py"],
+    visibility = NOT_ACTUALLY_PUBLIC,
+)
+
+filegroup(
+    name = "application_sources",
+    srcs = glob(["_rules_python_bootstrap/*.py"]),
+    visibility = NOT_ACTUALLY_PUBLIC,
+)
+
+py_library(
+    name = "application_bootstrap",
+    srcs = glob(
+        ["_rules_python_bootstrap/*.py"],
+        exclude = ["_rules_python_bootstrap/driver.py"],
+    ),
+)
+
+exports_files(
+    [
+        "_rules_python_bootstrap/driver.py",
+        "application_python_template.txt",
+        "application_zip_template.txt",
+        "application_shell_template.sh",
+    ],
+    visibility = NOT_ACTUALLY_PUBLIC,
+)
+
+bzl_library(
+    name = "application",
+    srcs = ["application.bzl"],
+    deps = [
+        ":builders",
+        ":common",
+        ":py_application_info",
+        ":py_internal",
+        "@bazel_skylib//lib:paths",
+        "@bazel_skylib//lib:shell",
+    ],
+)
+
+filegroup(
     name = "stage2_bootstrap_template",
     srcs = ["stage2_bootstrap_template.py"],
     # Not actually public. Only public because it's an implicit dependency of
@@ -542,6 +585,7 @@ bzl_library(
     name = "py_executable",
     srcs = ["py_executable.bzl"],
     deps = [
+        ":application",
         ":attr_builders",
         ":attributes",
         ":builders",
@@ -562,6 +606,7 @@ bzl_library(
         ":venv_runfiles",
         "@bazel_skylib//lib:dicts",
         "@bazel_skylib//lib:paths",
+        "@bazel_skylib//lib:shell",
         "@bazel_skylib//lib:structs",
         "@bazel_skylib//rules:common_settings",
         "@rules_cc//cc/common",
@@ -967,6 +1012,11 @@ bzl_library(
 bzl_library(
     name = "platform_info",
     srcs = ["platform_info.bzl"],
+)
+
+bzl_library(
+    name = "py_application_info",
+    srcs = ["py_application_info.bzl"],
 )
 
 bzl_library(
