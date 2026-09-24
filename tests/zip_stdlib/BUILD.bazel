@@ -1,0 +1,13 @@
+load("//tests/support:support.bzl", "SUPPORTS_BZLMOD")
+load("//tests/support/pytest_test:pytest_test.bzl", "pytest_test")
+load(":zip_stdlib_tests.bzl", "zip_stdlib_test_suite")
+
+exports_files(["dummy_file.txt"])
+
+zip_stdlib_test_suite(name = "zip_stdlib_tests")
+
+pytest_test(
+    name = "zip_stdlib_test",
+    srcs = ["zip_stdlib_test.py"],
+    target_compatible_with = SUPPORTS_BZLMOD,
+)

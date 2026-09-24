@@ -16,6 +16,7 @@
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
+load(":common.bzl", "is_windows_platform", "runfiles_root_path")
 load(":common_labels.bzl", "labels")
 load(":py_exec_tools_info.bzl", "PyExecToolsInfo")
 load(":sentinel_impl.bzl", "SentinelInfo")
@@ -109,22 +110,45 @@ def _current_interpreter_executable_impl(ctx):
     # because of things like pyenv: they use $0 to determine what to
     # re-exec. If it's not a recognized name, then they fail.
     if runtime.interpreter:
-        executable = ctx.actions.declare_file(runtime.interpreter.basename)
+        is_windows = is_windows_platform(ctx)
+        basename = runtime.interpreter.basename
+        if is_windows:
+            if basename.lower().endswith(".exe"):
+                basename = basename[:-4]
+            basename = basename + ".bat"
+            template = ctx.file._template_bat
+        else:
+            template = ctx.file._template_sh
 
-        # NOTE: Using ctx.actions.symlink() here doesn't always work with RBE
-        # because it's not guaranteed that it will materialize as a symlink, but
-        # we rely on it being a symlink so that Python can find its actual
-        # PYTHONHOME.
-        # See https://github.com/bazelbuild/bazel/issues/23620
-        ctx.actions.symlink(output = executable, target_file = runtime.interpreter, is_executable = True)
+        executable = ctx.actions.declare_file(basename)
+
+        ctx.actions.expand_template(
+            template = template,
+            output = executable,
+            substitutions = {
+                "%target_file%": runfiles_root_path(
+                    ctx,
+                    runtime.interpreter.short_path,
+                ),
+            },
+            is_executable = True,
+        )
+        runfiles = ctx.runfiles([executable], transitive_files = runtime.files)
     else:
-        executable = ctx.actions.declare_symlink(paths.basename(runtime.interpreter_path))
-        ctx.actions.symlink(output = executable, target_path = runtime.interpreter_path)
+        executable = ctx.actions.declare_symlink(
+            paths.basename(runtime.interpreter_path),
+        )
+        ctx.actions.symlink(
+            output = executable,
+            target_path = runtime.interpreter_path,
+        )
+        runfiles = ctx.runfiles([executable], transitive_files = runtime.files)
+
     return [
         toolchain,
         DefaultInfo(
             executable = executable,
-            runfiles = ctx.runfiles([executable], transitive_files = runtime.files),
+            runfiles = runfiles,
         ),
     ]
 
@@ -132,4 +156,19 @@ current_interpreter_executable = rule(
     implementation = _current_interpreter_executable_impl,
     toolchains = [TARGET_TOOLCHAIN_TYPE],
     executable = True,
+    attrs = {
+        "_template_bat": attr.label(
+            default = "//python/private:interpreter_tmpl.bat",
+            allow_single_file = True,
+        ),
+        "_template_sh": attr.label(
+            default = "//python/private:interpreter_tmpl.sh",
+            allow_single_file = True,
+        ),
+        "_windows_constraints": attr.label_list(
+            default = [
+                "@platforms//os:windows",
+            ],
+        ),
+    },
 )

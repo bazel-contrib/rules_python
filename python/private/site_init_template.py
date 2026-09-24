@@ -295,7 +295,7 @@ def _fixup_stdlib_paths():
         norm = _norm_path(path_str)
         return norm == runfiles_norm or norm.startswith(runfiles_prefix)
 
-    target_root = _get_windows_path_with_unc_prefix(runtime_root)
+    target_root = os.path.abspath(runtime_root)
     if _is_windows():
         target_root = target_root.replace("/", os.sep)
 
@@ -336,15 +336,44 @@ def _fixup_stdlib_paths():
 
     # Remap all sys.path entries under the verified prefixes (including default
     # CPython virtual paths like pythonXY.zip that may not exist on disk).
-    for i, p in enumerate(sys.path):
+    new_sys_path = []
+    for p in sys.path:
         norm_p = _norm_path(p)
+        matched = False
         for old_prefix in remapped_prefixes:
             norm_old = _norm_path(old_prefix)
-            if norm_p == norm_old or norm_p.startswith(norm_old + "/"):
+            if norm_p == norm_old:
+                # Omit the bare runtime root from early stdlib sys.path
+                # positions;
+                # Bazel's _setup_sys_path adds it under user imports.
+                matched = True
+                _print_verbose("omit bare stdlib root from early sys.path:", p)
+                break
+            elif norm_p.startswith(norm_old + "/"):
                 new_path = target_root + p[len(old_prefix) :]
                 _print_verbose("remap stdlib sys.path:", p, "->", new_path)
-                sys.path[i] = new_path
+                new_sys_path.append(new_path)
+                matched = True
                 break
+        if not matched:
+            new_sys_path.append(p)
+    sys.path[:] = new_sys_path
+
+    if _is_windows():
+        base_dlls = os.path.join(target_root, "DLLs")
+        if os.path.exists(base_dlls):
+            if base_dlls not in sys.path:
+                insert_idx = 0
+                for i, p in enumerate(sys.path):
+                    if p.endswith(".zip"):
+                        insert_idx = i + 1
+                        break
+                sys.path.insert(insert_idx, base_dlls)
+            if hasattr(os, "add_dll_directory"):
+                try:
+                    os.add_dll_directory(base_dlls)
+                except OSError:
+                    pass
 
     for attr, old_prefix in candidate_prefixes.items():
         if old_prefix in remapped_prefixes:

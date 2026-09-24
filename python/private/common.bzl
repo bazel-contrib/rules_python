@@ -648,18 +648,14 @@ def actions_run(
                 EXEC_TOOLS_TOOLCHAIN_TYPE,
                 toolchain,
             ))
-        exec_runtime = ctx.toolchains[EXEC_TOOLS_TOOLCHAIN_TYPE].exec_tools.exec_runtime
-        if exec_runtime.interpreter:
-            action_exe = exec_runtime.interpreter
-            action_inputs.add(exec_runtime.files)
-        elif exec_runtime.interpreter_path:
-            action_exe = exec_runtime.interpreter_path
-        else:
-            fail(("Action {}: PyRuntimeInfo from exec tools toolchain is " +
-                  "malformed: requires one of `interpreter` or " +
-                  "`interpreter_path` set").format(
+        exec_tools = ctx.toolchains[EXEC_TOOLS_TOOLCHAIN_TYPE].exec_tools
+        if not exec_tools.exec_interpreter:
+            fail(("Action {}: tool {} provides PyInterpreterProgramInfo, " +
+                  "but exec_tools.exec_interpreter is not configured").format(
                 mnemonic,
+                executable,
             ))
+        action_exe = exec_tools.exec_interpreter[DefaultInfo].files_to_run
 
         program_info = executable[PyInterpreterProgramInfo]
 
