@@ -30,7 +30,9 @@ _RunLockInfo = provider(
     fields = {
         "args": "The args passed to the `uv` by default when running the runnable target.",
         "env": "The env passed to the execution.",
-        "srcs": "Source files required to run the runnable target.",
+        # Preserve the wrapper's runtime files and symlink mappings together;
+        # a `srcs` `depset` cannot represent the full runfiles layout.
+        "runfiles": "Runtime files required by the runnable target.",
         "template": "The template file for writing a script.",
     },
 )
@@ -129,7 +131,8 @@ def _common_lock(ctx, locker):
 
     output = ctx.actions.declare_file(fname)
     toolchain_info = ctx.toolchains[UV_TOOLCHAIN_TYPE]
-    uv = toolchain_info.uv_toolchain_info.uv[DefaultInfo].files_to_run.executable
+    uv_default_info = toolchain_info.uv_toolchain_info.uv[DefaultInfo]
+    uv = uv_default_info.files_to_run.executable
 
     args = _args(ctx)
     args.add(uv)
@@ -259,7 +262,7 @@ def _common_lock(ctx, locker):
         # exec "$@" in the .sh script.
         arguments = [args.run_shell] if not ctx.attr.is_windows else [],
         tools = [
-            uv,
+            uv_default_info.files_to_run,
             python_files,
             script,
         ],
@@ -278,10 +281,10 @@ def _common_lock(ctx, locker):
         _RunLockInfo(
             args = args.run_info,
             env = ctx.attr.env,
-            srcs = depset(
-                srcs + [uv],
-                transitive = [python_files],
-            ),
+            runfiles = ctx.runfiles(
+                files = srcs + [uv],
+                transitive_files = python_files,
+            ).merge(uv_default_info.default_runfiles),
             template = ctx.files._template[0],
         ),
     ]
@@ -501,7 +504,7 @@ def _run_impl(ctx):
     return [
         DefaultInfo(
             executable = executable,
-            runfiles = ctx.runfiles(transitive_files = info.srcs),
+            runfiles = info.runfiles,
         ),
         RunEnvironmentInfo(
             environment = info.env,
