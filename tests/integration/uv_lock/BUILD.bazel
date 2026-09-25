@@ -24,3 +24,10 @@ diff_test(
     file1 = ":requirements",
     file2 = ":requirements.txt",
 )
+
+lock(
+    name = "project_lock",
+    srcs = ["pyproject.toml"],
+    out = "uv.lock",
+    tags = ["no-remote-exec"],
+)

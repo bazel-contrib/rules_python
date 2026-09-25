@@ -143,7 +143,9 @@ def _common_lock(ctx, locker):
     srcs, output_filename, mnemonic, progress_message = locker(args, output)
 
     args.add("--no-python-downloads")
-    args.add("--no-cache")
+
+    # Build actions must not depend on the host cache but `.run` may reuse it.
+    args.add_run_shell("--no-cache")
 
     project = ctx.attr.project
     if not project:
@@ -607,7 +609,11 @@ def lock(
       to the same command that would be run in the `name` action. This will
       update the source copy of the requirements file. You can customize the
       args via the command line, but it requires being able to run `uv` (and
-      possibly `python`) directly on your host.
+      possibly `python`) directly on your host. This target uses the `uv`
+      cache and inherits its cache settings from the environment, including
+      `UV_CACHE_DIR` and `UV_NO_CACHE`. Pass `--refresh` to refresh cached
+      data or `--no-cache` to disable caching. Build actions, including those
+      used by `name.update`, disable the `uv` cache.
     - `name.update`: a target that can be run to update the source-tree version
       of the requirements lock file. The output can be fed to the
       {obj}`pip.parse` bzlmod extension tag class. Note, you can use
@@ -620,6 +626,10 @@ def lock(
 
     :::{note}
     All of the targets have `manual` tags as locking results cannot be cached.
+    :::
+
+    :::{versionchanged} VERSION_NEXT_PATCH
+    The `name.run` target uses the `uv` cache by default.
     :::
 
     Args:

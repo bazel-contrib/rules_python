@@ -185,6 +185,50 @@ class UvLockIntegrationTest(runner.TestCase):
         self.assertIn("my-local-pkg", contents)
         self.assertIn("--hash=sha256:", contents)
 
+    def _run_cached_lock(self, target, *args, check=True):
+        return self.run_bazel(
+            "run",
+            target,
+            "--",
+            "--default-index=" + self.server_url + "/simple/",
+            *args,
+            check=check,
+        )
+
+    def test_run_reuses_cache_offline(self):
+        for target, filename in (
+            ("//:requirements.run", "requirements.txt"),
+            (
+                "//:project_lock.run",
+                "bazel-bin/project_lock.run.runfiles/_main/uv.lock",
+            ),
+        ):
+            with self.subTest(target=target):
+                self.bazel_env["UV_CACHE_DIR"] = str(
+                    self.test_tmp_dir / (Path(filename).name + ".cache")
+                )
+                output = self.repo_root / filename
+                output.unlink(missing_ok=True)
+                cold = self._run_cached_lock(target, "--offline", check=False)
+                self.assertNotEqual(cold.exit_code, 0, cold.describe())
+                self._run_cached_lock(target)
+                expected = output.read_text()
+                self.assertIn("my-local-pkg", expected)
+                output.unlink()
+                self._run_cached_lock(target, "--offline")
+                self.assertEqual(expected, output.read_text())
+                output.unlink()
+                bypass = self._run_cached_lock(
+                    target, "--offline", "--no-cache", check=False
+                )
+                self.assertNotEqual(bypass.exit_code, 0, bypass.describe())
+                self.bazel_env["UV_NO_CACHE"] = "true"
+                try:
+                    bypass_env = self._run_cached_lock(target, "--offline", check=False)
+                    self.assertNotEqual(bypass_env.exit_code, 0, bypass_env.describe())
+                finally:
+                    del self.bazel_env["UV_NO_CACHE"]
+
     def test_lock_update_with_custom_index(self):
         self._assert_server_requires_auth()
         self._assert_simple_api_sha256()
