@@ -153,7 +153,9 @@ python_exe=$(find_python_interpreter $RUNFILES_DIR $PYTHON_BINARY)
 # Zip files have to re-create the venv bin/python3 symlink because they
 # don't contain it already.
 if [[ "$IS_ZIPFILE" == "1" ]]; then
-  use_exec=0
+  # Stage 2 removes the extracted runfiles through RULES_PYTHON_ZIP_DIR, so
+  # this bootstrap does not need to remain alive for cleanup.
+  use_exec=1
   # It should always be under runfiles, but double check this. We don't
   # want to accidentally create symlinks elsewhere.
   if [[ "$python_exe" != $RUNFILES_DIR/* ]]; then
@@ -333,8 +335,8 @@ command=(
 # for more information.
 #
 # However, we can't use exec when there is cleanup to do afterwards. Control
-# must return to this process so it can run the trap handlers. Such cases
-# occur when zip mode or recreate_venv_at_runtime creates temporary files.
+# must return to this process so it can run the trap handlers. This case
+# occurs when recreate_venv_at_runtime creates a temporary venv.
 if [[ "$use_exec" == "0" ]]; then
   "${command[@]}"
   exit $?
