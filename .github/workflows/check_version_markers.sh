@@ -17,9 +17,11 @@ fi
 grep_exit_code=0
 # Exclude dot directories, specifically, this file so that we don't
 # find the substring we're looking for in our own file.
-# Exclude CONTRIBUTING.md, RELEASING.md because they document how to use these strings.
+# Exclude CONTRIBUTING.md, RELEASING.md, and devguide.md because they document
+# how to use these strings.
 grep --exclude=CONTRIBUTING.md \
   --exclude=RELEASING.md \
+  --exclude=devguide.md \
   --exclude-dir=.* \
   --exclude-dir=release \
   VERSION_NEXT_ -r || grep_exit_code=$?

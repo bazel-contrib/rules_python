@@ -32,6 +32,7 @@ _EXCLUDE_PATTERNS = [
     "./bazel-*/*",
     "./CONTRIBUTING.md",
     "./RELEASING.md",
+    "./docs/devguide.md",
     "./dev/release/*",
     "./tests/tools/private/release/*",
 ]
