@@ -26,10 +26,7 @@ if [ -z "$TAG" ]; then
 fi
 # If the workflow checks out one commit, but is releasing another
 git fetch origin tag "$TAG"
-
-# Update our local state so that check_version_markers searches what we expect
 git checkout "$TAG"
-$(dirname $0)/check_version_markers.sh
 
 # A prefix is added to better match the GitHub generated archives.
 PREFIX="rules_python-${TAG}"

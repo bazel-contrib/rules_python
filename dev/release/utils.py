@@ -211,6 +211,27 @@ def replace_version_next(version: str) -> list[pathlib.Path]:
     return replace_version_next_in_files(_iter_version_placeholder_files(), version)
 
 
+def find_version_markers() -> list[str]:
+    """Finds any remaining VERSION_NEXT_ markers in non-excluded files.
+
+    Returns:
+        A list of strings in the format 'filepath:line_number: line_content'
+        for each line containing 'VERSION_NEXT_'.
+    """
+    matches: list[str] = []
+    for filepath in _iter_version_placeholder_files():
+        try:
+            content = filepath.read_text(encoding="utf-8")
+        except (IOError, UnicodeDecodeError):
+            continue
+
+        if "VERSION_NEXT_" in content:
+            for line_num, line in enumerate(content.splitlines(), start=1):
+                if "VERSION_NEXT_" in line:
+                    matches.append(f"{filepath}:{line_num}: {line}")
+    return matches
+
+
 def parse_pr_list(value: str) -> list[str]:
     """Parses a comma or space separated list of PR references.
 

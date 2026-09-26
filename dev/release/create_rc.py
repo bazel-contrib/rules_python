@@ -16,6 +16,7 @@ from dev.release.release_issue import (
 )
 from dev.release.utils import (
     REPO_URL,
+    find_version_markers,
     get_latest_rc_tag,
     set_github_output,
 )
@@ -122,6 +123,21 @@ class CreateRc:
             next_rc_num = rc_num + 1
             next_rc = f"{version}-rc{next_rc_num}"
 
+        target_ref = f"{args.remote}/{branch_name}"
+        commit_sha = self.git.get_commit_sha(target_ref)
+        self.git.checkout(target_ref)
+
+        print("Checking for leftover VERSION_NEXT_ markers...")
+        markers = find_version_markers()
+        if markers:
+            for marker in markers:
+                print(marker)
+            print(
+                "Error: Found VERSION_NEXT markers indicating version needs to"
+                " be specified."
+            )
+            return 1
+
         # Precheck: next RC number must exist and be unchecked in the checklist
         rc_tags = state.get("rc_tags", {})
         if next_rc_num not in rc_tags:
@@ -136,9 +152,6 @@ class CreateRc:
                     " the checklist."
                 )
                 return 1
-
-        target_ref = f"{args.remote}/{branch_name}"
-        commit_sha = self.git.get_commit_sha(target_ref)
 
         print(f"Tagging and pushing next RC: {next_rc}...")
         self.git.tag(next_rc, target_ref)
