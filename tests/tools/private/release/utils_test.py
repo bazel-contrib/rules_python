@@ -258,6 +258,10 @@ blabla
     tests_dir.mkdir(parents=True)
     (tests_dir / "mock_file.bzl").write_text(mock_file_content)
 
+    docs_dir = release_tool_env.git_root / "docs"
+    docs_dir.mkdir(parents=True)
+    (docs_dir / "devguide.md").write_text(mock_file_content)
+
     version = "0.28.0"
 
     # Act
@@ -274,6 +278,9 @@ blabla
     assert "VERSION_NEXT_FEATURE" in new_content
 
     new_content = (tests_dir / "mock_file.bzl").read_text()
+    assert "VERSION_NEXT_FEATURE" in new_content
+
+    new_content = (docs_dir / "devguide.md").read_text()
     assert "VERSION_NEXT_FEATURE" in new_content
 
 
