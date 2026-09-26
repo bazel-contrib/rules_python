@@ -139,3 +139,30 @@ jobs:
     with:
       issue: ${{ needs.parse_comment.outputs.issue_number }}
     secrets: inherit
+
+  report_failure:
+    needs:
+      - parse_comment
+      - call_create_rc
+      - call_prepare_complete
+      - call_create_release_branch
+      - call_prepare
+      - call_add_backports
+      - call_process_backports_after_add
+      - call_process_backports_only
+      - call_sync_changelog
+      - call_promote
+      - call_backport_prepare
+      - call_backport_create_releases
+    if: always() && contains(needs.*.result, 'failure')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - name: Post failure comment
+        env:
+          COMMAND: "${{ needs.parse_comment.outputs.command }}"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: .github/workflows/on_comment.py --report-failure

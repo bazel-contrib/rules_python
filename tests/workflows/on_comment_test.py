@@ -1,6 +1,7 @@
 """Tests for .github/workflows/on_comment.py."""
 
 import dataclasses
+import json
 from pathlib import Path
 
 import pytest
@@ -14,6 +15,7 @@ from on_comment import (
 class GitHubActionEnv:
     output_file: Path
     env_file: Path
+    event_file: Path
 
     def read_outputs(self) -> dict[str, str]:
         if not self.output_file.exists():
@@ -35,21 +37,50 @@ class GitHubActionEnv:
                 res[k] = v
         return res
 
+    def set_event(
+        self,
+        *,
+        issue_number: int | str = 4175,
+        comment_id: int | str = 5772601429,
+        comment_url: str = "",
+        repo: str = "bazel-contrib/rules_python",
+    ) -> None:
+        payload = {
+            "issue": {"number": issue_number} if issue_number else {},
+            "comment": {
+                k: v for k, v in [("id", comment_id), ("html_url", comment_url)] if v
+            },
+            "repository": {"full_name": repo} if repo else {},
+        }
+        self.event_file.write_text(json.dumps(payload), encoding="utf-8")
+
 
 @pytest.fixture(name="gha_env", autouse=True)
 def fixture_gha_env(tmp_path, monkeypatch) -> GitHubActionEnv:
-    """Fixture that always sets GITHUB_OUTPUT and GITHUB_ENV environment variables."""
+    """Fixture that sets GITHUB_OUTPUT, GITHUB_ENV, and GITHUB_EVENT_PATH."""
     out_file = tmp_path / "github_output.txt"
     env_file = tmp_path / "github_env.txt"
+    event_file = tmp_path / "github_event.json"
     monkeypatch.setenv("GITHUB_OUTPUT", str(out_file))
     monkeypatch.setenv("GITHUB_ENV", str(env_file))
-    return GitHubActionEnv(output_file=out_file, env_file=env_file)
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(event_file))
+    return GitHubActionEnv(
+        output_file=out_file,
+        env_file=env_file,
+        event_file=event_file,
+    )
 
 
 @pytest.fixture(name="mock_add_reaction", autouse=True)
 def fixture_mock_add_reaction(mocker):
     """Fixture that mocks out _add_comment_reaction by default for all tests."""
     return mocker.patch("on_comment._add_comment_reaction")
+
+
+@pytest.fixture(name="mock_post_comment", autouse=True)
+def fixture_mock_post_comment(mocker):
+    """Fixture that mocks out _post_issue_comment by default for all tests."""
+    return mocker.patch("on_comment._post_issue_comment")
 
 
 def _run_comment(
@@ -376,3 +407,97 @@ def test_main_cli_execution(monkeypatch, gha_env):
         "command": "create-rc",
     }
     assert gha_env.read_env() == {"issue_number": "42"}
+
+
+def test_report_failure_with_command_and_urls(
+    monkeypatch, gha_env, mock_add_reaction, mock_post_comment
+):
+    comment_url = (
+        "https://github.com/bazel-contrib/rules_python/issues/4175"
+        "#issuecomment-5772601429"
+    )
+    run_url = "https://github.com/bazel-contrib/rules_python/actions/runs/35698664041"
+    gha_env.set_event(
+        issue_number=4175,
+        comment_id=5772601429,
+        comment_url=comment_url,
+        repo="bazel-contrib/rules_python",
+    )
+    monkeypatch.setenv("COMMAND", "create-rc")
+    monkeypatch.setenv("GITHUB_RUN_ID", "35698664041")
+    monkeypatch.setenv("GITHUB_SERVER_URL", "https://github.com")
+
+    assert process_comment(report_failure=True) == 0
+
+    mock_add_reaction.assert_called_once_with(
+        repo="bazel-contrib/rules_python",
+        comment_id="5772601429",
+        content="-1",
+    )
+    mock_post_comment.assert_called_once_with(
+        repo="bazel-contrib/rules_python",
+        issue_number="4175",
+        body=(
+            f"Workflow failed for command `create-rc` ([comment]({comment_url})).\n\n"
+            f"See [workflow run]({run_url}) for logs."
+        ),
+    )
+
+
+def test_report_failure_without_command_or_urls(
+    monkeypatch, gha_env, mock_add_reaction, mock_post_comment
+):
+    gha_env.set_event(
+        issue_number=4175,
+        comment_id="",
+        comment_url="",
+        repo="bazel-contrib/rules_python",
+    )
+    monkeypatch.setenv("COMMAND", "")
+    monkeypatch.delenv("GITHUB_RUN_ID", raising=False)
+
+    assert process_comment(report_failure=True) == 0
+
+    mock_add_reaction.assert_not_called()
+    mock_post_comment.assert_called_once_with(
+        repo="bazel-contrib/rules_python",
+        issue_number="4175",
+        body=(
+            "Workflow failed while processing comment.\n\n"
+            "See workflow logs for details."
+        ),
+    )
+
+
+def test_report_failure_missing_env(monkeypatch, gha_env, mock_post_comment, capsys):
+    gha_env.set_event(issue_number="", comment_id="", repo="")
+    monkeypatch.setenv("EVENT_NUMBER", "")
+    monkeypatch.setenv("GITHUB_REPOSITORY", "")
+
+    assert process_comment(report_failure=True) == 1
+    mock_post_comment.assert_not_called()
+    captured = capsys.readouterr()
+    assert "::error::Issue number and repository are required" in captured.out
+
+
+def test_main_cli_report_failure(
+    monkeypatch, gha_env, mock_add_reaction, mock_post_comment
+):
+    gha_env.set_event(
+        issue_number=42,
+        comment_id=111,
+        repo="bazel-contrib/rules_python",
+    )
+    monkeypatch.setenv("COMMAND", "promote")
+    monkeypatch.setenv("GITHUB_RUN_ID", "99999")
+
+    with pytest.raises(SystemExit) as exc_info:
+        _main(["--report-failure"])
+
+    assert exc_info.value.code == 0
+    mock_add_reaction.assert_called_once_with(
+        repo="bazel-contrib/rules_python",
+        comment_id="111",
+        content="-1",
+    )
+    mock_post_comment.assert_called_once()

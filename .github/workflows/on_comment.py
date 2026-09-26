@@ -1,10 +1,24 @@
 #!/usr/bin/env python3
 """Parses issue and PR comments to dispatch release and backport workflows."""
 
+import argparse
+import json
 import os
 import re
 import subprocess
 import sys
+
+
+def _load_event_data() -> dict:
+    """Loads event JSON payload from GITHUB_EVENT_PATH."""
+    event_path = os.environ.get("GITHUB_EVENT_PATH")
+    if not event_path or not os.path.isfile(event_path):
+        return {}
+    try:
+        with open(event_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
 
 
 def _get_bool(key: str, default: bool = False) -> bool:
@@ -62,6 +76,21 @@ def _add_comment_reaction(repo: str, comment_id: str, content: str) -> None:
             f"content={content}",
         ],
         check=False,
+    )
+
+
+def _post_issue_comment(repo: str, issue_number: str, body: str) -> None:
+    """Posts a comment to a GitHub issue or PR using the gh CLI."""
+    subprocess.run(
+        [
+            "gh",
+            "issue",
+            "comment",
+            issue_number,
+            f"--repo={repo}",
+            f"--body={body}",
+        ],
+        check=True,
     )
 
 
@@ -151,8 +180,60 @@ def _process_pr_comment(comment_body: str, pr_number: str) -> None:
     _write_github_output("command", "none")
 
 
-def process_comment() -> int:
+def _report_failure() -> int:
+    """Posts a failure comment and negative reaction when a workflow fails."""
+    event = _load_event_data()
+    issue_data = event.get("issue") or {}
+    comment_data = event.get("comment") or {}
+    repo_data = event.get("repository") or {}
+
+    event_number = str(issue_data.get("number") or os.environ.get("EVENT_NUMBER", ""))
+    comment_id = str(comment_data.get("id") or os.environ.get("COMMENT_ID", ""))
+    comment_url = str(comment_data.get("html_url") or os.environ.get("COMMENT_URL", ""))
+    repo = str(repo_data.get("full_name") or os.environ.get("GITHUB_REPOSITORY", ""))
+    command = os.environ.get("COMMAND", "")
+    run_id = os.environ.get("GITHUB_RUN_ID", "")
+    server_url = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
+
+    if comment_id and repo:
+        _add_comment_reaction(repo=repo, comment_id=comment_id, content="-1")
+
+    if not event_number or not repo:
+        print(
+            "::error::Issue number and repository are required to post a"
+            " failure comment."
+        )
+        return 1
+
+    if command and command != "none":
+        if comment_url:
+            header = (
+                f"Workflow failed for command `{command}` ([comment]({comment_url}))."
+            )
+        else:
+            header = f"Workflow failed for command `{command}`."
+    else:
+        if comment_url:
+            header = f"Workflow failed while processing [comment]({comment_url})."
+        else:
+            header = "Workflow failed while processing comment."
+
+    if run_id:
+        run_url = f"{server_url}/{repo}/actions/runs/{run_id}"
+        details = f"See [workflow run]({run_url}) for logs."
+    else:
+        details = "See workflow logs for details."
+
+    body = f"{header}\n\n{details}"
+    _post_issue_comment(repo=repo, issue_number=event_number, body=body)
+    return 0
+
+
+def process_comment(*, report_failure: bool = False) -> int:
     """Processes a comment from environment variables and dispatches actions."""
+    if report_failure:
+        return _report_failure()
+
     comment_body = os.environ.get("COMMENT_BODY", "")
     is_pr = _get_bool("IS_PR")
     event_number = os.environ.get("EVENT_NUMBER", "")
@@ -189,9 +270,16 @@ def process_comment() -> int:
     return 0
 
 
-def _main() -> None:
-    sys.exit(process_comment())
+def _main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--report-failure",
+        action="store_true",
+        help="Post a failure comment to the issue or PR.",
+    )
+    args = parser.parse_args(argv if argv is not None else [])
+    sys.exit(process_comment(report_failure=args.report_failure))
 
 
 if __name__ == "__main__":
-    _main()
+    _main(sys.argv[1:])

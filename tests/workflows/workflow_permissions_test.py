@@ -130,3 +130,16 @@ def test_reusable_workflow_permissions_hierarchy():
                     f"'{scope}: {required_level}', but caller only allows "
                     f"'{scope}: {available_level}'."
                 )
+
+
+def test_on_comment_report_failure_needs_all_jobs():
+    """Validates that report_failure in on_comment.yaml depends on all action jobs."""
+    rf = runfiles.CreateOrRaise()
+    on_comment_path = rf.root() / "rules_python/.github/workflows/on_comment.yaml"
+    content = yaml.safe_load(on_comment_path.read_text(encoding="utf-8"))
+    jobs = content["jobs"]
+    assert "report_failure" in jobs
+
+    report_failure_needs = set(jobs["report_failure"]["needs"])
+    expected_needs = set(jobs.keys()) - {"noop", "report_failure"}
+    assert report_failure_needs == expected_needs
