@@ -91,6 +91,16 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
   package directory, set it to `None` or `""` to set it to the root of the repo
   ([#4029](https://github.com/bazel-contrib/rules_python/issues/4029)).
 
+{#v2-3-4}
+## [2.3.4] - 2026-09-21
+
+[2.3.4]: https://github.com/bazel-contrib/rules_python/releases/tag/2.3.4
+
+{#v2-3-4-added}
+### Added
+* (toolchains) Added win32 (`i686-pc-windows-msvc`) Python runtimes for
+  versions 3.9.25, 3.10.20, 3.11.15, 3.12.13, 3.13.13, and 3.14.4
+  ([#4156](https://github.com/bazel-contrib/rules_python/pull/4156)).
 
 {#v2-3-3}
 ## [2.3.3] - 2026-09-04
