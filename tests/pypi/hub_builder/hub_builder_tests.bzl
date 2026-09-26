@@ -529,6 +529,75 @@ new-package==0.0.1 --hash=sha256:deadb00f2
 
 _tests.append(_test_simple_multiple_python_versions)
 
+def _test_skip_python_version_without_host_interpreter(env):
+    # A module can ask for a Python version that has a toolchain but no
+    # interpreter for this host, e.g. a dependency listing 3.9 when rules_python
+    # ships no 3.9 CPython for aarch64-pc-windows-msvc. That version must be
+    # skipped instead of failing the whole extension, like a version missing
+    # from minor_mapping is.
+    builder = hub_builder(
+        env,
+        available_interpreters = {
+            "python_3_15_host": "unit_test_interpreter_target",
+        },
+        minor_mapping = {
+            "3.15": "3.15.19",
+            "3.16": "3.16.9",
+        },
+    )
+    builder.pip_parse(
+        mocks.mctx(
+            mock_files = {
+                "requirements_3_15.txt": """
+simple==0.0.1 --hash=sha256:deadbeef
+""",
+            },
+            os_name = "linux",
+            arch_name = "amd64",
+        ),
+        _parse(
+            hub_name = "pypi",
+            python_version = "3.15",
+            requirements_lock = "requirements_3_15.txt",
+        ),
+    )
+    builder.pip_parse(
+        mocks.mctx(
+            mock_files = {
+                "requirements_3_16.txt": """
+simple==0.0.2 --hash=sha256:deadb00f
+""",
+            },
+            os_name = "linux",
+            arch_name = "amd64",
+        ),
+        _parse(
+            hub_name = "pypi",
+            python_version = "3.16",
+            requirements_lock = "requirements_3_16.txt",
+        ),
+    )
+    pypi = builder.build()
+
+    pypi.exposed_packages().contains_exactly(["simple"])
+    pypi.whl_map().contains_exactly({
+        "simple": {
+            "pypi_315_simple": [
+                whl_config_setting(version = "3.15"),
+            ],
+        },
+    })
+    pypi.whl_libraries().contains_exactly({
+        "pypi_315_simple": {
+            "config_load": "@pypi//:config.bzl",
+            "dep_template": "@pypi//{name}:{target}",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "simple==0.0.1 --hash=sha256:deadbeef",
+        },
+    })
+
+_tests.append(_test_skip_python_version_without_host_interpreter)
+
 def _test_simple_with_markers(env):
     sub_tests = {
         ("osx", "aarch64"): "torch==2.4.1 --hash=sha256:deadbeef",
