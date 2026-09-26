@@ -27,6 +27,7 @@ on:
 permissions:
   contents: write
   issues: write
+  pull-requests: read
 
 jobs:
   complete_prepare:

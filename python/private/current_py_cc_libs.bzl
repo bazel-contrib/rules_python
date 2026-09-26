@@ -49,7 +49,7 @@ cc_library(
 )
 ```
 
-:::{versionchanged} VERSION_NEXT_PATCH
+:::{versionchanged} 2.4.0
 Static libraries are included when this target is a dependency of `cc_shared_library`.
 :::
 """,

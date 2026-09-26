@@ -731,9 +731,9 @@ class GitHub(GitHubInterface):
             pr_num: The PR number.
 
         Returns:
-            Dictionary containing PR fields (state, isDraft, mergeCommit, etc.).
+            Dictionary containing PR fields (state, isDraft, mergeCommit, body, etc.).
         """
-        output = self._gh_pr_view(pr_num, "state", "isDraft", "mergeCommit")
+        output = self._gh_pr_view(pr_num, "state", "isDraft", "mergeCommit", "body")
         return json.loads(output) if output else {}
 
     @override

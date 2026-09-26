@@ -351,7 +351,7 @@ As an exception, empty targets in `srcs` that provide {obj}`PyInfo` are
 allowed. Ordinary library dependencies should remain in `deps`.
 :::
 
-:::{versionchanged} VERSION_NEXT_PATCH
+:::{versionchanged} 2.4.0
 Allowed `.pyc` and directory inputs in `srcs`.
 :::
 """,

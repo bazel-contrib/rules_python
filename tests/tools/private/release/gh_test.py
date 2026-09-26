@@ -122,6 +122,29 @@ def test_get_pr_files(gh, auto_patch_cmd_helpers):
     )
 
 
+def test_get_pr_info(gh, auto_patch_cmd_helpers):
+    auto_patch_cmd_helpers.run_gh.return_value = (
+        '{"state": "MERGED", "isDraft": false, '
+        '"mergeCommit": {"oid": "abc1234"}, "body": "Work towards #4175"}'
+    )
+    info = gh.get_pr_info(123)
+    assert info == {
+        "state": "MERGED",
+        "isDraft": False,
+        "mergeCommit": {"oid": "abc1234"},
+        "body": "Work towards #4175",
+    }
+    auto_patch_cmd_helpers.run_gh.assert_called_with(
+        "pr",
+        "view",
+        "123",
+        "--json=state,isDraft,mergeCommit,body",
+        "--repo=my-owner/my-repo",
+        check=True,
+        capture_output=True,
+    )
+
+
 def test_get_pr_files_not_found(gh, auto_patch_cmd_helpers):
     auto_patch_cmd_helpers.run_gh.side_effect = subprocess.CalledProcessError(1, ["gh"])
     with pytest.raises(GetPrError, match="Failed to get PR #123 on my-owner/my-repo"):
