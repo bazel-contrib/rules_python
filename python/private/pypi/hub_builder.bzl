@@ -179,6 +179,25 @@ def _pip_parse(self, module_ctx, pip_attr, python_version = None):
         ))
         return
 
+    if (pip_attr.python_interpreter_target == None and
+        not pip_attr.python_interpreter and
+        _host_interpreter_name(python_version) not in self._available_interpreters):
+        # The version has a toolchain, but none of its interpreters runs on
+        # this host, e.g. there is no CPython build for this os and cpu. Treat
+        # it like a version missing from minor_mapping instead of failing the
+        # extension, which would also take down every other version and hub,
+        # including ones this host can use.
+        self._logger.info(lambda: (
+            "Ignoring pip python version '{version}' for hub " +
+            "'{hub}' in module '{module}' because there is no " +
+            "interpreter for it that runs on this host."
+        ).format(
+            hub = self.name,
+            module = self.module_name,
+            version = python_version,
+        ))
+        return
+
     _set_get_index_urls(self, module_ctx, pip_attr)
     self._platforms[python_version] = _platforms(
         module_ctx,
@@ -395,12 +414,13 @@ def _set_get_index_urls(self, mctx, pip_attr):
     )
     return True
 
+def _host_interpreter_name(python_version):
+    return "python_{}_host".format(python_version.replace(".", "_"))
+
 def _detect_interpreter(self, pip_attr, python_version):
     python_interpreter_target = pip_attr.python_interpreter_target
     if python_interpreter_target == None and not pip_attr.python_interpreter:
-        python_name = "python_{}_host".format(
-            python_version.replace(".", "_"),
-        )
+        python_name = _host_interpreter_name(python_version)
         if python_name not in self._available_interpreters:
             fail((
                 "Unable to find interpreter for pip hub '{hub_name}' for " +
