@@ -148,6 +148,42 @@ detached
             self.assertEqual(target.remote, "origin")
             self.assertTrue(target.remote_branch_exists)
 
+    async def test_execute_cleanup_target_reports_deleted_resources(self):
+        """Verifies execute_cleanup_target returns the list of deleted resources."""
+        target = cleanup.CleanupTarget(
+            worktree_path="/repo/worktrees/feat1",
+            branch="feat1",
+            remote="origin",
+            remote_branch_exists=True,
+            bazel_output_bases=["/cache/bazel/ob1"],
+            is_main_worktree=False,
+        )
+        with mock.patch(
+            "cleanup.get_path_size_human", return_value="1.50 GB"
+        ), mock.patch(
+            "cleanup.shutdown_and_remove_bazel_output_base", return_value=True
+        ), mock.patch("cleanup.remove_git_worktree", return_value=True), mock.patch(
+            "cleanup.delete_local_branch",
+            return_value=(True, "Deleted local branch 'feat1'."),
+        ), mock.patch(
+            "cleanup.delete_remote_branch",
+            return_value=(
+                True,
+                "Deleted remote branch 'feat1' from 'origin'.",
+            ),
+        ):
+            deleted = await cleanup.execute_cleanup_target("/repo/main", target)
+
+        self.assertEqual(
+            deleted,
+            [
+                "Bazel output base: /cache/bazel/ob1 (1.50 GB)",
+                "Git worktree: /repo/worktrees/feat1",
+                "Local branch: feat1",
+                "Remote branch: origin/feat1",
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
