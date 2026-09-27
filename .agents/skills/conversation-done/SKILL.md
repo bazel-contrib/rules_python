@@ -93,3 +93,16 @@ Fine-tune what gets cleaned up using selective leave flags:
 * **Upstream Remote Protection**: Never deletes branches on `upstream`.
 * **No Expunge Rule**: Never runs `bazel clean --expunge`; shuts down servers
   gracefully and deletes the specific output base directory directly.
+
+## Reporting Results
+
+After running the cleanup script, always report to the user what resources were
+deleted (or would be deleted in `--dry-run` mode), including:
+
+* **Bazel Output Base(s)**: Paths and reclaimed disk space sizes.
+* **Git Worktree**: Removed worktree directory path.
+* **Local Git Branch**: Deleted local branch name.
+* **Remote Git Branch**: Deleted remote branch (`<remote>/<branch>`).
+
+If any resources were skipped, left intact via `--leave-*` flags, or not found,
+note that briefly in the summary.

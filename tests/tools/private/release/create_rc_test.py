@@ -4,9 +4,16 @@ import pathlib
 import tempfile
 from unittest.mock import call
 
+import pytest
+
 from dev.release.create_rc import CreateRc
 
 pytest_plugins = ["tests.tools.private.release.release_test_helper"]
+
+
+@pytest.fixture(name="isolate_cwd", autouse=True)
+def fixture_isolate_cwd(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
 
 
 def test_create_rc_success_first_rc(mocker, mock_git, mock_gh):
@@ -41,7 +48,7 @@ def test_create_rc_success_first_rc(mocker, mock_git, mock_gh):
     mock_git.fetch.assert_has_calls(
         [call("my-remote"), call("my-remote", tags=True, force=True)]
     )
-    mock_git.checkout.assert_not_called()
+    mock_git.checkout.assert_called_once_with("my-remote/release/2.0")
     mock_git.tag.assert_called_once_with("2.0.0-rc0", "my-remote/release/2.0")
     mock_git.push.assert_called_once_with("my-remote", "2.0.0-rc0")
     mock_git.get_commit_sha.assert_called_once_with("my-remote/release/2.0")
@@ -138,7 +145,7 @@ def test_create_rc_success_next_rc(mock_git, mock_gh):
     mock_git.fetch.assert_has_calls(
         [call("my-remote"), call("my-remote", tags=True, force=True)]
     )
-    mock_git.checkout.assert_not_called()
+    mock_git.checkout.assert_called_once_with("my-remote/release/2.0")
     mock_git.tag.assert_called_once_with("2.0.0-rc1", "my-remote/release/2.0")
     mock_git.push.assert_called_once_with("my-remote", "2.0.0-rc1")
     mock_git.get_commit_sha.assert_called_once_with("my-remote/release/2.0")
@@ -417,4 +424,37 @@ def test_create_rc_precondition_failure_reacts_to_comment(mocker, mock_git, mock
 
     # Assert
     assert result == 1
+    assert mock_gh.reactions.get(456) == ["-1"]
+
+
+def test_create_rc_fails_on_version_markers(tmp_path, mock_git, mock_gh):
+    # Arrange
+    args = argparse.Namespace(
+        issue=123, remote="my-remote", triggering_comment=456, dry_run=False
+    )
+    initial_body = """
+## Checklist
+- [x] Prepare Release | status=done pr=#122 commit=abcdef12
+- [x] Create Release branch | status=done branch=release/2.0 commit=abcdef12
+- [ ] Tag RC0 | status=pending
+"""
+    mock_gh.issues[123] = {
+        "title": "Release 2.0.0",
+        "body": initial_body,
+        "labels": ["type: release"],
+    }
+    mock_git.get_remote_tags.return_value = []
+    mock_git.get_commit_sha.return_value = "1234567890"
+    (tmp_path / "dirty.bzl").write_text(":::{versionadded} VERSION_NEXT_FEATURE\n")
+
+    # Act
+    result = CreateRc(args, mock_git, mock_gh).run()
+
+    # Assert
+    assert result == 1
+    mock_git.checkout.assert_called_once_with("my-remote/release/2.0")
+    mock_git.tag.assert_not_called()
+    mock_git.push.assert_not_called()
+    assert mock_gh.get_issue_body(123) == initial_body
+    assert 123 not in mock_gh.issue_comments
     assert mock_gh.reactions.get(456) == ["-1"]

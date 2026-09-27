@@ -519,15 +519,16 @@ async def execute_cleanup_target(
     leave_branch: bool = False,
     leave_remote: bool = False,
     dry_run: bool = False,
-) -> None:
-    """Executes cleanup on a single target."""
+) -> list[str]:
+    """Executes cleanup on a single target and returns deleted resource descriptions."""
     log(f"\nCleaning up target resources for: {target.worktree_path or target.branch}")
+    deleted: list[str] = []
 
     if target.is_main_worktree:
         log_error(
             "Target is the main repository! Refusing to clean up main repository."
         )
-        return
+        return deleted
 
     # 1. Clean up Bazel output bases
     if not leave_bazel_output_base and target.bazel_output_bases:
@@ -535,7 +536,8 @@ async def execute_cleanup_target(
         for ob in target.bazel_output_bases:
             size_str = await get_path_size_human(ob)
             log(f"  - Output base: {ob} ({size_str})")
-            await shutdown_and_remove_bazel_output_base(ob, dry_run=dry_run)
+            if await shutdown_and_remove_bazel_output_base(ob, dry_run=dry_run):
+                deleted.append(f"Bazel output base: {ob} ({size_str})")
     elif leave_bazel_output_base:
         log("1. Leaving Bazel output base intact.")
     else:
@@ -544,7 +546,8 @@ async def execute_cleanup_target(
     # 2. Clean up Git worktree
     if not leave_worktree and target.worktree_path:
         log("2. Cleaning up Git worktree:")
-        await remove_git_worktree(main_repo, target.worktree_path, dry_run=dry_run)
+        if await remove_git_worktree(main_repo, target.worktree_path, dry_run=dry_run):
+            deleted.append(f"Git worktree: {target.worktree_path}")
     elif leave_worktree:
         log("2. Leaving Git worktree directory on disk.")
     else:
@@ -558,6 +561,7 @@ async def execute_cleanup_target(
         )
         if success:
             log(f"  {msg}")
+            deleted.append(f"Local branch: {target.branch}")
         else:
             log_warn(f"  {msg}")
     elif leave_branch:
@@ -578,12 +582,15 @@ async def execute_cleanup_target(
         )
         if success:
             log(f"  {msg}")
+            deleted.append(f"Remote branch: {target.remote}/{target.branch}")
         else:
             log_warn(f"  {msg}")
     elif leave_remote:
         log("4. Leaving remote branch intact.")
     elif target.branch and target.remote:
         log(f"4. Remote branch '{target.branch}' not present on '{target.remote}'.")
+
+    return deleted
 
 
 async def list_resources(main_repo: str) -> None:
@@ -759,8 +766,9 @@ async def async_main() -> None:
             log("Aborted.")
             return
 
+    deleted_resources: list[str] = []
     for target in targets:
-        await execute_cleanup_target(
+        deleted = await execute_cleanup_target(
             main_repo,
             target,
             leave_bazel_output_base=args.leave_bazel_output_base,
@@ -769,6 +777,19 @@ async def async_main() -> None:
             leave_remote=args.leave_remote,
             dry_run=args.dry_run,
         )
+        deleted_resources.extend(deleted)
+
+    summary_header = (
+        "\nResources that would be deleted (dry run):"
+        if args.dry_run
+        else "\nDeleted resources:"
+    )
+    log(summary_header)
+    if deleted_resources:
+        for resource in deleted_resources:
+            log(f"  - {resource}")
+    else:
+        log("  None")
     log("\nCleanup completed.")
 
 

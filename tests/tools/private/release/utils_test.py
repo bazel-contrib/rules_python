@@ -345,3 +345,42 @@ def test_format_exception_empty_message_with_notes():
     e = Exception()
     e.add_note("Note only")
     assert utils.format_exception(e) == "Note only"
+
+
+def test_find_version_markers_none(release_tool_env):
+    (release_tool_env.git_root / "clean.bzl").write_text(":::{versionadded} 1.2.0\n")
+    assert utils.find_version_markers() == []
+
+
+def test_find_version_markers_found(release_tool_env):
+    (release_tool_env.git_root / "dirty.bzl").write_text(
+        "line 1\n"
+        ":::{versionadded} VERSION_NEXT_FEATURE\n"
+        ":::{versionchanged} VERSION_NEXT_PATCH\n"
+    )
+    markers = utils.find_version_markers()
+    assert len(markers) == 2
+    assert any(
+        "dirty.bzl:2: :::{versionadded} VERSION_NEXT_FEATURE" in m for m in markers
+    )
+    assert any(
+        "dirty.bzl:3: :::{versionchanged} VERSION_NEXT_PATCH" in m for m in markers
+    )
+
+
+def test_find_version_markers_excludes_paths(release_tool_env):
+    content = ":::{versionadded} VERSION_NEXT_FEATURE\n"
+    for rel_path in [
+        ".agents/rule.md",
+        "bazel-out/file.bzl",
+        "dev/release/tool.py",
+        "tests/tools/private/release/test.py",
+        "docs/devguide.md",
+        "CONTRIBUTING.md",
+        "RELEASING.md",
+    ]:
+        p = release_tool_env.git_root / rel_path
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content)
+
+    assert utils.find_version_markers() == []
