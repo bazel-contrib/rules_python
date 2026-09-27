@@ -1,5 +1,11 @@
 """Helper functions to parse python-build-standalone manifests."""
 
+_ASTRAL_STATIC_LIBPYTHON_RELEASE = 20250517
+_ASTRAL_RELEASE_URL_PREFIXES = [
+    "https://github.com/astral-sh/python-build-standalone/releases/download/",
+    "https://releases.astral.sh/github/python-build-standalone/releases/download/",
+]
+
 def parse_filename(filename):
     """Parses a python-build-standalone filename (or URL) into its components.
 
@@ -111,6 +117,28 @@ def parse_filename(filename):
         "python_version": python_version,
         "vendor": vendor,
     }
+
+# buildifier: disable=function-docstring-args
+# buildifier: disable=function-docstring-return
+# urls: list[str], release_filename: str -> bool
+def is_astral_static_libpython_build(urls, release_filename):
+    """Whether an Astral build includes libpython statically in its interpreter."""
+    parsed = parse_filename(release_filename)
+    if not parsed:
+        return False
+
+    build_version = parsed["build_version"]
+    if (
+        not build_version.isdigit() or
+        int(build_version) < _ASTRAL_STATIC_LIBPYTHON_RELEASE
+    ):
+        return False
+
+    return any([
+        url.startswith(prefix)
+        for url in urls
+        for prefix in _ASTRAL_RELEASE_URL_PREFIXES
+    ])
 
 def parse_runtime_manifest(content):
     """Parses the SHA256SUMS file content into a list of structs.

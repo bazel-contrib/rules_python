@@ -40,6 +40,7 @@ def python_register_toolchains(
         register_toolchains = True,
         register_coverage_tool = False,
         set_python_version_constraint = False,
+        libpython = None,
         tool_versions = None,
         platforms = PLATFORMS,
         minor_mapping = None,
@@ -68,6 +69,8 @@ def python_register_toolchains(
         set_python_version_constraint: {type}`bool` When set to `True`,
             `target_compatible_with` for the toolchains will include a version
             constraint.
+        libpython: {type}`str` controls shared libpython files: `auto`,
+            `include`, or `exclude`.
         tool_versions: {type}`dict` contains a mapping of version with SHASUM
             and platform info. If not supplied, the defaults in
             python/versions.bzl will be used.
@@ -145,6 +148,7 @@ def python_register_toolchains(
             urls = urls,
             strip_prefix = strip_prefix,
             coverage_tool = coverage_tool,
+            libpython = libpython or tool_versions[python_version].get("libpython", {}).get(platform, "auto"),
             **kwargs
         )
         if register_toolchains:

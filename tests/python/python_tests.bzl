@@ -419,6 +419,28 @@ def _test_auth_overrides(env):
 
 _tests.append(_test_auth_overrides)
 
+def _test_libpython_override(env):
+    py = parse_modules(
+        module_ctx = python_ext.mctx(
+            python_ext.module(
+                name = "my_module",
+                is_root = True,
+                override = [
+                    python_ext.override(libpython = "exclude"),
+                ],
+                toolchain = [python_ext.toolchain(python_version = "3.12")],
+            ),
+            _rules_python_module(),
+        ),
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
+    )
+
+    env.expect.that_dict(py.config.default).contains_at_least({
+        "libpython": "exclude",
+    })
+
+_tests.append(_test_libpython_override)
+
 def _test_add_target_settings(env):
     py = parse_modules(
         module_ctx = python_ext.mctx(

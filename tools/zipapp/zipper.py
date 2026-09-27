@@ -118,6 +118,23 @@ def normalize_zip_path(path):
     return path.replace("\\", "/")
 
 
+def _source_symlink_target(content_path, is_symlink_str):
+    if is_symlink_str == "1":
+        return os.readlink(content_path)
+    if is_symlink_str != "0" or not os.path.islink(content_path):
+        return None
+
+    target = os.readlink(content_path)
+    if not os.path.isabs(target):
+        return target
+
+    # Bazel sandboxes expose regular inputs as absolute symlinks. Look through
+    # that indirection to detect whether the original source is also a symlink.
+    if os.path.islink(target):
+        return os.readlink(target)
+    return None
+
+
 def _write_entry(zf, entry, compress_type, seen, platform_pathsep):
     type_, is_symlink_str, zip_path, content_path = entry
     # Normalize slashes, otherwise the `seen` logic doesn't
@@ -155,14 +172,13 @@ def _write_entry(zf, entry, compress_type, seen, platform_pathsep):
         else:
             is_symlink_str = "0"
 
-    is_symlink = is_symlink_str == "1"
-
-    if is_symlink:
+    symlink_target = _source_symlink_target(content_path, is_symlink_str)
+    if symlink_target is not None:
         zi = zipfile.ZipInfo(zip_path)
         zi.date_time = (1980, 1, 1, 0, 0, 0)
         zi.create_system = 3  # Unix
         zi.compress_type = compress_type
-        target = convert_symlink_target(os.readlink(content_path), platform_pathsep)
+        target = convert_symlink_target(symlink_target, platform_pathsep)
         # Set permissions to 777 for symlink (standard)
         zi.external_attr = (S_IFLNK | 0o777) << 16
         zf.writestr(zi, target)

@@ -115,6 +115,65 @@ def test_create_zip_with_direct_symlink(tmp_path):
         )
 
 
+def test_create_zip_with_source_symlink_marked_as_regular(tmp_path):
+    manifest_path = tmp_path / "manifest.txt"
+    output_zip = tmp_path / "output.zip"
+
+    target_path = tmp_path / "python3.14"
+    target_path.write_text("python")
+    symlink_path = tmp_path / "python"
+    symlink_path.symlink_to(target_path.name)
+    manifest_path.write_text(f"rf-file|0|bin/python|{symlink_path}")
+
+    create_zip(manifest_path, output_zip)
+
+    with zipfile.ZipFile(output_zip, "r") as zf:
+        assert_zip_file_content(
+            zf,
+            "runfiles/my_ws/bin/python",
+            is_symlink_file=True,
+            target=target_path.name,
+        )
+
+
+def test_create_zip_with_sandboxed_source_symlink(tmp_path):
+    manifest_path = tmp_path / "manifest.txt"
+    output_zip = tmp_path / "output.zip"
+
+    source_dir = tmp_path / "source"
+    source_dir.mkdir()
+    target_path = source_dir / "python3.14"
+    target_path.write_text("python")
+    source_symlink = source_dir / "python"
+    source_symlink.symlink_to(target_path.name)
+
+    sandbox_dir = tmp_path / "sandbox"
+    sandbox_dir.mkdir()
+    sandbox_symlink = sandbox_dir / "python"
+    sandbox_symlink.symlink_to(source_symlink)
+    sandbox_regular = sandbox_dir / "python3.14"
+    sandbox_regular.symlink_to(target_path)
+    manifest_path.write_text(
+        "\n".join(
+            [
+                f"rf-file|0|bin/python|{sandbox_symlink}",
+                f"rf-file|0|bin/python3.14|{sandbox_regular}",
+            ]
+        )
+    )
+
+    create_zip(manifest_path, output_zip)
+
+    with zipfile.ZipFile(output_zip, "r") as zf:
+        assert_zip_file_content(
+            zf,
+            "runfiles/my_ws/bin/python",
+            is_symlink_file=True,
+            target=target_path.name,
+        )
+        assert_zip_file_content(zf, "runfiles/my_ws/bin/python3.14", content="python")
+
+
 def test_pathsep_normalization(tmp_path):
     manifest_path = tmp_path / "manifest.txt"
     output_zip = tmp_path / "output.zip"

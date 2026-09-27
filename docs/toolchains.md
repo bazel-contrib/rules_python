@@ -240,11 +240,21 @@ existing attributes:
   via {attr}`python.override.minor_mapping`.
 * Per-version control of the coverage tool used using
   {attr}`python.single_version_platform_override.coverage_tool`.
+* Control of shared `libpython` files using the `libpython` attribute on
+  {bzl:obj}`python.override`, {bzl:obj}`python.single_version_override`, or
+  {bzl:obj}`python.single_version_platform_override`.
 * Adding additional Python versions via {bzl:obj}`python.single_version_override` or
   {bzl:obj}`python.single_version_platform_override`.
 * Adding additional Python versions dynamically from a manifest file or URL
   via {attr}`python.override.add_runtime_manifest_files` or
   {attr}`python.override.add_runtime_manifest_urls`.
+
+The `libpython` attribute accepts `auto`, `include`, or `exclude`, and defaults
+to `auto`. In automatic mode, shared `libpython` files are excluded only for
+recognized Astral Python Standalone builds from `20250517` onward, which are
+known to statically link `libpython` into the interpreter. Unknown, custom, and
+older runtimes retain the shared libraries. Use `include` or `exclude` to
+override this behavior when mirroring or customizing a runtime.
 
 ### Registering custom runtimes
 
