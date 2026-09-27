@@ -1361,7 +1361,7 @@ Valid values are `auto`, `include`, and `exclude`. With `auto`, recognized
 Astral Python Standalone builds from 20250517 onward exclude the shared
 libraries; other runtimes retain them.
 
-:::{versionadded} VERSION_NEXT_PATCH
+:::{versionadded} 2.4.0
 :::
 """,
             values = ["auto", "include", "exclude"],
@@ -1450,7 +1450,7 @@ Valid values are `auto`, `include`, and `exclude`. With `auto`, recognized
 Astral Python Standalone builds from 20250517 onward exclude the shared
 libraries; other runtimes retain them.
 
-:::{versionadded} VERSION_NEXT_PATCH
+:::{versionadded} 2.4.0
 :::
 """,
             values = ["auto", "include", "exclude"],
@@ -1532,7 +1532,7 @@ Valid values are `auto`, `include`, and `exclude`. With `auto`, recognized
 Astral Python Standalone builds from 20250517 onward exclude the shared
 libraries; other runtimes retain them.
 
-:::{versionadded} VERSION_NEXT_PATCH
+:::{versionadded} 2.4.0
 :::
 """,
             values = ["auto", "include", "exclude"],

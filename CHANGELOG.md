@@ -47,6 +47,15 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
   in {obj}`python.defaults`, {obj}`python_register_toolchains`, and
   {obj}`python_register_multi_toolchains`
   ([#4023](https://github.com/bazel-contrib/rules_python/pull/4023)).
+* (toolchains) Shared `libpython*.so*` files are now excluded by default from
+  hermetic Python runtime files for recognized Astral `python-build-standalone`
+  builds (`20250517` and newer), which statically link `libpython` into the
+  interpreter. Older, custom, or unrecognized runtimes retain them. Set
+  `libpython = "include"` or `"exclude"` on {obj}`python.override`,
+  {obj}`python.single_version_override`,
+  {obj}`python.single_version_platform_override`, or
+  {obj}`python_register_toolchains` to override this behavior
+  ([#4165](https://github.com/bazel-contrib/rules_python/pull/4165)).
 
 {#v2-4-0-fixed}
 ### Fixed
@@ -81,6 +90,10 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 * (toolchain) Fixed a crash on Windows when precompiling is enabled:
   the precompiler's interpreter couldn't find its DLLs once relocated
   ([#4082](https://github.com/bazel-contrib/rules_python/issues/4082)).
+* (zipapp) Reduced self-contained archive sizes by preserving Python executable
+  symlinks instead of storing each alias as another copy of the interpreter, and
+  by omitting shared `libpython` files from recognized statically linked Astral
+  runtime builds.
 
 {#v2-4-0-added}
 ### Added
@@ -90,6 +103,7 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
   commands within subdirectories when generating lock files. Defaults to the
   package directory, set it to `None` or `""` to set it to the root of the repo
   ([#4029](https://github.com/bazel-contrib/rules_python/issues/4029)).
+
 
 {#v2-3-4}
 ## [2.3.4] - 2026-09-21
