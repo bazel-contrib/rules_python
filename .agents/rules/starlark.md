@@ -64,6 +64,8 @@ globs: "*.bzl,BUILD,BUILD.bazel,*.bazel"
   existing files unless explicitly directed by the user.
 * **Line Length & Wrapping**: Wrap Markdown and Starlark lines to 80 columns in
   accordance with `.editorconfig`.
+  * **Long ternaries**: Use `if`/`else` statements when `a if cond else b`
+    exceeds 80 columns (`buildifier` collapses multi-line ternaries).
 
 ## Starlark Testing (`rules_testing`)
 * **`rules_testing` over `bazel_skylib`**: Always use `@rules_testing` (analysis

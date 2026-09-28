@@ -38,10 +38,12 @@ The args passed to `uv` by default when running the runnable target.
 
 The env passed to the execution.
 """,
-        "srcs": """
-:type: depset[File]
+        # Preserve the wrapper's runtime files and symlink mappings together;
+        # a regular depset cannot represent the full runfiles layout.
+        "runfiles": """
+:type: runfiles
 
-Source files required to run the runnable target.
+Runtime files required by the runnable target.
 """,
         "template": """
 :type: File
@@ -145,7 +147,8 @@ def _common_lock(ctx, locker):
 
     output = ctx.actions.declare_file(fname)
     toolchain_info = ctx.toolchains[UV_TOOLCHAIN_TYPE]
-    uv = toolchain_info.uv_toolchain_info.uv[DefaultInfo].files_to_run.executable
+    uv_default_info = toolchain_info.uv_toolchain_info.uv[DefaultInfo]
+    uv = uv_default_info.files_to_run.executable
 
     args = _args(ctx)
     args.add(uv)
@@ -159,7 +162,9 @@ def _common_lock(ctx, locker):
     srcs, output_filename, mnemonic, progress_message = locker(args, output)
 
     args.add("--no-python-downloads")
-    args.add("--no-cache")
+
+    # Build actions must not depend on the host cache but `.run` may reuse it.
+    args.add_run_shell("--no-cache")
 
     project = ctx.attr.project
     if not project:
@@ -275,7 +280,7 @@ def _common_lock(ctx, locker):
         # exec "$@" in the .sh script.
         arguments = [args.run_shell] if not ctx.attr.is_windows else [],
         tools = [
-            uv,
+            uv_default_info.files_to_run,
             python_files,
             script,
         ],
@@ -294,10 +299,10 @@ def _common_lock(ctx, locker):
         _RunLockInfo(
             args = args.run_info,
             env = ctx.attr.env,
-            srcs = depset(
-                srcs + [uv],
-                transitive = [python_files],
-            ),
+            runfiles = ctx.runfiles(
+                files = srcs + [uv],
+                transitive_files = python_files,
+            ).merge(uv_default_info.default_runfiles),
             template = ctx.files._template[0],
         ),
     ]
@@ -517,7 +522,7 @@ def _run_impl(ctx):
     return [
         DefaultInfo(
             executable = executable,
-            runfiles = ctx.runfiles(transitive_files = info.srcs),
+            runfiles = info.runfiles,
         ),
         RunEnvironmentInfo(
             environment = info.env,
@@ -623,7 +628,11 @@ def lock(
       to the same command that would be run in the `name` action. This will
       update the source copy of the requirements file. You can customize the
       args via the command line, but it requires being able to run `uv` (and
-      possibly `python`) directly on your host.
+      possibly `python`) directly on your host. This target uses the `uv`
+      cache and inherits its cache settings from the environment, including
+      `UV_CACHE_DIR` and `UV_NO_CACHE`. Pass `--refresh` to refresh cached
+      data or `--no-cache` to disable caching. Build actions, including those
+      used by `name.update`, disable the `uv` cache.
     - `name.update`: a target that can be run to update the source-tree version
       of the requirements lock file. The output can be fed to the
       {obj}`pip.parse` bzlmod extension tag class. Note, you can use
@@ -636,6 +645,10 @@ def lock(
 
     :::{note}
     All of the targets have `manual` tags as locking results cannot be cached.
+    :::
+
+    :::{versionchanged} VERSION_NEXT_PATCH
+    The `name.run` target uses the `uv` cache by default.
     :::
 
     Args:

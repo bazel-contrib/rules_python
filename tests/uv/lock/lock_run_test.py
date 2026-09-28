@@ -51,6 +51,7 @@ class LockTests(unittest.TestCase):
     def _subprocess_env(self, workspace_dir: Path) -> dict[str, str]:
         env = {
             "BUILD_WORKSPACE_DIRECTORY": str(workspace_dir),
+            "UV_CACHE_DIR": str(workspace_dir / "uv-cache"),
         }
         # Inherit specific env vars needed for finding runfiles on Windows
         for key in (
@@ -249,7 +250,7 @@ class LockTests(unittest.TestCase):
         self.assertIn("--generate-hashes", content)
         self.assertIn("--no-strip-extras", content)
         self.assertIn("--no-python-downloads", content)
-        self.assertIn("--no-cache", content)
+        self.assertNotIn("--no-cache", content)
         self.assertIn("--no-progress", content)
         self.assertIn("--quiet", content)
         self.assertIn("--output-file", content)

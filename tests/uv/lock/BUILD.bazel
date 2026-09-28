@@ -1,3 +1,4 @@
+load(":cache_tests.bzl", "cache_test_suite")
 load(":lock_tests.bzl", "lock_test_suite")
 load(":uv_lock_to_requirements_tests.bzl", "uv_lock_to_requirements_test_suite")
 
@@ -13,3 +14,5 @@ lock_test_suite(
 uv_lock_to_requirements_test_suite(
     name = "uv_lock_to_requirements_tests",
 )
+
+cache_test_suite(name = "cache_tests")
