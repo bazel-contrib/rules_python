@@ -68,11 +68,14 @@ def main():
 
     target = args.pr
     if target.isdigit() and len(target) < 10:
-        print(f"🔍 Inspecting PR #{target} via gh to find Buildkite URL...")
+        print(
+            f"🔍 Inspecting PR #{target} via gh to find Buildkite URL...",
+            file=sys.stderr,
+        )
         target = get_build_url_from_pr(target)
 
     build_id = normalize_build_target(target)
-    print(f"🚀 Querying Buildkite for build: {build_id}\n")
+    print(f"🚀 Querying Buildkite for build: {build_id}\n", file=sys.stderr)
 
     # Run bk build view
     res = subprocess.run(["bk", "build", "view", build_id])
@@ -84,11 +87,12 @@ def main():
         sys.exit(res.returncode)
 
     if args.download:
-        print(f"\n📥 Downloading logs for build: {build_id}")
+        print(f"\n📥 Downloading logs for build: {build_id}", file=sys.stderr)
         dl_res = subprocess.run(["bk", "build", "download", build_id])
         if dl_res.returncode != 0:
             print(
-                "⚠️ 'bk build download' failed or not supported. Try using 'bk job log <job-id>' for specific jobs."
+                "⚠️ 'bk build download' failed or not supported. Try using 'bk job log <job-id>' for specific jobs.",
+                file=sys.stderr,
             )
 
 
