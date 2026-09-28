@@ -445,6 +445,7 @@ _ARCHIVE_FLAVOR_MANIFEST = """
 1111111111111111111111111111111111111111111111111111111111111111  20260414/cpython-3.14.4+20260414-x86_64-unknown-linux-gnu-install_only.tar.gz
 2222222222222222222222222222222222222222222222222222222222222222  20260414/cpython-3.14.4+20260414-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz
 3333333333333333333333333333333333333333333333333333333333333333  20240415/cpython-3.12.3+20240415-x86_64-unknown-linux-gnu-install_only.tar.gz
+4444444444444444444444444444444444444444444444444444444444444444  20260414/cpython-3.14.4+20260414-x86_64-unknown-linux-gnu-pgo+lto-full.tar.zst
 """
 
 def _parse_archive_flavor_modules(archive_flavor):
@@ -475,16 +476,33 @@ def _test_archive_flavor_default(env):
 _tests.append(_test_archive_flavor_default)
 
 def _test_archive_flavor_stripped(env):
-    tool_versions = _parse_archive_flavor_modules("install_only_stripped").config.default["tool_versions"]
+    py = _parse_archive_flavor_modules("install_only_stripped")
+    tool_versions = py.config.default["tool_versions"]
     platform = "x86_64-unknown-linux-gnu"
 
     env.expect.that_str(tool_versions["3.14.4"]["sha256"][platform]).equals("2" * 64)
-    env.expect.that_str(tool_versions["3.14.4"]["url"][platform][0]).contains("install_only_stripped")
+    env.expect.that_str(
+        tool_versions["3.14.4"]["url"][platform][0],
+    ).contains("install_only_stripped")
 
     # Older releases without a stripped archive fall back to install_only.
     env.expect.that_str(tool_versions["3.12.3"]["sha256"][platform]).equals("3" * 64)
 
 _tests.append(_test_archive_flavor_stripped)
+
+def _test_archive_flavor_full(env):
+    tool_versions = _parse_archive_flavor_modules("full").config.default["tool_versions"]
+    platform = "x86_64-unknown-linux-gnu"
+
+    env.expect.that_str(tool_versions["3.14.4"]["sha256"][platform]).equals("4" * 64)
+    env.expect.that_str(tool_versions["3.14.4"]["url"][platform][0]).contains("-full.tar.zst")
+    env.expect.that_str(tool_versions["3.14.4"]["strip_prefix"][platform]).equals("python/install")
+
+    # Older releases without a full archive fall back to install_only.
+    env.expect.that_str(tool_versions["3.12.3"]["sha256"][platform]).equals("3" * 64)
+    env.expect.that_str(tool_versions["3.12.3"]["strip_prefix"][platform]).equals("python")
+
+_tests.append(_test_archive_flavor_full)
 
 def _test_add_target_settings(env):
     py = parse_modules(

@@ -15,7 +15,12 @@
 """The Python versions we use for the toolchains.
 """
 
-load("//python/private:pbs_manifest.bzl", "manifest_entry_sort_key", "parse_runtime_manifest")
+load(
+    "//python/private:pbs_manifest.bzl",
+    "ARCHIVE_FLAVORS",
+    "manifest_entry_sort_key",
+    "parse_runtime_manifest",
+)
 load("//python/private:platform_info.bzl", "platform_info")
 
 ##load("@rules_python_internal//:manifest_tool_versions.bzl", "MANIFEST_ENTRIES")
@@ -366,7 +371,7 @@ def _tool_versions_from_manifest_entries(entries, base_url = DEFAULT_RELEASE_BAS
             continue
 
         archive_flavor = entry.archive_flavor
-        if archive_flavor not in ["install_only", "install_only_stripped", "full"]:
+        if archive_flavor not in ARCHIVE_FLAVORS:
             continue
 
         v_dict = available_versions.setdefault(py_version, {})

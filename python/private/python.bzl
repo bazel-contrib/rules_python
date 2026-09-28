@@ -1321,7 +1321,7 @@ available flavor is used.
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
 """,
-            values = ["install_only", "install_only_stripped", "full"],
+            values = ARCHIVE_FLAVORS,
         ),
         "available_python_versions": attr.string_list(
             mandatory = False,
