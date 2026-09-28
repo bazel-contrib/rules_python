@@ -26,12 +26,28 @@ load(":toolchain_types.bzl", "UV_TOOLCHAIN_TYPE")
 visibility(["//..."])
 
 _RunLockInfo = provider(
-    doc = "",
+    doc = "Information for running the lock command directly via `bazel run`.",
     fields = {
-        "args": "The args passed to the `uv` by default when running the runnable target.",
-        "env": "The env passed to the execution.",
-        "srcs": "Source files required to run the runnable target.",
-        "template": "The template file for writing a script.",
+        "args": """
+:type: list[str | File]
+
+The args passed to `uv` by default when running the runnable target.
+""",
+        "env": """
+:type: dict[str, str]
+
+The env passed to the execution.
+""",
+        "srcs": """
+:type: depset[File]
+
+Source files required to run the runnable target.
+""",
+        "template": """
+:type: File
+
+The template file for writing a script.
+""",
     },
 )
 
