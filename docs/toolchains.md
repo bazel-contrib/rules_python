@@ -243,6 +243,8 @@ existing attributes:
 * Control of shared `libpython` files using the `libpython` attribute on
   {bzl:obj}`python.override`, {bzl:obj}`python.single_version_override`, or
   {bzl:obj}`python.single_version_platform_override`.
+* Selecting smaller stripped runtime archives via
+  {attr}`python.override.archive_flavor`.
 * Adding additional Python versions via {bzl:obj}`python.single_version_override` or
   {bzl:obj}`python.single_version_platform_override`.
 * Adding additional Python versions dynamically from a manifest file or URL
@@ -255,6 +257,22 @@ recognized Astral Python Standalone builds from `20250517` onward, which are
 known to statically link `libpython` into the interpreter. Unknown, custom, and
 older runtimes retain the shared libraries. Use `include` or `exclude` to
 override this behavior when mirroring or customizing a runtime.
+
+The {attr}`python.override.archive_flavor` attribute selects which
+python-build-standalone archive to download. It defaults to `install_only`,
+which keeps debug symbols. Set it to `install_only_stripped` to use archives
+without debug symbols, which substantially reduces runtime and
+{obj}`py_zipapp_binary` size:
+
+```starlark
+python.override(
+    archive_flavor = "install_only_stripped",
+)
+```
+
+If a runtime has no archive of the selected flavor, another available flavor is
+used. Stripped archives are available for built-in runtimes released from
+`20240726` onward.
 
 ### Registering custom runtimes
 

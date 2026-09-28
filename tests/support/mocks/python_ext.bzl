@@ -29,6 +29,7 @@ def _override(**kwargs):
         "add_runtime_manifest_files": [],
         "add_runtime_manifest_urls": [],
         "add_target_settings": [],
+        "archive_flavor": "install_only",
         "available_python_versions": [],
         "base_urls": ["https://github.com/astral-sh/python-build-standalone/releases/download"],
         "ignore_root_user_error": True,

@@ -15,7 +15,7 @@
 """The Python versions we use for the toolchains.
 """
 
-load("//python/private:pbs_manifest.bzl", "parse_runtime_manifest")
+load("//python/private:pbs_manifest.bzl", "manifest_entry_sort_key", "parse_runtime_manifest")
 load("//python/private:platform_info.bzl", "platform_info")
 
 ##load("@rules_python_internal//:manifest_tool_versions.bzl", "MANIFEST_ENTRIES")
@@ -335,17 +335,6 @@ def gen_python_config_settings(name = ""):
             constraint_values = PLATFORMS[platform].compatible_with,
         )
 
-def _manifest_entry_sort_key(entry):
-    flavor_rank = {"full": 3, "install_only": 1, "install_only_stripped": 2}.get(entry.archive_flavor, 4)
-    microarch = entry.microarch
-    if not microarch:
-        microarch_rank = 0
-    elif microarch.startswith("v") and microarch[1:].isdigit():
-        microarch_rank = int(microarch[1:])
-    else:
-        microarch_rank = 999
-    return (flavor_rank, microarch_rank)
-
 def _tool_versions_from_manifest_entries(entries, base_url = DEFAULT_RELEASE_BASE_URL):
     """Converts parsed manifest entries into the TOOL_VERSIONS dictionary format.
 
@@ -359,7 +348,7 @@ def _tool_versions_from_manifest_entries(entries, base_url = DEFAULT_RELEASE_BAS
     available_versions = {}
     entries = sorted(
         entries,
-        key = _manifest_entry_sort_key,
+        key = manifest_entry_sort_key,
     )
 
     for entry in entries:

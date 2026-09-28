@@ -441,6 +441,51 @@ def _test_libpython_override(env):
 
 _tests.append(_test_libpython_override)
 
+_ARCHIVE_FLAVOR_MANIFEST = """
+1111111111111111111111111111111111111111111111111111111111111111  20260414/cpython-3.14.4+20260414-x86_64-unknown-linux-gnu-install_only.tar.gz
+2222222222222222222222222222222222222222222222222222222222222222  20260414/cpython-3.14.4+20260414-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz
+3333333333333333333333333333333333333333333333333333333333333333  20240415/cpython-3.12.3+20240415-x86_64-unknown-linux-gnu-install_only.tar.gz
+"""
+
+def _parse_archive_flavor_modules(archive_flavor):
+    override = []
+    if archive_flavor:
+        override = [python_ext.override(archive_flavor = archive_flavor)]
+    return parse_modules(
+        module_ctx = python_ext.mctx(
+            python_ext.module(
+                name = "my_module",
+                is_root = True,
+                override = override,
+                toolchain = [python_ext.toolchain(python_version = "3.14")],
+            ),
+            mock_files = {
+                "python/private/runtimes_manifest.txt": _ARCHIVE_FLAVOR_MANIFEST,
+            },
+        ),
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
+    )
+
+def _test_archive_flavor_default(env):
+    tool_versions = _parse_archive_flavor_modules(None).config.default["tool_versions"]
+    platform = "x86_64-unknown-linux-gnu"
+
+    env.expect.that_str(tool_versions["3.14.4"]["sha256"][platform]).equals("1" * 64)
+
+_tests.append(_test_archive_flavor_default)
+
+def _test_archive_flavor_stripped(env):
+    tool_versions = _parse_archive_flavor_modules("install_only_stripped").config.default["tool_versions"]
+    platform = "x86_64-unknown-linux-gnu"
+
+    env.expect.that_str(tool_versions["3.14.4"]["sha256"][platform]).equals("2" * 64)
+    env.expect.that_str(tool_versions["3.14.4"]["url"][platform][0]).contains("install_only_stripped")
+
+    # Older releases without a stripped archive fall back to install_only.
+    env.expect.that_str(tool_versions["3.12.3"]["sha256"][platform]).equals("3" * 64)
+
+_tests.append(_test_archive_flavor_stripped)
+
 def _test_add_target_settings(env):
     py = parse_modules(
         module_ctx = python_ext.mctx(

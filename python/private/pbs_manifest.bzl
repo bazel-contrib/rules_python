@@ -6,6 +6,32 @@ _ASTRAL_RELEASE_URL_PREFIXES = [
     "https://releases.astral.sh/github/python-build-standalone/releases/download/",
 ]
 
+ARCHIVE_FLAVORS = ["install_only", "install_only_stripped", "full"]
+
+def manifest_entry_sort_key(entry, archive_flavor = "install_only"):
+    """Sort key that ranks manifest entries by archive preference.
+
+    Args:
+      entry: A parsed manifest entry struct.
+      archive_flavor: The preferred archive flavor; other flavors are fallbacks.
+
+    Returns:
+      A sortable tuple where lower values are preferred.
+    """
+    flavor_rank = {"full": 3, "install_only": 1, "install_only_stripped": 2}
+    if entry.archive_flavor == archive_flavor:
+        rank = 0
+    else:
+        rank = flavor_rank.get(entry.archive_flavor, 4)
+    microarch = entry.microarch
+    if not microarch:
+        microarch_rank = 0
+    elif microarch.startswith("v") and microarch[1:].isdigit():
+        microarch_rank = int(microarch[1:])
+    else:
+        microarch_rank = 999
+    return (rank, microarch_rank)
+
 def parse_filename(filename):
     """Parses a python-build-standalone filename (or URL) into its components.
 
