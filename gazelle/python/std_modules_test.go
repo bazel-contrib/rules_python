@@ -16,6 +16,7 @@ package python
 
 import (
 	"testing"
+	"testing/fstest"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -24,4 +25,28 @@ func TestIsStdModule(t *testing.T) {
 	assert.True(t, isStdModule(Module{Name: "unittest"}))
 	assert.True(t, isStdModule(Module{Name: "os.path"}))
 	assert.False(t, isStdModule(Module{Name: "foo"}))
+}
+
+func TestLoadStdModules(t *testing.T) {
+	t.Run("prefers selected.txt when present", func(t *testing.T) {
+		fsys := fstest.MapFS{
+			"stdlib_list/default.txt":  &fstest.MapFile{Data: []byte("default_only\n")},
+			"stdlib_list/selected.txt": &fstest.MapFile{Data: []byte("selected_only\n")},
+		}
+		modules, err := loadStdModules(fsys)
+		if assert.NoError(t, err) {
+			assert.Contains(t, modules, "selected_only")
+			assert.NotContains(t, modules, "default_only")
+		}
+	})
+
+	t.Run("falls back to default.txt when selected.txt is absent", func(t *testing.T) {
+		fsys := fstest.MapFS{
+			"stdlib_list/default.txt": &fstest.MapFile{Data: []byte("default_only\n")},
+		}
+		modules, err := loadStdModules(fsys)
+		if assert.NoError(t, err) {
+			assert.Contains(t, modules, "default_only")
+		}
+	})
 }
