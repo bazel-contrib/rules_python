@@ -261,3 +261,43 @@ LibcFlag = FlagEnum(
     MUSL = "musl",
     get_value = _libc_flag_get_value,
 )
+
+# Determines which python-build-standalone distribution (archive) is used for
+# the hermetic runtimes.
+#
+# buildifier: disable=name-conventions
+PbsDistributionFlag = FlagEnum(
+    # Let rules_python choose; currently the same as install_only.
+    AUTO = "auto",
+    # The install_only archive, which includes debug symbols.
+    INSTALL_ONLY = "install_only",
+    # The install_only_stripped archive, which omits debug symbols.
+    INSTALL_ONLY_STRIPPED = "install_only_stripped",
+    # The full archive, which includes build artifacts.
+    FULL = "full",
+)
+
+def _pbs_distribution_flag_impl(ctx):
+    value = ctx.build_setting_value
+    if value not in PbsDistributionFlag.flag_values():
+        fail("Invalid value for {name}: got {value}, must be one of {allowed}".format(
+            name = ctx.label,
+            value = value,
+            allowed = PbsDistributionFlag.flag_values(),
+        ))
+
+    # config_setting matches against the FeatureFlagInfo value, so `auto` is
+    # resolved here and toolchains only need to match concrete distributions.
+    effective = value
+    if value == PbsDistributionFlag.AUTO:
+        effective = PbsDistributionFlag.INSTALL_ONLY
+    return [
+        BuildSettingInfo(value = value),
+        config_common.FeatureFlagInfo(value = effective),
+    ]
+
+pbs_distribution_flag = rule(
+    implementation = _pbs_distribution_flag_impl,
+    build_setting = config.string(flag = True),
+    doc = "The python-build-standalone distribution to use for hermetic runtimes.",
+)

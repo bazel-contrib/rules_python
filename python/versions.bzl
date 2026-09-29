@@ -18,8 +18,11 @@
 load(
     "//python/private:pbs_manifest.bzl",
     "ARCHIVE_FLAVORS",
+    "PBS_DISTRIBUTION_SUFFIXES",
+    "manifest_entry_platform_keys",
     "manifest_entry_sort_key",
     "parse_runtime_manifest",
+    "split_pbs_distribution",
 )
 load("//python/private:platform_info.bzl", "platform_info")
 
@@ -202,11 +205,17 @@ def _generate_platforms():
 
     is_freethreaded_yes = str(Label("//python/config_settings:_is_py_freethreaded_yes"))
     is_freethreaded_no = str(Label("//python/config_settings:_is_py_freethreaded_no"))
+    distributions = {"": "install_only"}
+    distributions.update({
+        suffix: distribution
+        for distribution, suffix in PBS_DISTRIBUTION_SUFFIXES.items()
+    })
     return {
-        p + suffix: platform_info(
+        p + suffix + distribution_suffix: platform_info(
             compatible_with = v.compatible_with,
             target_settings = [
                 freethreadedness,
+                str(Label("//python/config_settings:_is_py_pbs_distribution_" + distribution)),
             ] + v.target_settings,
             os_name = v.os_name,
             arch = v.arch,
@@ -216,6 +225,7 @@ def _generate_platforms():
             "": is_freethreaded_no,
             FREETHREADED: is_freethreaded_yes,
         }.items()
+        for distribution_suffix, distribution in distributions.items()
     }
 
 PLATFORMS = _generate_platforms()
@@ -270,8 +280,9 @@ def get_release_info(platform, python_version, base_urls = DEFAULT_RELEASE_BASE_
 
     release_filename = None
     rendered_urls = []
+    base_platform, _ = split_pbs_distribution(platform)
     for u in url:
-        p, _, _ = platform.partition(FREETHREADED)
+        p, _, _ = base_platform.partition(FREETHREADED)
 
         # Assume an unknown release_id is a newer url format
         release_id = 99999999
@@ -375,9 +386,6 @@ def _tool_versions_from_manifest_entries(entries, base_url = DEFAULT_RELEASE_BAS
             continue
 
         v_dict = available_versions.setdefault(py_version, {})
-        if matched_platform in v_dict.get("sha256", {}):
-            continue
-
         if "://" in location:
             urls = [location]
         else:
@@ -385,9 +393,12 @@ def _tool_versions_from_manifest_entries(entries, base_url = DEFAULT_RELEASE_BAS
 
         strip_prefix = "python/install" if archive_flavor == "full" else "python"
 
-        v_dict.setdefault("sha256", {})[matched_platform] = sha256
-        v_dict.setdefault("url", {})[matched_platform] = urls
-        v_dict.setdefault("strip_prefix", {})[matched_platform] = strip_prefix
+        for platform_key in manifest_entry_platform_keys(entry, matched_platform):
+            if platform_key in v_dict.get("sha256", {}):
+                continue
+            v_dict.setdefault("sha256", {})[platform_key] = sha256
+            v_dict.setdefault("url", {})[platform_key] = urls
+            v_dict.setdefault("strip_prefix", {})[platform_key] = strip_prefix
 
     return available_versions
 

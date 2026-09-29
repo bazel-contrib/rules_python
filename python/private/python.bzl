@@ -18,7 +18,13 @@ load("@bazel_features//:features.bzl", "bazel_features")
 load("//python:versions.bzl", "DEFAULT_RELEASE_BASE_URLS", "PLATFORMS")
 load(":auth.bzl", "AUTH_ATTRS")
 load(":full_version.bzl", "full_version")
-load(":pbs_manifest.bzl", "ARCHIVE_FLAVORS", "manifest_entry_sort_key", "parse_runtime_manifest")
+load(
+    ":pbs_manifest.bzl",
+    "ARCHIVE_FLAVORS",
+    "manifest_entry_platform_keys",
+    "manifest_entry_sort_key",
+    "parse_runtime_manifest",
+)
 load(":platform_info.bzl", "platform_info")
 load(":pyproject_utils.bzl", "read_pyproject", "version_from_requires_python")
 load(":python_register_toolchains.bzl", "python_register_toolchains")
@@ -758,7 +764,6 @@ def _populate_from_pbs_manifest(
         add_runtime_manifest_files = [],
         runtime_manifest_sha = "",
         base_urls = [],
-        archive_flavor = "install_only",
         available_versions,
         _fail):
     manifest_contents = []
@@ -791,7 +796,7 @@ def _populate_from_pbs_manifest(
 
     entries = sorted(
         entries,
-        key = lambda e: manifest_entry_sort_key(e, archive_flavor),
+        key = manifest_entry_sort_key,
     )
 
     for entry in entries:
@@ -814,9 +819,6 @@ def _populate_from_pbs_manifest(
             continue
 
         v_dict = available_versions.setdefault(py_version, {})
-        if matched_platform in v_dict.get("sha256", {}):
-            continue
-
         if "://" in location:
             urls = [location]
         else:
@@ -824,9 +826,14 @@ def _populate_from_pbs_manifest(
 
         strip_prefix = "python/install" if entry.archive_flavor == "full" else "python"
 
-        v_dict.setdefault("sha256", {})[matched_platform] = sha256
-        v_dict.setdefault("url", {})[matched_platform] = urls
-        v_dict.setdefault("strip_prefix", {})[matched_platform] = strip_prefix
+        # The plain platform key gets the preferred archive; the flavor
+        # specific key (if any) gets the archive of that flavor.
+        for platform_key in manifest_entry_platform_keys(entry, matched_platform):
+            if platform_key in v_dict.get("sha256", {}):
+                continue
+            v_dict.setdefault("sha256", {})[platform_key] = sha256
+            v_dict.setdefault("url", {})[platform_key] = urls
+            v_dict.setdefault("strip_prefix", {})[platform_key] = strip_prefix
 
 def _get_toolchain_config(*, mctx, modules, _fail = fail):
     """Computes the configs for toolchains.
@@ -854,15 +861,11 @@ def _get_toolchain_config(*, mctx, modules, _fail = fail):
     available_versions = {}
     root_module = modules[0] if modules else None
     root_overrides = root_module.tags.override if root_module and root_module.is_root else []
-    archive_flavor = "install_only"
-    for tag in root_overrides:
-        archive_flavor = tag.archive_flavor or archive_flavor
 
     _populate_from_pbs_manifest(
         mctx = mctx,
         add_runtime_manifest_files = [Label("//python/private:runtimes_manifest.txt")],
         base_urls = DEFAULT_RELEASE_BASE_URLS,
-        archive_flavor = archive_flavor,
         available_versions = available_versions,
         _fail = _fail,
     )
@@ -875,7 +878,6 @@ def _get_toolchain_config(*, mctx, modules, _fail = fail):
                 add_runtime_manifest_files = tag.add_runtime_manifest_files,
                 runtime_manifest_sha = tag.runtime_manifest_sha,
                 base_urls = tag.base_urls,
-                archive_flavor = archive_flavor,
                 available_versions = available_versions,
                 _fail = _fail,
             )
@@ -1306,22 +1308,6 @@ from `python.single_version_platform_override`.
 :::{versionadded} 2.1.0
 :::
 """,
-        ),
-        "archive_flavor": attr.string(
-            default = "install_only",
-            doc = """\
-The preferred python-build-standalone archive flavor for manifest-provided
-runtimes.
-
-Valid values are `install_only`, `install_only_stripped`, and `full`. Use
-`install_only_stripped` to reduce runtime and zipapp size by omitting debug
-symbols. If the preferred flavor is unavailable for a runtime, another
-available flavor is used.
-
-:::{versionadded} VERSION_NEXT_FEATURE
-:::
-""",
-            values = ARCHIVE_FLAVORS,
         ),
         "available_python_versions": attr.string_list(
             mandatory = False,

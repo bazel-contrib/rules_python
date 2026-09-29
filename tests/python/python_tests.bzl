@@ -448,16 +448,12 @@ _ARCHIVE_FLAVOR_MANIFEST = """
 4444444444444444444444444444444444444444444444444444444444444444  20260414/cpython-3.14.4+20260414-x86_64-unknown-linux-gnu-pgo+lto-full.tar.zst
 """
 
-def _parse_archive_flavor_modules(archive_flavor):
-    override = []
-    if archive_flavor:
-        override = [python_ext.override(archive_flavor = archive_flavor)]
-    return parse_modules(
+def _test_archive_flavor_platform_keys(env):
+    py = parse_modules(
         module_ctx = python_ext.mctx(
             python_ext.module(
                 name = "my_module",
                 is_root = True,
-                override = override,
                 toolchain = [python_ext.toolchain(python_version = "3.14")],
             ),
             mock_files = {
@@ -466,43 +462,40 @@ def _parse_archive_flavor_modules(archive_flavor):
         ),
         logger = repo_utils.logger(verbosity_level = 0, name = "python"),
     )
-
-def _test_archive_flavor_default(env):
-    tool_versions = _parse_archive_flavor_modules(None).config.default["tool_versions"]
-    platform = "x86_64-unknown-linux-gnu"
-
-    env.expect.that_str(tool_versions["3.14.4"]["sha256"][platform]).equals("1" * 64)
-
-_tests.append(_test_archive_flavor_default)
-
-def _test_archive_flavor_stripped(env):
-    py = _parse_archive_flavor_modules("install_only_stripped")
     tool_versions = py.config.default["tool_versions"]
     platform = "x86_64-unknown-linux-gnu"
+    stripped = platform + "-install_only_stripped"
+    full = platform + "-full"
 
-    env.expect.that_str(tool_versions["3.14.4"]["sha256"][platform]).equals("2" * 64)
-    env.expect.that_str(
-        tool_versions["3.14.4"]["url"][platform][0],
-    ).contains("install_only_stripped")
+    # The plain platform key prefers install_only.
+    py_3_14 = tool_versions["3.14.4"]
+    env.expect.that_str(py_3_14["sha256"][platform]).equals("1" * 64)
+    env.expect.that_str(py_3_14["strip_prefix"][platform]).equals("python")
 
-    # Older releases without a stripped archive fall back to install_only.
-    env.expect.that_str(tool_versions["3.12.3"]["sha256"][platform]).equals("3" * 64)
+    # Each other flavor gets its own platform key.
+    env.expect.that_str(py_3_14["sha256"][stripped]).equals("2" * 64)
+    env.expect.that_str(py_3_14["url"][stripped][0]).contains("install_only_stripped")
+    env.expect.that_str(py_3_14["strip_prefix"][stripped]).equals("python")
+    env.expect.that_str(py_3_14["sha256"][full]).equals("4" * 64)
+    env.expect.that_str(py_3_14["url"][full][0]).contains("-full.tar.zst")
+    env.expect.that_str(py_3_14["strip_prefix"][full]).equals("python/install")
 
-_tests.append(_test_archive_flavor_stripped)
+    # Releases without other flavors only have the plain platform key; the
+    # other distributions fall back to it when toolchains are registered.
+    py_3_12 = tool_versions["3.12.3"]
+    env.expect.that_str(py_3_12["sha256"][platform]).equals("3" * 64)
+    env.expect.that_collection(py_3_12["sha256"].keys()).contains_exactly([platform])
 
-def _test_archive_flavor_full(env):
-    tool_versions = _parse_archive_flavor_modules("full").config.default["tool_versions"]
-    platform = "x86_64-unknown-linux-gnu"
+    # The distribution variants are registered as separate platforms.
+    platforms = py.config.default["platforms"]
+    env.expect.that_collection(platforms[stripped].target_settings).contains(
+        str(Label("//python/config_settings:_is_py_pbs_distribution_install_only_stripped")),
+    )
+    env.expect.that_collection(platforms[platform].target_settings).contains(
+        str(Label("//python/config_settings:_is_py_pbs_distribution_install_only")),
+    )
 
-    env.expect.that_str(tool_versions["3.14.4"]["sha256"][platform]).equals("4" * 64)
-    env.expect.that_str(tool_versions["3.14.4"]["url"][platform][0]).contains("-full.tar.zst")
-    env.expect.that_str(tool_versions["3.14.4"]["strip_prefix"][platform]).equals("python/install")
-
-    # Older releases without a full archive fall back to install_only.
-    env.expect.that_str(tool_versions["3.12.3"]["sha256"][platform]).equals("3" * 64)
-    env.expect.that_str(tool_versions["3.12.3"]["strip_prefix"][platform]).equals("python")
-
-_tests.append(_test_archive_flavor_full)
+_tests.append(_test_archive_flavor_platform_keys)
 
 def _test_add_target_settings(env):
     py = parse_modules(

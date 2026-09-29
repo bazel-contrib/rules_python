@@ -300,6 +300,27 @@ Values:
 :::
 ::::
 
+::::{bzl:flag} py_pbs_distribution
+Set which python-build-standalone archive the hermetic Python toolchains use.
+
+Values:
+* `auto`: Let `rules_python` choose; currently the same as `install_only`,
+  default.
+* `install_only`: Use the runtime with debug symbols.
+* `install_only_stripped`: Use the runtime without debug symbols, which is
+  substantially smaller.
+* `full`: Use the runtime that also includes build artifacts.
+
+If a Python version or platform has no archive of the selected kind, the
+`install_only` archive is used instead.
+
+See {ref}`Selecting the runtime archive <selecting-the-runtime-archive>` for
+details.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+::::
+
 ::::{bzl:flag} pip_env_marker_config
 The target that provides the values for pip env marker evaluation.
 

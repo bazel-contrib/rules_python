@@ -769,6 +769,7 @@ bzl_library(
     deps = [
         ":coverage_deps",
         ":full_version",
+        ":pbs_manifest",
         ":python_repository",
         ":toolchains_repo",
         "//python:versions",
@@ -874,6 +875,7 @@ bzl_library(
     name = "toolchains_repo",
     srcs = ["toolchains_repo.bzl"],
     deps = [
+        ":pbs_manifest",
         ":repo_utils",
         ":text_util",
         "//python:versions",
