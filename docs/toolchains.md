@@ -228,6 +228,35 @@ locations. These will be helpful if you need to set environment variables of bin
 while using [`--nolegacy_external_runfiles`](https://bazel.build/reference/command-line-reference#flag--legacy_external_runfiles).
 The original make variables still work in exec contexts such as genrules.
 
+(selecting-the-runtime-archive)=
+### Selecting the runtime archive
+
+python-build-standalone publishes each runtime as several kinds of archive. The
+{obj}`--@rules_python//python/config_settings:py_pbs_distribution`
+flag selects which one the hermetic toolchains use:
+
+* `auto` (default): let `rules_python` choose; currently `install_only`.
+* `install_only`: the runtime with debug symbols.
+* `install_only_stripped`: the runtime without debug symbols, which is
+  substantially smaller. This reduces the size of runtimes and
+  {obj}`py_zipapp_binary` outputs.
+* `full`: the runtime plus build artifacts.
+
+Because this is a build flag, a single workspace can build with different
+archives, for example keeping debug symbols in development builds and using
+stripped runtimes in production builds:
+
+```
+# File: .bazelrc
+build:prod --@rules_python//python/config_settings:py_pbs_distribution=install_only_stripped
+```
+
+A toolchain is registered for each archive kind, and only the archive a build
+selects is downloaded. If a Python version or platform has no archive of the
+selected kind, the `install_only` archive is used instead. For example,
+stripped archives are only available for runtimes released from `20240726`
+onward.
+
 ### Overriding toolchain defaults and adding more versions
 
 One can perform various overrides for the registered toolchains from the root
@@ -875,6 +904,8 @@ Currently the following flags are used to influence toolchain selection:
 * {obj}`--@rules_python//python/config_settings:py_linux_libc` for selecting the Linux libc variant.
 * {obj}`--@rules_python//python/config_settings:py_freethreaded` for selecting
   the freethreaded experimental Python builds available from `3.13.0` onwards.
+* {obj}`--@rules_python//python/config_settings:py_pbs_distribution` for selecting
+  which python-build-standalone archive to use, e.g. stripped runtimes.
 
 ## Running the underlying interpreter
 

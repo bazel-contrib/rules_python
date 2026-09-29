@@ -6,6 +6,65 @@ _ASTRAL_RELEASE_URL_PREFIXES = [
     "https://releases.astral.sh/github/python-build-standalone/releases/download/",
 ]
 
+ARCHIVE_FLAVORS = ["install_only", "install_only_stripped", "full"]
+
+# Platform key suffixes for the non-default archive flavors. Runtimes for the
+# default flavor use the plain platform key (e.g. `x86_64-unknown-linux-gnu`).
+PBS_DISTRIBUTION_SUFFIXES = {
+    "full": "-full",
+    "install_only_stripped": "-install_only_stripped",
+}
+
+def split_pbs_distribution(platform):
+    """Splits a platform key into its base platform and distribution suffix.
+
+    Args:
+      platform: A platform key, e.g. `x86_64-unknown-linux-gnu-full`.
+
+    Returns:
+      A tuple of `(base_platform, suffix)`, where `suffix` is empty for the
+      plain platform key.
+    """
+    for suffix in PBS_DISTRIBUTION_SUFFIXES.values():
+        if platform.endswith(suffix):
+            return platform.removesuffix(suffix), suffix
+    return platform, ""
+
+def manifest_entry_platform_keys(entry, platform):
+    """Returns the platform keys a manifest entry can provide a runtime for.
+
+    Args:
+      entry: A parsed manifest entry struct.
+      platform: The plain platform key for the entry.
+
+    Returns:
+      A list of platform keys: the plain key, plus the key for the entry's
+      archive flavor if it has one.
+    """
+    keys = [platform]
+    if entry.archive_flavor in PBS_DISTRIBUTION_SUFFIXES:
+        keys.append(platform + PBS_DISTRIBUTION_SUFFIXES[entry.archive_flavor])
+    return keys
+
+def manifest_entry_sort_key(entry):
+    """Sort key that ranks manifest entries by archive preference.
+
+    Args:
+      entry: A parsed manifest entry struct.
+
+    Returns:
+      A sortable tuple where lower values are preferred.
+    """
+    flavor_rank = {"full": 3, "install_only": 1, "install_only_stripped": 2}.get(entry.archive_flavor, 4)
+    microarch = entry.microarch
+    if not microarch:
+        microarch_rank = 0
+    elif microarch.startswith("v") and microarch[1:].isdigit():
+        microarch_rank = int(microarch[1:])
+    else:
+        microarch_rank = 999
+    return (flavor_rank, microarch_rank)
+
 def parse_filename(filename):
     """Parses a python-build-standalone filename (or URL) into its components.
 

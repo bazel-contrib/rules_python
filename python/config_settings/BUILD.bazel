@@ -9,11 +9,13 @@ load(
     "ExecToolsToolchainFlag",
     "FreeThreadedFlag",
     "LibcFlag",
+    "PbsDistributionFlag",
     "PrecompileFlag",
     "PrecompileSourceRetentionFlag",
     "ValidateTestMainFlag",
     "VenvsSitePackages",
     "VenvsUseDeclareSymlinkFlag",
+    "pbs_distribution_flag",
     rp_string_flag = "string_flag",
 )
 load("//python/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")  # buildifier: disable=bzl-visibility
@@ -38,6 +40,7 @@ construct_config_settings(
         ":pip_whl_osx_version",
         ":py_freethreaded",
         ":py_linux_libc",
+        ":py_pbs_distribution",
     ],
     minor_mapping = MINOR_MAPPING,
     versions = PYTHON_VERSIONS,
@@ -134,6 +137,12 @@ string_flag(
     name = "py_freethreaded",
     build_setting_default = FreeThreadedFlag.NO,
     values = sorted(FreeThreadedFlag.__members__.values()),
+    visibility = ["//visibility:public"],
+)
+
+pbs_distribution_flag(
+    name = "py_pbs_distribution",
+    build_setting_default = PbsDistributionFlag.AUTO,
     visibility = ["//visibility:public"],
 )
 

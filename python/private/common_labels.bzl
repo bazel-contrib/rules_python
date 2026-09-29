@@ -29,6 +29,7 @@ labels = struct(
     PYTHON_VERSION_MAJOR_MINOR = str(Label("//python/config_settings:python_version_major_minor")),
     PY_FREETHREADED = str(Label("//python/config_settings:py_freethreaded")),
     PY_LINUX_LIBC = str(Label("//python/config_settings:py_linux_libc")),
+    PY_PBS_DISTRIBUTION = str(Label("//python/config_settings:py_pbs_distribution")),
     REPL_DEP = str(Label("//python/bin:repl_dep")),
     VALIDATE_TEST_MAIN = str(Label("//python/config_settings:validate_test_main")),
     VENV = str(Label("//python/config_settings:venv")),

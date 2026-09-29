@@ -441,6 +441,62 @@ def _test_libpython_override(env):
 
 _tests.append(_test_libpython_override)
 
+_ARCHIVE_FLAVOR_MANIFEST = """
+1111111111111111111111111111111111111111111111111111111111111111  20260414/cpython-3.14.4+20260414-x86_64-unknown-linux-gnu-install_only.tar.gz
+2222222222222222222222222222222222222222222222222222222222222222  20260414/cpython-3.14.4+20260414-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz
+3333333333333333333333333333333333333333333333333333333333333333  20240415/cpython-3.12.3+20240415-x86_64-unknown-linux-gnu-install_only.tar.gz
+4444444444444444444444444444444444444444444444444444444444444444  20260414/cpython-3.14.4+20260414-x86_64-unknown-linux-gnu-pgo+lto-full.tar.zst
+"""
+
+def _test_archive_flavor_platform_keys(env):
+    py = parse_modules(
+        module_ctx = python_ext.mctx(
+            python_ext.module(
+                name = "my_module",
+                is_root = True,
+                toolchain = [python_ext.toolchain(python_version = "3.14")],
+            ),
+            mock_files = {
+                "python/private/runtimes_manifest.txt": _ARCHIVE_FLAVOR_MANIFEST,
+            },
+        ),
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
+    )
+    tool_versions = py.config.default["tool_versions"]
+    platform = "x86_64-unknown-linux-gnu"
+    stripped = platform + "-install_only_stripped"
+    full = platform + "-full"
+
+    # The plain platform key prefers install_only.
+    py_3_14 = tool_versions["3.14.4"]
+    env.expect.that_str(py_3_14["sha256"][platform]).equals("1" * 64)
+    env.expect.that_str(py_3_14["strip_prefix"][platform]).equals("python")
+
+    # Each other flavor gets its own platform key.
+    env.expect.that_str(py_3_14["sha256"][stripped]).equals("2" * 64)
+    env.expect.that_str(py_3_14["url"][stripped][0]).contains("install_only_stripped")
+    env.expect.that_str(py_3_14["strip_prefix"][stripped]).equals("python")
+    env.expect.that_str(py_3_14["sha256"][full]).equals("4" * 64)
+    env.expect.that_str(py_3_14["url"][full][0]).contains("-full.tar.zst")
+    env.expect.that_str(py_3_14["strip_prefix"][full]).equals("python/install")
+
+    # Releases without other flavors only have the plain platform key; the
+    # other distributions fall back to it when toolchains are registered.
+    py_3_12 = tool_versions["3.12.3"]
+    env.expect.that_str(py_3_12["sha256"][platform]).equals("3" * 64)
+    env.expect.that_collection(py_3_12["sha256"].keys()).contains_exactly([platform])
+
+    # The distribution variants are registered as separate platforms.
+    platforms = py.config.default["platforms"]
+    env.expect.that_collection(platforms[stripped].target_settings).contains(
+        str(Label("//python/config_settings:_is_py_pbs_distribution_install_only_stripped")),
+    )
+    env.expect.that_collection(platforms[platform].target_settings).contains(
+        str(Label("//python/config_settings:_is_py_pbs_distribution_install_only")),
+    )
+
+_tests.append(_test_archive_flavor_platform_keys)
+
 def _test_add_target_settings(env):
     py = parse_modules(
         module_ctx = python_ext.mctx(

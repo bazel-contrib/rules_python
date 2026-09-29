@@ -179,6 +179,16 @@ def construct_config_settings(
         visibility = NOT_ACTUALLY_PUBLIC,
     )
 
+    # NOTE: The py_pbs_distribution flag reports `auto` as `install_only`, so
+    # the install_only setting also matches the default.
+    pbs_distribution = Label("//python/config_settings:py_pbs_distribution")
+    for distribution in ["install_only", "install_only_stripped", "full"]:
+        native.config_setting(
+            name = "_is_py_pbs_distribution_" + distribution,
+            flag_values = {pbs_distribution: distribution},
+            visibility = NOT_ACTUALLY_PUBLIC,
+        )
+
 def _python_version_flag_impl(ctx):
     value = ctx.build_setting_value
     return [

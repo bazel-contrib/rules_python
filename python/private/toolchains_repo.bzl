@@ -30,6 +30,7 @@ load(
     "PLATFORMS",
     "WINDOWS_NAME",
 )
+load(":pbs_manifest.bzl", "split_pbs_distribution")
 load(":repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
 load(":text_util.bzl", "render")
 
@@ -523,6 +524,7 @@ def sorted_host_platform_names(platform_names):
     * Regular platforms
     * The "-freethreaded" suffix
     * The "-musl" suffix
+    * The python-build-standalone distribution suffixes (e.g. "-full")
 
     Here, we formalize that so it isn't subtly encoded in the ordering of keys
     in a dict that autoformatters like to clobber and whose only documentation
@@ -538,6 +540,7 @@ def sorted_host_platform_names(platform_names):
     def platform_keyer(name):
         # Ascending sort: lower is higher precedence
         return (
+            1 if split_pbs_distribution(name)[1] else 0,
             1 if MUSL in name else 0,
             1 if FREETHREADED in name else 0,
         )

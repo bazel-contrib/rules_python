@@ -25,6 +25,7 @@ load(
 )
 load(":coverage_deps.bzl", "coverage_dep")
 load(":full_version.bzl", "full_version")
+load(":pbs_manifest.bzl", "split_pbs_distribution")
 load(":python_repository.bzl", "python_repository")
 load(
     ":toolchains_repo.bzl",
@@ -32,6 +33,12 @@ load(
     "toolchain_aliases",
     "toolchains_repo",
 )
+
+def _get_platform_setting(version_info, key, platform, default):
+    value = version_info.get(key, {})
+    if type(value) != type({}):
+        return value
+    return value.get(platform, default)
 
 # Wrapper macro around everything above, this is the primary API.
 def python_register_toolchains(
@@ -106,21 +113,40 @@ def python_register_toolchains(
     # dict[str repo name, tuple[str, platform_info]]
     impl_repos = {}
     for platform, platform_info in platforms.items():
-        sha256 = tool_versions[python_version]["sha256"].get(platform, None)
+        version_info = tool_versions[python_version]
+        base_platform, _ = split_pbs_distribution(platform)
+
+        # A runtime for a python-build-standalone distribution that isn't
+        # available for this version and platform falls back to the archive of
+        # the plain platform key.
+        source_platform = platform
+        if platform not in version_info["sha256"]:
+            source_platform = base_platform
+        sha256 = version_info["sha256"].get(source_platform, None)
         if not sha256:
             continue
 
         loaded_platforms.append(platform)
         (release_filename, urls, strip_prefix, patches, patch_strip) = get_release_info(
-            platform,
+            source_platform,
             python_version,
             base_urls = base_urls,
             tool_versions = tool_versions,
         )
+        if not patches and source_platform != base_platform:
+            # Per-platform settings of the plain platform key also apply to
+            # its distribution variants.
+            patches = _get_platform_setting(version_info, "patches", base_platform, [])
+            patch_strip = _get_platform_setting(version_info, "patch_strip", base_platform, patch_strip)
 
         # allow passing in a tool version
         coverage_tool = None
-        coverage_tool = tool_versions[python_version].get("coverage_tool", {}).get(platform, None)
+        coverage_tool = _get_platform_setting(
+            version_info,
+            "coverage_tool",
+            source_platform,
+            _get_platform_setting(version_info, "coverage_tool", base_platform, None),
+        )
         if register_coverage_tool and coverage_tool == None:
             coverage_tool = coverage_dep(
                 name = "{name}_{platform}_coverage".format(
@@ -128,7 +154,7 @@ def python_register_toolchains(
                     platform = platform,
                 ),
                 python_version = python_version,
-                platform = platform,
+                platform = base_platform,
                 visibility = ["@{name}_{platform}//:__subpackages__".format(
                     name = name,
                     platform = platform,
@@ -148,7 +174,12 @@ def python_register_toolchains(
             urls = urls,
             strip_prefix = strip_prefix,
             coverage_tool = coverage_tool,
-            libpython = libpython or tool_versions[python_version].get("libpython", {}).get(platform, "auto"),
+            libpython = libpython or _get_platform_setting(
+                version_info,
+                "libpython",
+                source_platform,
+                _get_platform_setting(version_info, "libpython", base_platform, "auto"),
+            ),
             **kwargs
         )
         if register_toolchains:
