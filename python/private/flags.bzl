@@ -87,6 +87,20 @@ AddSrcsToRunfilesFlag = FlagEnum(
     is_enabled = _AddSrcsToRunfilesFlag_is_enabled,
 )
 
+# Determines if py_library/py_binary/py_test emit runfiles group providers.
+# The effective value also depends on the ecosystem-wide
+# @rules_runfiles_group//runfiles_group:enabled switch; the combination is
+# resolved by is_enabled() in runfiles_groups.bzl, which is the only reader.
+# buildifier: disable=name-conventions
+RunfilesGroupsFlag = FlagEnum(
+    # Follow the @rules_runfiles_group//runfiles_group:enabled flag.
+    AUTO = "auto",
+    # Emit the providers, regardless of the ecosystem-wide flag.
+    ENABLED = "enabled",
+    # Don't emit the providers, regardless of the ecosystem-wide flag.
+    DISABLED = "disabled",
+)
+
 def _ValidateTestMainFlag_is_enabled(ctx):
     value = ctx.attr._validate_test_main_flag[BuildSettingInfo].value
     if value == ValidateTestMainFlag.AUTO:

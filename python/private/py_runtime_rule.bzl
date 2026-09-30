@@ -21,6 +21,12 @@ load(":flags.bzl", "FreeThreadedFlag")
 load(":py_internal.bzl", "py_internal")
 load(":py_runtime_info.bzl", "DEFAULT_STUB_SHEBANG", "PyRuntimeInfo")
 load(":reexports.bzl", "BuiltinPyRuntimeInfo")
+load(
+    ":runfiles_groups.bzl",
+    "RUNFILES_GROUP_ENABLED_LABEL",
+    "create_runtime_runfiles_group_info",
+    runfiles_groups_enabled = "is_enabled",
+)
 load(":version.bzl", "version")
 
 _py_builtins = py_internal
@@ -224,6 +230,8 @@ def _py_runtime_impl(ctx):
         #    checks for the provider when toolchains aren't used
         # 2. It makes it easier to transition from builtins to rules_python
         providers.append(BuiltinPyRuntimeInfo(**builtin_py_runtime_info_kwargs))
+    if runfiles_groups_enabled(ctx):
+        providers.append(create_runtime_runfiles_group_info(runfiles))
     return providers
 
 # Bind to the name "py_runtime" to preserve the kind/rule_class it shows up
@@ -458,6 +466,12 @@ The {obj}`PyRuntimeInfo.zip_main_template` field.
             ),
             "_python_version_flag": attr.label(
                 default = labels.PYTHON_VERSION,
+            ),
+            "_runfiles_group_enabled": attr.label(
+                default = RUNFILES_GROUP_ENABLED_LABEL,
+            ),
+            "_runfiles_groups_flag": attr.label(
+                default = labels.RUNFILES_GROUPS,
             ),
         },
     ),
