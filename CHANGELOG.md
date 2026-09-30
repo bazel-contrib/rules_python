@@ -43,6 +43,8 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
   in favor of the format-agnostic `lockfiles` argument, which supports `uv.lock`.
 * (toolchain) Updated default Python 3.15 runtime from `3.15.0a8` to `3.15.0rc1`
   ([#4122](https://github.com/bazel-contrib/rules_python/pull/4122)).
+* (toolchain) Updated default Python 3.15 runtime from `3.15.0rc1` to
+  `3.15.0rc2`.
 * (toolchain) Updated the default Python toolchain version from `3.11` to `3.14`
   in {obj}`python.defaults`, {obj}`python_register_toolchains`, and
   {obj}`python_register_multi_toolchains`
@@ -103,6 +105,7 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
   commands within subdirectories when generating lock files. Defaults to the
   package directory, set it to `None` or `""` to set it to the root of the repo
   ([#4029](https://github.com/bazel-contrib/rules_python/issues/4029)).
+
 
 
 {#v2-3-4}
