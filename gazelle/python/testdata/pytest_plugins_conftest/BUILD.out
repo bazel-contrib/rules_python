@@ -1,0 +1,24 @@
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+
+# gazelle:python_generation_mode file
+
+py_library(
+    name = "fixtures",
+    srcs = ["fixtures.py"],
+    visibility = ["//:__subpackages__"],
+    deps = ["@gazelle_python_test//pytest"],
+)
+
+py_library(
+    name = "conftest",
+    testonly = True,
+    srcs = ["conftest.py"],
+    visibility = ["//:__subpackages__"],
+    deps = [":fixtures"],
+)
+
+py_test(
+    name = "consumer_test",
+    srcs = ["consumer_test.py"],
+    deps = [":conftest"],
+)

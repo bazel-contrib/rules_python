@@ -206,6 +206,28 @@ You can control the naming convention for test targets using the
 {term}`# gazelle:python_test_naming_convention value` directive.
 
 
+#### Pytest plugins
+
+Gazelle resolves module-level `pytest_plugins` declarations into dependencies in
+tests, root conftests, and reusable plugin modules:
+
+```python
+pytest_plugins = ["myapp.testing.database", "myapp.testing.http"]
+```
+
+Literal strings, lists, and tuples are supported, including annotated assignments
+and pytest's comma-separated string form. Existing resolution directives and
+dependency-ignore annotations apply as they do to normal imports.
+
+Conditional declarations are included conservatively. Function/class-local
+declarations are ignored. Literal entries in mixed lists are resolved, but dynamic
+values, bytes, f-strings, and named Unicode escapes are not evaluated; use
+{ref}`annotation-include-dep` for their dependencies. This does not change pytest's
+invocation-wide plugin registration or its restriction on non-root conftests.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+
 ### Binaries
 
 When a `__main__.py` file is encountered, this indicates the entry point

@@ -1,0 +1,5 @@
+# gazelle:python_root
+# gazelle:python_generation_mode file
+# gazelle:python_include_ancestor_conftest false
+# gazelle:resolve py aliased_plugin //support:admin
+# gazelle:python_ignore_dependencies ignored_plugin

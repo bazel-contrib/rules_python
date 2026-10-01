@@ -1,0 +1,23 @@
+load("@rules_python//python:defs.bzl", "py_test")
+
+# gazelle:python_root
+# gazelle:python_generation_mode file
+# gazelle:python_include_ancestor_conftest false
+# gazelle:resolve py aliased_plugin //support:admin
+# gazelle:python_ignore_dependencies ignored_plugin
+
+py_test(
+    name = "isolated_test",
+    srcs = ["isolated_test.py"],
+)
+
+py_test(
+    name = "plugin_test",
+    srcs = ["plugin_test.py"],
+    deps = [
+        "//support:admin",
+        "//support:database",
+        "@gazelle_python_test//external_plugin",
+        "@gazelle_python_test//pytest",
+    ],
+)
