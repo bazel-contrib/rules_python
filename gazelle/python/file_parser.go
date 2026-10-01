@@ -309,14 +309,20 @@ func pytestPluginString(node *sitter.Node, code []byte) (string, bool) {
 	if prefix != "" && prefix != "r" && prefix != "u" {
 		return "", false
 	}
+	// Python normalizes source newlines even inside raw string literals.
+	content := strings.ReplaceAll(literal[quote:], "\r\n", "\n")
+	content = strings.ReplaceAll(content, "\r", "\n")
 	if prefix == "r" {
-		value, _, err := bzl.Unquote("r" + literal[quote:])
+		value, _, err := bzl.Unquote("r" + content)
+		return value, err == nil
+	}
+	if !strings.Contains(content, "\\") {
+		value, _, err := bzl.Unquote(content)
 		return value, err == nil
 	}
 	// Buildtools already handles Python-style quotes and escapes. Normalize
 	// newlines and byte escapes to preserve Python 3's Unicode string semantics:
 	// buildtools interprets hex and octal escapes as bytes instead of code points.
-	content := strings.ReplaceAll(literal[quote:], "\r\n", "\n")
 	var normalized strings.Builder
 	for len(content) > 0 {
 		if content[0] != '\\' {
@@ -378,10 +384,9 @@ func (p *FileParser) parsePytestPlugins(node *sitter.Node) {
 	if right == nil || right.HasError() {
 		return
 	}
-	var modules []Module
 	add := func(value string, node *sitter.Node) {
 		if value != "" {
-			modules = append(modules, Module{
+			p.output.Modules = append(p.output.Modules, Module{
 				Name:             value,
 				LineNumber:       node.StartPoint().Row + 1,
 				Filepath:         p.relFilepath,
@@ -411,7 +416,6 @@ func (p *FileParser) parsePytestPlugins(node *sitter.Node) {
 			add(name, right)
 		}
 	}
-	p.output.Modules = append(p.output.Modules, modules...)
 }
 
 func (p *FileParser) parse(ctx context.Context, node *sitter.Node) {
@@ -422,6 +426,10 @@ func (p *FileParser) parse(ctx context.Context, node *sitter.Node) {
 	// Check if this is a TYPE_CHECKING block
 	wasInTypeCheckingBlock := p.inTypeCheckingBlock
 	wasInLocalScope := p.inLocalScope
+	defer func() {
+		p.inTypeCheckingBlock = wasInTypeCheckingBlock
+		p.inLocalScope = wasInLocalScope
+	}()
 	if node.Type() == "function_definition" || node.Type() == "class_definition" || node.Type() == "lambda" {
 		p.inLocalScope = true
 	}
@@ -444,9 +452,6 @@ func (p *FileParser) parse(ctx context.Context, node *sitter.Node) {
 		p.parse(ctx, child)
 	}
 
-	// Restore the previous state
-	p.inTypeCheckingBlock = wasInTypeCheckingBlock
-	p.inLocalScope = wasInLocalScope
 }
 
 func (p *FileParser) Parse(ctx context.Context) (*ParserOutput, error) {
