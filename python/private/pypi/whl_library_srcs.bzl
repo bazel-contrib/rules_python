@@ -212,7 +212,7 @@ def whl_library_srcs(
         )
 
         pyi_srcs = native.glob(
-            ["site-packages/**/*.pyi"],
+            ["site-packages/**/*.pyi", "site-packages/**/py.typed"],
             allow_empty = True,
         )
 

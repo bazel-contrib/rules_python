@@ -41,6 +41,7 @@ py_library(
         # to the --experimental_python_import_all_repositories setting.
         "../..",
     ],
+    pyi_srcs = [":py_typed"],
     visibility = ["//visibility:public"],
 )
 
