@@ -68,7 +68,7 @@ Dependency generation does not change pytest's registration semantics: plugins
 are available throughout a pytest invocation, and `pytest_plugins` in non-root
 conftests is not supported by pytest.
 
-:::{versionadded} 2.4.0
+:::{versionadded} VERSION_NEXT_FEATURE
 :::
 
 ```{toctree}
