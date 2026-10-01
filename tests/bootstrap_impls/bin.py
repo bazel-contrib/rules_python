@@ -13,7 +13,20 @@
 # limitations under the License.
 
 import os
+import signal
 import sys
+
+if sys.argv[1:] in (["handled"], ["unhandled"]):
+    if sys.argv[1:] == ["handled"]:
+
+        def handle(signum, _frame):
+            print(f"received:{signum}", flush=True)
+
+        signal.signal(signal.SIGTERM, handle)
+
+    print(f"ready:{os.getpid()}", flush=True)
+    signal.pause()
+    raise SystemExit(0)
 
 print("Hello")
 print(
