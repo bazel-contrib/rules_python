@@ -99,12 +99,16 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 
 {#v2-4-0-added}
 ### Added
+* (pypi) `py.typed` files from wheels are now included in the `pyi_srcs` of the
+  wheel's `py_library`, alongside `.pyi` files. The `py.typed` file of
+  `//python/runfiles` is now included in its `pyi_srcs` as well.
 * (runfiles) Added {obj}`Runfiles.CreateOrRaise` to return a `Runfiles` instance
   or raise an error if runfiles cannot be found.
 * (uv) Added {obj}`directory` attribute to {obj}`lock` to support running `uv`
   commands within subdirectories when generating lock files. Defaults to the
   package directory, set it to `None` or `""` to set it to the root of the repo
   ([#4029](https://github.com/bazel-contrib/rules_python/issues/4029)).
+
 
 
 
