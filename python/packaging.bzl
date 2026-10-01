@@ -101,11 +101,6 @@ def py_wheel(
 
     Currently only pure-python wheels are supported.
 
-    :::{versionchanged} 1.4.0
-    From now on, an empty `requires_file` is treated as if it were omitted, resulting in a valid
-    `METADATA` file.
-    :::
-
     Examples:
 
     ```python
@@ -141,11 +136,11 @@ def py_wheel(
     )
     ```
 
-    To publish the wheel to PyPI, the twine package is required and it is installed
-    by default on `bzlmod` setups. On legacy `WORKSPACE`, `rules_python`
-    doesn't provide `twine` itself
-    (see {gh-issue}`1016`), but
-    you can install it with `pip_parse`, just like we do any other dependencies.
+    To publish the wheel to PyPI, the twine package is required and it is
+    installed by default on `bzlmod` setups. On legacy `WORKSPACE`,
+    `rules_python` doesn't provide `twine` itself (see {gh-issue}`1016`), but
+    you can install it with `pip_parse`, just like we do any other
+    dependencies.
 
     Once you've installed twine, you can pass its label to the `twine`
     attribute of this macro, to get a "[name].publish" target.
@@ -160,7 +155,8 @@ def py_wheel(
     )
     ```
 
-    Now you can run a command like the following, which publishes to <https://test.pypi.org/>
+    Now you can run a command like the following, which publishes to
+    <https://test.pypi.org/>
 
     ```sh
     % TWINE_USERNAME=__token__ TWINE_PASSWORD=pypi-*** \\
@@ -168,14 +164,30 @@ def py_wheel(
         //path/to:my_wheel.publish --repository testpypi
     ```
 
+    :::{versionchanged} 1.4.0
+    From now on, an empty `requires_file` is treated as if it were omitted,
+    resulting in a valid `METADATA` file.
+    :::
+
+    :::{versionadded} VERSION_NEXT_FEATURE
+    Added `license_expression`, `metadata_fields`, and `metadata_file`
+    attributes, and enhanced `extra_distinfo_files` with `strip_prefix|prefix`
+    syntax.
+    :::
+
     Args:
         name:  A unique name for this target.
-        twine: A label of the external location of the py_library target for twine
-        twine_binary: A label of the external location of a binary target for twine.
-        publish_args: arguments passed to twine, e.g. `["--repository-url", "https://pypi.my.org/simple/"]`.
-            These are subject to make var expansion, as with the `args` attribute.
-            Note that you can also pass additional args to the bazel run command as in the example above.
-        **kwargs: other named parameters passed to the underlying [py_wheel rule](#py_wheel_rule)
+        twine: A label of the external location of the py_library target for
+            twine.
+        twine_binary: A label of the external location of a binary target for
+            twine.
+        publish_args: arguments passed to twine, e.g.
+            `["--repository-url", "https://pypi.my.org/simple/"]`.
+            These are subject to make var expansion, as with the `args`
+            attribute. Note that you can also pass additional args to the bazel
+            run command as in the example above.
+        **kwargs: other named parameters passed to the underlying
+            [py_wheel rule](#py_wheel_rule)
     """
     tags = kwargs.pop("tags", [])
     manual_tags = depset(tags + ["manual"]).to_list()

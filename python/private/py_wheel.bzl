@@ -240,7 +240,28 @@ be moved under that directory.
         allow_single_file = True,
     ),
     "extra_distinfo_files": attr.label_keyed_string_dict(
-        doc = "Extra files to add to distinfo directory in the archive.",
+        doc = """
+Extra files to add to distinfo directory in the archive.
+
+The keys are targets of files to include, and the values are the destination
+paths relative to the `.dist-info` directory.
+
+The value supports a `strip_prefix|prefix` syntax:
+- `strip_prefix`: removed from the beginning of the file's path.
+- `prefix`: prepended to the remaining path under `.dist-info/`.
+- If `strip_prefix` is empty (e.g. `"|"` or `"|licenses"`), any prefix up to
+  and including `{distribution}*.dist-info/` in the file path is automatically
+  stripped.
+
+If `|` is not present:
+- For single-file targets: the value is the relative destination path.
+- For multi-file targets or values ending in `/`: the value is treated as a
+  directory under `.dist-info/`, placing files using their basenames.
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+Added `strip_prefix|prefix` path transformation support.
+:::
+""",
         allow_files = True,
     ),
     "homepage": attr.string(
@@ -250,6 +271,42 @@ be moved under that directory.
     "license": attr.string(
         doc = "A string specifying the license of the package.",
         default = "",
+    ),
+    "license_expression": attr.string(
+        doc = """
+An SPDX license expression per PEP 639 (e.g. 'Apache-2.0 AND MIT').
+Mutually exclusive with `license`.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+The `license_expression` attribute was added.
+:::
+""",
+        default = "",
+    ),
+    "metadata_fields": attr.string_list_dict(
+        doc = """
+A mapping of metadata field names to list of values.
+
+Values are emitted as `Key: value` lines in `METADATA`. Multi-value fields
+(such as `License-File`, `Classifier`, `Dynamic`) emit repeated lines.
+Single-use fields override default generated values.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+The `metadata_fields` attribute was added.
+:::
+""",
+    ),
+    "metadata_file": attr.label(
+        doc = """
+An RFC 822 formatted metadata file whose contents are merged into the generated
+METADATA file. Single-use headers in this file take precedence over default
+generated headers.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+The `metadata_file` attribute was added.
+:::
+""",
+        allow_single_file = True,
     ),
     "project_urls": attr.string_dict(
         doc = ("A string dict specifying additional browsable URLs for the project and corresponding labels, " +
@@ -285,6 +342,52 @@ _DESCRIPTION_FILE_EXTENSION_TO_TYPE = {
     "rst": "text/x-rst",
 }
 _DEFAULT_DESCRIPTION_FILE_TYPE = "text/plain"
+
+_SINGLE_USE_METADATA_FIELDS = {
+    "author": True,
+    "author-email": True,
+    "description-content-type": True,
+    "download-url": True,
+    "home-page": True,
+    "keywords": True,
+    "license": True,
+    "license-expression": True,
+    "maintainer": True,
+    "maintainer-email": True,
+    "metadata-version": True,
+    "name": True,
+    "requires-python": True,
+    "summary": True,
+    "version": True,
+}
+
+def _calculate_distinfo_dest(file, spec, num_files):
+    """Calculates destination path inside .dist-info/ for extra distinfo.
+    """
+    if "|" in spec:
+        strip_prefix, _, prefix = spec.partition("|")
+        file_path = py_package_lib.path_inside_wheel(file)
+        if strip_prefix:
+            if file_path.startswith(strip_prefix):
+                rel_path = file_path[len(strip_prefix):]
+            else:
+                rel_path = file_path
+        else:
+            # Special case: empty strip_prefix looks for .dist-info/ in
+            # file_path
+            pos = file_path.find(".dist-info/")
+            if pos != -1:
+                rel_path = file_path[pos + len(".dist-info/"):]
+            else:
+                rel_path = file.basename
+        if prefix and not prefix.endswith("/"):
+            prefix = prefix + "/"
+        return (prefix + rel_path).lstrip("/")
+    elif num_files > 1 or spec.endswith("/"):
+        dir_prefix = spec if spec.endswith("/") else spec + "/"
+        return (dir_prefix + file.basename).lstrip("/")
+    else:
+        return spec
 
 def _escape_filename_distribution_name(name):
     """Escape the distribution name component of a filename.
@@ -418,61 +521,98 @@ def _py_wheel_impl(ctx):
 
     # Note: Description file and version are not embedded into metadata.txt yet,
     # it will be done later by wheelmaker script.
-    metadata_file = ctx.actions.declare_file(ctx.attr.name + ".metadata.txt")
-    metadata_contents = ["Metadata-Version: 2.1"]
-    metadata_contents.append("Name: %s" % ctx.attr.distribution)
+    if ctx.attr.license and ctx.attr.license_expression:
+        fail(
+            "`license` and `license_expression` are mutually exclusive on {}".format(
+                ctx.label,
+            ),
+        )
+
+    metadata_version = "2.1"
+    if ctx.attr.license_expression:
+        metadata_version = "2.4"
+    for k in ctx.attr.metadata_fields.keys():
+        kl = k.lower()
+        if kl in ("license-expression", "license-file"):
+            metadata_version = "2.4"
+    for k, vals in ctx.attr.metadata_fields.items():
+        if k.lower() == "metadata-version" and vals:
+            metadata_version = vals[0]
+
+    single_use = {}
+    multi_use = []
+
+    single_use["metadata-version"] = ("Metadata-Version", metadata_version)
+    single_use["name"] = ("Name", ctx.attr.distribution)
 
     if ctx.attr.author:
-        metadata_contents.append("Author: %s" % ctx.attr.author)
+        single_use["author"] = ("Author", ctx.attr.author)
     if ctx.attr.author_email:
-        metadata_contents.append("Author-email: %s" % ctx.attr.author_email)
+        single_use["author-email"] = ("Author-email", ctx.attr.author_email)
     if ctx.attr.homepage:
-        metadata_contents.append("Home-page: %s" % ctx.attr.homepage)
+        single_use["home-page"] = ("Home-page", ctx.attr.homepage)
     if ctx.attr.license:
-        metadata_contents.append("License: %s" % ctx.attr.license)
+        single_use["license"] = ("License", ctx.attr.license)
+    if ctx.attr.license_expression:
+        single_use["license-expression"] = (
+            "License-Expression",
+            ctx.attr.license_expression,
+        )
     if ctx.attr.description_content_type:
-        metadata_contents.append("Description-Content-Type: %s" % ctx.attr.description_content_type)
+        single_use["description-content-type"] = (
+            "Description-Content-Type",
+            ctx.attr.description_content_type,
+        )
     elif ctx.attr.description_file:
         # infer the content type from description file extension.
         description_file_type = _DESCRIPTION_FILE_EXTENSION_TO_TYPE.get(
             ctx.file.description_file.extension,
             _DEFAULT_DESCRIPTION_FILE_TYPE,
         )
-        metadata_contents.append("Description-Content-Type: %s" % description_file_type)
+        single_use["description-content-type"] = (
+            "Description-Content-Type",
+            description_file_type,
+        )
     if ctx.attr.summary:
-        metadata_contents.append("Summary: %s" % ctx.attr.summary)
+        single_use["summary"] = ("Summary", ctx.attr.summary)
 
     for label, url in sorted(ctx.attr.project_urls.items()):
         if len(label) > _PROJECT_URL_LABEL_LENGTH_LIMIT:
-            fail("`label` {} in `project_urls` is too long. It is limited to {} characters.".format(len(label), _PROJECT_URL_LABEL_LENGTH_LIMIT))
-        metadata_contents.append("Project-URL: %s, %s" % (label, url))
+            fail(
+                "`label` {} in `project_urls` is too long. It is limited to {} characters.".format(
+                    len(label),
+                    _PROJECT_URL_LABEL_LENGTH_LIMIT,
+                ),
+            )
+        multi_use.append(("Project-URL", "%s, %s" % (label, url)))
 
     for c in ctx.attr.classifiers:
-        metadata_contents.append("Classifier: %s" % c)
+        multi_use.append(("Classifier", c))
 
     if ctx.attr.python_requires:
-        metadata_contents.append("Requires-Python: %s" % ctx.attr.python_requires)
+        single_use["requires-python"] = ("Requires-Python", ctx.attr.python_requires)
 
     if ctx.attr.requires and ctx.attr.requires_file:
         fail("`requires` and `requires_file` are mutually exclusive. Please update {}".format(ctx.label))
 
     for requires in ctx.attr.requires:
-        metadata_contents.append("Requires-Dist: %s" % requires)
+        multi_use.append(("Requires-Dist", requires))
     if ctx.attr.requires_file:
         # The @ prefixed paths will be resolved by the PyWheel action.
         # Expanding each line containing a constraint in place of this
         # directive.
-        metadata_contents.append("Requires-Dist: @%s" % ctx.file.requires_file.path)
+        multi_use.append(("Requires-Dist", "@%s" % ctx.file.requires_file.path))
         other_inputs.append(ctx.file.requires_file)
 
     if ctx.attr.extra_requires and ctx.attr.extra_requires_files:
         fail("`extra_requires` and `extra_requires_files` are mutually exclusive. Please update {}".format(ctx.label))
     for option, option_requirements in sorted(ctx.attr.extra_requires.items()):
-        metadata_contents.append("Provides-Extra: %s" % option)
+        multi_use.append(("Provides-Extra", option))
         for requirement in option_requirements:
-            metadata_contents.append(
-                "Requires-Dist: %s; extra == '%s'" % (requirement, option),
-            )
+            multi_use.append((
+                "Requires-Dist",
+                "%s; extra == '%s'" % (requirement, option),
+            ))
     extra_requires_files = {}
     for option_requires_target, option in ctx.attr.extra_requires_files.items():
         if option in extra_requires_files:
@@ -487,21 +627,54 @@ def _py_wheel_impl(ctx):
         extra_requires_files.update({option: option_requires_files[0]})
 
     for option, option_requires_file in sorted(extra_requires_files.items()):
-        metadata_contents.append("Provides-Extra: %s" % option)
-        metadata_contents.append(
+        multi_use.append(("Provides-Extra", option))
+        multi_use.append((
             # The @ prefixed paths will be resolved by the PyWheel action.
             # Expanding each line containing a constraint in place of this
             # directive and appending the extra option.
-            "Requires-Dist: @%s; extra == '%s'" % (option_requires_file.path, option),
-        )
+            "Requires-Dist",
+            "@%s; extra == '%s'" % (option_requires_file.path, option),
+        ))
         other_inputs.append(option_requires_file)
 
+    # Process metadata_fields
+    for key, values in ctx.attr.metadata_fields.items():
+        kl = key.lower()
+        if kl in _SINGLE_USE_METADATA_FIELDS:
+            if values:
+                val = ", ".join(values) if kl == "keywords" else values[0]
+                single_use[kl] = (key, val)
+                if kl == "license-expression":
+                    single_use.pop("license", None)
+        else:
+            for val in values:
+                multi_use.append((key, val))
+
+    metadata_lines = []
+    if "metadata-version" in single_use:
+        k, v = single_use.pop("metadata-version")
+        metadata_lines.append("%s: %s" % (k, v))
+    if "name" in single_use:
+        k, v = single_use.pop("name")
+        metadata_lines.append("%s: %s" % (k, v))
+
+    for kl, (k, v) in single_use.items():
+        metadata_lines.append("%s: %s" % (k, v))
+
+    for k, v in multi_use:
+        metadata_lines.append("%s: %s" % (k, v))
+
+    metadata_file = ctx.actions.declare_file(ctx.attr.name + ".metadata.txt")
     ctx.actions.write(
         output = metadata_file,
-        content = "\n".join(metadata_contents) + "\n",
+        content = "\n".join(metadata_lines) + "\n",
     )
     other_inputs.append(metadata_file)
     args.add("--metadata_file", metadata_file)
+
+    if ctx.file.metadata_file:
+        other_inputs.append(ctx.file.metadata_file)
+        args.add("--merge_metadata_file", ctx.file.metadata_file)
 
     # Merge console_scripts into entry_points.
     entrypoints = dict(ctx.attr.entry_points)  # Copy so we can mutate it
@@ -536,18 +709,16 @@ def _py_wheel_impl(ctx):
     if not ctx.attr.compress:
         args.add("--no_compress")
 
-    for target, filename in ctx.attr.extra_distinfo_files.items():
+    for target, spec in ctx.attr.extra_distinfo_files.items():
         target_files = target[DefaultInfo].files.to_list()
-        if len(target_files) != 1:
-            fail(
-                "Multi-file target listed in extra_distinfo_files %s",
-                filename,
+        num_files = len(target_files)
+        for f in target_files:
+            other_inputs.append(f)
+            dest = _calculate_distinfo_dest(f, spec, num_files)
+            args.add(
+                "--extra_distinfo_file",
+                dest + ";" + f.path,
             )
-        other_inputs.extend(target_files)
-        args.add(
-            "--extra_distinfo_file",
-            filename + ";" + target_files[0].path,
-        )
 
     for target, filename in ctx.attr.data_files.items():
         target_files = target[DefaultInfo].files.to_list()

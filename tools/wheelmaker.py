@@ -357,8 +357,17 @@ Root-Is-Purelib: {}
         """Write METADATA file to the distribution."""
         # https://www.python.org/dev/peps/pep-0566/
         # https://packaging.python.org/specifications/core-metadata/
-        metadata = re.sub("^Name: .*$", "Name: %s" % name, metadata, flags=re.MULTILINE)
-        metadata += "Version: %s\n\n" % self._version
+        metadata = metadata.rstrip()
+        if re.search(r"^Name: .*$", metadata, flags=re.MULTILINE):
+            metadata = re.sub(
+                r"^Name: .*$", "Name: %s" % name, metadata, flags=re.MULTILINE
+            )
+        else:
+            metadata += "\nName: %s" % name
+        metadata = re.sub(
+            r"^Version: .*$\r?\n?", "", metadata, flags=re.MULTILINE
+        ).rstrip()
+        metadata += "\nVersion: %s\n\n" % self._version
         # setuptools seems to insert UNKNOWN as description when none is
         # provided.
         metadata += description if description else "UNKNOWN"
@@ -502,6 +511,11 @@ def parse_args() -> argparse.Namespace:
         "--description_file)",
     )
     wheel_group.add_argument(
+        "--merge_metadata_file",
+        type=Path,
+        help="Path to an RFC 822 metadata file to merge into METADATA",
+    )
+    wheel_group.add_argument(
         "--description_file", help="Path to the file with package description"
     )
     wheel_group.add_argument(
@@ -553,6 +567,124 @@ def parse_args() -> argparse.Namespace:
     )
 
     return parser.parse_args(sys.argv[1:])
+
+
+SINGLE_USE_METADATA_FIELDS = {
+    "author",
+    "author-email",
+    "description-content-type",
+    "download-url",
+    "home-page",
+    "keywords",
+    "license",
+    "license-expression",
+    "maintainer",
+    "maintainer-email",
+    "metadata-version",
+    "name",
+    "requires-python",
+    "summary",
+    "version",
+}
+
+
+def parse_rfc822_metadata(
+    text: str,
+) -> tuple[list[tuple[str, str]], str | None]:
+    """Parses RFC 822 format metadata into a list of (key, value) pairs
+    and optional description body.
+    """
+    parts = re.split(r"\r?\n\r?\n", text, maxsplit=1)
+    header_text = parts[0]
+    body = parts[1] if len(parts) > 1 and parts[1].strip() else None
+
+    headers: list[tuple[str, str]] = []
+    current_key = None
+    current_val: list[str] = []
+
+    for line in header_text.splitlines():
+        if not line:
+            continue
+        if line[0] in " \t" and current_key is not None:
+            current_val.append(line.lstrip())
+        else:
+            if current_key is not None:
+                headers.append((current_key, " ".join(current_val)))
+            key, sep, val = line.partition(":")
+            if sep:
+                current_key = key.strip()
+                current_val = [val.strip()]
+            else:
+                current_key = None
+                current_val = []
+
+    if current_key is not None:
+        headers.append((current_key, " ".join(current_val)))
+
+    return headers, body
+
+
+def merge_metadata(
+    base_metadata_text: str, merge_file_path: Path
+) -> tuple[str, str | None]:
+    """Merges an external metadata file into the base metadata text.
+
+    Single-use fields from merge_file_path override base fields.
+    Multi-use fields from merge_file_path append to base fields.
+    If merge_file contains License-Expression, any existing License header
+    is removed.
+    Returns (merged_headers_text, description_body).
+    """
+    merge_text = merge_file_path.read_text(encoding="utf-8")
+    merge_headers, merge_body = parse_rfc822_metadata(merge_text)
+    base_headers, _ = parse_rfc822_metadata(base_metadata_text)
+
+    merge_single_use = {}
+    merge_has_license_expression = False
+    merge_has_pep639 = False
+    for k, v in merge_headers:
+        kl = k.lower()
+        if kl == "license-expression":
+            merge_has_license_expression = True
+        if kl in ("license-expression", "license-file"):
+            merge_has_pep639 = True
+        if kl in SINGLE_USE_METADATA_FIELDS:
+            merge_single_use[kl] = (k, v)
+
+    if merge_has_pep639 and "metadata-version" not in merge_single_use:
+        merge_single_use["metadata-version"] = ("Metadata-Version", "2.4")
+
+    result_headers: list[tuple[str, str]] = []
+    seen_single_use = set()
+
+    for k, v in base_headers:
+        kl = k.lower()
+        if kl == "license" and merge_has_license_expression:
+            continue
+        if kl in SINGLE_USE_METADATA_FIELDS:
+            if kl in merge_single_use:
+                if kl not in seen_single_use:
+                    result_headers.append(merge_single_use[kl])
+                    seen_single_use.add(kl)
+            else:
+                if kl not in seen_single_use:
+                    result_headers.append((k, v))
+                    seen_single_use.add(kl)
+        else:
+            result_headers.append((k, v))
+
+    for kl, (k, v) in merge_single_use.items():
+        if kl not in seen_single_use:
+            result_headers.append((k, v))
+            seen_single_use.add(kl)
+
+    for k, v in merge_headers:
+        kl = k.lower()
+        if kl not in SINGLE_USE_METADATA_FIELDS:
+            result_headers.append((k, v))
+
+    merged_text = "\n".join(f"{k}: {v}" for k, v in result_headers) + "\n"
+    return merged_text, merge_body
 
 
 def _parse_file_pairs(content: list[str]) -> list[list[str]]:
@@ -623,6 +755,13 @@ def main() -> None:
                 description = description_file.read()
 
         metadata = arguments.metadata_file.read_text(encoding="utf-8")
+
+        if arguments.merge_metadata_file:
+            metadata, merge_body = merge_metadata(
+                metadata, arguments.merge_metadata_file
+            )
+            if merge_body and not description:
+                description = merge_body
 
         # Search for any `Requires-Dist` entries that refer to other files and
         # expand them.
