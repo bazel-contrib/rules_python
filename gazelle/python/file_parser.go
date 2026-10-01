@@ -20,6 +20,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	sitter "github.com/smacker/go-tree-sitter"
@@ -47,10 +48,11 @@ type ParserOutput struct {
 }
 
 type FileParser struct {
-	code                 []byte
-	relFilepath          string
-	output               ParserOutput
-	inTypeCheckingBlock  bool
+	code                []byte
+	relFilepath         string
+	output              ParserOutput
+	inTypeCheckingBlock bool
+	inLocalScope        bool
 }
 
 func NewFileParser() *FileParser {
@@ -241,6 +243,163 @@ func (p *FileParser) isTypeCheckingBlock(node *sitter.Node) bool {
 	return false
 }
 
+// pytestPluginString evaluates literal Python strings without executing Python.
+// Dynamic expressions, bytes, f-strings, and named Unicode escapes are not evaluated.
+func pytestPluginString(node *sitter.Node, code []byte) (string, bool) {
+	if node == nil {
+		return "", false
+	}
+	if node.Type() == "parenthesized_expression" {
+		return pytestPluginString(node.NamedChild(0), code)
+	}
+	if node.Type() == "concatenated_string" {
+		var value strings.Builder
+		for i := 0; i < int(node.NamedChildCount()); i++ {
+			child := node.NamedChild(i)
+			if child.Type() == sitterNodeTypeComment {
+				continue
+			}
+			part, ok := pytestPluginString(child, code)
+			if !ok {
+				return "", false
+			}
+			value.WriteString(part)
+		}
+		return value.String(), true
+	}
+	if node.Type() != sitterNodeTypeString || node.HasError() {
+		return "", false
+	}
+	literal := node.Content(code)
+	quote := strings.IndexAny(literal, "\"'")
+	if quote < 0 {
+		return "", false
+	}
+	prefix := strings.ToLower(literal[:quote])
+	if prefix != "" && prefix != "r" && prefix != "u" {
+		return "", false
+	}
+	delimiter := literal[quote : quote+1]
+	if strings.HasPrefix(literal[quote:], strings.Repeat(delimiter, 3)) {
+		delimiter = strings.Repeat(delimiter, 3)
+	}
+	if len(literal) < quote+2*len(delimiter) || !strings.HasSuffix(literal, delimiter) {
+		return "", false
+	}
+	content := literal[quote+len(delimiter) : len(literal)-len(delimiter)]
+	if prefix == "r" {
+		return content, true
+	}
+	var value strings.Builder
+	for len(content) > 0 {
+		if content[0] != '\\' {
+			value.WriteByte(content[0])
+			content = content[1:]
+			continue
+		}
+		if len(content) < 2 {
+			return "", false
+		}
+		switch content[1] {
+		case '\n':
+			content = content[2:]
+			continue
+		case '\r':
+			if strings.HasPrefix(content, "\\\r\n") {
+				content = content[3:]
+				continue
+			}
+		case '\'', '"':
+			value.WriteByte(content[1])
+			content = content[2:]
+			continue
+		case '0', '1', '2', '3', '4', '5', '6', '7':
+			end := 2
+			for end < len(content) && end < 4 && content[end] >= '0' && content[end] <= '7' {
+				end++
+			}
+			r, err := strconv.ParseUint(content[1:end], 8, 32)
+			if err != nil {
+				return "", false
+			}
+			value.WriteRune(rune(r))
+			content = content[end:]
+			continue
+		case 'N':
+			return "", false
+		}
+		if !strings.ContainsRune("abfnrtv\\xuU", rune(content[1])) {
+			// Python preserves unrecognized escape sequences.
+			value.WriteString(content[:2])
+			content = content[2:]
+			continue
+		}
+		r, _, rest, err := strconv.UnquoteChar(content, '"')
+		if err != nil {
+			return "", false
+		}
+		value.WriteRune(r)
+		content = rest
+	}
+	return value.String(), true
+}
+
+// parsePytestPlugins treats static module-level pytest_plugins declarations as
+// imports. As with conditional imports, all statically declared alternatives are
+// included; Python code is never executed to determine the active branch.
+func (p *FileParser) parsePytestPlugins(node *sitter.Node) {
+	if p.inLocalScope || node.Type() != "assignment" {
+		return
+	}
+	left := node.ChildByFieldName("left")
+	if left == nil || left.Type() != sitterNodeTypeIdentifier || left.Content(p.code) != "pytest_plugins" {
+		return
+	}
+	right := node.ChildByFieldName("right")
+	for right != nil && (right.Type() == "assignment" || right.Type() == "parenthesized_expression") {
+		if right.Type() == "assignment" {
+			right = right.ChildByFieldName("right")
+		} else {
+			right = right.NamedChild(0)
+		}
+	}
+	if right == nil || right.HasError() {
+		return
+	}
+	var modules []Module
+	add := func(value string, node *sitter.Node) {
+		if value != "" {
+			modules = append(modules, Module{
+				Name: value, LineNumber: node.StartPoint().Row + 1,
+				Filepath: p.relFilepath, TypeCheckingOnly: p.inTypeCheckingBlock,
+			})
+		}
+	}
+	if right.Type() == "list" || right.Type() == "tuple" || right.Type() == "expression_list" {
+		for i := 0; i < int(right.NamedChildCount()); i++ {
+			child := right.NamedChild(i)
+			if child.Type() == sitterNodeTypeComment {
+				continue
+			}
+			value, ok := pytestPluginString(child, p.code)
+			if !ok {
+				return
+			}
+			add(value, child)
+		}
+	} else {
+		value, ok := pytestPluginString(right, p.code)
+		if !ok {
+			return
+		}
+		// Pytest also accepts comma-separated module names in a single string.
+		for _, name := range strings.Split(value, ",") {
+			add(name, right)
+		}
+	}
+	p.output.Modules = append(p.output.Modules, modules...)
+}
+
 func (p *FileParser) parse(ctx context.Context, node *sitter.Node) {
 	if node == nil {
 		return
@@ -248,6 +407,10 @@ func (p *FileParser) parse(ctx context.Context, node *sitter.Node) {
 
 	// Check if this is a TYPE_CHECKING block
 	wasInTypeCheckingBlock := p.inTypeCheckingBlock
+	wasInLocalScope := p.inLocalScope
+	if node.Type() == "function_definition" || node.Type() == "class_definition" || node.Type() == "lambda" {
+		p.inLocalScope = true
+	}
 	if p.isTypeCheckingBlock(node) {
 		p.inTypeCheckingBlock = true
 	}
@@ -257,6 +420,7 @@ func (p *FileParser) parse(ctx context.Context, node *sitter.Node) {
 			return
 		}
 		child := node.Child(i)
+		p.parsePytestPlugins(child)
 		if p.parseImportStatements(child) {
 			continue
 		}
@@ -268,6 +432,7 @@ func (p *FileParser) parse(ctx context.Context, node *sitter.Node) {
 
 	// Restore the previous state
 	p.inTypeCheckingBlock = wasInTypeCheckingBlock
+	p.inLocalScope = wasInLocalScope
 }
 
 func (p *FileParser) Parse(ctx context.Context) (*ParserOutput, error) {
