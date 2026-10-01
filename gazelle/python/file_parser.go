@@ -243,14 +243,28 @@ func (p *FileParser) isTypeCheckingBlock(node *sitter.Node) bool {
 	return false
 }
 
+// pytestPluginExpression unwraps parentheses, ignoring comments before the value.
+func pytestPluginExpression(node *sitter.Node) *sitter.Node {
+	for node != nil && node.Type() == "parenthesized_expression" {
+		var expression *sitter.Node
+		for i := 0; i < int(node.NamedChildCount()); i++ {
+			child := node.NamedChild(i)
+			if child.Type() != sitterNodeTypeComment {
+				expression = child
+				break
+			}
+		}
+		node = expression
+	}
+	return node
+}
+
 // pytestPluginString evaluates literal Python strings without executing Python.
 // Dynamic expressions, bytes, f-strings, and named Unicode escapes are not evaluated.
 func pytestPluginString(node *sitter.Node, code []byte) (string, bool) {
+	node = pytestPluginExpression(node)
 	if node == nil {
 		return "", false
-	}
-	if node.Type() == "parenthesized_expression" {
-		return pytestPluginString(node.NamedChild(0), code)
 	}
 	if node.Type() == "concatenated_string" {
 		var value strings.Builder
@@ -356,13 +370,10 @@ func (p *FileParser) parsePytestPlugins(node *sitter.Node) {
 		return
 	}
 	right := node.ChildByFieldName("right")
-	for right != nil && (right.Type() == "assignment" || right.Type() == "parenthesized_expression") {
-		if right.Type() == "assignment" {
-			right = right.ChildByFieldName("right")
-		} else {
-			right = right.NamedChild(0)
-		}
+	for right != nil && right.Type() == "assignment" {
+		right = right.ChildByFieldName("right")
 	}
+	right = pytestPluginExpression(right)
 	if right == nil || right.HasError() {
 		return
 	}
@@ -370,8 +381,10 @@ func (p *FileParser) parsePytestPlugins(node *sitter.Node) {
 	add := func(value string, node *sitter.Node) {
 		if value != "" {
 			modules = append(modules, Module{
-				Name: value, LineNumber: node.StartPoint().Row + 1,
-				Filepath: p.relFilepath, TypeCheckingOnly: p.inTypeCheckingBlock,
+				Name:             value,
+				LineNumber:       node.StartPoint().Row + 1,
+				Filepath:         p.relFilepath,
+				TypeCheckingOnly: p.inTypeCheckingBlock,
 			})
 		}
 	}
