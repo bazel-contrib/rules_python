@@ -505,7 +505,7 @@ def _create_unified_hub_repo(mods):
     extra_aliases = {}
 
     for hub_name in hubs:
-        for pkg_name in mods.exposed_packages.get(hub_name, []):
+        for pkg_name in mods.hub_whl_map[hub_name]:
             norm_pkg = normalize_name(pkg_name)
             if norm_pkg not in packages:
                 packages[norm_pkg] = []
