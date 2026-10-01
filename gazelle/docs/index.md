@@ -40,37 +40,6 @@ Note that the `gazelle` program has multiple commands. At present, only
 the `update` command (the default) does anything for Python code.
 
 
-## Pytest plugin dependencies
-
-Gazelle resolves module-level `pytest_plugins` declarations as imports and adds
-their modules to the generated target's dependencies. This lets tests reuse
-pytest fixture plugins without duplicating dependencies in BUILD files:
-
-```python
-pytest_plugins = ["myapp.testing.database", "myapp.testing.http"]
-```
-
-Literal strings (including pytest's comma-separated string form), lists, and
-tuples are supported, as are annotated assignments. Declarations in reusable
-plugin modules are resolved too, providing transitive plugin dependencies.
-Existing dependency resolution directives and `gazelle:ignore` annotations
-apply to these module names just as they do to normal imports.
-
-As with conditional imports, Gazelle includes all statically declared branches
-and assignments; it does not evaluate Python control flow. Function-local and
-class-local declarations are ignored. Dynamic values such as function calls,
-variable references, list concatenation, comprehensions, and augmented
-assignments are not evaluated. Bytes, f-strings, and named Unicode escapes are
-also not evaluated. For unsupported declarations, use
-{ref}`annotation-include-dep` to supply their dependencies explicitly.
-
-Dependency generation does not change pytest's registration semantics: plugins
-are available throughout a pytest invocation, and `pytest_plugins` in non-root
-conftests is not supported by pytest.
-
-:::{versionadded} VERSION_NEXT_FEATURE
-:::
-
 ```{toctree}
 :maxdepth: 1
 installation_and_usage
