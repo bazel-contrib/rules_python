@@ -120,7 +120,11 @@ class _Command(enum.StrEnum):
 
 
 _ALLOWED_AUTHOR_ASSOCIATIONS = frozenset({"OWNER", "MEMBER", "COLLABORATOR"})
-_BACKPORT_ALLOWED_USERS: frozenset[str] = frozenset([])
+_BACKPORT_ALLOWED_USERS: frozenset[str] = frozenset(
+    [
+        "gholms",
+    ]
+)
 
 
 def _is_command_allowed(
