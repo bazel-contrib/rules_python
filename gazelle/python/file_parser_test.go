@@ -176,6 +176,9 @@ func TestParsePytestPlugins(t *testing.T) {
 		{"triple quotes", `pytest_plugins = """foo.bar"""`, []string{"foo.bar"}},
 		{"triple single quotes", `pytest_plugins = '''foo.bar'''`, []string{"foo.bar"}},
 		{"raw triple quotes", `pytest_plugins = r'''foo.bar'''`, []string{"foo.bar"}},
+		{"raw CRLF newlines", "pytest_plugins = r'''foo\r\nbar'''", []string{"foo\nbar"}},
+		{"raw CR newlines", "pytest_plugins = r'''foo\rbar'''", []string{"foo\nbar"}},
+		{"plain CRLF newlines", "pytest_plugins = '''foo\r\nbar'''", []string{"foo\nbar"}},
 		{"non-ASCII module", `pytest_plugins = 'foo.café'`, []string{"foo.café"}},
 		{"implicit concatenation", `pytest_plugins = "foo." 'bar'`, []string{"foo.bar"}},
 		{"concatenation with comment", "pytest_plugins = (\"foo.\" # comment\n'bar')", []string{"foo.bar"}},
@@ -246,6 +249,32 @@ func TestParsePytestPlugins(t *testing.T) {
 				assert.False(t, module.TypeCheckingOnly)
 			}
 			assert.Equal(t, unit.want, names)
+		})
+	}
+}
+
+func TestParseRestoresStateOnCancellation(t *testing.T) {
+	t.Parallel()
+	for _, code := range []string{
+		"def f():\n    pytest_plugins = ['foo.bar']",
+		"if TYPE_CHECKING:\n    import foo.bar",
+	} {
+		t.Run(code, func(t *testing.T) {
+			root, err := ParseCode([]byte(code), "example.py")
+			assert.NoError(t, err)
+			if root == nil {
+				t.Fatal("missing syntax tree")
+			}
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+			p := NewFileParser()
+			p.SetCodeAndFile([]byte(code), "", "example.py")
+			// Enter the scope directly so cancellation occurs after its state
+			// has changed, rather than before traversal reaches it.
+			p.parse(ctx, root.NamedChild(0))
+			assert.False(t, p.inLocalScope)
+			assert.False(t, p.inTypeCheckingBlock)
+			assert.Empty(t, p.output.Modules)
 		})
 	}
 }
