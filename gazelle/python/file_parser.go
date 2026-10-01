@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"strings"
 
+	bzl "github.com/bazelbuild/buildtools/build"
 	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/smacker/go-tree-sitter/python"
 )
@@ -293,69 +294,54 @@ func pytestPluginString(node *sitter.Node, code []byte) (string, bool) {
 	if prefix != "" && prefix != "r" && prefix != "u" {
 		return "", false
 	}
-	delimiter := literal[quote : quote+1]
-	if strings.HasPrefix(literal[quote:], strings.Repeat(delimiter, 3)) {
-		delimiter = strings.Repeat(delimiter, 3)
-	}
-	if len(literal) < quote+2*len(delimiter) || !strings.HasSuffix(literal, delimiter) {
-		return "", false
-	}
-	content := literal[quote+len(delimiter) : len(literal)-len(delimiter)]
 	if prefix == "r" {
-		return content, true
+		value, _, err := bzl.Unquote("r" + literal[quote:])
+		return value, err == nil
 	}
-	var value strings.Builder
+	// Buildtools already handles Python-style quotes and escapes. Normalize
+	// newlines and byte escapes to preserve Python 3's Unicode string semantics:
+	// buildtools interprets hex and octal escapes as bytes instead of code points.
+	content := strings.ReplaceAll(literal[quote:], "\r\n", "\n")
+	var normalized strings.Builder
 	for len(content) > 0 {
 		if content[0] != '\\' {
-			value.WriteByte(content[0])
+			normalized.WriteByte(content[0])
 			content = content[1:]
 			continue
 		}
 		if len(content) < 2 {
 			return "", false
 		}
-		switch content[1] {
-		case '\n':
-			content = content[2:]
-			continue
-		case '\r':
-			if strings.HasPrefix(content, "\\\r\n") {
-				content = content[3:]
-				continue
-			}
-		case '\'', '"':
-			value.WriteByte(content[1])
-			content = content[2:]
-			continue
-		case '0', '1', '2', '3', '4', '5', '6', '7':
+		if content[1] == 'N' {
+			return "", false
+		}
+		if content[1] == 'x' || (content[1] >= '0' && content[1] <= '7') {
 			end := 2
-			for end < len(content) && end < 4 && content[end] >= '0' && content[end] <= '7' {
-				end++
+			base := 8
+			start := 1
+			if content[1] == 'x' {
+				end, start, base = 4, 2, 16
+				if len(content) < end {
+					return "", false
+				}
+			} else {
+				for end < len(content) && end < 4 && content[end] >= '0' && content[end] <= '7' {
+					end++
+				}
 			}
-			r, err := strconv.ParseUint(content[1:end], 8, 32)
+			r, err := strconv.ParseUint(content[start:end], base, 16)
 			if err != nil {
 				return "", false
 			}
-			value.WriteRune(rune(r))
+			fmt.Fprintf(&normalized, "\\u%04x", r)
 			content = content[end:]
 			continue
-		case 'N':
-			return "", false
 		}
-		if !strings.ContainsRune("abfnrtv\\xuU", rune(content[1])) {
-			// Python preserves unrecognized escape sequences.
-			value.WriteString(content[:2])
-			content = content[2:]
-			continue
-		}
-		r, _, rest, err := strconv.UnquoteChar(content, '"')
-		if err != nil {
-			return "", false
-		}
-		value.WriteRune(r)
-		content = rest
+		normalized.WriteString(content[:2])
+		content = content[2:]
 	}
-	return value.String(), true
+	value, _, err := bzl.Unquote(normalized.String())
+	return value, err == nil
 }
 
 // parsePytestPlugins treats static module-level pytest_plugins declarations as
@@ -396,7 +382,7 @@ func (p *FileParser) parsePytestPlugins(node *sitter.Node) {
 			}
 			value, ok := pytestPluginString(child, p.code)
 			if !ok {
-				return
+				continue
 			}
 			add(value, child)
 		}

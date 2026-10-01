@@ -1,5 +1,8 @@
 import pytest
 
+plugin_name = "support.admin"
+additional_plugins = []
+
 # gazelle:ignore nonexistent.plugin
 pytest_plugins = [
     "support.database",
@@ -9,6 +12,9 @@ pytest_plugins = [
     "aliased_plugin",
     "ignored_plugin",
     "nonexistent.plugin",
+    # Dynamic entries do not hide the statically known dependencies above.
+    plugin_name,
+    *additional_plugins,
 ]
 
 
