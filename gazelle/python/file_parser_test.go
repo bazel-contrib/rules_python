@@ -16,6 +16,7 @@ package python
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -145,6 +146,107 @@ func TestParseImportStatements(t *testing.T) {
 			assert.Equal(t, u.result, output.Modules)
 		})
 	}
+}
+
+func TestParsePytestPlugins(t *testing.T) {
+	t.Parallel()
+	units := []struct {
+		name string
+		code string
+		want []string
+	}{
+		{"string", `pytest_plugins = "foo.bar"`, []string{"foo.bar"}},
+		{"single quotes", `pytest_plugins = 'foo.bar'`, []string{"foo.bar"}},
+		{"list", `pytest_plugins = ["foo.bar", 'foo.baz']`, []string{"foo.bar", "foo.baz"}},
+		{"tuple", `pytest_plugins = ("foo.bar", "foo.baz")`, []string{"foo.bar", "foo.baz"}},
+		{"unparenthesized tuple", `pytest_plugins = "foo.bar", "foo.baz"`, []string{"foo.bar", "foo.baz"}},
+		{"one element tuple", `pytest_plugins = ("foo.bar",)`, []string{"foo.bar"}},
+		{"parentheses", `pytest_plugins = (("foo.bar"))`, []string{"foo.bar"}},
+		{"parenthesized list", `pytest_plugins = (["foo.bar"])`, []string{"foo.bar"}},
+		{"annotated", `pytest_plugins: list[str] = ["foo.bar"]`, []string{"foo.bar"}},
+		{"chained left", `pytest_plugins = other = ["foo.bar"]`, []string{"foo.bar"}},
+		{"chained right", `other = pytest_plugins = ["foo.bar"]`, []string{"foo.bar"}},
+		{"comma separated string", `pytest_plugins = "foo.bar,foo.baz"`, []string{"foo.bar", "foo.baz"}},
+		{"comma in list string", `pytest_plugins = ["foo.bar,foo.baz"]`, []string{"foo.bar,foo.baz"}},
+		{"raw", `pytest_plugins = R"foo.bar"`, []string{"foo.bar"}},
+		{"unicode prefix", `pytest_plugins = u'foo.bar'`, []string{"foo.bar"}},
+		{"triple quotes", `pytest_plugins = """foo.bar"""`, []string{"foo.bar"}},
+		{"triple single quotes", `pytest_plugins = '''foo.bar'''`, []string{"foo.bar"}},
+		{"raw triple quotes", `pytest_plugins = r'''foo.bar'''`, []string{"foo.bar"}},
+		{"non-ASCII module", `pytest_plugins = 'foo.café'`, []string{"foo.café"}},
+		{"implicit concatenation", `pytest_plugins = "foo." 'bar'`, []string{"foo.bar"}},
+		{"concatenation with comment", "pytest_plugins = (\"foo.\" # comment\n'bar')", []string{"foo.bar"}},
+		{"escape sequences", `pytest_plugins = ["foo\x2ebar", 'foo\u002ebaz', "foo\U0000002equx", 'foo\056last']`, []string{"foo.bar", "foo.baz", "foo.qux", "foo.last"}},
+		{"short octal", `pytest_plugins = 'foo\7bar'`, []string{"foo\abar"}},
+		{"escaped quotes", `pytest_plugins = ["foo\"bar", 'foo\'baz']`, []string{"foo\"bar", "foo'baz"}},
+		{"unrecognized escape", `pytest_plugins = 'foo\qbar'`, []string{`foo\qbar`}},
+		{"raw escape", `pytest_plugins = r'foo\u002ebar'`, []string{`foo\u002ebar`}},
+		{"continued string", "pytest_plugins = 'foo.\\\nbar'", []string{"foo.bar"}},
+		{"continued CRLF string", "pytest_plugins = 'foo.\\\r\nbar'", []string{"foo.bar"}},
+		{"conditional", "if condition:\n    pytest_plugins = ['foo.bar']\nelse:\n    pytest_plugins = ['foo.baz']", []string{"foo.bar", "foo.baz"}},
+		{"reassignment", "pytest_plugins = ['foo.bar']\npytest_plugins = ['foo.baz']", []string{"foo.bar", "foo.baz"}},
+		{"empty string", `pytest_plugins = ""`, nil},
+		{"empty list", `pytest_plugins = []`, nil},
+		{"empty tuple", `pytest_plugins = ()`, nil},
+		{"comments in empty list", "pytest_plugins = [\n# comment\n]", nil},
+		{"none", `pytest_plugins = None`, nil},
+		{"annotation only", `pytest_plugins: list[str]`, nil},
+		{"different name", `other_plugins = ["foo.bar"]`, nil},
+		{"attribute", `module.pytest_plugins = ["foo.bar"]`, nil},
+		{"unpacking", `pytest_plugins, other = ["foo.bar", "foo.baz"]`, nil},
+		{"function local", "def f():\n    pytest_plugins = ['foo.bar']", nil},
+		{"class local", "class C:\n    pytest_plugins = ['foo.bar']", nil},
+		{"async function local", "async def f():\n    pytest_plugins = ['foo.bar']", nil},
+		{"decorated function local", "@decorate\ndef f():\n    pytest_plugins = ['foo.bar']", nil},
+		{"scope restored", "def f():\n    pytest_plugins = ['foo.local']\npytest_plugins = ['foo.bar']", []string{"foo.bar"}},
+		{"dynamic call", `pytest_plugins = plugins()`, nil},
+		{"dynamic identifier", `pytest_plugins = plugins`, nil},
+		{"dynamic list", `pytest_plugins = ["foo.bar", plugin]`, nil},
+		{"dynamic concatenated string", `pytest_plugins = "foo." f"{name}"`, nil},
+		{"nested list", `pytest_plugins = [["foo.bar"]]`, nil},
+		{"starred list", `pytest_plugins = ["foo.bar", *plugins]`, nil},
+		{"comprehension", `pytest_plugins = [name for name in plugins]`, nil},
+		{"addition", `pytest_plugins = ["foo.bar"] + plugins`, nil},
+		{"augmented assignment", `pytest_plugins += ["foo.bar"]`, nil},
+		{"set", `pytest_plugins = {"foo.bar"}`, nil},
+		{"bytes", `pytest_plugins = b"foo.bar"`, nil},
+		{"f-string", `pytest_plugins = f"foo.{name}"`, nil},
+		{"constant f-string", `pytest_plugins = f"foo.bar"`, nil},
+		{"malformed declaration", `pytest_plugins = [`, nil},
+		{"malformed list", `pytest_plugins = ["foo.bar",`, nil},
+		{"invalid escape", `pytest_plugins = "foo\xZZbar"`, nil},
+		{"named Unicode escape", `pytest_plugins = "foo\N{FULL STOP}bar"`, nil},
+	}
+	for _, unit := range units {
+		t.Run(unit.name, func(t *testing.T) {
+			p := NewFileParser()
+			p.SetCodeAndFile([]byte(unit.code), "tests", "example_test.py")
+			output, err := p.Parse(context.Background())
+			assert.NoError(t, err)
+			var names []string
+			for _, module := range output.Modules {
+				names = append(names, module.Name)
+				assert.Equal(t, filepath.Join("tests", "example_test.py"), module.Filepath)
+				assert.Empty(t, module.From)
+				assert.False(t, module.TypeCheckingOnly)
+			}
+			assert.Equal(t, unit.want, names)
+		})
+	}
+}
+
+func TestPytestPluginsLocationsAndComments(t *testing.T) {
+	t.Parallel()
+	p := NewFileParser()
+	p.SetCodeAndFile([]byte("pytest_plugins = [\n    'foo.bar', # gazelle:ignore foo.bar\n    'foo.baz',\n]\nif TYPE_CHECKING:\n    pytest_plugins = 'foo.typing'\n"), "", "conftest.py")
+	output, err := p.Parse(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, []Module{
+		{Name: "foo.bar", LineNumber: 2, Filepath: "conftest.py"},
+		{Name: "foo.baz", LineNumber: 3, Filepath: "conftest.py"},
+		{Name: "foo.typing", LineNumber: 6, Filepath: "conftest.py", TypeCheckingOnly: true},
+	}, output.Modules)
+	assert.Equal(t, []Comment{"# gazelle:ignore foo.bar"}, output.Comments)
 }
 
 func TestParseComments(t *testing.T) {
@@ -277,9 +379,9 @@ def example_function():
 
 	// Check that we found the expected modules
 	expectedModules := map[string]bool{
-		"sys": false,
-		"typing.TYPE_CHECKING": false,
-		"boto3": true,
+		"sys":                        false,
+		"typing.TYPE_CHECKING":       false,
+		"boto3":                      true,
 		"rest_framework.serializers": true,
 	}
 
