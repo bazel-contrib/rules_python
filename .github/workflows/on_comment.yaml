@@ -22,7 +22,12 @@ jobs:
     if: |
       github.event.comment.author_association == 'OWNER' ||
       github.event.comment.author_association == 'MEMBER' ||
-      github.event.comment.author_association == 'COLLABORATOR'
+      github.event.comment.author_association == 'COLLABORATOR' ||
+      contains(
+        fromJSON('[
+        ]'),
+        github.event.comment.user.login
+      )
     outputs:
       command: ${{ steps.parse.outputs.command }}
       issue_number: ${{ steps.parse.outputs.issue_number }}

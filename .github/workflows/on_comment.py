@@ -2,6 +2,7 @@
 """Parses issue and PR comments to dispatch release and backport workflows."""
 
 import argparse
+import enum
 import json
 import os
 import re
@@ -101,83 +102,124 @@ def _react_negative(repo: str, comment_id: str) -> None:
         _add_comment_reaction(repo=repo, comment_id=comment_id, content="-1")
 
 
+class _Command(enum.StrEnum):
+    """Workflow commands dispatched from issue and PR comments."""
+
+    NONE = "none"
+    CREATE_RC = "create-rc"
+    PREPARE_COMPLETE = "prepare-complete"
+    CREATE_RELEASE_BRANCH = "create-release-branch"
+    PREPARE = "prepare"
+    PROCESS_BACKPORTS = "process-backports"
+    SYNC_CHANGELOG = "sync-changelog"
+    ADD_BACKPORTS = "add-backports"
+    PROMOTE = "promote"
+    BACKPORT_PREPARE = "backport-prepare"
+    BACKPORT_CREATE_RELEASES = "backport-create-releases"
+    PR_BACKPORT = "pr-backport"
+
+
+_ALLOWED_AUTHOR_ASSOCIATIONS = frozenset({"OWNER", "MEMBER", "COLLABORATOR"})
+_BACKPORT_ALLOWED_USERS: frozenset[str] = frozenset([])
+
+
+def _is_command_allowed(
+    command: _Command,
+    *,
+    user_login: str,
+    author_association: str,
+) -> bool:
+    """Returns whether the user is allowed to trigger the given command."""
+    if command in (_Command.ADD_BACKPORTS, _Command.PR_BACKPORT) and (
+        user_login in _BACKPORT_ALLOWED_USERS
+    ):
+        return True
+    if author_association in _ALLOWED_AUTHOR_ASSOCIATIONS:
+        return True
+    return False
+
+
 def _process_release_issue_comment(
     comment_body: str,
     issue_number: str,
     repo: str = "",
     comment_id: str = "",
-) -> None:
+) -> _Command:
     """Processes comments on a release tracking issue."""
     if _match_command("create-rc", comment_body):
-        _write_github_output("command", "create-rc")
-        return
+        _write_github_output("command", _Command.CREATE_RC)
+        return _Command.CREATE_RC
 
     if m := _match_command("prepare-complete", comment_body):
-        _write_github_output("command", "prepare-complete")
+        _write_github_output("command", _Command.PREPARE_COMPLETE)
         if pr_arg := re.sub(r"[\s#]", "", m.group(1)) if m.group(1) else "":
             _write_github_output("pr_number", pr_arg)
-        return
+        return _Command.PREPARE_COMPLETE
 
     if _match_command("create-release-branch", comment_body):
-        _write_github_output("command", "create-release-branch")
-        return
+        _write_github_output("command", _Command.CREATE_RELEASE_BRANCH)
+        return _Command.CREATE_RELEASE_BRANCH
 
     if _match_command("prepare", comment_body):
-        _write_github_output("command", "prepare")
-        return
+        _write_github_output("command", _Command.PREPARE)
+        return _Command.PREPARE
 
     if _match_command("process-backports", comment_body):
-        _write_github_output("command", "process-backports")
-        return
+        _write_github_output("command", _Command.PROCESS_BACKPORTS)
+        return _Command.PROCESS_BACKPORTS
 
     if _match_command("sync-changelog", comment_body):
-        _write_github_output("command", "sync-changelog")
-        return
+        _write_github_output("command", _Command.SYNC_CHANGELOG)
+        return _Command.SYNC_CHANGELOG
 
     if m := _match_command(("backport", "backports"), comment_body):
         raw_args = m.group(1) if m.group(1) else ""
         items = [item for item in re.split(r"[\s,]+", raw_args) if item]
         if csv := ",".join(items):
-            _write_github_output("command", "add-backports")
+            _write_github_output("command", _Command.ADD_BACKPORTS)
             _write_github_output("backports", csv)
+            return _Command.ADD_BACKPORTS
         else:
-            _write_github_output("command", "none")
+            _write_github_output("command", _Command.NONE)
             _react_negative(repo=repo, comment_id=comment_id)
-        return
+            return _Command.NONE
 
     if _match_command("promote", comment_body):
-        _write_github_output("command", "promote")
-        return
+        _write_github_output("command", _Command.PROMOTE)
+        return _Command.PROMOTE
 
-    _write_github_output("command", "none")
+    _write_github_output("command", _Command.NONE)
+    return _Command.NONE
 
 
-def _process_backport_issue_comment(comment_body: str) -> None:
+def _process_backport_issue_comment(comment_body: str) -> _Command:
     """Processes comments on a backport tracking issue."""
     if _match_command("prepare", comment_body):
-        _write_github_output("command", "backport-prepare")
-        return
+        _write_github_output("command", _Command.BACKPORT_PREPARE)
+        return _Command.BACKPORT_PREPARE
 
     if _match_command("create-releases", comment_body):
-        _write_github_output("command", "backport-create-releases")
-        return
+        _write_github_output("command", _Command.BACKPORT_CREATE_RELEASES)
+        return _Command.BACKPORT_CREATE_RELEASES
 
-    _write_github_output("command", "none")
+    _write_github_output("command", _Command.NONE)
+    return _Command.NONE
 
 
-def _process_pr_comment(comment_body: str, pr_number: str) -> None:
+def _process_pr_comment(comment_body: str, pr_number: str) -> _Command:
     """Processes comments on a pull request."""
     if _match_command(("backport", "backports"), comment_body):
-        _write_github_output("command", "pr-backport")
+        _write_github_output("command", _Command.PR_BACKPORT)
         _write_github_output("pr_number", pr_number)
-        return
+        return _Command.PR_BACKPORT
 
     if _match_command("prepare-complete", comment_body):
-        _write_github_output("command", "prepare-complete")
+        _write_github_output("command", _Command.PREPARE_COMPLETE)
         _write_github_output("pr_number", pr_number)
-        return
+        return _Command.PREPARE_COMPLETE
 
-    _write_github_output("command", "none")
+    _write_github_output("command", _Command.NONE)
+    return _Command.NONE
 
 
 def _report_failure() -> int:
@@ -205,7 +247,7 @@ def _report_failure() -> int:
         )
         return 1
 
-    if command and command != "none":
+    if command and command != _Command.NONE:
         if comment_url:
             header = (
                 f"Workflow failed for command `{command}` ([comment]({comment_url}))."
@@ -234,6 +276,12 @@ def process_comment(*, report_failure: bool = False) -> int:
     if report_failure:
         return _report_failure()
 
+    event = _load_event_data()
+    comment_data = event.get("comment") or {}
+    author_association = str(comment_data.get("author_association") or "")
+    user_data = comment_data.get("user") or {}
+    user_login = str(user_data.get("login") or "")
+
     comment_body = os.environ.get("COMMENT_BODY", "")
     is_pr = _get_bool("IS_PR")
     event_number = os.environ.get("EVENT_NUMBER", "")
@@ -243,29 +291,40 @@ def process_comment(*, report_failure: bool = False) -> int:
     repo = os.environ.get("GITHUB_REPOSITORY", "")
 
     if is_pr:
-        _process_pr_comment(
+        command = _process_pr_comment(
             comment_body=comment_body,
             pr_number=event_number,
         )
-        return 0
-
-    issue_number = event_number
-    _write_github_output("issue_number", issue_number)
-    _write_github_env("issue_number", issue_number)
-
-    if has_release_label:
-        _process_release_issue_comment(
-            comment_body=comment_body,
-            issue_number=issue_number,
-            repo=repo,
-            comment_id=comment_id,
-        )
-    elif has_backport_label:
-        _process_backport_issue_comment(
-            comment_body=comment_body,
-        )
     else:
-        _write_github_output("command", "none")
+        issue_number = event_number
+        _write_github_output("issue_number", issue_number)
+        _write_github_env("issue_number", issue_number)
+
+        if has_release_label:
+            command = _process_release_issue_comment(
+                comment_body=comment_body,
+                issue_number=issue_number,
+                repo=repo,
+                comment_id=comment_id,
+            )
+        elif has_backport_label:
+            command = _process_backport_issue_comment(
+                comment_body=comment_body,
+            )
+        else:
+            _write_github_output("command", _Command.NONE)
+            command = _Command.NONE
+
+    if command != _Command.NONE and not _is_command_allowed(
+        command,
+        user_login=user_login,
+        author_association=author_association,
+    ):
+        print(
+            f"::error::User '{user_login}' (association: '{author_association}')"
+            f" is not allowed to trigger command '{command}'."
+        )
+        return 1
 
     return 0
 
