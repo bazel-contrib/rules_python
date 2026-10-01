@@ -1,23 +1,35 @@
 #!/usr/bin/env bash
+set -uo pipefail
 
-# --- begin runfiles.bash initialization v3 ---
-# Copy-pasted from the Bazel Bash runfiles library v3.
-set -uo pipefail; set +e; f=bazel_tools/tools/bash/runfiles/runfiles.bash
-# shellcheck disable=SC1090
-source "${RUNFILES_DIR:-/dev/null}/$f" 2>/dev/null || \
-  source "$(grep -sm1 "^$f " "${RUNFILES_MANIFEST_FILE:-/dev/null}" | cut -f2- -d' ')" 2>/dev/null || \
-  source "$0.runfiles/$f" 2>/dev/null || \
-  source "$(grep -sm1 "^$f " "$0.runfiles_manifest" | cut -f2- -d' ')" 2>/dev/null || \
-  source "$(grep -sm1 "^$f " "$0.exe.runfiles_manifest" | cut -f2- -d' ')" 2>/dev/null || \
-  { echo>&2 "ERROR: cannot find $f"; exit 1; }; f=; set -e
-# --- end runfiles.bash initialization v3 ---
-
-set +e # allow us to check for errors more easily
 readonly TARGET_FILE="%target_file%"
-MAIN_BIN=$(rlocation "$TARGET_FILE")
+MAIN_BIN=""
 
-if [[ -z "$MAIN_BIN" || ! -e "$MAIN_BIN" ]]; then
-  echo "ERROR: interpreter executable not found: $MAIN_BIN (from $TARGET_FILE)"
+if [[ -n "${RUNFILES_MANIFEST_FILE:-}" && \
+      -f "${RUNFILES_MANIFEST_FILE}" ]]; then
+  MAIN_BIN="$(grep -F -m1 "${TARGET_FILE} " \
+    "${RUNFILES_MANIFEST_FILE}" | cut -f2- -d' ')"
+fi
+if [[ -z "${MAIN_BIN:-}" ]]; then
+  if [[ -n "${RUNFILES_DIR:-}" && -e "${RUNFILES_DIR}/${TARGET_FILE}" ]]; then
+    MAIN_BIN="${RUNFILES_DIR}/${TARGET_FILE}"
+  elif [[ -f "$0.runfiles_manifest" ]]; then
+    MAIN_BIN="$(grep -F -m1 "${TARGET_FILE} " \
+      "$0.runfiles_manifest" | cut -f2- -d' ')"
+  elif [[ -e "$0.runfiles/${TARGET_FILE}" ]]; then
+    MAIN_BIN="$0.runfiles/${TARGET_FILE}"
+  elif [[ -e "${TARGET_FILE}" ]]; then
+    MAIN_BIN="${TARGET_FILE}"
+  fi
+fi
+
+if [[ -z "${MAIN_BIN:-}" || ! -e "${MAIN_BIN}" ]]; then
+  echo "ERROR: interpreter executable not found: ${MAIN_BIN:-<empty>}" \
+    "(from ${TARGET_FILE})" >&2
   exit 1
 fi
+
+if [[ -z "${PYTHONHOME:-}" ]]; then
+  export PYTHONHOME="$(dirname "$(dirname "$MAIN_BIN")")"
+fi
+
 exec "${MAIN_BIN}" "$@"

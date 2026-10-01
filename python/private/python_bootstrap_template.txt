@@ -98,7 +98,9 @@ else:
 RUNTIME_VENV_SYMLINKS = """
 %runtime_venv_symlinks%
 """.strip().split("\n")
-RUNTIME_VENV_SYMLINKS = dict(line.split("|") for line in RUNTIME_VENV_SYMLINKS if line)
+RUNTIME_VENV_SYMLINKS = dict(
+    line.split("|") for line in RUNTIME_VENV_SYMLINKS if line
+)
 
 ADDITIONAL_INTERPRETER_ARGS = os.environ.get("RULES_PYTHON_ADDITIONAL_INTERPRETER_ARGS", "")
 EXTRACT_ROOT = os.environ.get("RULES_PYTHON_EXTRACT_ROOT")
@@ -376,10 +378,13 @@ print(sys.executable)
 print(sys.base_prefix)
 print(site.getsitepackages(["{venv_src}"])[-1])
         """
-        print_verbose("prog:", src)
         output = subprocess.check_output([python_exe_actual, "-I"], shell=True,
                                          encoding = "utf8", input=src)
-        output = output.strip().split("\n")
+        output = [
+            line.strip()
+            for line in output.strip().splitlines()
+            if line.strip()
+        ]
         python_exe_actual = output[0]
         python_home = output[1] if IS_WINDOWS else None
         venv_lib = output[2]

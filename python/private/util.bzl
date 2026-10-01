@@ -85,3 +85,21 @@ def is_importable_name(name):
             "." not in name and
             "-" not in name
         )
+
+def list_add_unique(add_to, others, convert = None):
+    """Bulk add values to a list if not already present.
+
+    Args:
+        add_to: {type}`list[T]` the list to add values to. It is modified
+            in-place.
+        others: {type}`collection[collection[T]]` collection of collections of
+            the values to add.
+        convert: {type}`callable | None` function to convert the values to add.
+    """
+    existing = {v: None for v in add_to}
+    for values in others:
+        for value in values:
+            value = convert(value) if convert else value
+            if value not in existing:
+                add_to.append(value)
+                existing[value] = None

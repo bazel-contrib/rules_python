@@ -68,7 +68,8 @@ def _PyRuntimeInfo_init(
         abi_flags = "",
         site_init_template = None,
         supports_build_time_venv = True,
-        venv_bin_files = None):
+        venv_bin_files = None,
+        zip_stdlib = None):
     if (interpreter_path and interpreter) or (not interpreter_path and not interpreter):
         fail("exactly one of interpreter or interpreter_path must be specified")
 
@@ -133,6 +134,7 @@ def _PyRuntimeInfo_init(
         "supports_build_time_venv": supports_build_time_venv,
         "venv_bin_files": venv_bin_files,
         "zip_main_template": zip_main_template,
+        "zip_stdlib": zip_stdlib,
     }
 
 PyRuntimeInfo, _unused_raw_py_runtime_info_ctor = provider(
@@ -388,6 +390,15 @@ The following substitutions are made during template expansion:
 * `%workspace_name%`: The name of the workspace for the built target.
 
 :::{versionadded} 0.33.0
+:::
+""",
+        "zip_stdlib": """
+:type: File | None
+
+A zip file containing the standard library, if the runtime has standard library
+zipping enabled.
+
+:::{versionadded} VERSION_NEXT_FEATURE
 :::
 """,
     },

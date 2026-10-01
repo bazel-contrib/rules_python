@@ -794,21 +794,29 @@ def _create_venv_windows(ctx, *, venv_ctx_rel_root, runtime, interpreter_actual_
     # NOTE: The .dll files must exist, however, they may not be known at build time
     # if the interpreter is resolved at runtime.
     for f in runtime.venv_bin_files:
-        venv_rel_path = paths.join(venv_bin_rel_path, f.basename)
-        venv_ctx_rel_path = paths.join(venv_ctx_rel_root, venv_rel_path)
+        if f.basename.endswith(".zip"):
+            venv_rel_paths = [
+                f.basename,
+                paths.join(venv_bin_rel_path, f.basename),
+            ]
+        else:
+            venv_rel_paths = [paths.join(venv_bin_rel_path, f.basename)]
 
-        venv_file = ctx.actions.declare_file(venv_ctx_rel_path)
-        ctx.actions.symlink(output = venv_file, target_file = f)
+        for venv_rel_path in venv_rel_paths:
+            venv_ctx_rel_path = paths.join(venv_ctx_rel_root, venv_rel_path)
 
-        interpreter_runfiles.add(venv_file)
+            venv_file = ctx.actions.declare_file(venv_ctx_rel_path)
+            ctx.actions.symlink(output = venv_file, target_file = f)
 
-        rf_path = runfiles_root_path(ctx, venv_file.short_path)
-        interpreter_symlinks.add(ExplicitSymlink(
-            runfiles_path = rf_path,
-            venv_path = venv_rel_path,
-            link_to_path = runfiles_root_path(ctx, f.short_path),
-            files = depset([f]),
-        ))
+            interpreter_runfiles.add(venv_file)
+
+            rf_path = runfiles_root_path(ctx, venv_file.short_path)
+            interpreter_symlinks.add(ExplicitSymlink(
+                runfiles_path = rf_path,
+                venv_path = venv_rel_path,
+                link_to_path = runfiles_root_path(ctx, f.short_path),
+                files = depset([f]),
+            ))
 
     # See site.py logic: Windows uses a version/build agnostic site-packages path
     site_packages = "Lib/site-packages"
