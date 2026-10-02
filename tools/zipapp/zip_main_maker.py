@@ -7,6 +7,7 @@ content of the zipapp.
 
 import argparse
 import hashlib
+import json
 import os
 
 BLOCK_SIZE = 256 * 1024
@@ -17,6 +18,8 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument("--template", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--substitution", action="append", default=[])
+    parser.add_argument("--metadata")
+    parser.add_argument("--metadata-output")
     parser.add_argument(
         "--hash_files_manifest",
         required=True,
@@ -34,7 +37,7 @@ def compute_inputs_hash(manifest_path: str) -> str:
     # content.
     for line in sorted(manifest_lines):
         type_, _, rest = line.partition("|")
-        h.update(rest.encode("utf-8"))
+        h.update(line.encode("utf-8") + b"\0")
         parts = rest.split("|")
 
         if type_ == "rf-empty":
@@ -55,6 +58,8 @@ def compute_inputs_hash(manifest_path: str) -> str:
         if is_symlink:
             h.update(os.readlink(path).encode("utf-8"))
         else:
+            # zipper preserves these mode bits, including executable permissions.
+            h.update((os.stat(path).st_mode & 0xFFFF).to_bytes(2, "big"))
             with open(path, "rb") as f:
                 while True:
                     chunk = f.read(BLOCK_SIZE)
@@ -66,13 +71,13 @@ def compute_inputs_hash(manifest_path: str) -> str:
 
 
 def expand_template(template_path: str, output_path: str, substitutions: dict) -> None:
-    with open(template_path, "r", encoding="utf-8") as f:
+    with open(template_path, "r", encoding="utf-8", newline="") as f:
         content = f.read()
 
     for key, val in substitutions.items():
         content = content.replace(key, val)
 
-    with open(output_path, "w", encoding="utf-8") as f:
+    with open(output_path, "w", encoding="utf-8", newline="") as f:
         f.write(content)
 
 
@@ -80,12 +85,29 @@ def main():
     parser = create_parser()
     args = parser.parse_args()
 
-    app_hash = compute_inputs_hash(args.hash_files_manifest)
-
-    substitutions = {"%APP_HASH%": app_hash}
+    substitutions = {}
     for s in args.substitution:
         key, val = s.split("=", 1)
         substitutions[key] = val
+
+    # A completed cache must also change when startup code or interpreter
+    # options change, even if the application runfiles are identical.
+    digest = hashlib.sha256(
+        compute_inputs_hash(args.hash_files_manifest).encode("ascii")
+    )
+    with open(args.template, "rb") as source:
+        digest.update(source.read())
+    digest.update(json.dumps(substitutions, sort_keys=True).encode("utf-8"))
+    metadata = json.loads(args.metadata) if args.metadata else None
+    if metadata is not None:
+        digest.update(json.dumps(metadata, sort_keys=True).encode("utf-8"))
+    substitutions["%APP_HASH%"] = digest.hexdigest()
+    if metadata is not None:
+        metadata["identity"] = digest.hexdigest()
+        contents = json.dumps(metadata, sort_keys=True)
+        substitutions["%archive_metadata%"] = repr(contents)
+        with open(args.metadata_output, "w", encoding="utf-8") as output:
+            output.write(contents)
 
     expand_template(args.template, args.output, substitutions)
 

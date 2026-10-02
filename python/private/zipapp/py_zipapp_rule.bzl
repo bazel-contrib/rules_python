@@ -1,7 +1,9 @@
 """Implementation of the zipapp rules."""
 
 load("@bazel_skylib//lib:paths.bzl", "paths")
+load("@bazel_skylib//lib:shell.bzl", "shell")
 load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
+load("//python/private:application.bzl", "APPLICATION_ATTRS", "create_application_archive", "create_application_launcher")
 load("//python/private:attributes.bzl", "apply_config_settings_attr")
 load("//python/private:builders.bzl", "builders")
 load(
@@ -15,6 +17,7 @@ load(
     "runfiles_root_path",
 )
 load("//python/private:common_labels.bzl", "labels")
+load("//python/private:py_application_info.bzl", "PyApplicationInfo")
 load("//python/private:py_executable_info.bzl", "PyExecutableInfo")
 load("//python/private:py_internal.bzl", "py_internal")
 load("//python/private:py_runtime_info.bzl", "PyRuntimeInfo")
@@ -40,9 +43,10 @@ def _create_zipapp_main_py(ctx, py_runtime, py_executable, stage2_bootstrap, run
         python_binary_actual_path = py_runtime.interpreter_path
 
     zip_main_py = ctx.actions.declare_file(ctx.label.name + ".zip_main.py")
+    template = py_runtime.zip_main_template
 
     args = ctx.actions.args()
-    args.add(py_runtime.zip_main_template, format = "--template=%s")
+    args.add(template, format = "--template=%s")
     args.add(zip_main_py, format = "--output=%s")
 
     args.add(
@@ -57,13 +61,15 @@ def _create_zipapp_main_py(ctx, py_runtime, py_executable, stage2_bootstrap, run
     args.add("%python_binary_actual%=" + python_binary_actual_path, format = "--substitution=%s")
     args.add("%stage2_bootstrap%=" + runfiles_root_path(ctx, stage2_bootstrap.short_path), format = "--substitution=%s")
     args.add("%workspace_name%=" + ctx.workspace_name, format = "--substitution=%s")
+    args.add("%bootstrap_cleanup%=" + runfiles_root_path(ctx, ctx.file._bootstrap_cleanup.short_path), format = "--substitution=%s")
+    args.add("# %interpreter_args_python%=INTERPRETER_ARGS = " + repr(py_executable.interpreter_args), format = "--substitution=%s")
 
     hash_files_manifest = ctx.actions.args()
     hash_files_manifest.use_param_file("--hash_files_manifest=%s", use_always = True)
     hash_files_manifest.set_param_file_format("multiline")
 
     inputs = builders.DepsetBuilder()
-    inputs.add(py_runtime.zip_main_template)
+    inputs.add(template)
     _build_manifest(ctx, hash_files_manifest, runfiles, explicit_symlinks, inputs)
 
     actions_run(
@@ -135,16 +141,23 @@ def _create_zip(ctx, py_runtime, py_executable, stage2_bootstrap):
 
     if py_runtime.files != None:
         runfiles.add(py_runtime.files)
+    if py_runtime.interpreter:
+        runfiles.add(py_runtime.interpreter)
     if py_executable.venv_python_exe:
         runfiles.add(py_executable.venv_python_exe)
-
     if py_executable.venv_interpreter_runfiles:
         runfiles.add(py_executable.venv_interpreter_runfiles)
     runfiles.add(py_executable.app_runfiles)
     runfiles.add(stage2_bootstrap)
 
+    # Packaging rebuilds runfiles from the public provider. Keep private support
+    # explicit here instead of changing the meaning of app_runfiles.
+    runfiles.add(ctx.file._bootstrap_cleanup)
+
     runfiles = runfiles.build(ctx)
 
+    # A custom rule may supply its own executable. Only replace archive files
+    # with links that the provider explicitly declares.
     explicit_symlinks = depset(transitive = [
         py_executable.venv_interpreter_symlinks,
         py_executable.venv_app_symlinks,
@@ -206,10 +219,12 @@ def _create_shell_bootstrap(ctx, py_runtime, py_executable, stage2_bootstrap):
             ctx.label.name,
         ),
         "%INTERPRETER_ARGS%": "\n".join([
-            '"{}"'.format(v)
+            shell.quote(v)
             for v in py_executable.interpreter_args
         ]),
         "%STAGE2_BOOTSTRAP%": runfiles_root_path(ctx, stage2_bootstrap.short_path),
+        "%bootstrap_cleanup%": runfiles_root_path(ctx, ctx.file._bootstrap_cleanup.short_path),
+        "%workspace_name%": ctx.workspace_name,
     }
     ctx.actions.expand_template(
         template = ctx.file._zip_shell_template,
@@ -242,7 +257,21 @@ def _py_zipapp_executable_impl(ctx):
 
     stage2_bootstrap = py_executable.stage2_bootstrap
 
-    zip_file = _create_zip(ctx, py_runtime, py_executable, stage2_bootstrap)
+    application = ctx.attr.binary[PyApplicationInfo] if PyApplicationInfo in ctx.attr.binary else None
+    if application:
+        zip_file = ctx.actions.declare_file(ctx.label.name + ".zip")
+        create_application_archive(
+            ctx,
+            application = application,
+            output = zip_file,
+            template = py_runtime.zip_main_template,
+            cache = True,
+            compression = ctx.attr.compression,
+        )
+    else:
+        # Older custom rules expose no runtime preparation recipe. Keep their
+        # public-provider compatibility path instead of inventing missing facts.
+        zip_file = _create_zip(ctx, py_runtime, py_executable, stage2_bootstrap)
     if ctx.attr.executable:
         if is_windows_platform(ctx):
             executable = ctx.actions.declare_file(ctx.label.name + ".exe")
@@ -268,7 +297,18 @@ def _py_zipapp_executable_impl(ctx):
             )
             default_outputs = [executable, zip_file]
         else:
-            preamble = _create_shell_bootstrap(ctx, py_runtime, py_executable, stage2_bootstrap)
+            if application and py_runtime.zip_main_template == ctx.file._application_default_zip:
+                preamble = ctx.actions.declare_file(ctx.label.name + ".preamble.sh")
+                create_application_launcher(
+                    ctx,
+                    application = application,
+                    output = preamble,
+                    shell_entry = True,
+                    archive = True,
+                    cache = True,
+                )
+            else:
+                preamble = _create_shell_bootstrap(ctx, py_runtime, py_executable, stage2_bootstrap)
             executable = _create_self_executable_zip(ctx, preamble, zip_file)
             default_outputs = [executable]
     else:
@@ -305,7 +345,7 @@ _zipapp_transition = transition(
     ] + BUILTIN_BUILD_PYTHON_ZIP,
 )
 
-_ATTRS = {
+_ATTRS = APPLICATION_ATTRS | {
     "binary": attr.label(
         doc = """
 A `py_binary` or `py_test` (or equivalent) target to package.
@@ -359,6 +399,10 @@ Whether the output should be an executable zip file.
     # Required to opt-in to the transition feature.
     "_allowlist_function_transition": attr.label(
         default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
+    ),
+    "_bootstrap_cleanup": attr.label(
+        allow_single_file = True,
+        default = "//python/private:bootstrap_cleanup",
     ),
     "_exe_zip_maker": attr.label(
         cfg = "exec",
