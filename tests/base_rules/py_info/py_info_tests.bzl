@@ -124,7 +124,7 @@ def _test_py_info_builder(name):
     )
 
     py_info_targets = {}
-    for n in range(1, 7):
+    for n in range(1, 9):
         py_info_name = "{}_py{}".format(name, n)
         py_info_targets["py{}".format(n)] = py_info_name
         rt_util.helper_target(
@@ -181,6 +181,7 @@ def _test_py_info_builder_impl(env, targets):
 
     builder.merge(targets.py3[PyInfo], direct = [targets.py4[PyInfo]])
     builder.merge_all([targets.py5[PyInfo]], direct = [targets.py6[PyInfo]])
+    builder.merge_type_checking(targets.py7[PyInfo], direct = [targets.py8[PyInfo]])
 
     def check(actual):
         subject = py_info_subject(actual, meta = env.expect.meta)
@@ -242,6 +243,7 @@ def _test_py_info_builder_impl(env, targets):
                 "tests/base_rules/py_info/direct.pyi",
                 "tests/base_rules/py_info/py4-direct.pyi",
                 "tests/base_rules/py_info/py6-direct.pyi",
+                "tests/base_rules/py_info/py8-direct.pyi",
             ])
             subject.transitive_pyi_files().contains_exactly([
                 "tests/base_rules/py_info/trans.pyi",
@@ -251,6 +253,39 @@ def _test_py_info_builder_impl(env, targets):
                 "tests/base_rules/py_info/py4-trans.pyi",
                 "tests/base_rules/py_info/py5-trans.pyi",
                 "tests/base_rules/py_info/py6-trans.pyi",
+                "tests/base_rules/py_info/py7-trans.pyi",
+                "tests/base_rules/py_info/py8-trans.pyi",
+            ])
+
+            tc = subject.type_checking_info()
+            tc.transitive_sources().contains_exactly([
+                "tests/base_rules/py_info/py7-trans.py",
+                "tests/base_rules/py_info/py8-trans.py",
+            ])
+            tc.imports().contains_exactly([
+                "py7import",
+                "py8import",
+            ])
+            tc.direct_pyc_files().contains_exactly([
+                "tests/base_rules/py_info/py8-direct.pyc",
+            ])
+            tc.transitive_pyc_files().contains_exactly([
+                "tests/base_rules/py_info/py7-trans.pyc",
+                "tests/base_rules/py_info/py8-trans.pyc",
+            ])
+            tc.direct_original_sources().contains_exactly([
+                "tests/base_rules/py_info/py8-original-direct.py",
+            ])
+            tc.transitive_original_sources().contains_exactly([
+                "tests/base_rules/py_info/py7-original-trans.py",
+                "tests/base_rules/py_info/py8-original-trans.py",
+            ])
+            tc.direct_pyi_files().contains_exactly([
+                "tests/base_rules/py_info/py8-direct.pyi",
+            ])
+            tc.transitive_pyi_files().contains_exactly([
+                "tests/base_rules/py_info/py7-trans.pyi",
+                "tests/base_rules/py_info/py8-trans.pyi",
             ])
 
         if hasattr(actual, "venv_symlinks"):
@@ -265,12 +300,62 @@ def _test_py_info_builder_impl(env, targets):
             env.expect.that_bool(entry.version == None).equals(True)
             env.expect.that_bool(entry.link_to_file == None).equals(True)
 
-    check(builder.build())
+    built = builder.build()
+    check(built)
 
     # Call build() again to verify it doesn't duplicate/leak state
     check(builder.build())
     if BuiltinPyInfo != None:
         check(builder.build_builtin_py_info())
+
+    # Verify type_checking_info propagates transitively across merge()
+    downstream = PyInfoBuilder.new().merge(built).build()
+    downstream_tc = py_info_subject(downstream, meta = env.expect.meta).type_checking_info()
+    downstream_tc.direct_pyc_files().contains_exactly([])
+    downstream_tc.direct_original_sources().contains_exactly([])
+    downstream_tc.direct_pyi_files().contains_exactly([])
+    downstream_tc.transitive_sources().contains_exactly([
+        "tests/base_rules/py_info/py7-trans.py",
+        "tests/base_rules/py_info/py8-trans.py",
+    ])
+    downstream_tc.imports().contains_exactly([
+        "py7import",
+        "py8import",
+    ])
+
+    # Verify type_checking_info direct fields propagate when merged as direct
+    direct_downstream = PyInfoBuilder.new().merge(direct = [built]).build()
+    direct_downstream_tc = py_info_subject(
+        direct_downstream,
+        meta = env.expect.meta,
+    ).type_checking_info()
+    direct_downstream_tc.direct_pyc_files().contains_exactly([
+        "tests/base_rules/py_info/py8-direct.pyc",
+    ])
+    direct_downstream_tc.direct_original_sources().contains_exactly([
+        "tests/base_rules/py_info/py8-original-direct.py",
+    ])
+    direct_downstream_tc.direct_pyi_files().contains_exactly([
+        "tests/base_rules/py_info/py8-direct.pyi",
+    ])
+    direct_downstream_tc.transitive_sources().contains_exactly([
+        "tests/base_rules/py_info/py7-trans.py",
+        "tests/base_rules/py_info/py8-trans.py",
+    ])
+
+    # Verify combining py_info and py_info.type_checking_info
+    combined = PyInfoBuilder.new().merge(built, built.type_checking_info).build()
+    combined_subject = py_info_subject(combined, meta = env.expect.meta)
+    combined_subject.transitive_sources().contains_at_least([
+        "tests/base_rules/py_info/trans.py",
+        "tests/base_rules/py_info/py7-trans.py",
+        "tests/base_rules/py_info/py8-trans.py",
+    ])
+    combined_subject.imports().contains_at_least([
+        "import-path",
+        "py7import",
+        "py8import",
+    ])
 
     builder.set_has_py2_only_sources(False)
     builder.set_has_py3_only_sources(False)

@@ -307,7 +307,8 @@ Dependencies providing type definitions the library needs.
 
 These are dependencies that satisfy imports guarded by `typing.TYPE_CHECKING`.
 These are build-time only dependencies and not included as part of a runnable
-program (packaging rules may include them, however).
+program (packaging rules may include them, however). Runtime inclusion can be
+configured using {obj}`--//python/config_settings:pyi_deps_to_runfiles`.
 
 :::{versionadded} 1.1.0
 :::
@@ -365,6 +366,10 @@ Allowed `.pyc` and directory inputs in `srcs`.
         ),
         "_precompile_source_retention_flag": lambda: attrb.Label(
             default = labels.PRECOMPILE_SOURCE_RETENTION,
+            providers = [BuildSettingInfo],
+        ),
+        "_pyi_deps_to_runfiles_flag": lambda: attrb.Label(
+            default = labels.PYI_DEPS_TO_RUNFILES,
             providers = [BuildSettingInfo],
         ),
         # Force enabling auto exec groups, see

@@ -21,6 +21,7 @@ load("//python/private:py_interpreter_program.bzl", "PyInterpreterProgramInfo")
 load("//python/private:toolchain_types.bzl", "EXEC_TOOLS_TOOLCHAIN_TYPE", "LAUNCHER_MAKER_TOOLCHAIN_TYPE")
 load(":builders.bzl", "builders")
 load(":cc_helper.bzl", "cc_helper")
+load(":flags.bzl", "PyiDepsToRunfilesFlag")
 load(":py_cc_link_params_info.bzl", "PyCcLinkParamsInfo")
 load(":py_info.bzl", "PyInfo", "PyInfoBuilder")
 load(":py_internal.bzl", "py_internal")
@@ -409,10 +410,18 @@ def create_py_info(
                 if is_py_source(f):
                     py_info.transitive_sources.add(f)
                 py_info.merge_uses_shared_libraries(cc_helper.is_valid_shared_library_artifact(f))
+    propagate_pyi_deps = (
+        hasattr(ctx.attr, "_pyi_deps_to_runfiles_flag") and
+        PyiDepsToRunfilesFlag.is_enabled(ctx)
+    )
     for target in ctx.attr.pyi_deps:
         # PyInfo may not be present e.g. cc_library rules.
         if PyInfo in target or (BuiltinPyInfo != None and BuiltinPyInfo in target):
-            py_info.merge(_get_py_info(target))
+            target_py_info = _get_py_info(target)
+            if propagate_pyi_deps:
+                py_info.merge(target_py_info)
+            else:
+                py_info.merge_type_checking(target_py_info)
 
     py_info.transitive_sources.add(required_py_files)
 

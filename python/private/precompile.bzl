@@ -16,7 +16,7 @@
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load(":attributes.bzl", "PrecompileAttr", "PrecompileInvalidationModeAttr", "PrecompileSourceRetentionAttr")
 load(":common.bzl", "actions_run", "is_py_source")
-load(":flags.bzl", "PrecompileFlag")
+load(":flags.bzl", "CompilationMode", "PrecompileFlag")
 load(":py_interpreter_program.bzl", "PyInterpreterProgramInfo")
 load(":toolchain_types.bzl", "EXEC_TOOLS_TOOLCHAIN_TYPE", "TARGET_TOOLCHAIN_TYPE")
 
@@ -144,7 +144,7 @@ def _precompile(ctx, src, *, use_pycache):
 
     invalidation_mode = ctx.attr.precompile_invalidation_mode
     if invalidation_mode == PrecompileInvalidationModeAttr.AUTO:
-        if ctx.var["COMPILATION_MODE"] == "opt":
+        if ctx.var.get("COMPILATION_MODE") == CompilationMode.OPT:
             invalidation_mode = PrecompileInvalidationModeAttr.UNCHECKED_HASH
         else:
             invalidation_mode = PrecompileInvalidationModeAttr.CHECKED_HASH

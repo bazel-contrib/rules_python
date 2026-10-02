@@ -72,6 +72,7 @@ def _test_py_info_populated(name, config):
         name = name + "_lib2",
         srcs = ["lib2.py"],
         pyi_srcs = ["lib2.pyi"],
+        imports = ["lib2_import"],
     )
 
     analysis_test(
@@ -90,8 +91,8 @@ def _test_py_info_populated_impl(env, target):
     ])
     info.transitive_original_sources().contains_exactly([
         "{package}/test_py_info_populated_subject.py",
-        "{package}/lib2.py",
     ])
+    info.imports().contains_exactly([])
 
     info.direct_pyi_files().contains_exactly([
         "{package}/subject.pyi",
@@ -99,6 +100,23 @@ def _test_py_info_populated_impl(env, target):
     info.transitive_pyi_files().contains_exactly([
         "{package}/lib2.pyi",
         "{package}/subject.pyi",
+    ])
+    info.transitive_sources().contains_exactly([
+        "{package}/test_py_info_populated_subject.py",
+    ])
+
+    tc_info = info.type_checking_info()
+    tc_info.transitive_sources().contains_exactly([
+        "{package}/lib2.py",
+    ])
+    tc_info.transitive_original_sources().contains_exactly([
+        "{package}/lib2.py",
+    ])
+    tc_info.imports().contains_exactly([
+        "{}/{}/lib2_import".format(env.ctx.workspace_name, target.label.package),
+    ])
+    tc_info.transitive_pyi_files().contains_exactly([
+        "{package}/lib2.pyi",
     ])
 
 _tests.append(_test_py_info_populated)

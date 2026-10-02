@@ -375,6 +375,7 @@ def _PyInfo_init(
         transitive_original_sources = depset(),
         direct_pyi_files = depset(),
         transitive_pyi_files = depset(),
+        type_checking_info = None,
         venv_symlinks = depset()):
     _check_arg_type("transitive_sources", "depset", transitive_sources)
 
@@ -396,6 +397,8 @@ def _PyInfo_init(
 
     _check_arg_type("direct_pyi_files", "depset", direct_pyi_files)
     _check_arg_type("transitive_pyi_files", "depset", transitive_pyi_files)
+    if type_checking_info != None:
+        _check_arg_type("type_checking_info", "struct", type_checking_info)
     return {
         "direct_original_sources": direct_original_sources,
         "direct_pyc_files": direct_pyc_files,
@@ -409,6 +412,7 @@ def _PyInfo_init(
         "transitive_pyc_files": transitive_pyc_files,
         "transitive_pyi_files": transitive_pyi_files,
         "transitive_sources": transitive_sources,
+        "type_checking_info": type_checking_info,
         "uses_shared_libraries": uses_shared_libraries,
         "venv_symlinks": venv_symlinks,
     }
@@ -559,6 +563,17 @@ The files are considered necessary for downstream binaries to function;
 previously they were considerd informational and largely unused.
 ::::
 """,
+        "type_checking_info": """
+:type: PyInfo | None
+
+Additional `PyInfo` information needed only for static type checking (for
+example, from `pyi_deps`). This information is not included into the final
+output of a program. Type checkers should merge this into their information to
+augment the analyzed output.
+
+::::{versionadded} VERSION_NEXT_FEATURE
+::::
+""",
         "uses_shared_libraries": """
 :type: bool
 
@@ -627,17 +642,21 @@ def _PyInfoBuilder_typedef():
     :type: DepsetBuilder[File]
     :::
 
+    :::{field} type_checking_info
+    :type: PyInfoBuilder | None
+
+    Builder for {obj}`PyInfo.type_checking_info`. `None` on nested
+    type-checking builders.
+
+    ::::{versionadded} VERSION_NEXT_FEATURE
+    ::::
+    :::
+
     :::{field} venv_symlinks
     :type: DepsetBuilder[tuple[str | None, str]]
     """
 
-def _PyInfoBuilder_new():
-    """Creates an instance.
-
-    Returns:
-        {type}`PyInfoBuilder`
-    """
-
+def _new_raw_py_info_builder(type_checking_info = None):
     # buildifier: disable=uninitialized
     self = struct(
         _has_py2_only_sources = [False],
@@ -660,6 +679,7 @@ def _PyInfoBuilder_new():
         merge_has_py3_only_sources = lambda *a, **k: _PyInfoBuilder_merge_has_py3_only_sources(self, *a, **k),
         merge_target = lambda *a, **k: _PyInfoBuilder_merge_target(self, *a, **k),
         merge_targets = lambda *a, **k: _PyInfoBuilder_merge_targets(self, *a, **k),
+        merge_type_checking = lambda *a, **k: _PyInfoBuilder_merge_type_checking(self, *a, **k),
         merge_uses_shared_libraries = lambda *a, **k: _PyInfoBuilder_merge_uses_shared_libraries(self, *a, **k),
         set_has_py2_only_sources = lambda *a, **k: _PyInfoBuilder_set_has_py2_only_sources(self, *a, **k),
         set_has_py3_only_sources = lambda *a, **k: _PyInfoBuilder_set_has_py3_only_sources(self, *a, **k),
@@ -670,9 +690,19 @@ def _PyInfoBuilder_new():
         transitive_pyc_files = builders.DepsetBuilder(),
         transitive_pyi_files = builders.DepsetBuilder(),
         transitive_sources = builders.DepsetBuilder(),
+        type_checking_info = type_checking_info,
         venv_symlinks = builders.DepsetBuilder(),
     )
     return self
+
+def _PyInfoBuilder_new():
+    """Creates an instance.
+
+    Returns:
+        {type}`PyInfoBuilder`
+    """
+    type_checking_info = _new_raw_py_info_builder(None)
+    return _new_raw_py_info_builder(type_checking_info)
 
 def _PyInfoBuilder_add_venv_symlink(self):
     """Create and return a new VenvSymlinkEntryBuilder.
@@ -819,19 +849,7 @@ def _PyInfoBuilder_merge(self, *infos, direct = []):
     """
     return self.merge_all(list(infos), direct = direct)
 
-def _PyInfoBuilder_merge_all(self, transitive, *, direct = []):
-    """Merge other PyInfos into this PyInfo.
-
-    Args:
-        self: implicitly added.
-        transitive: {type}`list[PyInfo]` objects to merge in, but only merge in
-            their information into this object's transitive fields.
-        direct: {type}`list[PyInfo]` objects to merge in, but also merge their
-            direct fields into this object's direct fields.
-
-    Returns:
-        {type}`PyInfoBuilder` self
-    """
+def _merge_py_info_fields(self, transitive, *, direct = []):
     for info in direct:
         # BuiltinPyInfo doesn't have this field
         if hasattr(info, "direct_pyc_files"):
@@ -854,6 +872,77 @@ def _PyInfoBuilder_merge_all(self, transitive, *, direct = []):
             self.transitive_pyc_files.add(info.transitive_pyc_files)
             self.transitive_pyi_files.add(info.transitive_pyi_files)
             self.venv_symlinks.add(info.venv_symlinks)
+
+def _PyInfoBuilder_merge_all(self, transitive, *, direct = []):
+    """Merge other PyInfos into this PyInfo.
+
+    Args:
+        self: implicitly added.
+        transitive: {type}`list[PyInfo]` objects to merge in, but only merge in
+            their information into this object's transitive fields.
+        direct: {type}`list[PyInfo]` objects to merge in, but also merge their
+            direct fields into this object's direct fields.
+
+    Returns:
+        {type}`PyInfoBuilder` self
+    """
+    _merge_py_info_fields(self, transitive, direct = direct)
+    tc_direct = [
+        info.type_checking_info
+        for info in direct
+        if getattr(info, "type_checking_info", None) != None
+    ]
+    tc_transitive = [
+        info.type_checking_info
+        for info in transitive
+        if getattr(info, "type_checking_info", None) != None
+    ]
+    _merge_py_info_fields(self.type_checking_info, tc_transitive, direct = tc_direct)
+
+    return self
+
+def _PyInfoBuilder_merge_type_checking(self, *infos, direct = []):
+    """Merge type-checking fields from other PyInfos into this PyInfo.
+
+    Merges `pyi_files` into this object's `direct_pyi_files` /
+    `transitive_pyi_files` and merges the full `PyInfo` (and any nested
+    `type_checking_info`) into {obj}`type_checking_info`, excluding runtime
+    fields like `imports` and `transitive_sources` from the top-level `PyInfo`.
+
+    :::{versionadded} VERSION_NEXT_FEATURE
+    :::
+
+    Args:
+        self: implicitly added.
+        *infos: {type}`PyInfo` objects to merge in, but only merge in their
+            information into this object's transitive fields.
+        direct: {type}`list[PyInfo]` objects to merge in, but also merge their
+            direct fields into this object's direct fields.
+
+    Returns:
+        {type}`PyInfoBuilder` self
+    """
+    for info in direct:
+        # BuiltinPyInfo doesn't have this field
+        if hasattr(info, "direct_pyi_files"):
+            self.direct_pyi_files.add(info.direct_pyi_files)
+
+    for info in direct + list(infos):
+        # BuiltinPyInfo doesn't have this field
+        if hasattr(info, "transitive_pyi_files"):
+            self.transitive_pyi_files.add(info.transitive_pyi_files)
+
+    tc_direct = direct + [
+        info.type_checking_info
+        for info in direct
+        if getattr(info, "type_checking_info", None) != None
+    ]
+    tc_transitive = list(infos) + [
+        info.type_checking_info
+        for info in infos
+        if getattr(info, "type_checking_info", None) != None
+    ]
+    _merge_py_info_fields(self.type_checking_info, tc_transitive, direct = tc_direct)
 
     return self
 
@@ -892,15 +981,7 @@ def _PyInfoBuilder_merge_targets(self, targets):
         self.merge_target(t)
     return self
 
-def _PyInfoBuilder_build(self):
-    """Builds into a {obj}`PyInfo` object.
-
-    Args:
-        self: implicitly added.
-
-    Returns:
-        {type}`PyInfo`
-    """
+def _build_py_info_fields(self, type_checking_info = None):
     venv_symlinks = depset(
         direct = [b.build() for b in self._venv_symlink_builders],
         transitive = [self.venv_symlinks.build()],
@@ -920,8 +1001,21 @@ def _PyInfoBuilder_build(self):
         transitive_original_sources = self.transitive_original_sources.build(),
         transitive_pyc_files = self.transitive_pyc_files.build(),
         transitive_pyi_files = self.transitive_pyi_files.build(),
+        type_checking_info = type_checking_info,
         venv_symlinks = venv_symlinks,
     )
+
+def _PyInfoBuilder_build(self):
+    """Builds into a {obj}`PyInfo` object.
+
+    Args:
+        self: implicitly added.
+
+    Returns:
+        {type}`PyInfo`
+    """
+    type_checking_info = _build_py_info_fields(self.type_checking_info, None)
+    return _build_py_info_fields(self, type_checking_info)
 
 def _PyInfoBuilder_build_builtin_py_info(self):
     """Builds into a Bazel-builtin PyInfo object, if available.
@@ -961,6 +1055,7 @@ PyInfoBuilder = struct(
     merge_has_py3_only_sources = _PyInfoBuilder_merge_has_py3_only_sources,
     merge_target = _PyInfoBuilder_merge_target,
     merge_targets = _PyInfoBuilder_merge_targets,
+    merge_type_checking = _PyInfoBuilder_merge_type_checking,
     merge_uses_shared_libraries = _PyInfoBuilder_merge_uses_shared_libraries,
     set_has_py2_only_sources = _PyInfoBuilder_set_has_py2_only_sources,
     set_has_py3_only_sources = _PyInfoBuilder_set_has_py3_only_sources,

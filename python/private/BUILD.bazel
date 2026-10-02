@@ -322,6 +322,7 @@ bzl_library(
     deps = [
         ":builders",
         ":cc_helper",
+        ":flags",
         ":py_cc_link_params_info",
         ":py_info",
         ":py_internal",

@@ -242,6 +242,22 @@ The `auto` value
 The `omit_if_generated_source` value was removed
 ::::
 
+::::{bzl:flag} pyi_deps_to_runfiles
+Controls whether dependencies listed in `pyi_deps` are propagated to runtime
+runfiles.
+
+Values:
+
+* `auto`: (default) Automatically decide the effective value based on the
+  compilation mode. In `opt` and standard builds, `pyi_deps` are pruned from
+  runtime runfiles.
+* `yes`: Propagate `pyi_deps` into runtime runfiles (legacy behavior).
+* `no`: Do not propagate `pyi_deps` into runtime runfiles.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+::::
+
 ::::{bzl:flag} validate_test_main
 Determines if `py_test` runs a build-time validation that its main module
 actually runs tests.

@@ -23,6 +23,7 @@ labels = struct(
     PRECOMPILE = str(Label("//python/config_settings:precompile")),
     PRECOMPILE_SOURCE_RETENTION = str(Label("//python/config_settings:precompile_source_retention")),
     PYC_COLLECTION = str(Label("//python/config_settings:pyc_collection")),
+    PYI_DEPS_TO_RUNFILES = str(Label("//python/config_settings:pyi_deps_to_runfiles")),
     PYTHON_IMPORT_ALL_REPOSITORIES = str(Label("//python/config_settings:experimental_python_import_all_repositories")),
     PYTHON_SRC = str(Label("//python/bin:python_src")),
     PYTHON_VERSION = str(Label("//python/config_settings:python_version")),
