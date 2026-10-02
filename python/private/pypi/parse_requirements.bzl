@@ -226,18 +226,16 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
 
         git_struct = None
         if pkg.get("source", {}).get("git"):
-            url = pkg["source"]["git"]
-
-            # Keep the revision in the URL, but exclude it from the repository filename.
-            url_path, _, _ = url.partition("?")
-            url_path, _, _ = url_path.partition("#")
-            _, _, filename = url_path.rpartition("/")
+            # A git source is not a downloadable artifact. Leave `url` and
+            # `filename` empty, the same as a `foo @ git+...` line from a
+            # requirements file, so that `pip` builds it from the requirement
+            # line instead of the Bazel downloader trying to fetch the URL.
             git_struct = struct(
-                filename = filename,
-                url = url,
+                filename = "",
+                url = "",
                 digest = "",
                 kind = "git",
-                source = pkg["source"],
+                requirement = _uv_lock_git_requirement(pkg["source"]["git"]),
             )
 
         plat_to_src = {}
@@ -275,11 +273,18 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
         for key, val in src_to_plats.items():
             src = val.src
             plats = sorted(val.plats)
-            requirement_line = "{name}{extras}=={version}".format(
-                name = name,
-                extras = extra_str,
-                version = version,
-            )
+            if src.kind == "git":
+                requirement_line = "{name}{extras} @ {requirement}".format(
+                    name = name,
+                    extras = extra_str,
+                    requirement = src.requirement,
+                )
+            else:
+                requirement_line = "{name}{extras}=={version}".format(
+                    name = name,
+                    extras = extra_str,
+                    version = version,
+                )
             entry["resolved_srcs"].append(struct(
                 distribution = name,
                 extra_pip_args = extra_pip_args or [],
@@ -312,6 +317,55 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
 
     logger.debug(lambda: "Parsed {} packages from uv.lock".format(len(ret)))
     return ret
+
+def _uv_lock_git_requirement(git_source):
+    """Turn a uv.lock git source into a pip direct reference.
+
+    uv records `<repo url>?<query>#<resolved commit>`, where the query carries
+    `rev`, `tag` or `branch` and optionally `subdirectory`. pip expects
+    `git+<repo url>@<commit>[#subdirectory=<dir>]`. Pinning to the resolved
+    commit rather than the requested ref keeps the build reproducible.
+
+    Args:
+        git_source: {type}`str` the `source.git` value from uv.lock.
+
+    Returns:
+        {type}`str` the pip direct reference, without the `<name> @ ` prefix.
+    """
+    head, _, commit = git_source.partition("#")
+    repo_url, _, query = head.partition("?")
+    subdirectory = ""
+    for param in query.split("&"):
+        key, _, value = param.partition("=")
+        if key == "subdirectory":
+            # uv percent-encodes the value (`python%2Ffoo`), but pip reads the
+            # `#subdirectory=` fragment as a literal path.
+            subdirectory = _percent_decode(value)
+    requirement = "git+{}@{}".format(repo_url, commit)
+    if subdirectory:
+        requirement += "#subdirectory={}".format(subdirectory)
+    return requirement
+
+# Printable ASCII, indexed by `code point - 0x20`, as Starlark has no `chr()`.
+_PRINTABLE_ASCII = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
+
+def _percent_decode(value):
+    """Decode `%XX` escapes of printable ASCII; leave any other escape as-is."""
+    parts = value.split("%")
+    out = [parts[0]]
+    for part in parts[1:]:
+        code = int(part[:2], 16) if len(part) >= 2 and _is_hex(part[:2]) else -1
+        if code >= 0x20 and code <= 0x7e:
+            out.append(_PRINTABLE_ASCII[code - 0x20] + part[2:])
+        else:
+            out.append("%" + part)
+    return "".join(out)
+
+def _is_hex(s):
+    for c in s.elems():
+        if c not in "0123456789abcdefABCDEF":
+            return False
+    return True
 
 def _parse_uv_lock_hash(hash_str):
     """Parse a uv.lock `hash` value of the form `<algo>:<digest>`.

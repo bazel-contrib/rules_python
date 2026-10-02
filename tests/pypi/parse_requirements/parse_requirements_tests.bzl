@@ -115,6 +115,7 @@ bar==0.0.1 --hash=sha256:deadb00f
         "uv_lock_foo_virtual": """{"package":[{"name":"foo","source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]},{"name":"virtual-pkg","source":{"virtual":true},"version":"0.0.0"}]}""",
         "uv_lock_foo_with_extras": """{"package":[{"name":"foo","provides-extras":["extra"],"source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]}]}""",
         "uv_lock_git_vcs": """{"package":[{"name":"foo","source":{"git":"https://github.com/org/foo?rev=deadbeef#deadbeef"},"version":"0.1.0"}]}""",
+        "uv_lock_git_vcs_subdirectory": """{"package":[{"name":"foo","source":{"git":"https://github.com/org/mono.git?subdirectory=python%2Ffoo&branch=main#0123abcd"},"version":"0.1.0+g0123abcd"}]}""",
         "uv_lock_rules_python_pkg": """{"package":[{"name":"rules_python","source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/rules_python-0.0.1-py3-none-any.whl"}]}]}""",
     }
 
@@ -1321,7 +1322,7 @@ def _test_uv_lock_cross_consistent(env):
 _tests.append(_test_uv_lock_cross_consistent)
 
 def _test_uv_lock_vcs_entry(env):
-    """Test that VCS entry filenames exclude URL query and fragment components."""
+    """Test that a uv.lock git source is built by pip from a direct reference."""
     got = parse_requirements(
         uv_lock = "uv_lock_git_vcs",
     )
@@ -1335,11 +1336,11 @@ def _test_uv_lock_vcs_entry(env):
                 struct(
                     distribution = "foo",
                     extra_pip_args = [],
-                    requirement_line = "foo==0.1.0",
+                    requirement_line = "foo @ git+https://github.com/org/foo@deadbeef",
                     target_platforms = ["linux_x86_64"],
-                    filename = "foo",
+                    filename = "",
                     digest = "",
-                    url = "https://github.com/org/foo?rev=deadbeef#deadbeef",
+                    url = "",
                     yanked = None,
                 ),
             ],
@@ -1347,6 +1348,34 @@ def _test_uv_lock_vcs_entry(env):
     ])
 
 _tests.append(_test_uv_lock_vcs_entry)
+
+def _test_uv_lock_vcs_entry_subdirectory(env):
+    """Test that a uv.lock git source pins the resolved commit and keeps its subdirectory."""
+    got = parse_requirements(
+        uv_lock = "uv_lock_git_vcs_subdirectory",
+    )
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "foo",
+            index_url = "",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo @ git+https://github.com/org/mono.git@0123abcd#subdirectory=python/foo",
+                    target_platforms = ["linux_x86_64"],
+                    filename = "",
+                    digest = "",
+                    url = "",
+                    yanked = None,
+                ),
+            ],
+        ),
+    ])
+
+_tests.append(_test_uv_lock_vcs_entry_subdirectory)
 
 def _test_uv_lock_rules_python_pkg_not_skipped(env):
     """Test that 'rules_python' package is not skipped from uv.lock."""
