@@ -21,9 +21,10 @@ class ZipAppSignalsTest(unittest.TestCase):
         if not pid_line.startswith("pid=") or not zip_dir_line.startswith("zip_dir="):
             self.fail(f"unexpected zipapp output: {pid_line!r} {zip_dir_line!r}")
         pid = int(pid_line.split("=", 1)[1])
-        # If the launcher doesn't exec, the Python process outlives it and keeps
-        # stdout open, so make sure it's killed too.
-        self.addCleanup(self._kill_pid, pid)
+        if pid != proc.pid:
+            # The launcher didn't exec, so the Python process can outlive it and
+            # keep stdout open. Make sure it's killed too.
+            self.addCleanup(self._kill_pid, pid)
         zip_dir = zip_dir_line.split("=", 1)[1]
         self.assertTrue(os.path.isdir(zip_dir), f"{zip_dir} does not exist")
         return proc, pid, zip_dir
@@ -67,6 +68,15 @@ class ZipAppSignalsTest(unittest.TestCase):
 
         proc.kill()
         proc.communicate(timeout=30)
+
+        self.assertRemovedEventually(zip_dir)
+
+    def test_extracted_files_removed_before_process_is_reaped(self):
+        proc, _, zip_dir = self._start()
+
+        # Leave the exited process as a zombie: cleanup must not wait for the
+        # caller to reap it.
+        os.kill(proc.pid, signal.SIGKILL)
 
         self.assertRemovedEventually(zip_dir)
 

@@ -79,6 +79,30 @@ command=(
   "$@"
 )
 
+# Prints an identifier for a running process that changes if the PID is reused,
+# or nothing once the process has exited. A zombie counts as exited, so it
+# doesn't matter whether the caller has reaped it yet.
+process_identity() {
+  local stat fields
+  if [[ -r "/proc/$1/stat" ]]; then
+    stat=$(< "/proc/$1/stat") || return 0
+    # The command name is in parentheses and may contain spaces, so split the
+    # fields after the last ")": field 3 (state) through field 22 (start time).
+    read -r -a fields <<< "${stat##*) }"
+    if [[ "${fields[0]}" != "Z" ]]; then
+      echo "${fields[19]}"
+    fi
+  elif command -v ps >/dev/null 2>&1; then
+    stat=$(ps -o stat=,lstart= -p "$1" 2>/dev/null)
+    stat="${stat#"${stat%%[![:space:]]*}"}"
+    if [[ -n "$stat" && "$stat" != Z* ]]; then
+      echo "${stat#* }"
+    fi
+  elif kill -0 "$1" 2>/dev/null; then
+    echo "running"
+  fi
+}
+
 if [[ -n "$cleanup_zip_dir" ]]; then
   # exec replaces this shell, so the EXIT trap can't remove the extracted files.
   # Instead, start a watcher that removes them once this PID, which becomes the
@@ -87,8 +111,9 @@ if [[ -n "$cleanup_zip_dir" ]]; then
   # Python process, and it doesn't hold this process's stdio open.
   trap - EXIT
   launcher_pid=$$
+  launcher_identity=$(process_identity "$launcher_pid")
   ( (
-    while kill -0 "$launcher_pid" 2>/dev/null; do
+    while [[ "$(process_identity "$launcher_pid")" == "$launcher_identity" ]]; do
       sleep 1
     done
     rm -fr "$zip_dir"
