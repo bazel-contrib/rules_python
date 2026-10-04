@@ -130,8 +130,13 @@ def _source_symlink_target(content_path, is_symlink_str):
 
     # Bazel sandboxes expose regular inputs as absolute symlinks. Look through
     # that indirection to detect whether the original source is also a symlink.
+    # Only a relative link can be kept: an absolute one points into this
+    # machine's Bazel output base (e.g. the _solib links Bazel creates for shared
+    # libraries) and would dangle wherever the zipapp runs, so store the file.
     if os.path.islink(target):
-        return os.readlink(target)
+        source_target = os.readlink(target)
+        if not os.path.isabs(source_target):
+            return source_target
     return None
 
 

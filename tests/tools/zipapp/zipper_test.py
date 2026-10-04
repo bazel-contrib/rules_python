@@ -174,6 +174,36 @@ def test_create_zip_with_sandboxed_source_symlink(tmp_path):
         assert_zip_file_content(zf, "runfiles/my_ws/bin/python3.14", content="python")
 
 
+def test_create_zip_with_sandboxed_absolute_source_symlink(tmp_path):
+    # Bazel's _solib entries are absolute symlinks into the output base. Their
+    # target only exists on the build machine, so the file must be stored.
+    manifest_path = tmp_path / "manifest.txt"
+    output_zip = tmp_path / "output.zip"
+
+    library_dir = tmp_path / "external"
+    library_dir.mkdir()
+    library = library_dir / "libfoo.so"
+    library.write_text("library")
+
+    solib_dir = tmp_path / "solib"
+    solib_dir.mkdir()
+    solib_link = solib_dir / "libfoo.so"
+    solib_link.symlink_to(library)
+
+    sandbox_dir = tmp_path / "sandbox"
+    sandbox_dir.mkdir()
+    sandbox_link = sandbox_dir / "libfoo.so"
+    sandbox_link.symlink_to(solib_link)
+    manifest_path.write_text(f"rf-file|0|_solib/libfoo.so|{sandbox_link}")
+
+    create_zip(manifest_path, output_zip)
+
+    with zipfile.ZipFile(output_zip, "r") as zf:
+        assert_zip_file_content(
+            zf, "runfiles/my_ws/_solib/libfoo.so", content="library"
+        )
+
+
 def test_pathsep_normalization(tmp_path):
     manifest_path = tmp_path / "manifest.txt"
     output_zip = tmp_path / "output.zip"
