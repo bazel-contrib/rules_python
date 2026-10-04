@@ -108,11 +108,16 @@ if [[ -n "$cleanup_zip_dir" ]]; then
   # Instead, start a watcher that removes them once this PID, which becomes the
   # Python process, exits. Unlike the trap, this also works when the process is
   # killed with SIGKILL. The watcher is double-forked so it isn't a child of the
-  # Python process, and it doesn't hold this process's stdio open.
+  # Python process, and it doesn't hold this process's stdio open. It stays in
+  # the caller's process group, so it ignores the signals sent to a whole group
+  # (e.g. Ctrl-C in a terminal) and exits on its own once the process is gone.
+  # Unlike the implicit SIGINT ignore for background jobs, `trap ''` also
+  # applies to the commands it runs.
   trap - EXIT
   launcher_pid=$$
   launcher_identity=$(process_identity "$launcher_pid")
   ( (
+    trap '' INT QUIT HUP TERM
     while [[ "$(process_identity "$launcher_pid")" == "$launcher_identity" ]]; do
       sleep 1
     done

@@ -12,8 +12,13 @@ class ZipAppSignalsTest(unittest.TestCase):
     def setUp(self):
         self.zipapp_path = os.environ["TEST_ZIPAPP"]
 
-    def _start(self):
-        proc = subprocess.Popen([self.zipapp_path], stdout=subprocess.PIPE, text=True)
+    def _start(self, new_session=False):
+        proc = subprocess.Popen(
+            [self.zipapp_path],
+            stdout=subprocess.PIPE,
+            text=True,
+            start_new_session=new_session,
+        )
         self.addCleanup(self._kill, proc)
         assert proc.stdout is not None
         pid_line = proc.stdout.readline().strip()
@@ -79,6 +84,19 @@ class ZipAppSignalsTest(unittest.TestCase):
         os.kill(proc.pid, signal.SIGKILL)
 
         self.assertRemovedEventually(zip_dir)
+
+    def test_extracted_files_removed_after_process_group_signal(self):
+        # A terminal's Ctrl-C (SIGINT), hangup (SIGHUP) or a supervisor stopping
+        # the whole process group (SIGTERM) signals every process in the group,
+        # including the cleanup watcher, which must survive to do its job.
+        for sig in (signal.SIGINT, signal.SIGHUP, signal.SIGTERM):
+            with self.subTest(signal=sig.name):
+                proc, _, zip_dir = self._start(new_session=True)
+
+                os.killpg(proc.pid, sig)
+                proc.communicate(timeout=30)
+
+                self.assertRemovedEventually(zip_dir)
 
     def test_exit_code_is_propagated(self):
         result = subprocess.run([self.zipapp_path, "--exit-code=3"], timeout=60)
