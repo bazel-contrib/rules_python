@@ -27,13 +27,13 @@ string_flag(
 )
 
 config_setting(
-    name = "is_rust_exe_zip_maker_enabled",
+    name = "is_rust_exe_zip_maker_yes",
     flag_values = {":use_rust_exe_zip_maker": "yes"},
 )
 
 toolchain(
     name = "exe_zip_maker_toolchain",
-    target_settings = [":is_rust_exe_zip_maker_enabled"],
+    target_settings = [":is_rust_exe_zip_maker_yes"],
     toolchain = "//dev/dev_only_toolchains/impls:exe_zip_maker",
     toolchain_type = "//python/private/toolchain_types:exe_zip_maker",
 )
