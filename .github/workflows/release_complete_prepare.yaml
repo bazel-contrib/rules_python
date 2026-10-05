@@ -68,7 +68,9 @@ jobs:
             ARGS+=("--issue=$ISSUE")
           fi
           # Run the complete-prepare subcommand in the release tool to cleanly update checklist metadata
-          bazel run //dev/release -- \
+          bazel run \
+            --//python/config_settings:py_pbs_distribution=install_only_stripped \
+            //dev/release -- \
             complete-prepare "${ARGS[@]}"
 
   call_create_release_branch:

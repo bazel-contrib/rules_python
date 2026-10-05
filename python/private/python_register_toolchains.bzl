@@ -34,9 +34,9 @@ load(
     "toolchains_repo",
 )
 
-def _get_platform_setting(version_info, key, platform, default):
+def _get_platform_setting(version_info, key, *, platform, default):
     value = version_info.get(key, {})
-    if type(value) != type({}):
+    if type(value) != "dict":
         return value
     return value.get(platform, default)
 
@@ -127,7 +127,13 @@ def python_register_toolchains(
             continue
 
         loaded_platforms.append(platform)
-        (release_filename, urls, strip_prefix, patches, patch_strip) = get_release_info(
+        (
+            release_filename,
+            urls,
+            strip_prefix,
+            patches,
+            patch_strip,
+        ) = get_release_info(
             source_platform,
             python_version,
             base_urls = base_urls,
@@ -136,16 +142,31 @@ def python_register_toolchains(
         if not patches and source_platform != base_platform:
             # Per-platform settings of the plain platform key also apply to
             # its distribution variants.
-            patches = _get_platform_setting(version_info, "patches", base_platform, [])
-            patch_strip = _get_platform_setting(version_info, "patch_strip", base_platform, patch_strip)
+            patches = _get_platform_setting(
+                version_info,
+                "patches",
+                platform = base_platform,
+                default = [],
+            )
+            patch_strip = _get_platform_setting(
+                version_info,
+                "patch_strip",
+                platform = base_platform,
+                default = patch_strip,
+            )
 
         # allow passing in a tool version
         coverage_tool = None
         coverage_tool = _get_platform_setting(
             version_info,
             "coverage_tool",
-            source_platform,
-            _get_platform_setting(version_info, "coverage_tool", base_platform, None),
+            platform = source_platform,
+            default = _get_platform_setting(
+                version_info,
+                "coverage_tool",
+                platform = base_platform,
+                default = None,
+            ),
         )
         if register_coverage_tool and coverage_tool == None:
             coverage_tool = coverage_dep(
@@ -177,8 +198,13 @@ def python_register_toolchains(
             libpython = libpython or _get_platform_setting(
                 version_info,
                 "libpython",
-                source_platform,
-                _get_platform_setting(version_info, "libpython", base_platform, "auto"),
+                platform = source_platform,
+                default = _get_platform_setting(
+                    version_info,
+                    "libpython",
+                    platform = base_platform,
+                    default = "auto",
+                ),
             ),
             **kwargs
         )

@@ -17,6 +17,7 @@
 
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
+load(":common_labels.bzl", "labels")
 load(":text_util.bzl", "render")
 load(":version.bzl", "version")
 load(":visibility.bzl", "NOT_ACTUALLY_PUBLIC")
@@ -181,11 +182,10 @@ def construct_config_settings(
 
     # NOTE: The py_pbs_distribution flag reports `auto` as `install_only`, so
     # the install_only setting also matches the default.
-    pbs_distribution = Label("//python/config_settings:py_pbs_distribution")
     for distribution in ["install_only", "install_only_stripped", "full"]:
         native.config_setting(
             name = "_is_py_pbs_distribution_" + distribution,
-            flag_values = {pbs_distribution: distribution},
+            flag_values = {labels.PY_PBS_DISTRIBUTION: distribution},
             visibility = NOT_ACTUALLY_PUBLIC,
         )
 

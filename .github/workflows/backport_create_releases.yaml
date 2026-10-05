@@ -43,5 +43,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ISSUE: ${{ inputs.issue }}
         run: |
-          bazel run //dev/release -- \
+          bazel run \
+            --//python/config_settings:py_pbs_distribution=install_only_stripped \
+            //dev/release -- \
             backport-create-releases --issue=$ISSUE --no-dry-run

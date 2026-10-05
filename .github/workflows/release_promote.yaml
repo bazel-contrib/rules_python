@@ -60,7 +60,9 @@ jobs:
           ARGS+=("--remote=origin")
           ARGS+=("--no-dry-run")
           
-          bazel run //dev/release -- promote "${ARGS[@]}"
+          bazel run \
+            --//python/config_settings:py_pbs_distribution=install_only_stripped \
+            //dev/release -- promote "${ARGS[@]}"
 
   publish:
     needs: promote

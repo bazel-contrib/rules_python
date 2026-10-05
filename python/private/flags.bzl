@@ -280,7 +280,9 @@ PbsDistributionFlag = FlagEnum(
 def _pbs_distribution_flag_impl(ctx):
     value = ctx.build_setting_value
     if value not in PbsDistributionFlag.flag_values():
-        fail("Invalid value for {name}: got {value}, must be one of {allowed}".format(
+        fail((
+            "Invalid value for {name}: got {value}, must be one of {allowed}"
+        ).format(
             name = ctx.label,
             value = value,
             allowed = PbsDistributionFlag.flag_values(),

@@ -55,7 +55,11 @@ def manifest_entry_sort_key(entry):
     Returns:
       A sortable tuple where lower values are preferred.
     """
-    flavor_rank = {"full": 3, "install_only": 1, "install_only_stripped": 2}.get(entry.archive_flavor, 4)
+    flavor_rank = {
+        "full": 3,
+        "install_only": 1,
+        "install_only_stripped": 2,
+    }.get(entry.archive_flavor, 4)
     microarch = entry.microarch
     if not microarch:
         microarch_rank = 0

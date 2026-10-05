@@ -42,4 +42,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          bazel run //dev/release -- complete-sync-changelog
+          bazel run \
+            --//python/config_settings:py_pbs_distribution=install_only_stripped \
+            //dev/release -- complete-sync-changelog

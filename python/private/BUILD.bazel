@@ -338,6 +338,7 @@ bzl_library(
     name = "config_settings",
     srcs = ["config_settings.bzl"],
     deps = [
+        ":common_labels",
         ":text_util",
         ":version",
         ":visibility",

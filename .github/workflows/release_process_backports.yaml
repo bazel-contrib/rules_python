@@ -70,7 +70,9 @@ jobs:
             ARGS+=("--triggering-comment=$COMMENT_ID")
           fi
           
-          bazel run //dev/release -- process-backports \
+          bazel run \
+            --//python/config_settings:py_pbs_distribution=install_only_stripped \
+            //dev/release -- process-backports \
             --issue "$ISSUE" \
             --remote origin \
             --no-dry-run \
