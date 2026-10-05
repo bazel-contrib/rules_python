@@ -27,9 +27,7 @@ When the user asks to merge a pull request (e.g., "merge PR <number>", "merge th
      branch.
 4. **Queue Shepherding**: Periodically check `gh pr view <pr_number> --json
    state,autoMergeRequest,mergeStateStatus,mergeable`. While `state` is
-   `"OPEN"`, ensure auto-merge is enabled / queued by running `gh pr merge
-   <pr_number> --auto --squash`. If `autoMergeRequest` is null (e.g., ejected
-   from the merge queue due to a CI flake in the temporary queue branch),
-   re-enqueue it for merge by running `gh pr merge <pr_number> --auto --squash`
-   once checks are retried or green.
+   `"OPEN"`, if `autoMergeRequest` is `null` and no
+   `gh-readonly-queue/.*/pr-<pr_number>-` branch exists, re-enqueue with
+   `gh pr merge <pr_number> --auto --squash` once checks are green.
 5. **Completion Notification**: Once `state` becomes `"MERGED"`, send a high-priority message back to the parent conversation.

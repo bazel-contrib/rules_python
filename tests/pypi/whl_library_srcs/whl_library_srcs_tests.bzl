@@ -145,6 +145,49 @@ def _test_sdist_excludes_record(env):
 
 _tests.append(_test_sdist_excludes_record)
 
+def _test_pyi_srcs_includes_py_typed(env):
+    py_library_calls = []
+    m_glob = mocks.glob()
+    m_glob.results.append([])  # bin
+    m_glob.results.append([])  # rewrite-bin
+    m_glob.results.append([])  # rewrite-record
+    m_glob.results.append([])  # srcs
+    m_glob.results.append([])  # data
+    m_glob.results.append([
+        "site-packages/foo/__init__.pyi",
+        "site-packages/foo/py.typed",
+    ])  # pyi
+
+    whl_library_srcs(
+        name = "foo.whl",
+        filegroups = {},
+        native = struct(
+            filegroup = lambda **_: None,
+            config_setting = lambda **_: None,
+            glob = m_glob.glob,
+        ),
+        rules = struct(
+            py_library = lambda **kwargs: py_library_calls.append(kwargs),
+            create_inits = lambda **kwargs: [],
+            venv_rewrite_shebang = lambda **kwargs: None,
+            gen_wheel_record = lambda **kwargs: None,
+        ),
+    )
+
+    env.expect.that_collection(m_glob.calls).contains_at_least([
+        mocks.glob_call(
+            ["site-packages/**/*.pyi", "site-packages/**/py.typed"],
+            allow_empty = True,
+        ),
+    ])
+    env.expect.that_int(len(py_library_calls)).equals(1)
+    env.expect.that_collection(py_library_calls[0]["pyi_srcs"]).contains_exactly([
+        "site-packages/foo/__init__.pyi",
+        "site-packages/foo/py.typed",
+    ])
+
+_tests.append(_test_pyi_srcs_includes_py_typed)
+
 def _test_exclude_bazel_files(env):
     # Regression test: the `extracted_whl_files` glob must always exclude the
     # Bazel repo files, even when the wheel is not built from an sdist.

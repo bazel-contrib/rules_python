@@ -33,6 +33,11 @@ globs: "*.bzl,BUILD,BUILD.bazel,*.bazel"
 * **Why**: This avoids inlining the normalization as part of a complex
   expression later in the macro expansion.
 
+## `executable = True` Attributes
+* Use `allow_files = True` (with an explanatory comment), not
+  `allow_single_file = True`, when the attribute may accept `py_binary` (whose
+  `DefaultInfo.files` has multiple files).
+
 ## native.test_suite API
 * Don't forward target `tags` to `native.test_suite`; tags on test suites filter
   tests instead of setting target execution behavior.
@@ -64,6 +69,8 @@ globs: "*.bzl,BUILD,BUILD.bazel,*.bazel"
   existing files unless explicitly directed by the user.
 * **Line Length & Wrapping**: Wrap Markdown and Starlark lines to 80 columns in
   accordance with `.editorconfig`.
+  * **Long ternaries**: Use `if`/`else` statements when `a if cond else b`
+    exceeds 80 columns (`buildifier` collapses multi-line ternaries).
 
 ## Starlark Testing (`rules_testing`)
 * **`rules_testing` over `bazel_skylib`**: Always use `@rules_testing` (analysis

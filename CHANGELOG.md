@@ -43,6 +43,8 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
   in favor of the format-agnostic `lockfiles` argument, which supports `uv.lock`.
 * (toolchain) Updated default Python 3.15 runtime from `3.15.0a8` to `3.15.0rc1`
   ([#4122](https://github.com/bazel-contrib/rules_python/pull/4122)).
+* (toolchain) Updated default Python 3.15 runtime from `3.15.0rc1` to
+  `3.15.0rc2`.
 * (toolchain) Updated the default Python toolchain version from `3.11` to `3.14`
   in {obj}`python.defaults`, {obj}`python_register_toolchains`, and
   {obj}`python_register_multi_toolchains`
@@ -97,12 +99,17 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 
 {#v2-4-0-added}
 ### Added
+* (pypi) `py.typed` files from wheels are now included in the `pyi_srcs` of the
+  wheel's `py_library`, alongside `.pyi` files. The `py.typed` file of
+  `//python/runfiles` is now included in its `pyi_srcs` as well.
 * (runfiles) Added {obj}`Runfiles.CreateOrRaise` to return a `Runfiles` instance
   or raise an error if runfiles cannot be found.
 * (uv) Added {obj}`directory` attribute to {obj}`lock` to support running `uv`
   commands within subdirectories when generating lock files. Defaults to the
   package directory, set it to `None` or `""` to set it to the root of the repo
   ([#4029](https://github.com/bazel-contrib/rules_python/issues/4029)).
+
+
 
 
 {#v2-3-4}

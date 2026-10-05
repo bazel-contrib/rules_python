@@ -44,12 +44,23 @@ class GitHubActionEnv:
         comment_id: int | str = 5772601429,
         comment_url: str = "",
         repo: str = "bazel-contrib/rules_python",
+        author_association: str = "OWNER",
+        user_login: str = "test-owner",
     ) -> None:
+        comment: dict[str, object] = {
+            k: v
+            for k, v in [
+                ("id", comment_id),
+                ("html_url", comment_url),
+                ("author_association", author_association),
+            ]
+            if v
+        }
+        if user_login:
+            comment["user"] = {"login": user_login}
         payload = {
             "issue": {"number": issue_number} if issue_number else {},
-            "comment": {
-                k: v for k, v in [("id", comment_id), ("html_url", comment_url)] if v
-            },
+            "comment": comment,
             "repository": {"full_name": repo} if repo else {},
         }
         self.event_file.write_text(json.dumps(payload), encoding="utf-8")
@@ -64,11 +75,13 @@ def fixture_gha_env(tmp_path, monkeypatch) -> GitHubActionEnv:
     monkeypatch.setenv("GITHUB_OUTPUT", str(out_file))
     monkeypatch.setenv("GITHUB_ENV", str(env_file))
     monkeypatch.setenv("GITHUB_EVENT_PATH", str(event_file))
-    return GitHubActionEnv(
+    env = GitHubActionEnv(
         output_file=out_file,
         env_file=env_file,
         event_file=event_file,
     )
+    env.set_event()
+    return env
 
 
 @pytest.fixture(name="mock_add_reaction", autouse=True)
@@ -93,7 +106,7 @@ def _run_comment(
     has_backport_label: str = "false",
     comment_id: str = "999",
     repo: str = "test/repo",
-) -> None:
+) -> int:
     monkeypatch.setenv("COMMENT_BODY", comment_body)
     monkeypatch.setenv("IS_PR", is_pr)
     monkeypatch.setenv("EVENT_NUMBER", event_number)
@@ -101,7 +114,7 @@ def _run_comment(
     monkeypatch.setenv("HAS_BACKPORT_LABEL", has_backport_label)
     monkeypatch.setenv("COMMENT_ID", comment_id)
     monkeypatch.setenv("GITHUB_REPOSITORY", repo)
-    process_comment()
+    return process_comment()
 
 
 def test_release_issue_create_rc(monkeypatch, gha_env):
@@ -501,3 +514,124 @@ def test_main_cli_report_failure(
         content="-1",
     )
     mock_post_comment.assert_called_once()
+
+
+def test_allowed_user_pr_backport(monkeypatch, gha_env):
+    monkeypatch.setattr(
+        "on_comment._BACKPORT_ALLOWED_USERS", frozenset({"allowed-user"})
+    )
+    gha_env.set_event(author_association="CONTRIBUTOR", user_login="allowed-user")
+    rc = _run_comment(
+        monkeypatch,
+        "/backport",
+        is_pr="true",
+        event_number="300",
+    )
+    assert rc == 0
+    assert gha_env.read_outputs() == {
+        "command": "pr-backport",
+        "pr_number": "300",
+    }
+
+
+def test_allowed_user_release_issue_backport(monkeypatch, gha_env):
+    monkeypatch.setattr(
+        "on_comment._BACKPORT_ALLOWED_USERS", frozenset({"allowed-user"})
+    )
+    gha_env.set_event(author_association="NONE", user_login="allowed-user")
+    rc = _run_comment(
+        monkeypatch,
+        "/backport #123 #456",
+        has_release_label="true",
+    )
+    assert rc == 0
+    assert gha_env.read_outputs() == {
+        "issue_number": "100",
+        "command": "add-backports",
+        "backports": "#123,#456",
+    }
+
+
+@pytest.mark.parametrize(
+    "comment_body,is_pr,has_release_label,has_backport_label,expected_cmd",
+    [
+        ("/create-rc", "false", "true", "false", "create-rc"),
+        ("/prepare", "false", "true", "false", "prepare"),
+        ("/promote", "false", "true", "false", "promote"),
+        ("/prepare-complete", "true", "false", "false", "prepare-complete"),
+        ("/prepare", "false", "false", "true", "backport-prepare"),
+        ("/create-releases", "false", "false", "true", "backport-create-releases"),
+    ],
+)
+def test_allowed_user_disallowed_other_commands(
+    monkeypatch,
+    gha_env,
+    capsys,
+    comment_body,
+    is_pr,
+    has_release_label,
+    has_backport_label,
+    expected_cmd,
+):
+    monkeypatch.setattr(
+        "on_comment._BACKPORT_ALLOWED_USERS", frozenset({"allowed-user"})
+    )
+    gha_env.set_event(author_association="CONTRIBUTOR", user_login="allowed-user")
+    rc = _run_comment(
+        monkeypatch,
+        comment_body,
+        is_pr=is_pr,
+        has_release_label=has_release_label,
+        has_backport_label=has_backport_label,
+    )
+    assert rc == 1
+    captured = capsys.readouterr()
+    assert (
+        f"::error::User 'allowed-user' (association: 'CONTRIBUTOR') is not"
+        f" allowed to trigger command '{expected_cmd}'."
+    ) in captured.out
+
+
+def test_unauthorized_user_disallowed_backport(monkeypatch, gha_env, capsys):
+    gha_env.set_event(author_association="CONTRIBUTOR", user_login="random-user")
+    rc = _run_comment(
+        monkeypatch,
+        "/backport",
+        is_pr="true",
+        event_number="300",
+    )
+    assert rc == 1
+    captured = capsys.readouterr()
+    assert (
+        "::error::User 'random-user' (association: 'CONTRIBUTOR') is not"
+        " allowed to trigger command 'pr-backport'."
+    ) in captured.out
+
+
+@pytest.mark.parametrize("association", ["OWNER", "MEMBER", "COLLABORATOR"])
+def test_maintainer_associations_allowed_arbitrary_commands(
+    monkeypatch, gha_env, association
+):
+    gha_env.set_event(author_association=association, user_login="maintainer")
+    rc = _run_comment(
+        monkeypatch,
+        "/promote",
+        has_release_label="true",
+    )
+    assert rc == 0
+    assert gha_env.read_outputs() == {
+        "issue_number": "100",
+        "command": "promote",
+    }
+
+
+def test_non_command_comment_by_non_member_succeeds(monkeypatch, gha_env):
+    gha_env.set_event(author_association="NONE", user_login="some-user")
+    rc = _run_comment(
+        monkeypatch,
+        "Just an ordinary comment",
+        is_pr="true",
+        event_number="300",
+    )
+    assert rc == 0
+    assert gha_env.read_outputs() == {"command": "none"}
