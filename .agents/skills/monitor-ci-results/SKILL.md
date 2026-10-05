@@ -12,10 +12,11 @@ or when monitoring CI after PR updates:
 > launch duplicate monitoring jobs for the same PR.
 
 1. **Check Existing Process**: Check if a monitor script is already running for
-   **this specific PR** using `pgrep -f "monitor_remote_ci.py <pr_number>"`. Do
-   NOT use a generic grep without `<pr_number>`, as other active agent
-   conversations may be monitoring different PRs concurrently. If one is
-   already running for this PR, do not start another instance.
+   **this specific PR** using
+   `pgrep -af "[m]onitor_remote_ci.py <pr_number>"`. Do NOT use a generic grep
+   without `<pr_number>`, as other active agent conversations may be monitoring
+   different PRs concurrently. If one is already running for this PR, do not
+   start another instance.
 2. **Launch Monitoring Script**: If no monitor process is active for
    `<pr_number>`, launch the script in the background:
 ```bash

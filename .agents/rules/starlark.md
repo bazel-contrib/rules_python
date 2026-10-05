@@ -10,8 +10,11 @@ globs: "*.bzl,BUILD,BUILD.bazel,*.bazel"
 * In macro implementations, internal repository target references **MUST** be
   canonicalized using `str(Label("//path/to:target"))` so they resolve in the
   macro's module context rather than the caller's repository context.
-* Note that `python/private/common_labels.bzl` defines `labels`, a struct
-  containing common canonicalized label strings used across the project.
+* **Reuse `python/private/common_labels.bzl`**: When a target label is listed in
+  `python/private/common_labels.bzl` (or shared across multiple `.bzl` files
+  such as `flags.bzl` and `config_settings.bzl`), load `labels` from
+  `:common_labels.bzl` and use `labels.<NAME>` (or `Label(labels.<NAME>)`)
+  instead of redefining duplicate `Label("//...")` values.
 
 ## Manual Tag on Internal Macro Helper Targets
 * When macros instantiate internal helper targets (such as private rule targets
@@ -61,6 +64,9 @@ globs: "*.bzl,BUILD,BUILD.bazel,*.bazel"
 ## Code Style & Conventions
 * **Dict union (`|`)**: Use `|` instead of `dicts.add(...)` from
   `@bazel_skylib//lib:dicts.bzl` when merging dictionaries.
+* **Type Checks (`@bazel_skylib//lib:types.bzl`)**: Prefer `types.is_*` helpers
+  (e.g., `types.is_dict(x)`, `types.is_list(x)`, `types.is_string(x)`) from
+  `@bazel_skylib//lib:types.bzl` instead of `type(x)` comparisons.
 * **Non-Info Provider Naming**: Add `# buildifier: disable=name-conventions`
   above `provider()` declarations that do not end in `Info` (e.g. `*Fileset`).
 * **Docstring Formatting Invariants**: Use triple-quoted strings for multi-line

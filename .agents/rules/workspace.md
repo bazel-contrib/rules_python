@@ -20,4 +20,7 @@ basis:
 * When pushing to a checked-out PR branch from an external fork, push
   explicitly to that remote (`git push <remote> HEAD:<branch>`). Do not rely on
   a bare `git push`.
-
+* When syncing a branch with `upstream/main`, commit or stash local changes
+  *before* running `git merge upstream/main` and conclude the merge in its own
+  dedicated commit. Never run `git stash` while `MERGE_HEAD` is active, as
+  `git stash` clears `MERGE_HEAD`.

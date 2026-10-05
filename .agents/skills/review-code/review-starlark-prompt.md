@@ -12,5 +12,9 @@ in `git diff` against the project's Starlark coding rules and conventions:
 5. Check multi-line rule/macro doc arguments: use triple-quoted strings
    (`"""`), and do NOT use trailing backslashes (`\`) on opening triple-quotes.
 6. Verify analysis tests use `rules_testing`, not `bazel_skylib`.
+7. Ensure shared labels use `labels.<NAME>` from
+   `python/private/common_labels.bzl` rather than redefining `Label("//...")`.
+8. Prefer `types.is_*` helpers from `@bazel_skylib//lib:types.bzl` over
+   `type(x)` comparisons.
 
 @.agents/skills/review-code/review-report-format.md
