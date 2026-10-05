@@ -112,6 +112,12 @@ rust_crates.spec(
 rust_crates.from_specs()
 use_repo(rust_crates, "crates")
 
+# Use the Rust-based build tools when developing rules_python itself.
+register_toolchains(
+    "//dev/dev_only_toolchains:exe_zip_maker_toolchain",
+    dev_dependency = True,
+)
+
 bazel_dep(name = "other", version = "0", dev_dependency = True)
 bazel_dep(name = "another_module", version = "0", dev_dependency = True)
 

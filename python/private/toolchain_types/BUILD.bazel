@@ -1,0 +1,16 @@
+# Toolchain types used internally by rules_python.
+#
+# These are in a separate package so toolchain() registrations and rules can
+# depend on the type without loading the toolchain implementation.
+
+package(default_visibility = ["//:__subpackages__"])
+
+licenses(["notice"])
+
+# Toolchain providing the tool that creates self-executable zip files
+# (`<preamble> <zip> <output>`). It is optional: when no toolchain is
+# registered, rules fall back to the Python `//tools/zipapp:exe_zip_maker`.
+# For now, only rules_python itself registers one (a Rust build, dev-only).
+toolchain_type(
+    name = "exe_zip_maker",
+)

@@ -560,6 +560,7 @@ bzl_library(
         ":toolchain_types",
         ":transition_labels",
         ":venv_runfiles",
+        "//python/private/zipapp:py_exe_zip_maker_toolchain",
         "@bazel_skylib//lib:dicts",
         "@bazel_skylib//lib:paths",
         "@bazel_skylib//lib:structs",

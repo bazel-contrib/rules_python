@@ -1,0 +1,30 @@
+# Toolchains that are only registered when developing rules_python itself
+# (see `register_toolchains(..., dev_dependency = True)` in MODULE.bazel).
+# They are not registered in WORKSPACE mode.
+#
+# Only `toolchain()` declarations belong here; implementations live in
+# `impls/` so that registering the toolchains doesn't load the implementations.
+
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+
+package(default_visibility = ["//visibility:private"])
+
+# Whether to use the Rust implementation of exe_zip_maker. Disabled by
+# default; enable with `--//dev/dev_only_toolchains:use_rust_exe_zip_maker`.
+bool_flag(
+    name = "use_rust_exe_zip_maker",
+    build_setting_default = False,
+    visibility = ["//tests:__subpackages__"],
+)
+
+config_setting(
+    name = "is_rust_exe_zip_maker_enabled",
+    flag_values = {":use_rust_exe_zip_maker": "true"},
+)
+
+toolchain(
+    name = "exe_zip_maker_toolchain",
+    target_settings = [":is_rust_exe_zip_maker_enabled"],
+    toolchain = "//dev/dev_only_toolchains/impls:exe_zip_maker",
+    toolchain_type = "//python/private/toolchain_types:exe_zip_maker",
+)

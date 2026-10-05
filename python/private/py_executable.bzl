@@ -19,6 +19,7 @@ load("@bazel_skylib//lib:structs.bzl", "structs")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
+load("//python/private/zipapp:py_exe_zip_maker_toolchain.bzl", "get_exe_zip_maker")
 load(":attr_builders.bzl", "attrb")
 load(
     ":attributes.bzl",
@@ -68,7 +69,7 @@ load(":py_internal.bzl", "py_internal")
 load(":py_runtime_info.bzl", "DEFAULT_STUB_SHEBANG")
 load(":reexports.bzl", "BuiltinPyInfo", "BuiltinPyRuntimeInfo")
 load(":rule_builders.bzl", "ruleb")
-load(":toolchain_types.bzl", "CC_TOOLCHAIN_TYPE", "EXEC_TOOLS_TOOLCHAIN_TYPE", "LAUNCHER_MAKER_TOOLCHAIN_TYPE", TOOLCHAIN_TYPE = "TARGET_TOOLCHAIN_TYPE")
+load(":toolchain_types.bzl", "CC_TOOLCHAIN_TYPE", "EXEC_TOOLS_TOOLCHAIN_TYPE", "EXE_ZIP_MAKER_TOOLCHAIN_TYPE", "LAUNCHER_MAKER_TOOLCHAIN_TYPE", TOOLCHAIN_TYPE = "TARGET_TOOLCHAIN_TYPE")
 load(":transition_labels.bzl", "TRANSITION_LABELS")
 load(":venv_runfiles.bzl", "create_venv_app_files")
 
@@ -1122,9 +1123,11 @@ def _create_executable_zip_file(
     args.add(prelude)
     args.add(zip_file)
     args.add(output)
+    exe_zip_maker = get_exe_zip_maker(ctx)
     actions_run(
         ctx,
-        executable = ctx.attr._exe_zip_maker,
+        executable = exe_zip_maker.executable,
+        toolchain = exe_zip_maker.toolchain,
         arguments = [args],
         inputs = depset([prelude, zip_file]),
         outputs = [output],
@@ -2236,6 +2239,7 @@ def create_executable_rule_builder(implementation, **kwargs):
         toolchains = [
             ruleb.ToolchainType(TOOLCHAIN_TYPE),
             ruleb.ToolchainType(EXEC_TOOLS_TOOLCHAIN_TYPE, mandatory = False),
+            ruleb.ToolchainType(EXE_ZIP_MAKER_TOOLCHAIN_TYPE, mandatory = False),
             ruleb.ToolchainType(CC_TOOLCHAIN_TYPE, mandatory = False),
         ] + ([ruleb.ToolchainType(LAUNCHER_MAKER_TOOLCHAIN_TYPE)] if rp_config.bazel_9_or_later else []),
         cfg = dict(

@@ -20,6 +20,7 @@ implementation of the toolchain.
 
 TARGET_TOOLCHAIN_TYPE = Label("//python:toolchain_type")
 EXEC_TOOLS_TOOLCHAIN_TYPE = Label("//python:exec_tools_toolchain_type")
+EXE_ZIP_MAKER_TOOLCHAIN_TYPE = Label("//python/private/toolchain_types:exe_zip_maker")
 PY_CC_TOOLCHAIN_TYPE = Label("//python/cc:toolchain_type")
 LAUNCHER_MAKER_TOOLCHAIN_TYPE = Label("@bazel_tools//tools/launcher:launcher_maker_toolchain_type")
 CC_TOOLCHAIN_TYPE = Label("@bazel_tools//tools/cpp:toolchain_type")

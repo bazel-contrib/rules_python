@@ -18,8 +18,9 @@ load("//python/private:common_labels.bzl", "labels")
 load("//python/private:py_executable_info.bzl", "PyExecutableInfo")
 load("//python/private:py_internal.bzl", "py_internal")
 load("//python/private:py_runtime_info.bzl", "PyRuntimeInfo")
-load("//python/private:toolchain_types.bzl", "EXEC_TOOLS_TOOLCHAIN_TYPE", "LAUNCHER_MAKER_TOOLCHAIN_TYPE")
+load("//python/private:toolchain_types.bzl", "EXEC_TOOLS_TOOLCHAIN_TYPE", "EXE_ZIP_MAKER_TOOLCHAIN_TYPE", "LAUNCHER_MAKER_TOOLCHAIN_TYPE")
 load("//python/private:transition_labels.bzl", "TRANSITION_LABELS")
+load(":py_exe_zip_maker_toolchain.bzl", "get_exe_zip_maker")
 
 def _is_symlink(f):
     if hasattr(f, "is_symlink"):
@@ -225,9 +226,11 @@ def _create_self_executable_zip(ctx, preamble, zip_file):
     args.add(preamble)
     args.add(zip_file)
     args.add(pyz)
+    exe_zip_maker = get_exe_zip_maker(ctx)
     actions_run(
         ctx,
-        executable = ctx.attr._exe_zip_maker,
+        executable = exe_zip_maker.executable,
+        toolchain = exe_zip_maker.toolchain,
         arguments = [args],
         inputs = depset([preamble, zip_file]),
         outputs = [pyz],
@@ -396,7 +399,10 @@ Whether the output should be an executable zip file.
     ),
 } if not rp_config.bazel_9_or_later else {})
 
-_TOOLCHAINS = [EXEC_TOOLS_TOOLCHAIN_TYPE] + ([LAUNCHER_MAKER_TOOLCHAIN_TYPE] if rp_config.bazel_9_or_later else [])
+_TOOLCHAINS = [
+    EXEC_TOOLS_TOOLCHAIN_TYPE,
+    config_common.toolchain_type(EXE_ZIP_MAKER_TOOLCHAIN_TYPE, mandatory = False),
+] + ([LAUNCHER_MAKER_TOOLCHAIN_TYPE] if rp_config.bazel_9_or_later else [])
 
 _COMMON_RULE_DOC = """
 

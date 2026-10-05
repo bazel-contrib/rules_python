@@ -1,0 +1,15 @@
+# Toolchain implementations for the dev-only toolchains.
+#
+# These are kept in a separate package from the `toolchain()` declarations so
+# that toolchain resolution only needs to load this package (and the tool's
+# dependencies) when a toolchain is actually selected.
+
+load("//python/private/zipapp:py_exe_zip_maker_toolchain.bzl", "py_exe_zip_maker_toolchain")  # buildifier: disable=bzl-visibility
+
+package(default_visibility = ["//dev/dev_only_toolchains:__pkg__"])
+
+# Use the Rust implementation of exe_zip_maker instead of the Python one.
+py_exe_zip_maker_toolchain(
+    name = "exe_zip_maker",
+    exe_zip_maker = "//crates/exe_zip_maker",
+)

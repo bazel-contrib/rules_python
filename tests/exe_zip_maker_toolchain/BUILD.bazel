@@ -1,0 +1,5 @@
+load(":exe_zip_maker_toolchain_tests.bzl", "exe_zip_maker_toolchain_test_suite")
+
+exe_zip_maker_toolchain_test_suite(
+    name = "exe_zip_maker_toolchain_tests",
+)
