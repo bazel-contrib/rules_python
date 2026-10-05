@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/emirpasic/gods/sets/treeset"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -286,11 +287,30 @@ func TestPytestPluginsLocationsAndComments(t *testing.T) {
 	output, err := p.Parse(context.Background())
 	assert.NoError(t, err)
 	assert.Equal(t, []Module{
-		{Name: "foo.bar", LineNumber: 2, Filepath: "conftest.py"},
-		{Name: "foo.baz", LineNumber: 3, Filepath: "conftest.py"},
-		{Name: "foo.typing", LineNumber: 6, Filepath: "conftest.py", TypeCheckingOnly: true},
+		{Name: "foo.bar", LineNumber: 2, Filepath: "conftest.py", PytestPlugin: true},
+		{Name: "foo.baz", LineNumber: 3, Filepath: "conftest.py", PytestPlugin: true},
+		{Name: "foo.typing", LineNumber: 6, Filepath: "conftest.py", TypeCheckingOnly: true, PytestPlugin: true},
 	}, output.Modules)
 	assert.Equal(t, []Comment{"# gazelle:ignore foo.bar"}, output.Comments)
+}
+
+func TestPluginAndImportDependenciesRemainDistinct(t *testing.T) {
+	t.Parallel()
+	for _, pluginFirst := range []bool{false, true} {
+		modules := treeset.NewWith(moduleComparator)
+		ordinary := Module{Name: "logging", TypeCheckingOnly: true}
+		plugin := Module{Name: "logging", PytestPlugin: true}
+		if pluginFirst {
+			addModuleToTreeSet(modules, plugin)
+			addModuleToTreeSet(modules, ordinary)
+		} else {
+			addModuleToTreeSet(modules, ordinary)
+			addModuleToTreeSet(modules, plugin)
+		}
+		assert.Equal(t, []interface{}{ordinary, plugin}, modules.Values())
+		addModuleToTreeSet(modules, Module{Name: "logging", PytestPlugin: true, TypeCheckingOnly: true})
+		assert.Equal(t, []interface{}{ordinary, plugin}, modules.Values())
+	}
 }
 
 func TestParseComments(t *testing.T) {

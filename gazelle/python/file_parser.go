@@ -391,6 +391,7 @@ func (p *FileParser) parsePytestPlugins(node *sitter.Node) {
 				LineNumber:       node.StartPoint().Row + 1,
 				Filepath:         p.relFilepath,
 				TypeCheckingOnly: p.inTypeCheckingBlock,
+				PytestPlugin:     true,
 			})
 		}
 	}

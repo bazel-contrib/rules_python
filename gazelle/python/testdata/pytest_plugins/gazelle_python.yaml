@@ -1,5 +1,6 @@
 manifest:
   modules_mapping:
+    _pytest: pytest
     external_plugin: external_plugin
     pytest: pytest
   pip_deps_repository_name: gazelle_python_test
