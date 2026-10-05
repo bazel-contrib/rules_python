@@ -1,1 +1,1 @@
-pytest_plugins = "fixtures"
+pytest_plugins = "database_fixtures"

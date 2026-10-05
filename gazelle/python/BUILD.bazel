@@ -124,6 +124,7 @@ go_test(
     ],
     embed = [":python"],
     deps = [
+        "@com_github_emirpasic_gods//sets/treeset:go_default_library",
         "@com_github_stretchr_testify//assert",
     ],
 )

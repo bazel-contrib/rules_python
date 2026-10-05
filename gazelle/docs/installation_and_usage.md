@@ -218,6 +218,9 @@ pytest_plugins = ["myapp.testing.database", "myapp.testing.http"]
 Literal strings, lists, and tuples are supported, including annotated assignments
 and pytest's comma-separated string form. Existing resolution directives and
 dependency-ignore annotations apply as they do to normal imports.
+Built-in plugin aliases such as `pytester`, `capture`, and `logging` resolve to
+their `_pytest` modules from the pytest distribution. Ignores and resolution
+overrides still match the declared alias. Ordinary imports are not remapped.
 
 Conditional declarations are included conservatively. Function/class-local
 declarations are ignored. Literal entries in mixed lists are resolved, but dynamic
