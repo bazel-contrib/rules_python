@@ -29,6 +29,19 @@ Unreleased changes are tracked as individual files in the [news/](./news)
 directory, or view the [latest generated
 changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 
+{#v2-4-2}
+## [2.4.2] - 2026-10-08
+
+[2.4.2]: https://github.com/bazel-contrib/rules_python/releases/tag/2.4.2
+
+{#v2-4-2-fixed}
+### Fixed
+* (zipapp) Shared libraries that a {obj}`py_zipapp_binary` reaches through
+  Bazel's `_solib` symlinks are stored as files again, instead of as symlinks to
+  absolute paths in the build machine's output base that dangle wherever the
+  zipapp runs.
+
+
 {#v2-4-1}
 ## [2.4.1] - 2026-10-05
 
