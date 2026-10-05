@@ -1,0 +1,89 @@
+# Builds `//dev/release_artifacts:artifacts_for_release` natively for each
+# platform; see dev/release_artifacts/build.sh.
+#
+# For now, this only verifies that the artifacts build; they aren't attached to
+# releases yet.
+name: "Release: Build Tools"
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "The git ref (e.g. release tag) to build"
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "The git ref (e.g. release tag) to build. Defaults to the selected ref."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: Build ${{ matrix.triple }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      # Report the result of every platform instead of stopping at the first
+      # failure.
+      fail-fast: false
+      matrix:
+        include:
+          - triple: aarch64-apple-darwin
+            runner: macos-15
+          - triple: aarch64-pc-windows-msvc
+            runner: windows-11-arm
+          - triple: aarch64-unknown-linux-gnu
+            runner: ubuntu-24.04-arm
+          - triple: x86_64-apple-darwin
+            runner: macos-15-intel
+          - triple: x86_64-pc-windows-msvc
+            runner: windows-2022
+          - triple: x86_64-unknown-linux-gnu
+            runner: ubuntu-24.04
+    env:
+      REF: ${{ inputs.ref || github.ref_name }}
+      TRIPLE: ${{ matrix.triple }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: Setup Bazel
+        uses: bazel-contrib/setup-bazel@0.19.0
+        with:
+          # Windows images also have a fixed-version `bazel` on PATH. 1.20.0,
+          # used by the other workflows, has no windows-arm64 build.
+          bazelisk-version: 1.29.0
+
+      # Release commands run main's workflows, even for patch releases of older
+      # release branches, which don't have the script; skip those.
+      - name: Build artifacts
+        id: build
+        if: hashFiles('dev/release_artifacts/build.sh') != ''
+        run: dev/release_artifacts/build.sh "$REF"
+
+      # build.sh only sets `files` if the build succeeded. Otherwise, it adds a
+      # warning instead of failing, since releases don't use the files yet.
+      - name: Verify artifacts
+        if: steps.build.outputs.files != ''
+        run: dev/release_artifacts/verify.sh "$TRIPLE"
+
+      # Stores the files with this workflow run so they can be downloaded from
+      # the run's page. Nothing is added to the GitHub release.
+      - name: Upload artifacts
+        if: steps.build.outputs.files != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-tools-${{ matrix.triple }}
+          path: ${{ steps.build.outputs.files }}
+          if-no-files-found: error

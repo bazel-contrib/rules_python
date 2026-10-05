@@ -67,6 +67,12 @@ you can set the `publish_to_pypi` input to `false`:
 gh workflow run release_publish.yaml --ref <TAG> -f publish_to_pypi=false
 ```
 
+### Prebuilt tools
+
+The release workflow also builds `//dev/release_artifacts:artifacts_for_release`
+for each platform to verify it builds. For now, the files aren't attached to
+the release.
+
 ### Manually publishing to PyPI
 
 If PyPI publishing failed or was skipped during the main release, the PyPI

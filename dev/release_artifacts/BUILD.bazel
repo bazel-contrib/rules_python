@@ -1,0 +1,20 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
+load(":release_files.bzl", "release_files")
+
+package(default_visibility = ["//:__subpackages__"])
+
+# Files that the release workflow builds for each platform; see build.sh.
+release_files(
+    name = "artifacts_for_release",
+    srcs = ["//crates/exe_zip_maker"],
+    # Under WORKSPACE, rules_rust is a stub without the rustc flags setting
+    # that release_files sets, so building this would fail.
+    tags = [] if BZLMOD_ENABLED else ["manual"],
+)
+
+bzl_library(
+    name = "release_files",
+    srcs = ["release_files.bzl"],
+    deps = ["//python/private:common_labels"],
+)
