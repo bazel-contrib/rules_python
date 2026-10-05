@@ -1,7 +1,34 @@
+load("@pypi//:requirements.bzl", "all_requirements", "requirement")
 load("@rules_python//python:py_binary.bzl", "py_binary")
 load("@rules_python//python:py_test.bzl", "py_test")
 
 package(default_visibility = ["//visibility:public"])
+
+# `requirement()` from the unified hub normalizes the name and resolves
+# through the venv flag like a plain `@pypi//<pkg>` label.
+py_test(
+    name = "test_requirement_default",
+    srcs = ["test_default.py"],
+    main = "test_default.py",
+    deps = [requirement("Colorama")],
+)
+
+py_test(
+    name = "test_requirement_a",
+    srcs = ["test_a.py"],
+    config_settings = {
+        "@rules_python//python/config_settings:venv": "pypi_a",
+    },
+    main = "test_a.py",
+    deps = [requirement("colorama")],
+)
+
+# `all_requirements` names the default hub's (pypi_b's) packages.
+py_test(
+    name = "test_all_requirements",
+    srcs = ["test_all_requirements.py"],
+    deps = all_requirements,
+)
 
 py_test(
     name = "test_default",

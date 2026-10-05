@@ -121,6 +121,13 @@ Shared library targets can simply depend on the unified hub (e.g.,
 `@pypi//numpy`), and the dependency will automatically resolve to the correct
 wheel version from the active hub during the build.
 
+The unified hub also generates a `requirements.bzl` with the same macros as a
+concrete hub's, so `load("@pypi//:requirements.bzl", "requirement")` keeps
+working after a hub that used to be named `pypi` is renamed, and
+`requirement("numpy")` routes through the active hub like `@pypi//numpy`. Its
+`all_requirements` and the other `all_*` lists are fixed at loading time, so
+they name the packages of the `default_hub`.
+
 ### Declaring Abstract Dependencies (pip.dep)
 
 :::{versionadded} 2.2.0

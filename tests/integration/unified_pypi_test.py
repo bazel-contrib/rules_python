@@ -13,6 +13,15 @@ class UnifiedPypiTest(runner.TestCase):
     def test_transitioned_hub(self):
         self.run_bazel("test", "//:test_a")
 
+    def test_requirement_macro_default_hub(self):
+        self.run_bazel("test", "//:test_requirement_default")
+
+    def test_requirement_macro_transitioned_hub(self):
+        self.run_bazel("test", "//:test_requirement_a")
+
+    def test_all_requirements_lists_default_hub(self):
+        self.run_bazel("test", "//:test_all_requirements")
+
     def test_cli_override(self):
         self.run_bazel(
             "run",
