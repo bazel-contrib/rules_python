@@ -3,9 +3,15 @@
 # These are in a separate package so toolchain() registrations and rules can
 # depend on the type without loading the toolchain implementation.
 
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
+
 package(default_visibility = ["//:__subpackages__"])
 
 licenses(["notice"])
+
+distribution_filegroup(
+    name = "distribution",
+)
 
 # Toolchain providing the tool that creates self-executable zip files
 # (`<preamble> <zip> <output>`). It is optional: when no toolchain is
