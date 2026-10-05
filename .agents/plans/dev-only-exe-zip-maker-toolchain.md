@@ -38,7 +38,8 @@ Introduce a dedicated, optional toolchain type for the `exe_zip_maker` tool:
   tool). This keeps users and WORKSPACE mode unchanged: no new toolchain
   registration is required.
 * Gated by a flag, disabled by default:
-  `--//dev/dev_only_toolchains:use_rust_exe_zip_maker` (a `bool_flag` +
+  `--//dev/dev_only_toolchains:use_rust_exe_zip_maker=yes|no|auto` (a
+  `string_flag`; `auto` currently behaves as `no`) +
   `config_setting` used as the `toolchain()`'s `target_settings`).
 * Dev-only registration: the `toolchain()` lives in
   `dev/dev_only_toolchains/` and its `py_exe_zip_maker_toolchain`
@@ -90,7 +91,8 @@ zip_main_maker) get their own toolchain types in the same package.
       `PyZipAppCreateExecutableZip` invoke `tools/zipapp/exe_zip_maker_.py`.
 - [x] News entry: skipped; dev-only, no user-visible behavior change
       (same as PR #4151).
-- [ ] Create PR (pending user go-ahead).
+- [x] Create PR: draft #4215
+      (https://github.com/bazel-contrib/rules_python/pull/4215).
 
 ## Progress log
 

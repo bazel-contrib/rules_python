@@ -5,21 +5,30 @@
 # Only `toolchain()` declarations belong here; implementations live in
 # `impls/` so that registering the toolchains doesn't load the implementations.
 
-load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 
 package(default_visibility = ["//visibility:private"])
 
-# Whether to use the Rust implementation of exe_zip_maker. Disabled by
-# default; enable with `--//dev/dev_only_toolchains:use_rust_exe_zip_maker`.
-bool_flag(
+# Whether to use the Rust implementation of exe_zip_maker.
+# * `yes`: use it.
+# * `no`: use the built-in Python implementation.
+# * `auto`: let rules_python decide. Currently the same as `no`.
+#
+# Enable with `--//dev/dev_only_toolchains:use_rust_exe_zip_maker=yes`.
+string_flag(
     name = "use_rust_exe_zip_maker",
-    build_setting_default = False,
+    build_setting_default = "auto",
+    values = [
+        "auto",
+        "no",
+        "yes",
+    ],
     visibility = ["//tests:__subpackages__"],
 )
 
 config_setting(
     name = "is_rust_exe_zip_maker_enabled",
-    flag_values = {":use_rust_exe_zip_maker": "true"},
+    flag_values = {":use_rust_exe_zip_maker": "yes"},
 )
 
 toolchain(

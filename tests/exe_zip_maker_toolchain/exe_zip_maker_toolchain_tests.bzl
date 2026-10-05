@@ -36,7 +36,7 @@ def _test_py_binary_uses_toolchain_exe_zip_maker(name):
         target = name + "_subject",
         config_settings = {
             labels.BUILD_PYTHON_ZIP: True,
-            _USE_RUST_FLAG: True,
+            _USE_RUST_FLAG: "yes",
         } | maybe_builtin_build_python_zip("true"),
         attr_values = {"target_compatible_with": SUPPORTS_BZLMOD},
     )
@@ -64,7 +64,7 @@ def _test_py_binary_flag_disabled_uses_python_exe_zip_maker(name):
         target = name + "_subject",
         config_settings = {
             labels.BUILD_PYTHON_ZIP: True,
-            _USE_RUST_FLAG: False,
+            _USE_RUST_FLAG: "no",
         } | maybe_builtin_build_python_zip("true"),
         attr_values = {"target_compatible_with": SUPPORTS_BZLMOD},
     )
@@ -96,7 +96,7 @@ def _test_py_zipapp_uses_toolchain_exe_zip_maker(name):
         impl = _test_py_zipapp_uses_toolchain_exe_zip_maker_impl,
         target = name + "_subject",
         config_settings = {
-            _USE_RUST_FLAG: True,
+            _USE_RUST_FLAG: "yes",
         },
         attr_values = {"target_compatible_with": SUPPORTS_BZLMOD},
     )
