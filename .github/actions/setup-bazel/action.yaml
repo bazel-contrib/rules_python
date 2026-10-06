@@ -1,0 +1,26 @@
+name: "Setup Bazel"
+description: "Configure Bazel with caching for GitHub Actions workflows"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Bazel
+      uses: bazel-contrib/setup-bazel@0.19.0
+      with:
+        bazelisk-cache: true
+        disk-cache: true
+        # Files hashed to compute the repository cache key. If only `true` is
+        # passed, only MODULE.bazel/WORKSPACE* are hashed, so lockfile-only
+        # updates would get a cache hit on the old key and skip saving newly
+        # downloaded wheels.
+        repository-cache: |
+          - MODULE.bazel
+          - dev/requirements.txt
+          - dev/uv.lock
+          - tools/publish/requirements_linux.txt
+        bazelrc: |
+          # .bazelrc enables --config=pyrefly by default; disable the pyrefly
+          # output group here so operational workflows don't download the
+          # pyrefly toolchain or type-check targets before running them.
+          build --output_groups=-pyrefly
+          build --//python/config_settings:py_pbs_distribution=install_only_stripped

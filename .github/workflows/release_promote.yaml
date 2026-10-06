@@ -34,9 +34,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Bazel
-        uses: bazel-contrib/setup-bazel@0.19.0
-        with:
-          bazelisk-version: 1.20.0
+        uses: ./.github/actions/setup-bazel
 
       - name: Configure Git Identity
         run: |
