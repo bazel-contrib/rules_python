@@ -29,6 +29,17 @@ Unreleased changes are tracked as individual files in the [news/](./news)
 directory, or view the [latest generated
 changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 
+{#v2-4-1}
+## [2.4.1] - 2026-10-06
+
+[2.4.1]: https://github.com/bazel-contrib/rules_python/releases/tag/2.4.1
+
+{#v2-4-1-changed}
+### Changed
+* (toolchain) Updated default Python 3.15 runtime from `3.15.0rc2` to
+  `3.15.0rc3`.
+
+
 {#v2-4-0}
 ## [2.4.0] - 2026-09-22
 
