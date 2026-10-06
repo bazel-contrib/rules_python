@@ -207,6 +207,7 @@ def build_config(
         A struct with the configuration.
     """
     default_hub = None
+    unified_hub_requirements_bzl = False
     defaults = {
         "platforms": default_platforms(),
         "python_version": None,
@@ -221,6 +222,8 @@ def build_config(
                     if default_hub:
                         fail("Duplicate pip.default tag: only one explicit default PyPI hub is allowed.")
                     default_hub = tag.default_hub
+            if tag.unified_hub_requirements_bzl and mod.is_root:
+                unified_hub_requirements_bzl = True
             pyproject_toml = tag.pyproject_toml
             if pyproject_toml:
                 pyproject = read_pyproject(module_ctx, pyproject_toml)
@@ -270,6 +273,7 @@ def build_config(
         },
         enable_pipstar_extract = enable_pipstar_extract,
         toml_decode = toml.decode,
+        unified_hub_requirements_bzl = unified_hub_requirements_bzl,
     )
 
 def parse_modules(
@@ -482,6 +486,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
         facts = simpleapi_cache.get_facts(),
         hub_group_map = hub_group_map,
         hub_whl_map = hub_whl_map,
+        unified_hub_requirements_bzl = config.unified_hub_requirements_bzl,
         whl_libraries = whl_libraries,
         whl_mods = whl_mods,
         platform_config_settings = {
@@ -535,6 +540,7 @@ def _create_unified_hub_repo(mods):
         extra_aliases = extra_aliases,
         hubs = hubs,
         packages = packages,
+        requirements_bzl = mods.unified_hub_requirements_bzl,
     )
 
 def _pip_impl(module_ctx):
@@ -752,6 +758,26 @@ This is designed to work with dependency management tools like Renovate.
 :::
 
 :::{versionadded} 2.3.0
+:::
+""",
+    ),
+    "unified_hub_requirements_bzl": attr.bool(
+        default = False,
+        doc = """\
+Generate a `requirements.bzl` in the [Unified @pypi Hub](unified-pypi-hub) with
+the per-package macros of a concrete hub's: `requirement`, `whl_requirement`,
+`data_requirement` and `dist_info_requirement`. The labels they return are in
+the unified hub, so they follow {flag}`--venv` like `@pypi//<pkg>`.
+
+This is a migration aid for a repository whose hub used to be named `pypi`:
+after renaming it, its existing `load("@pypi//:requirements.bzl", "requirement")`
+calls keep working and can move to `@pypi//<pkg>` labels one at a time. The
+`all_*` lists are not generated, since they are fixed at loading time and could
+only list one hub's packages; load those from a concrete hub.
+
+Only the root module's value is used.
+
+:::{versionadded} VERSION_NEXT_FEATURE
 :::
 """,
     ),

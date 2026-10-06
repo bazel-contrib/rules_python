@@ -7,10 +7,7 @@ _ROOT_BUILD_TMPL = """\
 load("@rules_python//python/private/pypi:unified_hub_setup.bzl", "define_venv_flag_config_settings")
 
 package(default_visibility = ["//visibility:public"])
-
-# Ensure the `requirements.bzl` source can be accessed by stardoc, since users load() from it
-exports_files(["requirements.bzl"])
-
+{exports_requirements_bzl}
 define_venv_flag_config_settings(
     name = "venv_config_settings",
     hubs = {hubs},
@@ -29,6 +26,11 @@ define_pypi_package_targets(
     hubs = {hubs},
     pkg_hubs = {pkg_hubs},
 )
+"""
+
+_EXPORTS_REQUIREMENTS_BZL = """
+# Ensure the `requirements.bzl` source can be accessed by stardoc, since users load() from it
+exports_files(["requirements.bzl"])
 """
 
 # The per-package macros of a concrete hub's requirements.bzl. The `all_*`
@@ -62,7 +64,10 @@ def _unified_hub_repo_impl(rctx):
     # 1. Generate Root BUILD.bazel with shared config settings
     rctx.file(
         "BUILD.bazel",
-        _ROOT_BUILD_TMPL.format(hubs = hubs),
+        _ROOT_BUILD_TMPL.format(
+            exports_requirements_bzl = _EXPORTS_REQUIREMENTS_BZL if rctx.attr.requirements_bzl else "",
+            hubs = hubs,
+        ),
     )
 
     # 2. Organize extra aliases by package
@@ -87,8 +92,8 @@ def _unified_hub_repo_impl(rctx):
             ),
         )
 
-    # 4. Generate requirements.bzl with a concrete hub's per-package macros, so
-    # a hub renamed away from the reserved "pypi" name keeps its
+    # 4. Optionally generate requirements.bzl with a concrete hub's per-package
+    # macros, so a hub renamed away from the reserved "pypi" name keeps its
     # `load("@pypi//:requirements.bzl", "requirement")` users working. The
     # macros return labels in this repo, so they route through the venv flag
     # like any other `@pypi//<pkg>` label.
@@ -97,11 +102,12 @@ def _unified_hub_repo_impl(rctx):
     # always uniquely identify a repository, as the labels are being passed as
     # a string and the resolution of the label happens at the call-site of the
     # `requirement`, et al. macros.
-    macro_tmpl = "@@{name}//{{}}:{{}}".format(name = rctx.attr.name)
-    rctx.file(
-        "requirements.bzl",
-        _REQUIREMENTS_BZL_TMPL.replace("%%MACRO_TMPL%%", macro_tmpl),
-    )
+    if rctx.attr.requirements_bzl:
+        macro_tmpl = "@@{name}//{{}}:{{}}".format(name = rctx.attr.name)
+        rctx.file(
+            "requirements.bzl",
+            _REQUIREMENTS_BZL_TMPL.replace("%%MACRO_TMPL%%", macro_tmpl),
+        )
 
 unified_hub_repo = repository_rule(
     implementation = _unified_hub_repo_impl,
@@ -120,11 +126,15 @@ unified_hub_repo = repository_rule(
             mandatory = True,
             doc = "Dictionary mapping package names to a list of hubs that contain them.",
         ),
+        "requirements_bzl": attr.bool(
+            default = False,
+            doc = "Whether to generate a requirements.bzl with the per-package `requirement` macros.",
+        ),
     },
     doc = "Private repository rule creating the automatic Unified PyPI Hub.",
 )
 
-def unified_workspace_hub_repo(name, hubs, default_hub = None, extra_aliases = {}):
+def unified_workspace_hub_repo(name, hubs, default_hub = None, extra_aliases = {}, requirements_bzl = False):
     """Creates a Unified PyPI Hub repository for WORKSPACE mode by loading requirements from hubs.
 
     Args:
@@ -133,6 +143,8 @@ def unified_workspace_hub_repo(name, hubs, default_hub = None, extra_aliases = {
               e.g. {"dev_pip": dev_pip_requirements, "pypi_alpha": pypi_alpha_requirements}
         default_hub: Optional default hub name.
         extra_aliases: Dictionary mapping 'package:alias' to a list of hubs that support it.
+        requirements_bzl: Whether to generate a requirements.bzl with the
+            per-package `requirement` macros.
     """
     packages = {}
     for hub_name, req_map in hubs.items():
@@ -151,4 +163,5 @@ def unified_workspace_hub_repo(name, hubs, default_hub = None, extra_aliases = {
         extra_aliases = extra_aliases,
         hubs = sorted(hubs.keys()),
         packages = packages,
+        requirements_bzl = requirements_bzl,
     )

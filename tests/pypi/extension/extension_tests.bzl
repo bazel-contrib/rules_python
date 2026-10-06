@@ -52,6 +52,7 @@ def _default(
         os_name = None,
         platform = None,
         pyproject_toml = None,
+        unified_hub_requirements_bzl = False,
         whl_platform_tags = None,
         whl_abi_tags = None):
     return struct(
@@ -66,6 +67,7 @@ def _default(
         os_name = os_name,
         platform = platform,
         pyproject_toml = pyproject_toml,
+        unified_hub_requirements_bzl = unified_hub_requirements_bzl,
         whl_abi_tags = whl_abi_tags or [],
         whl_platform_tags = whl_platform_tags or [],
     )
@@ -120,6 +122,7 @@ def _parse_modules(env, **kwargs):
             exposed_packages = subjects.dict,
             hub_group_map = subjects.dict,
             hub_whl_map = subjects.dict,
+            unified_hub_requirements_bzl = subjects.bool,
             whl_libraries = subjects.dict,
             whl_mods = subjects.dict,
         ),
@@ -496,6 +499,66 @@ def _test_default_hub_precedence(env):
     pypi.default_hub().equals("other_pypi")
 
 _tests.append(_test_default_hub_precedence)
+
+def _parse_unified_hub_requirements_bzl(env, *modules):
+    return _parse_modules(
+        env,
+        module_ctx = _pypi_mock_mctx(
+            os_name = "linux",
+            arch_name = "x86_64",
+            *modules
+        ),
+        available_interpreters = {
+            "python_3_15_host": "unit_test_interpreter_target",
+        },
+        minor_mapping = {"3.15": "3.15.19"},
+    )
+
+def _unified_hub_requirements_bzl_mod(name, is_root, unified_hub_requirements_bzl):
+    return _mod(
+        name = name,
+        is_root = is_root,
+        default = _default_tags_default + [
+            _default(unified_hub_requirements_bzl = unified_hub_requirements_bzl),
+        ],
+        parse = [
+            _parse(
+                hub_name = name + "_pypi",
+                python_version = "3.15",
+                simpleapi_skip = ["simple"],
+                requirements_lock = "requirements.txt",
+            ),
+        ],
+    )
+
+def _test_unified_hub_requirements_bzl_off_by_default(env):
+    pypi = _parse_unified_hub_requirements_bzl(
+        env,
+        _unified_hub_requirements_bzl_mod("root", is_root = True, unified_hub_requirements_bzl = False),
+    )
+    pypi.unified_hub_requirements_bzl().equals(False)
+
+_tests.append(_test_unified_hub_requirements_bzl_off_by_default)
+
+def _test_unified_hub_requirements_bzl_root_opt_in(env):
+    pypi = _parse_unified_hub_requirements_bzl(
+        env,
+        _unified_hub_requirements_bzl_mod("root", is_root = True, unified_hub_requirements_bzl = True),
+    )
+    pypi.unified_hub_requirements_bzl().equals(True)
+
+_tests.append(_test_unified_hub_requirements_bzl_root_opt_in)
+
+def _test_unified_hub_requirements_bzl_ignored_outside_root(env):
+    """Only the root module decides whether the unified hub gets a requirements.bzl."""
+    pypi = _parse_unified_hub_requirements_bzl(
+        env,
+        _unified_hub_requirements_bzl_mod("root", is_root = True, unified_hub_requirements_bzl = False),
+        _unified_hub_requirements_bzl_mod("rules_python", is_root = False, unified_hub_requirements_bzl = True),
+    )
+    pypi.unified_hub_requirements_bzl().equals(False)
+
+_tests.append(_test_unified_hub_requirements_bzl_ignored_outside_root)
 
 def _test_extension_dep(env):
     pypi = _parse_modules(
