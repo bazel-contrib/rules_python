@@ -8,6 +8,7 @@ from dev.release.gh import (
     GetPrError,
     GitHub,
     InvalidPrRefError,
+    format_complete_issue_warning,
 )
 from dev.release.git import Git
 
@@ -221,3 +222,41 @@ def test_create_pr_generic_exception_raises_create_pr_error(gh, auto_patch_cmd_h
         exc_info.value
     )
     assert exc_info.value.__cause__ is err
+
+
+def test_partition_open_tracking_issues(mock_gh):
+    active_num = mock_gh.create_issue(
+        title="Release 2.1.0",
+        body="## Checklist\n- [ ] Prepare Release\n- [ ] Tag Final\n",
+        labels=["type: release"],
+    )
+    complete_num = mock_gh.create_issue(
+        title="Release 2.0.1",
+        body="- [x] Tag Final | status=done tag=2.0.1 commit= abcdef12\n",
+        labels=["type: release"],
+    )
+    # Not a release tracking issue; must be ignored entirely.
+    mock_gh.create_issue(
+        title="Backport #42",
+        body="- [x] Tag Final\n",
+        labels=["type: backport-pr"],
+    )
+
+    active, complete = mock_gh.partition_open_tracking_issues()
+
+    assert [i["number"] for i in active] == [active_num]
+    assert [i["number"] for i in complete] == [complete_num]
+
+
+def test_partition_open_tracking_issues_none_open(mock_gh):
+    assert mock_gh.partition_open_tracking_issues() == ([], [])
+
+
+def test_format_complete_issue_warning():
+    msg = format_complete_issue_warning({"number": 123, "title": "Release 2.0.1"})
+    assert msg == (
+        "Ignoring open release tracking issue #123 (Release 2.0.1): its 'Tag"
+        " Final' task is done, so the release is complete. Consider closing it."
+    )
+    # Callers add the annotation prefix themselves.
+    assert not msg.startswith("::")

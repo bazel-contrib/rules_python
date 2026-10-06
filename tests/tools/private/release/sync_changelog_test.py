@@ -226,6 +226,77 @@ def test_sync_changelog_multiple_open_issues_fails(mock_git, mock_gh):
     mock_git.fetch.assert_not_called()
 
 
+def test_sync_changelog_auto_discover_ignores_complete_release(
+    mocker, mock_git, mock_gh
+):
+    # A tagged-but-unclosed release issue beside the active one must not
+    # trigger the "multiple open issues" error; the active one is used.
+    mock_process_news_class = mocker.patch("dev.release.sync_changelog.ProcessNews")
+    mock_process_news_instance = MagicMock()
+    mock_process_news_instance.run.return_value = 0
+    mock_process_news_class.return_value = mock_process_news_instance
+
+    args = argparse.Namespace(
+        issue=None,
+        remote="origin",
+        prs=None,
+        release_date=None,
+    )
+    complete_body = """
+## Checklist
+- [x] Sync Changelog #100 | status=done
+- [x] Tag Final | status=done tag=1.9.1 commit= abcdef12
+"""
+    mock_gh.issues[122] = {
+        "number": 122,
+        "title": "Release 1.9.1",
+        "body": complete_body,
+        "labels": ["type: release"],
+    }
+    mock_gh.issues[123] = {
+        "number": 123,
+        "title": "Release 2.0.0",
+        "body": """
+## Checklist
+- [ ] Sync Changelog #124
+- [ ] Tag Final
+""",
+        "labels": ["type: release"],
+    }
+    mock_git.status.side_effect = ["", "M CHANGELOG.md"]
+
+    result = SyncChangelog(args, mock_git, mock_gh).run()
+
+    assert result == 0
+    assert (
+        "- [ ] Sync Changelog #124 | status=pending pr=#1001"
+        in mock_gh.get_issue_body(123)
+    )
+    assert mock_gh.get_issue_body(122) == complete_body
+    assert 122 not in mock_gh.issue_comments
+
+
+def test_sync_changelog_auto_discover_only_complete_release_fails(mock_git, mock_gh):
+    args = argparse.Namespace(
+        issue=None,
+        remote="origin",
+        prs=None,
+        release_date=None,
+    )
+    mock_gh.issues[122] = {
+        "number": 122,
+        "title": "Release 1.9.1",
+        "body": "- [x] Tag Final | status=done tag=1.9.1 commit= abcdef12\n",
+        "labels": ["type: release"],
+    }
+
+    result = SyncChangelog(args, mock_git, mock_gh).run()
+
+    assert result == 1
+    mock_git.fetch.assert_not_called()
+    assert 122 not in mock_gh.issue_comments
+
+
 def test_sync_changelog_specific_prs_arg(mocker, mock_git, mock_gh):
     mock_process_news_class = mocker.patch("dev.release.sync_changelog.ProcessNews")
     mock_process_news_instance = MagicMock()

@@ -12,7 +12,7 @@ from typing import (
     override,  # pyrefly: ignore[missing-module-attribute] -- override available in Python 3.12+
 )
 
-from dev.release.release_issue import BackportTask
+from dev.release.release_issue import BackportTask, is_release_complete
 from dev.release.shell import run_cmd
 
 # GitHub label types
@@ -230,6 +230,22 @@ class InvalidPrRefError(ValueError):
     pass
 
 
+def format_complete_issue_warning(issue: IssueDict) -> str:
+    """Formats the warning for an open tracking issue whose release is complete.
+
+    Args:
+        issue: The open release tracking issue being ignored.
+
+    Returns:
+        A one-line message, without any `::warning::` prefix.
+    """
+    return (
+        f"Ignoring open release tracking issue #{issue['number']}"
+        f" ({issue['title']}): its 'Tag Final' task is done, so the release is"
+        " complete. Consider closing it."
+    )
+
+
 class GitHubInterface(abc.ABC):
     """Abstract interface for GitHub operations."""
 
@@ -392,6 +408,31 @@ class GitHubInterface(abc.ABC):
         Returns:
             List of matching open release tracking issue dictionaries.
         """
+
+    def partition_open_tracking_issues(
+        self,
+    ) -> tuple[list[IssueDict], list[IssueDict]]:
+        """Splits open release tracking issues into active and complete ones.
+
+        An open tracking issue whose release has already been tagged (its
+        "Tag Final" task is done) is complete; it just hasn't been closed.
+        Commands looking for the release currently in progress should only
+        consider the active issues, and may want to warn about the complete
+        ones so someone closes them.
+
+        Returns:
+            A tuple of (active, complete) lists of open release tracking
+            issue dictionaries.
+        """
+        active: list[IssueDict] = []
+        complete: list[IssueDict] = []
+        for issue in self.get_open_tracking_issues():
+            body = self.get_issue_body(issue["number"])
+            if is_release_complete(body):
+                complete.append(issue)
+            else:
+                active.append(issue)
+        return active, complete
 
     @abc.abstractmethod
     def get_pr_info(self, pr_num: int) -> PrDict:

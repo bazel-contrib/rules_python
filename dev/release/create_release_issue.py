@@ -1,6 +1,6 @@
 """Subcommand to create a release tracking issue."""
 
-from dev.release.gh import GitHub
+from dev.release.gh import GitHub, format_complete_issue_warning
 from dev.release.release_issue import load_release_tracking_template
 from dev.release.utils import determine_next_version, semver_type
 
@@ -18,11 +18,13 @@ class CreateReleaseIssue:
         if version is None:
             version = determine_next_version()
 
-        # Concurrency check
-        open_issues = self.gh.get_open_tracking_issues()
-        if open_issues:
+        # Concurrency check: only a release still in progress blocks a new one.
+        active_issues, complete_issues = self.gh.partition_open_tracking_issues()
+        for issue in complete_issues:
+            print(f"::warning::{format_complete_issue_warning(issue)}")
+        if active_issues:
             print("Error: A release is already in progress. Active tracking issues:")
-            for issue in open_issues:
+            for issue in active_issues:
                 print(f"- {issue['title']}: {issue['url']}")
             return 1
 

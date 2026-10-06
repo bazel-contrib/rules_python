@@ -10,6 +10,7 @@ from dev.release.gh import (
     SYNC_CHANGELOG_LABEL,
     GitHub,
     GitHubInterface,
+    format_complete_issue_warning,
     get_github_event_issue_number,
 )
 from dev.release.git import Git
@@ -86,15 +87,17 @@ class SyncChangelog:
             logger.info(
                 "No issue specified. Auto-discovering open release tracking issue..."
             )
-            open_issues = self.gh.get_open_tracking_issues()
-            if len(open_issues) > 1:
+            active_issues, complete_issues = self.gh.partition_open_tracking_issues()
+            for issue in complete_issues:
+                logger.warning("%s", format_complete_issue_warning(issue))
+            if len(active_issues) > 1:
                 logger.error(
                     "Multiple open release tracking issues found: %s",
-                    [f"#{i['number']}" for i in open_issues],
+                    [f"#{i['number']}" for i in active_issues],
                 )
                 return 1
-            elif len(open_issues) == 1:
-                issue_num = open_issues[0]["number"]
+            elif len(active_issues) == 1:
+                issue_num = active_issues[0]["number"]
                 logger.info("Discovered release tracking issue #%d", issue_num)
             else:
                 logger.error("No open release tracking issues found.")

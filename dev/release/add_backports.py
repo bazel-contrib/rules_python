@@ -1,13 +1,12 @@
 import os
 
-from dev.release.gh import GitHub
+from dev.release.gh import GitHub, format_complete_issue_warning
 from dev.release.git import Git
 from dev.release.release_issue import (
     RELEASE_TITLE_RE,
     add_backports_to_body,
     add_rc_task_to_body,
     add_sync_changelog_task_to_body,
-    is_release_complete,
     load_release_tracking_template,
     parse_checklist_state,
 )
@@ -33,21 +32,11 @@ class AddBackports:
                 " tracking issue..."
             )
             try:
-                open_issues = self.gh.get_open_tracking_issues()
-                # An open issue whose release has already been tagged is
-                # finished; it just hasn't been closed. Don't add work to it.
-                active_issues = []
-                for issue in open_issues:
-                    body = self.gh.get_issue_body(issue["number"])
-                    if is_release_complete(body):
-                        print(
-                            "::warning::Ignoring open release tracking issue"
-                            f" #{issue['number']} ({issue['title']}): its"
-                            " 'Tag Final' task is done, so the release is"
-                            " complete. Consider closing it."
-                        )
-                        continue
-                    active_issues.append(issue)
+                active_issues, complete_issues = (
+                    self.gh.partition_open_tracking_issues()
+                )
+                for issue in complete_issues:
+                    print(f"::warning::{format_complete_issue_warning(issue)}")
 
                 if len(active_issues) > 1:
                     print(

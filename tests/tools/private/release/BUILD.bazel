@@ -101,6 +101,18 @@ pytest_test(
 )
 
 pytest_test(
+    name = "create_release_issue_test",
+    srcs = ["create_release_issue_test.py"],
+    python_version = "3.14",
+    target_compatible_with = NOT_WINDOWS,
+    deps = [
+        ":conftest",
+        ":release_test_helper",
+        "//dev/release:release_lib",
+    ],
+)
+
+pytest_test(
     name = "git_test",
     srcs = ["git_test.py"],
     python_version = "3.14",
