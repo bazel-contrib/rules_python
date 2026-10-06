@@ -2,6 +2,7 @@ from dev.release.release_issue import (
     add_backports_to_body,
     add_sync_changelog_task_to_body,
     format_metadata_line,
+    is_release_complete,
     load_release_tracking_template,
     parse_backports,
     parse_checklist_state,
@@ -192,6 +193,22 @@ def test_parse_checklist_state_with_sync_changelogs():
     assert not task_126.checked
     assert task_126.status is None
     assert task_126.pr is None
+
+
+def test_is_release_complete():
+    assert not is_release_complete("- [ ] Tag Final")
+    assert is_release_complete("- [x] Tag Final")
+    assert is_release_complete(
+        "- [x] Tag Final | status=done tag=2.0.0 commit= abcdef12"
+    )
+    # status=done is authoritative even if the box is somehow unchecked.
+    assert is_release_complete("- [ ] Tag Final | status=done tag=2.0.0")
+    # A failed promote attempt leaves the release incomplete.
+    assert not is_release_complete(
+        "- [ ] Tag Final | status=error-rc-tag-not-branch-head rc=2.0.0rc1"
+    )
+    # No Tag Final task at all (e.g. malformed body) is not complete.
+    assert not is_release_complete("## Checklist\n- [x] Prepare Release\n")
 
 
 def test_load_release_tracking_template(tmp_path):

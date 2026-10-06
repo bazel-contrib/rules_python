@@ -280,6 +280,25 @@ def parse_checklist_state(body):
     return state
 
 
+def is_release_complete(body: str) -> bool:
+    """Returns whether the release tracked by an issue body has been completed.
+
+    A release is complete once its "Tag Final" task is done: the checklist
+    item is checked, or it carries `status=done` metadata (as written by the
+    promote step). An open tracking issue in this state should not receive
+    further work, such as new backports.
+
+    Args:
+        body: The release tracking issue body.
+
+    Returns:
+        True if the "Tag Final" task is done, False otherwise (including when
+        the task is absent).
+    """
+    tag_final = parse_checklist_state(body)["tag_final"]
+    return tag_final.checked or tag_final.status == "done"
+
+
 def parse_backports(body):
     """Parses the ## Backports checklist section."""
     body = body.replace("\r\n", "\n")
