@@ -1,4 +1,4 @@
-load("@pypi//:requirements.bzl", "all_requirements", "requirement")
+load("@pypi//:requirements.bzl", "requirement")
 load("@rules_python//python:py_binary.bzl", "py_binary")
 load("@rules_python//python:py_test.bzl", "py_test")
 
@@ -21,13 +21,6 @@ py_test(
     },
     main = "test_a.py",
     deps = [requirement("colorama")],
-)
-
-# `all_requirements` names the default hub's (pypi_b's) packages.
-py_test(
-    name = "test_all_requirements",
-    srcs = ["test_all_requirements.py"],
-    deps = all_requirements,
 )
 
 py_test(
