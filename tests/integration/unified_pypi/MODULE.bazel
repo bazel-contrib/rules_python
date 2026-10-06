@@ -43,6 +43,7 @@ pip.parse(
     requirements_lock = "//:requirements_b.txt",
 )
 use_repo(pip, "pypi_b")
+
 pip.default(default_hub = "pypi_b")
 pip.default(unified_hub_requirements_bzl = True)
 pip.dep(
