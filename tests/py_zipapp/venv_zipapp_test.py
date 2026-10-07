@@ -1,17 +1,40 @@
 import contextlib
 import os
 import subprocess
+import sys
+import tempfile
 import unittest
 import zipfile
 
 
 class PyZipAppTest(unittest.TestCase):
     def test_zipapp_runnable(self):
+        self.assertZipappRuns()
+
+    def test_persistent_zipapp_runs_after_publication(self):
+        with tempfile.TemporaryDirectory(dir=os.environ["TEST_TMPDIR"]) as cache:
+            for _ in range(2):
+                self.assertZipappRuns(cache=cache)
+
+    def assertZipappRuns(self, cache=None):
         zipapp_path = os.environ["TEST_ZIPAPP"]
+        environment = dict(os.environ)
+        environment.pop("RULES_PYTHON_EXTRACT_ROOT", None)
+        if cache is not None:
+            environment["RULES_PYTHON_EXTRACT_ROOT"] = cache
+        if os.name == "nt":
+            # The native ZIP launcher needs a Python to open the archive.
+            environment["PATH"] = (
+                os.path.dirname(sys.executable)
+                + os.pathsep
+                + environment.get("PATH", "")
+            )
 
         try:
             output = (
-                subprocess.check_output([zipapp_path], stderr=subprocess.STDOUT)
+                subprocess.check_output(
+                    [zipapp_path], stderr=subprocess.STDOUT, env=environment
+                )
                 .decode("utf-8")
                 .strip()
             )

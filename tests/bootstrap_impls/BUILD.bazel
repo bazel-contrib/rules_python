@@ -12,12 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+load("@rules_python_internal//:rules_python_config.bzl", "config")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
+load("//python:py_runtime.bzl", "py_runtime")
+load("//python:py_runtime_pair.bzl", "py_runtime_pair")
 load("//python:py_test.bzl", "py_test")
+load("//python/zipapp:py_zipapp_binary.bzl", "py_zipapp_binary")
 load("//tests/support:py_reconfig.bzl", "py_reconfig_binary", "py_reconfig_test")
 load("//tests/support:sh_py_run_test.bzl", "sh_py_run_test")
 load("//tests/support:support.bzl", "SUPPORTS_BOOTSTRAP_SCRIPT")
 load("//tests/support/pytest_test:pytest_test.bzl", "pytest_test")
+load(":application_tests.bzl", "application_test_suite", "public_executable", "template_fixture", "template_output")
 load(":venv_relative_path_tests.bzl", "relative_path_test_suite")
 
 py_reconfig_binary(
@@ -239,3 +244,280 @@ py_test(
 )
 
 relative_path_test_suite(name = "relative_path_tests")
+
+application_test_suite(name = "application_build_tests")
+
+template_fixture(
+    name = "custom_directory_template",
+    contents = "custom\r\nworkspace=%workspace_name%\r\nmain=%stage2_bootstrap%",
+)
+
+template_fixture(
+    name = "custom_zip_template",
+    contents = "custom zip\r\nworkspace=%workspace_name%\r\nmain=%stage2_bootstrap%",
+)
+
+template_fixture(
+    name = "custom_application_interpreter",
+    contents = "This interpreter is packaged for template inspection, never executed.",
+)
+
+py_runtime(
+    name = "custom_application_runtime",
+    # Also supplies the non-test current_interpreter_executable toolchain alias.
+    bootstrap_template = ":custom_directory_template",
+    # Windows venvs declare an interpreter symlink even for custom templates.
+    # Use a declared file so remote packaging does not need a worker-local path.
+    interpreter = select({
+        "@platforms//os:windows": ":custom_application_interpreter",
+        "//conditions:default": None,
+    }),
+    interpreter_path = select({
+        "@platforms//os:windows": "",
+        "//conditions:default": "/custom/python",
+    }),
+    supports_build_time_venv = False,
+    zip_main_template = ":custom_zip_template",
+)
+
+py_runtime_pair(
+    name = "custom_application_pair",
+    py3_runtime = ":custom_application_runtime",
+)
+
+toolchain(
+    name = "custom_application_toolchain",
+    toolchain = ":custom_application_pair",
+    toolchain_type = "//python:toolchain_type",
+)
+
+py_reconfig_binary(
+    name = "custom_application",
+    testonly = True,
+    srcs = ["bin.py"],
+    bootstrap_impl = "system_python",
+    build_python_zip = False,
+    extra_toolchains = [
+        "//tests/bootstrap_impls:custom_application_toolchain",
+        "//tests/support/cc_toolchains:all",
+    ],
+    main = "bin.py",
+)
+
+py_zipapp_binary(
+    name = "custom_application_zip",
+    testonly = True,
+    binary = ":custom_application",
+    executable = False,
+)
+
+template_output(
+    name = "custom_application_bootstrap",
+    testonly = True,
+    binary = ":custom_application",
+)
+
+filegroup(
+    name = "custom_application_archive",
+    testonly = True,
+    srcs = [":custom_application_zip"],
+    output_group = "python_zip_file",
+)
+
+template_fixture(
+    name = "supplied_venv",
+    testonly = True,
+    contents = "custom executable supplied without interpreter runfiles",
+)
+
+public_executable(
+    name = "public_external_application",
+    testonly = True,
+    binary = ":custom_application",
+    supplied_venv = ":supplied_venv",
+)
+
+py_zipapp_binary(
+    name = "public_external_zip",
+    testonly = True,
+    binary = ":public_external_application",
+    executable = False,
+)
+
+filegroup(
+    name = "public_external_archive",
+    testonly = True,
+    srcs = [":public_external_zip"],
+    output_group = "python_zip_file",
+)
+
+pytest_test(
+    name = "application_templates_test",
+    srcs = ["application_templates_test.py"],
+    data = [
+        ":custom_application_archive",
+        ":custom_application_bootstrap",
+        ":public_external_archive",
+        "//python/private:application_zip_template.txt",
+        "//python/private:stage1_bootstrap_template",
+    ],
+    env = {
+        "CUSTOM_BOOTSTRAP": "$(rlocationpath :custom_application_bootstrap)",
+        "CUSTOM_ZIP": "$(rlocationpath :custom_application_archive)",
+        "PUBLIC_ZIP": "$(rlocationpath :public_external_archive)",
+        "RAW_SHELL_TEMPLATE": "$(rlocationpath //python/private:stage1_bootstrap_template)",
+        "ZIP_TEMPLATE": "$(rlocationpath //python/private:application_zip_template.txt)",
+    },
+    deps = ["//python/runfiles"],
+)
+
+py_runtime(
+    name = "cleanup_wrapper_runtime",
+    # Also supplies the non-test current_interpreter_executable toolchain alias.
+    files = ["cleanup_wrapper_data.txt"],
+    interpreter = "cleanup_python_wrapper.sh",
+    supports_build_time_venv = False,
+)
+
+py_runtime_pair(
+    name = "cleanup_wrapper_pair",
+    py3_runtime = ":cleanup_wrapper_runtime",
+)
+
+toolchain(
+    name = "cleanup_wrapper_toolchain",
+    toolchain = ":cleanup_wrapper_pair",
+    toolchain_type = "//python:toolchain_type",
+)
+
+py_reconfig_binary(
+    name = "cleanup_wrapper",
+    testonly = True,
+    srcs = ["cleanup_probe.py"],
+    bootstrap_impl = "script",
+    build_python_zip = False,
+    extra_toolchains = [
+        "//tests/bootstrap_impls:cleanup_wrapper_toolchain",
+        "//tests/support/cc_toolchains:all",
+    ],
+    main = "cleanup_probe.py",
+    target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
+)
+
+pytest_test(
+    name = "application_test",
+    srcs = ["application_test.py"],
+    data = [
+        "windows_console_fixture.py",
+        "//python/private:python_bootstrap_template.txt",
+    ],
+    env = {
+        "PY_TEMPLATE_RLOCATION": "$(rlocationpath //python/private:python_bootstrap_template.txt)",
+        "WINDOWS_CONSOLE_FIXTURE": "$(rlocationpath windows_console_fixture.py)",
+    },
+    deps = [
+        "//python/private:application_bootstrap",
+        "//python/runfiles",
+    ],
+)
+
+[
+    py_reconfig_binary(
+        name = "cleanup_" + mode,
+        testonly = True,
+        srcs = ["cleanup_probe.py"],
+        bootstrap_impl = "system_python" if mode.startswith("py") else "script",
+        build_python_zip = mode.endswith("zip"),
+        interpreter_args = [
+            "-Xbootstrap_target=argument with spaces and 'quotes' and \"double quotes\"",
+            "-Xbootstrap_precedence=target",
+        ],
+        main = "cleanup_probe.py",
+        target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
+        venvs_use_declare_symlink = "no",
+    )
+    for mode in [
+        "venv",
+        "zip",
+        "pyvenv",
+        "pyzip",
+    ]
+]
+
+filegroup(
+    name = "cleanup_legacy_python",
+    testonly = True,
+    srcs = [":cleanup_zip"],
+    output_group = "python_zip_file",
+)
+
+[
+    py_zipapp_binary(
+        name = "cleanup_" + name,
+        testonly = True,
+        binary = ":cleanup_" + binary,
+        compression = compression,
+        target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
+    )
+    for name, binary, compression in [
+        ("zipapp", "venv", "0"),
+        ("zipapp_compressed", "venv", "4"),
+        ("zipapp_system", "pyvenv", "0"),
+        ("wrapper_zip", "wrapper", "0"),
+    ]
+]
+
+pytest_test(
+    name = "bootstrap_cleanup_test",
+    timeout = "long",
+    srcs = ["bootstrap_cleanup_test.py"],
+    data = [
+        "cleanup_fail.py",
+        "cleanup_probe.py",
+        "cleanup_sitecustomize.py",
+        "cleanup_terminal_peer.py",
+        "cleanup_wrapper_data.txt",
+        ":cleanup_legacy_python",
+        ":cleanup_pyvenv",
+        ":cleanup_pyzip",
+        ":cleanup_venv",
+        ":cleanup_wrapper",
+        ":cleanup_wrapper_zip",
+        ":cleanup_zip",
+        ":cleanup_zipapp",
+        ":cleanup_zipapp_compressed",
+        ":cleanup_zipapp_system",
+    ],
+    env = {
+        "FAIL_RLOCATION": "$(rlocationpath cleanup_fail.py)",
+        "LEGACY_PYTHON_RLOCATION": "$(rlocationpath :cleanup_legacy_python)",
+        "PEER_RLOCATION": "$(rlocationpath cleanup_terminal_peer.py)",
+        "PROBE_RLOCATION": "$(rlocationpath cleanup_probe.py)",
+        "PYVENV_RLOCATION": "$(rlocationpath :cleanup_pyvenv)",
+        # Bazel 7's system_python bootstrap uses its interpreter directly.
+        "PYVENV_TEMPORARY": "1" if config.bazel_8_or_later else "0",
+        "PYZIP_RLOCATION": "$(rlocationpath :cleanup_pyzip)",
+        "STARTUP_RLOCATION": "$(rlocationpath cleanup_sitecustomize.py)",
+        "VENV_RLOCATION": "$(rlocationpath :cleanup_venv)",
+        "WRAPPER_DATA_RLOCATION": "$(rlocationpath cleanup_wrapper_data.txt)",
+        "WRAPPER_RLOCATION": "$(rlocationpath :cleanup_wrapper)",
+        "WRAPPER_ZIP_PYTHON_RLOCATION": "$(rlocationpath :cleanup_wrapper_zip)",
+        "WRAPPER_ZIP_RLOCATION": "$(rlocationpath :cleanup_wrapper_zip)",
+        "ZIPAPP_COMPRESSED_RLOCATION": "$(rlocationpath :cleanup_zipapp_compressed)",
+        "ZIPAPP_PYTHON_RLOCATION": "$(rlocationpath :cleanup_zipapp)",
+        "ZIPAPP_RLOCATION": "$(rlocationpath :cleanup_zipapp)",
+        "ZIPAPP_SYSTEM_RLOCATION": "$(rlocationpath :cleanup_zipapp_system)",
+        "ZIP_RLOCATION": "$(rlocationpath :cleanup_zip)",
+    },
+    target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
+    deps = ["//python/runfiles"],
+)
+
+pytest_test(
+    name = "bootstrap_cleanup_watch_test",
+    srcs = ["bootstrap_cleanup_watch_test.py"],
+    data = ["//python/private:bootstrap_cleanup"],
+    env = {"HELPER_RLOCATION": "$(rlocationpath //python/private:bootstrap_cleanup)"},
+    target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
+    deps = ["//python/runfiles"],
+)

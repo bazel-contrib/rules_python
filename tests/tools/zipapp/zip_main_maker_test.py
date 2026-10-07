@@ -1,90 +1,75 @@
-import hashlib
+"""Cache identities follow runtime contents and bootstrap configuration."""
+
 import os
+
+import pytest
 
 from tools.zipapp import zip_main_maker
 
 
-def test_creates_zip_main(tmp_path, monkeypatch):
-    temp_dir = str(tmp_path)
-    template_path = os.path.join(temp_dir, "template.py")
-    with open(template_path, "w", encoding="utf-8") as f:
-        f.write("hash=%APP_HASH%\nfoo=%FOO%\n")
+@pytest.fixture(name="generate")
+def fixture_generate(tmp_path, monkeypatch):
+    template = tmp_path / "template"
+    template.write_text("%APP_HASH%\n%OPTIONS%\n")
+    payload = tmp_path / "payload"
+    payload.write_text("application")
+    symlink = tmp_path / "symlink"
+    symlink.symlink_to(payload)
+    manifest = tmp_path / "manifest"
+    manifest.write_text(
+        f"rf-file|0|app|{payload}\nrf-symlink|1|link|{symlink}\nrf-empty|empty\n"
+    )
+    output = tmp_path / "output"
 
-    output_path = os.path.join(temp_dir, "output.py")
+    def generate(options="-Xoriginal"):
+        monkeypatch.setattr(
+            "sys.argv",
+            [
+                "zip_main_maker",
+                "--template",
+                str(template),
+                "--output",
+                str(output),
+                "--substitution",
+                "%OPTIONS%=" + options,
+                "--hash_files_manifest",
+                str(manifest),
+            ],
+        )
+        zip_main_maker.main()
+        digest, actual = output.read_text().splitlines()[:2]
+        assert len(digest) == 64
+        assert actual == options
+        return digest
 
-    file1_path = os.path.join(temp_dir, "file1.txt")
-    with open(file1_path, "wb") as f:
-        f.write(b"content1")
+    return generate, template, payload, symlink, manifest
 
-    file2_path = os.path.join(temp_dir, "file2.txt")
-    with open(file2_path, "wb") as f:
-        f.write(b"content2")
 
-    # Add a symlink to test symlink hashing
-    symlink_path = os.path.join(temp_dir, "symlink.txt")
-    os.symlink(file1_path, symlink_path)
+def test_hash_is_stable_across_runs_and_manifest_order(generate):
+    run, _, _, _, manifest = generate
+    first = run()
+    assert run() == first
+    manifest.write_text("\n".join(reversed(manifest.read_text().splitlines())) + "\n")
+    assert run() == first
 
-    manifest_path = os.path.join(temp_dir, "manifest.txt")
-    with open(manifest_path, "w", encoding="utf-8") as f:
-        f.write(f"rf-file|0|file1.txt|{file1_path}\n")
-        f.write(f"rf-file|0|file2.txt|{file2_path}\n")
-        f.write(f"rf-symlink|1|symlink.txt|{symlink_path}\n")
-        f.write("rf-empty|empty_file.txt\n")
 
-    argv = [
-        "zip_main_maker.py",
-        "--template",
-        template_path,
-        "--output",
-        output_path,
-        "--substitution",
-        "%FOO%=bar",
-        "--hash_files_manifest",
-        manifest_path,
-    ]
-
-    monkeypatch.setattr("sys.argv", argv)
-    zip_main_maker.main()
-
-    # Calculate expected hash
-    h = hashlib.sha256()
-    line1 = f"rf-file|0|file1.txt|{file1_path}"
-    line2 = f"rf-file|0|file2.txt|{file2_path}"
-    line3 = f"rf-symlink|1|symlink.txt|{symlink_path}"
-    line4 = "rf-empty|empty_file.txt"
-
-    # Sort lines like the program does
-    lines = sorted([line1, line2, line3, line4])
-    for line in lines:
-        parts = line.split("|")
-        if len(parts) > 1:
-            _, rest = line.split("|", 1)
-            h.update(rest.encode("utf-8"))
-        else:
-            h.update(line.encode("utf-8"))
-
-        type_ = parts[0]
-        if type_ == "rf-empty":
-            continue
-        if len(parts) >= 4:
-            is_symlink_str = parts[1]
-            path = parts[-1]
-            if not path:
-                continue
-            if is_symlink_str == "-1":
-                is_symlink = not os.path.exists(path)
-            else:
-                is_symlink = is_symlink_str == "1"
-
-            if is_symlink:
-                h.update(os.readlink(path).encode("utf-8"))
-            else:
-                with open(path, "rb") as f:
-                    h.update(f.read())
-
-    expected_hash = h.hexdigest()
-
-    with open(output_path, "r", encoding="utf-8") as f:
-        content = f.read()
-
-    assert content == f"hash={expected_hash}\nfoo=bar\n"
+@pytest.mark.parametrize(
+    "changed", ["content", "link", "layout", "template", "options", "mode"]
+)
+def test_hash_invalidates_every_runtime_input(generate, changed):
+    run, template, payload, symlink, manifest = generate
+    original = run()
+    if changed == "content":
+        payload.write_text("changed application")
+    elif changed == "link":
+        symlink.unlink()
+        symlink.symlink_to(payload.parent / "different")
+    elif changed == "layout":
+        manifest.write_text(manifest.read_text() + "rf-empty|new/path\n")
+    elif changed == "template":
+        template.write_text(template.read_text() + "new lifecycle code\n")
+    elif changed == "mode":
+        if os.name == "nt":
+            pytest.skip("Windows chmod does not expose executable mode bits")
+        payload.chmod(payload.stat().st_mode ^ 0o100)
+    assert run("-Xchanged" if changed == "options" else "-Xoriginal") != original

@@ -1,8 +1,10 @@
 import hashlib
+import json
 import os
 import shutil
 import stat
 import sys
+import zipfile
 
 BLOCK_SIZE = 256 * 1024
 
@@ -18,6 +20,12 @@ def create_exe_zip(preamble_path, zip_path, output_path):
         preamble_content = f.read()
 
     preamble_content = preamble_content.replace(b"%ZIP_HASH%", zip_hash.encode("utf-8"))
+    if b"%APP_HASH%" in preamble_content:
+        with zipfile.ZipFile(zip_path) as archive:
+            metadata = json.loads(archive.read("_rules_python_archive.json"))
+            preamble_content = preamble_content.replace(
+                b"%APP_HASH%", metadata["identity"].encode("ascii")
+            )
 
     with open(output_path, "wb") as out_f:
         out_f.write(preamble_content)
