@@ -225,8 +225,11 @@ class DirectorySyncer:
         """Recursively creates destination directory and submits tasks for its entries."""
         try:
             dest.mkdir(parents=True, exist_ok=True)
+            dest_path = dest.resolve()
             with os.scandir(src) as scanner:
                 for entry in scanner:
+                    if pathlib.Path(entry.path).resolve() == dest_path:
+                        continue
                     c_dest = dest / entry.name
                     c_src = pathlib.Path(entry.path)
                     if entry.is_dir():
