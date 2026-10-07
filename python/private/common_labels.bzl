@@ -31,6 +31,7 @@ labels = struct(
     PY_LINUX_LIBC = str(Label("//python/config_settings:py_linux_libc")),
     PY_PBS_DISTRIBUTION = str(Label("//python/config_settings:py_pbs_distribution")),
     REPL_DEP = str(Label("//python/bin:repl_dep")),
+    RUNFILES_GROUPS = str(Label("//python/config_settings:runfiles_groups")),
     VALIDATE_TEST_MAIN = str(Label("//python/config_settings:validate_test_main")),
     VENV = str(Label("//python/config_settings:venv")),
     VENVS_SITE_PACKAGES = str(Label("//python/config_settings:venvs_site_packages")),
