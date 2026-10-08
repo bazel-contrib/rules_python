@@ -98,7 +98,7 @@ be stored in.
 This directory may be reused between invocations, depending on the sandboxing
 configuration. Setting it to `/dev/null` will, in effect, disable runtime
 pyc caching. By setting e.g.
-`--sandbox_add_mount_pair=/tmp/rules_python_pycache`, it's possible for pyc
+`--sandbox_add_mount_pair=$HOME/.cache/rules_python_pycache`, it's possible for pyc
 caching to persist across invocations.
 
 **Behavior specific to downloaded runtimes:** 
@@ -109,12 +109,17 @@ Otherwise, the following environment variables are checked in the following
 order. Their values will have `rules_python_pycache` appended to them to form
 the root pycache directory:
 1. `XDG_CACHE_HOME`.
-2. `TMP` (non-Windows) or `TEMP` (Windows).
-3. The common platform-specific temporary directory (`/tmp` (non-Windows) or
-   `C:\Temp` (Windows)).
+2. `$HOME/.cache` (non-Windows), the XDG default when `XDG_CACHE_HOME` is
+   unset, or `LOCALAPPDATA` (Windows).
 
 If such a diretory cannot be found, or created, then `/dev/null` will be used,
 which will effectively disable pyc caching.
+
+:::{versionchanged} VERSION_NEXT_PATCH
+Temporary directories (`TMP`, `TEMP`, `/tmp` and `C:\Temp`) are no longer used.
+They get cleaned out while the fetched runtime persists, which left the
+`__pycache__` symlinks dangling.
+:::
 
 :::
 

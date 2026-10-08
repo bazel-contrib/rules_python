@@ -63,38 +63,24 @@ def _get_pycache_root(rctx):
     os_name = repo_utils.get_platforms_os_name(rctx)
     is_windows = os_name == "windows"
 
-    # 1. RULES_PYTHON_PYCACHE_DIR
+    # Python checks a pyc file against its source's mtime and size, and the
+    # sources in a runtime's archive all share one mtime. Keying on the archive
+    # keeps a runtime from loading pyc files compiled from another's sources.
+    suffix = "{}/{}".format(rctx.name, rctx.attr.sha256[:16] or rctx.attr.python_version)
+
     res = rctx.getenv("RULES_PYTHON_PYCACHE_DIR")
     if res:
-        res = res + "/" + rctx.name
+        res = res + "/" + suffix
         return repo_utils.mkdir(rctx, res)
 
-    # Suffix for cases 2-4
-    # The first level directory is static and documented so that it is easy to
-    # use with e.g. --sandbox_add_mount_pair=/tmp/rules_python_pycache
-    suffix = "rules_python_pycache/{}/{}".format(hash(str(rctx.workspace_root)), rctx.name)
-
-    # 2. XDG_CACHE_HOME
     res = rctx.getenv("XDG_CACHE_HOME")
-    if res:
-        path = repo_utils.mkdir(rctx, rctx.path(res).get_child(suffix))
-        if path:
-            return path
-
-    # 3. TMP or TEMP
-    res = rctx.getenv("TMP") or rctx.getenv("TEMP")
-    if res:
-        path = repo_utils.mkdir(rctx, rctx.path(res).get_child(suffix))
-        if path:
-            return path
-
-    # 4. /tmp or Windows equivalent
-    if is_windows:
-        path = rctx.path("C:/Temp").get_child(suffix)
-    else:
-        path = rctx.path("/tmp").get_child(suffix)
-
-    return repo_utils.mkdir(rctx, path)
+    if not res:
+        res = rctx.getenv("LOCALAPPDATA" if is_windows else "HOME")
+        if res and not is_windows:
+            res += "/.cache"
+    if not res:
+        return None
+    return repo_utils.mkdir(rctx, rctx.path(res).get_child("rules_python_pycache").get_child(suffix))
 
 def _create_pycache_symlinks(rctx, logger):
     """Finds all directories with a .py file and creates __pycache__ symlinks.
@@ -252,9 +238,9 @@ def _python_repository_impl(rctx):
         # Exclude them from the glob because otherwise between the first time and second time a python toolchain is used,"
         # the definition of this filegroup will change, and depending rules will get invalidated."
         # See https://github.com/bazel-contrib/rules_python/issues/1008 for unconditionally adding these to toolchains so we can stop ignoring them."
-        # pyc* is ignored because pyc creation creates temporary .pyc.NNNN files
-        "**/__pycache__/*.pyc*",
-        "**/__pycache__/*.pyo*",
+        # The __pycache__ directories themselves are symlinks out of the repository.
+        "**/__pycache__",
+        "**/__pycache__/**",
     ]
 
     if "windows" in platform:
