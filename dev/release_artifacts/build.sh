@@ -15,8 +15,8 @@ cd "$(dirname "$0")/../.."
 # Keep Git Bash on Windows from rewriting `//foo` labels into paths.
 export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL="*"
 
-if ! bazel build --verbose_failures --stamp --embed_label="$embed_label" \
-    //dev/release_artifacts:artifacts_for_release; then
+if ! bazel build --verbose_failures --compilation_mode=opt --stamp \
+    --embed_label="$embed_label" //dev/release_artifacts:artifacts_for_release; then
   # Releases don't use the files yet, so don't fail the release over them.
   echo "::warning::Building the release artifacts failed. Releases don't use them yet."
   exit 0
