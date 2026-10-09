@@ -220,7 +220,7 @@ accepting arbitrary Python versions.
         ),
         "_bootstrap_template": lambda: attrb.Label(
             allow_single_file = True,
-            default = "@bazel_tools//tools/python:python_bootstrap_template.txt",
+            default = "//python/private:python_bootstrap_template.txt",
         ),
         "_build_data_writer": lambda: attrb.Label(
             default = "//python/private:build_data_writer",
