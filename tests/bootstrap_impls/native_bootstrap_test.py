@@ -27,7 +27,9 @@ class NativeBootstrapTest(unittest.TestCase):
         self.addCleanup(self.temp_dir.cleanup)
         filename = "launcher.sh" if self.script_bootstrap else "launcher.py"
         self.launcher = pathlib.Path(self.temp_dir.name) / filename
-        self.runfiles_root = pathlib.Path(str(self.launcher) + ".runfiles")
+        # The Windows bootstrap looks beside the launcher for .exe.runfiles.
+        runfiles_suffix = ".exe.runfiles" if os.name == "nt" else ".runfiles"
+        self.runfiles_root = pathlib.Path(str(self.launcher) + runfiles_suffix)
         self.runfiles_root.mkdir()
         template_name = (
             "stage1_bootstrap_template.sh"
@@ -228,7 +230,10 @@ class NativeBootstrapTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
             json.loads(result.stdout),
-            {"lib/site-packages": "_main/lib", "bin/helper": "tools/helper"},
+            {
+                os.path.join("lib", "site-packages"): os.path.join("_main", "lib"),
+                os.path.join("bin", "helper"): os.path.join("tools", "helper"),
+            },
         )
 
     @unittest.skipIf(os.environ.get("BOOTSTRAP") == "script", "Python-only venv parser")
