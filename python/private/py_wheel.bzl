@@ -251,6 +251,14 @@ be moved under that directory.
         doc = "A string specifying the license of the package.",
         default = "",
     ),
+    "license_expression": attr.string(
+        doc = "An SPDX license expression for the package.",
+        default = "",
+    ),
+    "license_files": attr.label_keyed_string_dict(
+        doc = "License files to include under the .dist-info/licenses/ directory.",
+        allow_files = True,
+    ),
     "project_urls": attr.string_dict(
         doc = ("A string dict specifying additional browsable URLs for the project and corresponding labels, " +
                "where label is the key and url is the value. " +
@@ -419,7 +427,17 @@ def _py_wheel_impl(ctx):
     # Note: Description file and version are not embedded into metadata.txt yet,
     # it will be done later by wheelmaker script.
     metadata_file = ctx.actions.declare_file(ctx.attr.name + ".metadata.txt")
-    metadata_contents = ["Metadata-Version: 2.1"]
+    if ctx.attr.license and ctx.attr.license_expression:
+        fail(
+            "`license` and `license_expression` are mutually exclusive. "
+            + "Please use only one of them."
+        )
+
+    metadata_version = "2.4" if (
+        ctx.attr.license_expression or ctx.attr.license_files
+    ) else "2.1"
+
+    metadata_contents = ["Metadata-Version: %s" % metadata_version]
     metadata_contents.append("Name: %s" % ctx.attr.distribution)
 
     if ctx.attr.author:
@@ -430,6 +448,12 @@ def _py_wheel_impl(ctx):
         metadata_contents.append("Home-page: %s" % ctx.attr.homepage)
     if ctx.attr.license:
         metadata_contents.append("License: %s" % ctx.attr.license)
+    if ctx.attr.license_expression:
+        metadata_contents.append(
+            "License-Expression: %s" % ctx.attr.license_expression
+        )
+    for _, license_file in sorted(ctx.attr.license_files.items()):
+        metadata_contents.append("License-File: %s" % license_file)
     if ctx.attr.description_content_type:
         metadata_contents.append("Description-Content-Type: %s" % ctx.attr.description_content_type)
     elif ctx.attr.description_file:
