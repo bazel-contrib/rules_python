@@ -10,13 +10,14 @@ this PR", or monitor its merge):
 1. **Enqueue for Merge**: Run
    `gh pr merge <pr_number> --repo bazel-contrib/rules_python --auto --squash`.
    - **Force / Admin Merge**: **CRITICAL**: Only pass `--admin` (e.g.,
-     `gh pr merge <pr_number> --repo bazel-contrib/rules_python --admin --squash`)
-     with explicit user consent ("force merge", "admin merge", or "merge
-     immediately" once CI passes and only `REVIEW_REQUIRED` blocks). Never pass
-     `--admin` while CI is pending or failing unless told to bypass CI.
+     `gh pr merge <pr_number> --repo bazel-contrib/rules_python --admin
+     --squash`) with explicit user consent ("force merge", "admin merge", or
+     "merge immediately" once CI passes and only `REVIEW_REQUIRED` blocks).
+     Never pass `--admin` while CI is pending or failing unless told to bypass
+     CI.
 2. **Invoke a Background Shepherd**: Launch a background subagent with the role
    `Merge PR Shepherd` to continuously watch the PR until it merges.
-3. **Leverage Existing CI Skills**: 
+3. **Leverage Existing CI Skills**:
    - Have the subagent use the **`monitor-ci-results`** skill to watch for CI
      check failures and generate analysis reports.
    - Have the subagent use the **`buildkite-retry-job`** skill
@@ -26,7 +27,8 @@ this PR", or monitor its merge):
    - **Soft-Failing Jobs**: Experimental Buildkite jobs (e.g. `*rolling*`
      Bazel) are non-blocking soft failures; do not treat them as merge blockers.
    - When the PR is queued, actively discover the merge queue branch via
-     `gh api repos/:owner/:repo/branches --jq '.[].name | select(test("gh-readonly-queue/.*/pr-<pr_number>-"))'`
+     `gh api repos/:owner/:repo/branches --jq` with
+     `'.[].name | select(test("gh-readonly-queue/.*/pr-<pr_number>-"))'`
      and monitor commit statuses/Buildkite builds running on that temporary
      branch.
 4. **Queue Shepherding**: Periodically check

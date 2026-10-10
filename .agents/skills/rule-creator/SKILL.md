@@ -1,6 +1,7 @@
 ---
 name: rule-creator
-description: Create and format agent rules with proper front matter in the workspace
+description: Create and format agent rules with proper front matter in the
+  workspace
 ---
 
 Use this skill when you need to create a new rule for the agent in the
