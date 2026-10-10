@@ -1,5 +1,7 @@
-# Builds `//dev/release_artifacts:artifacts_for_release` natively for each
-# platform; see dev/release_artifacts/build.sh.
+# Builds `//dev/release_artifacts:artifacts_for_release` for each platform; see
+# dev/release_artifacts/build.sh. Linux x86_64 runners cross-compile the files
+# for other Linux CPUs. macOS and Windows files need those OSes' SDKs, so
+# they're built natively.
 #
 # For now, this only verifies that the artifacts build; they aren't attached to
 # releases yet.
@@ -40,8 +42,9 @@ jobs:
             runner: macos-15
           - triple: aarch64-pc-windows-msvc
             runner: windows-11-arm
-          - triple: aarch64-unknown-linux-gnu
-            runner: ubuntu-24.04-arm
+          # Cross-compiled; see dev/platforms/BUILD.bazel.
+          - triple: aarch64-unknown-linux-musl
+            runner: ubuntu-24.04
           - triple: x86_64-apple-darwin
             runner: macos-15-intel
           - triple: x86_64-pc-windows-msvc
@@ -66,11 +69,12 @@ jobs:
           bazelisk-version: 1.29.0
 
       # Release commands run main's workflows, even for patch releases of older
-      # release branches, which don't have the script; skip those.
+      # release branches. Skip refs without the platforms that build.sh takes,
+      # since their scripts don't build for the job's platform, or don't exist.
       - name: Build artifacts
         id: build
-        if: hashFiles('dev/release_artifacts/build.sh') != ''
-        run: dev/release_artifacts/build.sh "$REF"
+        if: hashFiles('dev/platforms/BUILD.bazel') != ''
+        run: dev/release_artifacts/build.sh "$REF" "$TRIPLE"
 
       # build.sh only sets `files` if the build succeeded. Otherwise, it adds a
       # warning instead of failing, since releases don't use the files yet.

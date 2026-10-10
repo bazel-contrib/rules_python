@@ -112,6 +112,44 @@ rust_crates.spec(
 rust_crates.from_specs()
 use_repo(rust_crates, "crates")
 
+# A Rust toolchain to cross-compile the release artifacts for Linux aarch64
+# from Linux x86_64; see dev/release_artifacts. It targets musl, which Rust can
+# link statically with its bundled rust-lld, so no C cross toolchain is needed.
+rust = use_extension(
+    "@rules_rust//rust:extensions.bzl",
+    "rust",
+    dev_dependency = True,
+)
+rust.repository_set(
+    # rules_rust also registers an x86_64 to x86_64 toolchain from this set, in
+    # name order with its default ones, so the name must sort after
+    # rust_linux_x86_64 for the default x86_64 toolchain to take precedence.
+    name = "rust_release_linux_x86_64",
+    # The default allocator library needs a C toolchain for the target platform,
+    # but there isn't one. This one is what rules_rust uses for e.g. Windows.
+    allocator_library = "@rules_rust//rust/private/cc:empty",
+    edition = "2021",
+    exec_triple = "x86_64-unknown-linux-gnu",
+    target_compatible_with = [
+        "@platforms//cpu:aarch64",
+        "@platforms//os:linux",
+        "//dev/platforms:musl",
+    ],
+    target_triple = "aarch64-unknown-linux-musl",
+    # rules_rust 0.73.0's default version; update it with rules_rust. The
+    # default toolchain builds proc-macros, which rustc only loads if they were
+    # built by the same version.
+    versions = ["1.97.1"],
+)
+use_repo(rust, "rust_release_linux_x86_64__aarch64-unknown-linux-musl__stable")
+
+# Registered here so that it takes precedence over rules_rust's default
+# toolchains, whose Linux x86_64 to aarch64 one also matches the musl platform.
+register_toolchains(
+    "@rust_release_linux_x86_64__aarch64-unknown-linux-musl__stable//:toolchain",
+    dev_dependency = True,
+)
+
 # Use the Rust-based build tools when developing rules_python itself.
 register_toolchains(
     "//dev/dev_only_toolchains:exe_zip_maker_toolchain",

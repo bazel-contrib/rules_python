@@ -4,7 +4,8 @@ load(":release_files.bzl", "release_files")
 
 package(default_visibility = ["//:__subpackages__"])
 
-# Files that the release workflow builds for each platform; see build.sh.
+# Files that the release workflow builds for each platform in dev/platforms;
+# see build.sh.
 release_files(
     name = "artifacts_for_release",
     srcs = ["//crates/exe_zip_maker"],

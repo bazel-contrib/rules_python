@@ -8,11 +8,11 @@ _RUSTC_FLAGS = "@rules_rust//rust/settings:extra_rustc_flags"
 def _release_transition_impl(settings, attr):
     features = []
     rustc_flags = []
-    if attr.target_os == "linux":
+    if attr.target_os == "linux" and attr.target_libc != "musl":
         # Rust links glibc dynamically, so the files would require at least
         # the build machine's glibc version. Link it statically so they run on
         # older distros too. The gold linker can't link static glibc, so use
-        # bfd.
+        # bfd. Rust already links musl statically.
         rustc_flags = [
             "-Ctarget-feature=+crt-static",
             "-Clink-arg=-fuse-ld=bfd",
@@ -60,6 +60,9 @@ _release_files = rule(
             cfg = _release_transition,
             doc = "The files to build and list.",
         ),
+        "target_libc": attr.string(
+            doc = "The libc that the files are built for. Set by the macro.",
+        ),
         "target_os": attr.string(
             doc = "The OS that the files are built for. Set by the macro.",
         ),
@@ -69,9 +72,10 @@ _release_files = rule(
 def release_files(name, srcs, **kwargs):
     """Builds files for a release and writes their paths to `<name>.txt`.
 
-    The files are built with release settings: optimized, and linked so that
-    they run on older OS versions than the build machine's, without extra
-    runtime libraries.
+    The files are built for the target platform (`--platforms`), with release
+    settings for its OS and libc: optimized, and linked so that they run on
+    older OS versions than the build machine's, without extra runtime
+    libraries.
 
     The paths, one per line, are relative to the execroot, e.g.
     `bazel-out/k8-opt-ST-1234/bin/foo/foo`. Paths of generated files also
@@ -87,6 +91,10 @@ def release_files(name, srcs, **kwargs):
     _release_files(
         name = name,
         srcs = srcs,
+        target_libc = select({
+            "//dev/platforms:musl": "musl",
+            "//conditions:default": "",
+        }),
         target_os = select({
             Label("@platforms//os:linux"): "linux",
             labels.PLATFORMS_OS_WINDOWS: "windows",
