@@ -77,6 +77,7 @@ py_console_script_gen = rule(
         "entry_points_txt": attr.label(
             doc = "The filegroup to search for entry_points.txt.",
             mandatory = True,
+            cfg = "exec",
         ),
         "out": attr.output(
             doc = "Output file location.",
