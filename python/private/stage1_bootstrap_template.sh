@@ -33,6 +33,24 @@ function _symlink() {
 # runfiles-root-relative path
 STAGE2_BOOTSTRAP="%stage2_bootstrap%"
 
+# Like the Python bootstrap, fall back to the main file for native rules,
+# which expand %main% but leave newer stage-2 placeholders unchanged.
+_STAGE2_BOOTSTRAP_SENTINEL="%stage2""_bootstrap%"
+_INTERPRETER_ARGS_SENTINEL="%interpreter""_args%"
+USING_STAGE2_BOOTSTRAP_FALLBACK=0
+if [[ "$STAGE2_BOOTSTRAP" == "$_STAGE2_BOOTSTRAP_SENTINEL" ]]; then
+  _MAIN_SENTINEL="%main""%"
+  main="%main%"
+  if [[ "$main" == "$_MAIN_SENTINEL" || -z "$main" ]]; then
+    echo >&2 "ERROR: %stage2_bootstrap% (or %main%) was not substituted."
+    exit 1
+  fi
+  # Native external targets use workspace/../repo/main.py. The workspace
+  # directory need not exist, so remove that prefix before accessing the file.
+  STAGE2_BOOTSTRAP="${main#"%workspace_name%/../"}"
+  USING_STAGE2_BOOTSTRAP_FALLBACK=1
+fi
+
 # runfiles-root-relative path to python interpreter to use.
 # This is the `bin/python3` path in the binary's venv.
 PYTHON_BINARY='%python_binary%'
@@ -59,6 +77,11 @@ VENV_REL_SITE_PACKAGES="%venv_rel_site_packages%"
 declare -a INTERPRETER_ARGS_FROM_TARGET=(
 %interpreter_args%
 )
+
+if [[ "$USING_STAGE2_BOOTSTRAP_FALLBACK" == "1" &&
+      "${INTERPRETER_ARGS_FROM_TARGET[*]}" == "$_INTERPRETER_ARGS_SENTINEL" ]]; then
+  INTERPRETER_ARGS_FROM_TARGET=()
+fi
 
 if [[ "$IS_ZIPFILE" == "1" ]]; then
   # NOTE: Macs have an old version of mktemp, so we must use only the
@@ -308,6 +331,33 @@ if [[ -n "${RULES_PYTHON_ADDITIONAL_INTERPRETER_ARGS}" ]]; then
 fi
 
 export RUNFILES_DIR
+
+if [[ "$USING_STAGE2_BOOTSTRAP_FALLBACK" == "1" ]]; then
+  # Restore native import order when there is no stage 2 to set up sys.path.
+  # Declared imports are used as provided, without workspace-specific paths.
+  declare -a python_paths=("$RUNFILES_DIR")
+  imports="%imports%"
+  IFS=: read -r -a import_paths <<< "$imports"
+  for import_path in "${import_paths[@]}"; do
+    python_paths+=("$RUNFILES_DIR/$import_path")
+  done
+
+  if [[ "%import_all%" == "True" ]]; then
+    for repo_root in "$RUNFILES_DIR"/*; do
+      if [[ -d "$repo_root" ]]; then
+        python_paths+=("$repo_root")
+      fi
+    done
+  else
+    python_paths+=("$RUNFILES_DIR/%workspace_name%")
+  fi
+
+  python_path="$(IFS=:; echo "${python_paths[*]}")"
+  if [[ -n "${PYTHONPATH:-}" ]]; then
+    python_path+=":$PYTHONPATH"
+  fi
+  interpreter_env+=("PYTHONPATH=$python_path")
+fi
 
 if command -v env >/dev/null 2>&1; then
   ENV_CMD="env"

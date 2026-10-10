@@ -20,6 +20,23 @@ load("//tests/support:support.bzl", "SUPPORTS_BOOTSTRAP_SCRIPT")
 load("//tests/support/pytest_test:pytest_test.bzl", "pytest_test")
 load(":venv_relative_path_tests.bzl", "relative_path_test_suite")
 
+py_test(
+    name = "native_bootstrap_test",
+    srcs = ["native_bootstrap_test.py"],
+    data = ["//python/private:python_bootstrap_template.txt"],
+    deps = ["//python/runfiles"],
+)
+
+py_test(
+    name = "native_bootstrap_script_test",
+    srcs = ["native_bootstrap_test.py"],
+    data = ["//python/private:stage1_bootstrap_template"],
+    env = {"BOOTSTRAP": "script"},
+    main = "native_bootstrap_test.py",
+    target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
+    deps = ["//python/runfiles"],
+)
+
 py_reconfig_binary(
     name = "bootstrap_script_zipapp_bin",
     srcs = ["bin.py"],

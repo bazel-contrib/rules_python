@@ -39,6 +39,7 @@ import subprocess
 _STAGE2_BOOTSTRAP_SENTINEL = "%stage2" + "_bootstrap%"
 # runfiles-root-relative path
 STAGE2_BOOTSTRAP="%stage2_bootstrap%"
+_USING_STAGE2_BOOTSTRAP_FALLBACK = False
 
 # NOTE: The fallback logic from stage2_bootstrap to main is only present
 # as a courtesy for an older, unsupported, configuration. It can be removed
@@ -49,6 +50,7 @@ if STAGE2_BOOTSTRAP == _STAGE2_BOOTSTRAP_SENTINEL:
   _main = "%main%"
   if _main != _MAIN_SENTINEL and _main:
     STAGE2_BOOTSTRAP = _main
+    _USING_STAGE2_BOOTSTRAP_FALLBACK = True
   else:
     STAGE2_BOOTSTRAP = ""
 
@@ -98,7 +100,13 @@ else:
 RUNTIME_VENV_SYMLINKS = """
 %runtime_venv_symlinks%
 """.strip().split("\n")
-RUNTIME_VENV_SYMLINKS = dict(line.split("|") for line in RUNTIME_VENV_SYMLINKS if line)
+# Native rules leave this newer placeholder unchanged. They have no runtime
+# venv symlinks; only parse entries when the placeholder was expanded.
+_RUNTIME_VENV_SYMLINKS_SENTINEL = "%runtime_venv" + "_symlinks%"
+if RUNTIME_VENV_SYMLINKS == [_RUNTIME_VENV_SYMLINKS_SENTINEL]:
+  RUNTIME_VENV_SYMLINKS = {}
+else:
+  RUNTIME_VENV_SYMLINKS = dict(line.split("|") for line in RUNTIME_VENV_SYMLINKS if line)
 
 ADDITIONAL_INTERPRETER_ARGS = os.environ.get("RULES_PYTHON_ADDITIONAL_INTERPRETER_ARGS", "")
 EXTRACT_ROOT = os.environ.get("RULES_PYTHON_EXTRACT_ROOT")
@@ -613,6 +621,29 @@ def main():
     runfiles_root = find_runfiles_root(main_rel_path)
 
   print_verbose("runfiles root:", runfiles_root)
+
+  if _USING_STAGE2_BOOTSTRAP_FALLBACK:
+    # Native rules expand %imports% and %import_all%, but do not generate
+    # stage 2 to set up sys.path. Preserve the native launcher's import order
+    # when executing the main file directly; leave regular stage-2 launches
+    # unchanged. These paths are runfiles-relative, not checkout-relative.
+    imports = "%imports%"
+    python_paths = [runfiles_root]
+    python_paths.extend(join(runfiles_root, path) for path in imports.split(":") if path)
+    if "%import_all%" == "True":
+      python_paths.extend(
+          join(runfiles_root, repo) for repo in sorted(os.listdir(runfiles_root))
+          if os.path.isdir(join(runfiles_root, repo)))
+    else:
+      python_paths.append(join(runfiles_root, WORKSPACE_NAME))
+    python_paths = [get_windows_path_with_unc_prefix(path) for path in python_paths]
+    existing_pythonpath = os.environ.get("PYTHONPATH")
+    if existing_pythonpath:
+      python_paths.extend(existing_pythonpath.split(os.pathsep))
+    new_env["PYTHONPATH"] = os.pathsep.join(dict.fromkeys(python_paths))
+    if IS_WINDOWS:
+      new_env["PYTHONPATH"] = new_env["PYTHONPATH"].replace("/", os.sep)
+    print_verbose("native fallback PYTHONPATH:", new_env["PYTHONPATH"])
 
   if os.environ.get("RULES_PYTHON_TESTING_TELL_RUNFILES_ROOT"):
     new_env["RULES_PYTHON_TESTING_RUNFILES_ROOT"] = runfiles_root
