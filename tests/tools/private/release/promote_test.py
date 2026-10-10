@@ -49,7 +49,7 @@ def test_promote_rc_success(mock_git, mock_gh):
         "Version **2.0.0** has been successfully generated and tagged on branch [`release/2.0`](https://github.com/bazel-contrib/rules_python/tree/release/2.0).\n\n"
         "- [Github Release 2.0.0](https://github.com/bazel-contrib/rules_python/releases/tag/2.0.0)\n"
         "- [BCR Entry 2.0.0](https://registry.bazel.build/modules/rules_python/2.0.0)\n"
-        "- [BCR PRs](https://github.com/bazelbuild/bazel-central-registry/pulls?q=is%3Apr%20%28%22bazel-contrib/rules_python%22%20in%3Atitle%29%20%28%22%402.0.0%22%20in%3Atitle%29)\n"
+        "- [BCR PRs](https://github.com/bazelbuild/bazel-central-registry/pulls?q=is%3Apr%20%28%22rules_python%22%20in%3Atitle%29%20%28%22%402.0.0%22%20in%3Atitle%29)\n"
         "- [Release workflow status](https://github.com/bazel-contrib/rules_python/actions/workflows/release_promote.yaml)"
     )
     assert mock_gh.issue_comments[issue_num] == [expected_comment]

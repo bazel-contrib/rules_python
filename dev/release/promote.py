@@ -184,9 +184,7 @@ class Promote:
         branch_url = f"{REPO_URL}/tree/{branch_name}"
         release_url = f"{REPO_URL}/releases/tag/{version}"
         bcr_entry_url = f"https://registry.bazel.build/modules/rules_python/{version}"
-        bcr_query = (
-            f'is:pr ("bazel-contrib/rules_python" in:title) ("@{version}" in:title)'
-        )
+        bcr_query = f'is:pr ("rules_python" in:title) ("@{version}" in:title)'
         bcr_search_url = f"https://github.com/bazelbuild/bazel-central-registry/pulls?q={urllib.parse.quote(bcr_query)}"
 
         if run_id := os.environ.get("GITHUB_RUN_ID"):
