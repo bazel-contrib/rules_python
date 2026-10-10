@@ -1,0 +1,63 @@
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+
+# gazelle:python_root
+# gazelle:python_generation_mode file
+# gazelle:python_include_ancestor_conftest false
+# gazelle:resolve py aliased_plugin //support:admin
+# gazelle:python_ignore_dependencies ignored_plugin,monkeypatch
+# gazelle:resolve py terminal //support:admin
+
+py_library(
+    name = "capture",
+    srcs = ["capture.py"],
+    visibility = ["//:__subpackages__"],
+)
+
+py_test(
+    name = "builtin_controls_test",
+    srcs = ["builtin_controls_test.py"],
+    deps = ["//support:admin"],
+)
+
+py_test(
+    name = "builtin_plugins_test",
+    srcs = ["builtin_plugins_test.py"],
+    deps = ["@gazelle_python_test//pytest"],
+)
+
+py_test(
+    name = "isolated_test",
+    srcs = ["isolated_test.py"],
+)
+
+py_test(
+    name = "logging_plugin_test",
+    srcs = ["logging_plugin_test.py"],
+    deps = ["@gazelle_python_test//pytest"],
+)
+
+py_test(
+    name = "ordinary_import_test",
+    srcs = ["ordinary_import_test.py"],
+    deps = [
+        ":capture",
+        "@gazelle_python_test//pytest",
+    ],
+)
+
+py_test(
+    name = "plugin_test",
+    srcs = ["plugin_test.py"],
+    deps = [
+        "//support:admin",
+        "//support:database",
+        "@gazelle_python_test//external_plugin",
+        "@gazelle_python_test//pytest",
+    ],
+)
+
+py_test(
+    name = "pytester_plugin_test",
+    srcs = ["pytester_plugin_test.py"],
+    deps = ["@gazelle_python_test//pytest"],
+)
