@@ -206,6 +206,151 @@ def _test_config_settings_impl(env, target):
 
 _tests.append(_test_config_settings)
 
+def _test_license_expression(name):
+    rt_util.helper_target(
+        py_wheel,
+        name = name + "_subject",
+        distribution = "mydist_" + name,
+        version = "0.0.0",
+        license_expression = "Apache-2.0 AND MIT",
+    )
+    analysis_test(
+        name = name,
+        impl = _test_license_expression_impl,
+        target = name + "_subject",
+    )
+
+def _test_license_expression_impl(env, target):
+    action = env.expect.that_target(target).action_generating(
+        "{package}/{name}.metadata.txt",
+    )
+    action.content().split("\n").contains_at_least([
+        "Metadata-Version: 2.4",
+        "License-Expression: Apache-2.0 AND MIT",
+    ])
+
+_tests.append(_test_license_expression)
+
+def _test_license_expression_mutual_exclusion(name):
+    rt_util.helper_target(
+        py_wheel,
+        name = name + "_subject",
+        distribution = "mydist_" + name,
+        version = "0.0.0",
+        license = "Apache-2.0",
+        license_expression = "Apache-2.0",
+    )
+    analysis_test(
+        name = name,
+        impl = _test_license_expression_mutual_exclusion_impl,
+        target = name + "_subject",
+        expect_failure = True,
+    )
+
+def _test_license_expression_mutual_exclusion_impl(env, target):
+    env.expect.that_target(target).failures().contains_predicate(
+        matching.str_matches(
+            "`license` and `license_expression` are mutually exclusive",
+        ),
+    )
+
+_tests.append(_test_license_expression_mutual_exclusion)
+
+def _test_metadata_fields(name):
+    rt_util.helper_target(
+        py_wheel,
+        name = name + "_subject",
+        distribution = "mydist_" + name,
+        version = "0.0.0",
+        summary = "old summary",
+        metadata_fields = {
+            "Dynamic": ["classifiers"],
+            "Keywords": ["bazel", "wheel"],
+            "License-File": ["LICENSE", "NOTICE"],
+            "Summary": ["new summary"],
+        },
+    )
+    analysis_test(
+        name = name,
+        impl = _test_metadata_fields_impl,
+        target = name + "_subject",
+    )
+
+def _test_metadata_fields_impl(env, target):
+    action = env.expect.that_target(target).action_generating(
+        "{package}/{name}.metadata.txt",
+    )
+    action.content().split("\n").contains_at_least([
+        "Metadata-Version: 2.4",
+        "Summary: new summary",
+        "Keywords: bazel, wheel",
+        "License-File: LICENSE",
+        "License-File: NOTICE",
+        "Dynamic: classifiers",
+    ])
+    action.content().split("\n").not_contains("Summary: old summary")
+
+_tests.append(_test_metadata_fields)
+
+def _test_metadata_file(name):
+    rt_util.helper_target(
+        py_wheel,
+        name = name + "_subject",
+        distribution = "mydist_" + name,
+        version = "0.0.0",
+        metadata_file = "desc.md",
+    )
+    analysis_test(
+        name = name,
+        impl = _test_metadata_file_impl,
+        target = name + "_subject",
+    )
+
+def _test_metadata_file_impl(env, target):
+    action = env.expect.that_target(target).action_named("PyWheel")
+    action.contains_at_least_args([
+        "--merge_metadata_file",
+        "tests/py_wheel/desc.md",
+    ])
+    action.contains_at_least_inputs(["tests/py_wheel/desc.md"])
+
+_tests.append(_test_metadata_file)
+
+def _test_extra_distinfo_files_strip_prefix(name):
+    rt_util.helper_target(
+        native.filegroup,
+        name = name + "_files",
+        srcs = ["desc.md", "source_name"],
+    )
+    rt_util.helper_target(
+        py_wheel,
+        name = name + "_subject",
+        distribution = "mydist_" + name,
+        version = "0.0.0",
+        extra_distinfo_files = {
+            ":" + name + "_files": "tests/py_wheel/|licenses",
+            "source_name": "licenses/NOTICE",
+        },
+    )
+    analysis_test(
+        name = name,
+        impl = _test_extra_distinfo_files_strip_prefix_impl,
+        target = name + "_subject",
+    )
+
+def _test_extra_distinfo_files_strip_prefix_impl(env, target):
+    action = env.expect.that_target(target).action_named("PyWheel")
+    action.contains_at_least_args([
+        "--extra_distinfo_file",
+        "licenses/desc.md;tests/py_wheel/desc.md",
+        "--extra_distinfo_file",
+        "licenses/source_name;tests/py_wheel/source_name",
+        "--extra_distinfo_file",
+        "licenses/NOTICE;tests/py_wheel/source_name",
+    ])
+
+_tests.append(_test_extra_distinfo_files_strip_prefix)
+
 def py_wheel_test_suite(name):
     test_suite(
         name = name,
