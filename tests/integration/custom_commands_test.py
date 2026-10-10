@@ -28,6 +28,17 @@ class CustomCommandsTest(runner.TestCase):
         )
         self.assert_result_matches(result, "bazel-out")
 
+    # Regression test for https://github.com/bazel-contrib/rules_python/issues/4198
+    def test_runtime_files_exclude_pycache_symlinks(self):
+        result = self.run_bazel(
+            "cquery",
+            "--repo_env=RULES_PYTHON_PYCACHE_DIR=/dev/null",
+            "--output=files",
+            "deps(//:bin)",
+        )
+        pycache = [f for f in result.stdout.splitlines() if "__pycache__" in f]
+        self.assertEqual(pycache, [])
+
 
 if __name__ == "__main__":
     # Enabling this makes the runner log subprocesses as the test goes along.
