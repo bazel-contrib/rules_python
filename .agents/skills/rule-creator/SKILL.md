@@ -35,10 +35,9 @@ trigger: <trigger-condition>
     applies in certain contexts.
 
 ### Formatting Guidelines
-*   **Line Wrapping:** Always wrap all text in the rule file (including the
-    title and description) to **80 columns** to ensure readability and
-    compatibility.
-*   **Clarity:** Write clear, actionable directives.
+*   **Line Wrapping:** Wrap all text to 80 columns.
+*   **Prose Style (Strunk & White):** Omit needless words. Do not use mannered
+    prose or verbose phrasing; state directives directly in active voice.
 
 ### Example
 

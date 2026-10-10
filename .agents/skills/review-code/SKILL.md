@@ -63,6 +63,9 @@ file from `.agents/skills/review-code/`:
 - Immediately create a user-facing review artifact named
   `code-review-results.md` in the conversation artifact directory so progress
   is visible right away.
+- Have sub-agents run `git diff $(git merge-base HEAD upstream/main)` to audit
+  committed and uncommitted branch changes without newer `upstream/main`
+  commits.
 - Launch all sub-agents concurrently using `invoke_subagent`.
 - Update `code-review-results.md` as sub-agent responses come in.
 - The artifact must include:
