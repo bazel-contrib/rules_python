@@ -4,6 +4,7 @@ load("//python:py_library.bzl", "py_library")
 load("//python:py_test.bzl", "py_test")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 load("//python/zipapp:py_zipapp_binary.bzl", "py_zipapp_binary")
+load("//tests/support:support.bzl", "SUPPORTS_BOOTSTRAP_SCRIPT")
 
 py_binary(
     name = "venv_bin",
@@ -119,4 +120,30 @@ py_library(
     srcs = glob(["site-packages/**"]),
     experimental_venvs_site_packages = "//python/config_settings:venvs_site_packages",
     imports = ["site-packages"],
+)
+
+py_binary(
+    name = "signals_bin",
+    srcs = ["signals_main.py"],
+    config_settings = {
+        "//python/config_settings:bootstrap_impl": "script",
+    },
+    main = "signals_main.py",
+    target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
+)
+
+py_zipapp_binary(
+    name = "signals_zipapp",
+    binary = ":signals_bin",
+    target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
+)
+
+py_test(
+    name = "zipapp_signals_test",
+    srcs = ["zipapp_signals_test.py"],
+    data = [":signals_zipapp"],
+    env = {
+        "TEST_ZIPAPP": "$(location :signals_zipapp)",
+    },
+    target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
 )
