@@ -14,6 +14,7 @@
 
 """Get the requirement files by platform."""
 
+load("//python/private:version.bzl", "version")
 load(":argparse.bzl", "argparse")
 load(":whl_target_platforms.bzl", "whl_target_platforms")
 
@@ -61,6 +62,15 @@ def _platforms_from_args(extra_pip_args):
 def _platform(platform_string, python_version = None):
     if not python_version or platform_string.startswith("cp"):
         return platform_string
+
+    py_ver = version.parse(python_version) if "." in python_version else None
+    if py_ver and len(py_ver.release) >= 3:
+        return "cp{}{}.{}_{}".format(
+            py_ver.release[0],
+            py_ver.release[1],
+            py_ver.release[2],
+            platform_string,
+        )
 
     major, _, tail = python_version.partition(".")
 
@@ -159,8 +169,10 @@ def requirements_files_by_platform(
             file: [
                 platform
                 for filter_or_platform in specifier.split(",")
-                for platform in (_default_platforms(filter = filter_or_platform, platforms = platforms) if filter_or_platform.endswith("*") else [filter_or_platform])
-                if _platform(platform, python_version) in default_platforms
+                for platform in _default_platforms(
+                    filter = filter_or_platform,
+                    platforms = platforms,
+                )
             ]
             for file, specifier in requirements_by_platform.items()
         }.items()
