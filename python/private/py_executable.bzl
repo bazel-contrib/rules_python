@@ -65,7 +65,6 @@ load(":py_cc_link_params_info.bzl", "PyCcLinkParamsInfo")
 load(":py_executable_info.bzl", "PyExecutableInfo")
 load(":py_info.bzl", "PyInfo", "VenvSymlinkKind")
 load(":py_internal.bzl", "py_internal")
-load(":py_runtime_info.bzl", "DEFAULT_STUB_SHEBANG")
 load(":reexports.bzl", "BuiltinPyInfo", "BuiltinPyRuntimeInfo")
 load(":rule_builders.bzl", "ruleb")
 load(
@@ -217,10 +216,6 @@ accepting arbitrary Python versions.
         "_bootstrap_impl_flag": lambda: attrb.Label(
             default = labels.BOOTSTRAP_IMPL,
             providers = [BuildSettingInfo],
-        ),
-        "_bootstrap_template": lambda: attrb.Label(
-            allow_single_file = True,
-            default = "@bazel_tools//tools/python:python_bootstrap_template.txt",
         ),
         "_build_data_writer": lambda: attrb.Label(
             default = "//python/private:build_data_writer",
@@ -568,7 +563,7 @@ def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root
     if runtime.interpreter:
         interpreter_actual_path = runfiles_root_path(ctx, runtime.interpreter.short_path)
     else:
-        interpreter_actual_path = runtime.interpreter_path
+        interpreter_actual_path = runtime_details.executable_interpreter_path
 
     is_windows = is_windows_platform(ctx)
     if is_windows:
@@ -729,7 +724,10 @@ def _create_venv_unixy(ctx, *, venv_ctx_rel_root, runtime, interpreter_actual_pa
         else:
             interpreter = ctx.actions.declare_symlink("{}/{}".format(venv_bin_ctx_rel_path, py_exe_basename))
             interpreter_runfiles.add(interpreter)
-            ctx.actions.symlink(output = interpreter, target_path = runtime.interpreter_path)
+            ctx.actions.symlink(
+                output = interpreter,
+                target_path = interpreter_actual_path,
+            )
     else:
         interpreter = None
 
@@ -768,7 +766,16 @@ def _create_venv_windows(ctx, *, venv_ctx_rel_root, runtime, interpreter_actual_
     py_exe_basename = paths.basename(interpreter_actual_path)
     venv_bin_rel_path = "Scripts"
     venv_bin_ctx_rel_path = "{}/{}".format(venv_ctx_rel_root, venv_bin_rel_path)
-    if runtime.interpreter:
+    if not runtime.supports_build_time_venv:
+        # When build-time venv isn't supported, the $venv/Scripts/python.exe
+        # file isn't needed or used from runfiles at runtime. However,
+        # stage1/zip bootstrap code uses the interpreter File object to
+        # compute the venv path.
+        interpreter = ctx.actions.declare_file(
+            "{}/{}".format(venv_bin_ctx_rel_path, py_exe_basename),
+        )
+        ctx.actions.write(interpreter, "actual:{}".format(interpreter_actual_path))
+    elif runtime.interpreter:
         venv_rel_path = paths.join(venv_bin_rel_path, py_exe_basename)
         venv_ctx_rel_path = paths.join(venv_ctx_rel_root, venv_rel_path)
         interpreter = ctx.actions.declare_file(venv_ctx_rel_path)
@@ -795,7 +802,10 @@ def _create_venv_windows(ctx, *, venv_ctx_rel_root, runtime, interpreter_actual_
         # will be written to it, so Bazel won't mangle it.
         interpreter = ctx.actions.declare_symlink("{}/{}".format(venv_bin_ctx_rel_path, py_exe_basename))
         interpreter_runfiles.add(interpreter)
-        ctx.actions.symlink(output = interpreter, target_path = runtime.interpreter_path)
+        ctx.actions.symlink(
+            output = interpreter,
+            target_path = interpreter_actual_path,
+        )
 
     # NOTE: The .dll files must exist, however, they may not be known at build time
     # if the interpreter is resolved at runtime.
@@ -944,10 +954,9 @@ def _create_stage1_bootstrap(
     python_binary_actual = venv.interpreter_actual_path if venv else ""
 
     # Guard against the following:
-    # * Runtime may be None on Windows due to the --python_path flag.
     # * Runtime may not have 'supports_build_time_venv' if a really old version is autoloaded
     #   on bazel 7.6.x.
-    if runtime and getattr(runtime, "supports_build_time_venv", False):
+    if getattr(runtime, "supports_build_time_venv", False):
         resolve_python_binary_at_runtime = "0"
     else:
         resolve_python_binary_at_runtime = "1"
@@ -982,20 +991,9 @@ def _create_stage1_bootstrap(
     elif not ctx.files.srcs:
         fail("mandatory 'srcs' files have not been provided")
     else:
-        if (ctx.configuration.coverage_enabled and
-            runtime and
-            runtime.coverage_tool):
-            coverage_tool_runfiles_path = runfiles_root_path(ctx, runtime.coverage_tool.short_path)
-        else:
-            coverage_tool_runfiles_path = ""
-        if runtime:
-            subs["%shebang%"] = runtime.stub_shebang
-            template = runtime.bootstrap_template
-        else:
-            subs["%shebang%"] = DEFAULT_STUB_SHEBANG
-            template = ctx.file._bootstrap_template
-
-        subs["%coverage_tool%"] = coverage_tool_runfiles_path
+        subs["%shebang%"] = runtime.stub_shebang
+        template = runtime.bootstrap_template
+        subs["%coverage_tool%"] = _get_coverage_tool_runfiles_path(ctx, runtime)
         subs["%import_all%"] = ("True" if read_possibly_native_flag(ctx, "python_import_all_repositories") else "False")
         subs["%imports%"] = ":".join(imports.to_list())
         subs["%main%"] = runfiles_root_path(ctx, main_py.short_path)
@@ -1151,7 +1149,15 @@ def _get_cc_details_for_binary(ctx, extra_deps):
     )
 
 def _get_interpreter_path(ctx, *, runtime, flag_interpreter_path):
-    if runtime:
+    # Hack around the fact that the autodetecting Python toolchain, which is
+    # automatically registered, does not yet support Windows. In this case,
+    # we want to fall back on --python_path. See tools/python/toolchain.bzl.
+    # TODO(#7844): Remove this hack when the autodetecting toolchain has a
+    # Windows implementation.
+    if (
+        runtime and
+        runtime.interpreter_path != "/_magic_pyruntime_sentinel_do_not_use"
+    ):
         if runtime.interpreter_path:
             interpreter_path = runtime.interpreter_path
         else:
@@ -1439,21 +1445,18 @@ def _get_runtime_details(ctx):
 
     effective_runtime = _maybe_get_runtime_from_ctx(ctx)
 
-    if effective_runtime:
-        direct = []  # List of files
-        transitive = []  # List of depsets
-        if effective_runtime.interpreter:
-            direct.append(effective_runtime.interpreter)
-            transitive.append(effective_runtime.files)
+    direct = []  # List of files
+    transitive = []  # List of depsets
+    if effective_runtime.interpreter:
+        direct.append(effective_runtime.interpreter)
+        transitive.append(effective_runtime.files)
 
-        if ctx.configuration.coverage_enabled:
-            if effective_runtime.coverage_tool:
-                direct.append(effective_runtime.coverage_tool)
-            if effective_runtime.coverage_files:
-                transitive.append(effective_runtime.coverage_files)
-        runtime_files = depset(direct = direct, transitive = transitive)
-    else:
-        runtime_files = depset()
+    if ctx.configuration.coverage_enabled:
+        if effective_runtime.coverage_tool:
+            direct.append(effective_runtime.coverage_tool)
+        if effective_runtime.coverage_files:
+            transitive.append(effective_runtime.coverage_files)
+    runtime_files = depset(direct = direct, transitive = transitive)
 
     executable_interpreter_path = _get_interpreter_path(
         ctx,
@@ -1462,9 +1465,7 @@ def _get_runtime_details(ctx):
     )
 
     return struct(
-        # Optional PyRuntimeInfo: The runtime that should be used.
-        # If None, it's probably Windows using the legacy auto-detecting toolchain
-        # that acts as if no toolchain was found.
+        # PyRuntimeInfo: The runtime that should be used.
         effective_runtime = effective_runtime,
         # str; Path to the Python interpreter to use for running the executable
         # itself (not the bootstrap script). Either an absolute path (which
@@ -1481,7 +1482,7 @@ def _maybe_get_runtime_from_ctx(ctx):
     """Finds the PyRuntimeInfo from the toolchain or attribute, if available.
 
     Returns:
-        A PyRuntimeInfo provider, or None.
+        A PyRuntimeInfo provider.
     """
     toolchain = ctx.toolchains[TOOLCHAIN_TYPE]
 
@@ -1490,15 +1491,6 @@ def _maybe_get_runtime_from_ctx(ctx):
     if not toolchain.py3_runtime:
         fail("Python toolchain missing py3_runtime")
     py3_runtime = toolchain.py3_runtime
-
-    # Hack around the fact that the autodetecting Python toolchain, which is
-    # automatically registered, does not yet support Windows. In this case,
-    # we want to return null so that _get_interpreter_path falls back on
-    # --python_path. See tools/python/toolchain.bzl.
-    # TODO(#7844): Remove this hack when the autodetecting toolchain has a
-    # Windows implementation.
-    if py3_runtime.interpreter_path == "/_magic_pyruntime_sentinel_do_not_use":
-        return None
 
     if py3_runtime.python_version != "PY3":
         fail("Python toolchain py3_runtime must be python_version=PY3, got {}".format(
@@ -2064,32 +2056,28 @@ def _add_provider_py_runtime_info(providers, runtime_details):
         providers: list of providers to append to.
         runtime_details: struct of runtime information; see _get_runtime_details()
     """
+    py_runtime_info = runtime_details.effective_runtime
+    providers.append(py_runtime_info)
 
-    # TODO - The effective runtime can be None for Windows + auto detecting toolchain.
-    # This can be removed once that's fixed; see maybe_get_runtime_from_ctx().
-    if runtime_details.effective_runtime:
-        py_runtime_info = runtime_details.effective_runtime
-        providers.append(py_runtime_info)
-
-        # Re-add the builtin PyRuntimeInfo for compatibility to make
-        # transitioning easier, but only if it isn't already added because
-        # returning the same provider type multiple times is an error.
-        # NOTE: The PyRuntimeInfo from the toolchain could be a rules_python
-        # PyRuntimeInfo or a builtin PyRuntimeInfo -- a user could have used the
-        # builtin py_runtime rule or defined their own. We can't directly detect
-        # the type of the provider object, but the rules_python PyRuntimeInfo
-        # object has an extra attribute that the builtin one doesn't.
-        if hasattr(py_runtime_info, "interpreter_version_info") and BuiltinPyRuntimeInfo != None:
-            providers.append(BuiltinPyRuntimeInfo(
-                interpreter_path = py_runtime_info.interpreter_path,
-                interpreter = py_runtime_info.interpreter,
-                files = py_runtime_info.files,
-                coverage_tool = py_runtime_info.coverage_tool,
-                coverage_files = py_runtime_info.coverage_files,
-                python_version = py_runtime_info.python_version,
-                stub_shebang = py_runtime_info.stub_shebang,
-                bootstrap_template = py_runtime_info.bootstrap_template,
-            ))
+    # Re-add the builtin PyRuntimeInfo for compatibility to make
+    # transitioning easier, but only if it isn't already added because
+    # returning the same provider type multiple times is an error.
+    # NOTE: The PyRuntimeInfo from the toolchain could be a rules_python
+    # PyRuntimeInfo or a builtin PyRuntimeInfo -- a user could have used the
+    # builtin py_runtime rule or defined their own. We can't directly detect
+    # the type of the provider object, but the rules_python PyRuntimeInfo
+    # object has an extra attribute that the builtin one doesn't.
+    if hasattr(py_runtime_info, "interpreter_version_info") and BuiltinPyRuntimeInfo != None:
+        providers.append(BuiltinPyRuntimeInfo(
+            interpreter_path = py_runtime_info.interpreter_path,
+            interpreter = py_runtime_info.interpreter,
+            files = py_runtime_info.files,
+            coverage_tool = py_runtime_info.coverage_tool,
+            coverage_files = py_runtime_info.coverage_files,
+            python_version = py_runtime_info.python_version,
+            stub_shebang = py_runtime_info.stub_shebang,
+            bootstrap_template = py_runtime_info.bootstrap_template,
+        ))
 
 def _add_provider_py_cc_link_params_info(providers, cc_info):
     """Adds the PyCcLinkParamsInfo provider.

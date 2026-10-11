@@ -124,10 +124,19 @@ if IS_WINDOWS:
     STAGE2_BOOTSTRAP = norm_slashes(STAGE2_BOOTSTRAP)
     PYTHON_BINARY = norm_slashes(PYTHON_BINARY)
     PYTHON_BINARY_ACTUAL = norm_slashes(PYTHON_BINARY_ACTUAL)
+    VENV_REL_SITE_PACKAGES = norm_slashes(VENV_REL_SITE_PACKAGES)
     RUNTIME_VENV_SYMLINKS = {
         norm_slashes(k): norm_slashes(v)
         for k, v in RUNTIME_VENV_SYMLINKS.items()
     }
+
+    def has_windows_executable_extension(path):
+        return path.lower().endswith((".exe", ".com", ".bat"))
+
+    if PYTHON_BINARY and not has_windows_executable_extension(PYTHON_BINARY):
+        PYTHON_BINARY = PYTHON_BINARY + ".exe"
+    if PYTHON_BINARY_ACTUAL and not has_windows_executable_extension(PYTHON_BINARY_ACTUAL):
+        PYTHON_BINARY_ACTUAL = PYTHON_BINARY_ACTUAL + ".exe"
 
 def get_windows_path_with_unc_prefix(path):
   """Adds UNC prefix after getting a normalized absolute Windows path.
@@ -379,7 +388,7 @@ print(site.getsitepackages(["{venv_src}"])[-1])
         print_verbose("prog:", src)
         output = subprocess.check_output([python_exe_actual, "-I"], shell=True,
                                          encoding = "utf8", input=src)
-        output = output.strip().split("\n")
+        output = output.strip().splitlines()
         python_exe_actual = output[0]
         python_home = output[1] if IS_WINDOWS else None
         venv_lib = output[2]

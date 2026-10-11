@@ -273,7 +273,11 @@ def _fixup_stdlib_paths():
     runtime root inside runfiles across sys.path, sys prefixes, and
     site.PREFIXES.
     """
-    if not _INTERPRETER_ACTUAL_PATH or os.path.isabs(_INTERPRETER_ACTUAL_PATH):
+    if (
+        not _INTERPRETER_ACTUAL_PATH
+        or os.path.isabs(_INTERPRETER_ACTUAL_PATH)
+        or "/" not in _INTERPRETER_ACTUAL_PATH
+    ):
         return
     if not _RUNFILES_ROOT:
         return
