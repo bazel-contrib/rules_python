@@ -93,8 +93,8 @@ filegroup(
 filegroup(
     name = "bzl",
     srcs = [
-        "//python/pip_install:bzl",
         "//python:bzl",
+        "//python/pip_install:bzl",
     ],
     visibility = ["//visibility:public"],
 )
