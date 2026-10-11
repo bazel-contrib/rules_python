@@ -766,7 +766,16 @@ def _create_venv_windows(ctx, *, venv_ctx_rel_root, runtime, interpreter_actual_
     py_exe_basename = paths.basename(interpreter_actual_path)
     venv_bin_rel_path = "Scripts"
     venv_bin_ctx_rel_path = "{}/{}".format(venv_ctx_rel_root, venv_bin_rel_path)
-    if runtime.interpreter:
+    if not runtime.supports_build_time_venv:
+        # When build-time venv isn't supported, the $venv/Scripts/python.exe
+        # file isn't needed or used from runfiles at runtime. However,
+        # stage1/zip bootstrap code uses the interpreter File object to
+        # compute the venv path.
+        interpreter = ctx.actions.declare_file(
+            "{}/{}".format(venv_bin_ctx_rel_path, py_exe_basename),
+        )
+        ctx.actions.write(interpreter, "actual:{}".format(interpreter_actual_path))
+    elif runtime.interpreter:
         venv_rel_path = paths.join(venv_bin_rel_path, py_exe_basename)
         venv_ctx_rel_path = paths.join(venv_ctx_rel_root, venv_rel_path)
         interpreter = ctx.actions.declare_file(venv_ctx_rel_path)
