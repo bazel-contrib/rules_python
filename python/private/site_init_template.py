@@ -273,7 +273,11 @@ def _fixup_stdlib_paths():
     runtime root inside runfiles across sys.path, sys prefixes, and
     site.PREFIXES.
     """
-    if not _INTERPRETER_ACTUAL_PATH or os.path.isabs(_INTERPRETER_ACTUAL_PATH):
+    if (
+        not _INTERPRETER_ACTUAL_PATH
+        or os.path.isabs(_INTERPRETER_ACTUAL_PATH)
+        or os.sep not in os.path.normpath(_INTERPRETER_ACTUAL_PATH)
+    ):
         return
     if not _RUNFILES_ROOT:
         return
@@ -318,14 +322,14 @@ def _fixup_stdlib_paths():
     if not candidate_prefixes:
         return
 
-    # First, verify if any candidate prefix has matching paths that physically
-    # exist in the runfiles tree.
+    # First, verify if any candidate prefix has matching subpaths that
+    # physically exist in the runfiles tree.
     remapped_prefixes = set()
     for p in sys.path:
         norm_p = _norm_path(p)
         for old_prefix in candidate_prefixes.values():
             norm_old = _norm_path(old_prefix)
-            if norm_p == norm_old or norm_p.startswith(norm_old + "/"):
+            if norm_p.startswith(norm_old + "/"):
                 candidate = target_root + p[len(old_prefix) :]
                 if os.path.exists(candidate):
                     remapped_prefixes.add(old_prefix)
