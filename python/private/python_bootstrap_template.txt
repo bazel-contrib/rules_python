@@ -115,6 +115,9 @@ IS_WINDOWS = os.name == "nt"
 BIN_DIR_NAME = "bin" if not IS_WINDOWS else "Scripts"
 LIB_DIR_NAME = "lib" if not IS_WINDOWS else "Lib"
 
+def has_windows_executable_extension(path):
+  return path.endswith('.exe') or path.endswith('.com') or path.endswith('.bat')
+
 # Windows APIs can be picky about slashes depending on the context,
 # so convert to backslashes to avoid any issues.
 if IS_WINDOWS:
@@ -124,6 +127,10 @@ if IS_WINDOWS:
     STAGE2_BOOTSTRAP = norm_slashes(STAGE2_BOOTSTRAP)
     PYTHON_BINARY = norm_slashes(PYTHON_BINARY)
     PYTHON_BINARY_ACTUAL = norm_slashes(PYTHON_BINARY_ACTUAL)
+    if PYTHON_BINARY and not has_windows_executable_extension(PYTHON_BINARY):
+        PYTHON_BINARY = PYTHON_BINARY + ".exe"
+    if PYTHON_BINARY_ACTUAL and not has_windows_executable_extension(PYTHON_BINARY_ACTUAL):
+        PYTHON_BINARY_ACTUAL = PYTHON_BINARY_ACTUAL + ".exe"
     RUNTIME_VENV_SYMLINKS = {
         norm_slashes(k): norm_slashes(v)
         for k, v in RUNTIME_VENV_SYMLINKS.items()
