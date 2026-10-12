@@ -97,6 +97,16 @@ EXECUTABLE_ATTRS = dicts.add(
         "_default_to_explicit_init_py_flag": attr.label(default = "//python/config_settings:incompatible_default_to_explicit_init_py"),
         "_python_import_all_repositories_flag": attr.label(default = "//python/config_settings:experimental_python_import_all_repositories"),
         "_python_path_flag": attr.label(default = "//python/config_settings:python_path"),
+        # Read by rules_runfiles_group's packaging aspects; see runfiles_groups.bzl.
+        "_runfiles_group_attrs": attr.string_list(default = [
+            "_debugger_flag",
+            "_runfiles_group_python_runtime",
+            "data",
+            "deps",
+            "srcs",
+        ]),
+        "_runfiles_group_describer": attr.label(default = "//python/private:py_executable_runfiles_group_describer"),
+        "_runfiles_group_python_runtime": attr.label(default = "//python/private:python_runtime_runfiles"),
     },
     {
         "interpreter_args": lambda: attrb.StringList(
@@ -1445,7 +1455,7 @@ def _get_runtime_details(ctx):
         fail("'python_path' must be an absolute path or a name to be resolved from the system PATH (e.g., 'python', 'python3').")
 
     effective_runtime = _maybe_get_runtime_from_ctx(ctx)
-    runtime_files = get_runtime_files(ctx, effective_runtime)
+    runtime_files = _get_runtime_files(ctx, effective_runtime)
 
     executable_interpreter_path = _get_interpreter_path(
         ctx,
@@ -1467,16 +1477,18 @@ def _get_runtime_details(ctx):
         runfiles = ctx.runfiles(transitive_files = runtime_files),
     )
 
-def get_runtime_files(ctx, runtime):
+def get_runtime_files(ctx):
     """Returns the runtime files an executable puts into its runfiles.
 
     Args:
-        ctx: {type}`ctx` the rule or aspect ctx.
-        runtime: {type}`PyRuntimeInfo` the runtime of the executable.
+        ctx: The rule ctx. The rule must use the target Python toolchain.
 
     Returns:
-        {type}`depset[File]`
+        depset[File]
     """
+    return _get_runtime_files(ctx, _maybe_get_runtime_from_ctx(ctx))
+
+def _get_runtime_files(ctx, runtime):
     direct = []  # List of files
     transitive = []  # List of depsets
     if runtime.interpreter:

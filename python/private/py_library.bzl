@@ -116,6 +116,11 @@ This allows optimizing the generation of symlinks to be cheaper at analysis time
         "_add_srcs_to_runfiles_flag": lambda: attrb.Label(
             default = labels.ADD_SRCS_TO_RUNFILES,
         ),
+        # Read by rules_runfiles_group's packaging aspects; see runfiles_groups.bzl.
+        "_runfiles_group_attrs": lambda: attrb.StringList(default = ["data", "deps", "srcs"]),
+        "_runfiles_group_describer": lambda: attrb.Label(
+            default = "//python/private:py_library_runfiles_group_describer",
+        ),
     },
 )
 
@@ -230,14 +235,10 @@ def get_package_and_version(data_files):
     allows us to get the name of the package and its version.
 
     Args:
-        data_files: {type}`list[File]` the files in the library's `data`
-            attribute.
+        data_files: list of File; the files in the library's `data` attribute.
 
     Returns:
-        {type}`tuple[str | None, str | None]` the distribution name, lowercased
-        with runs of `-`, `_` and `.` turned into `_` (e.g. `google_cloud_storage`),
-        and the normalized version; `(None, None)` without a
-        `.dist-info/METADATA` file.
+        tuple of the normalized package name and version, or `(None, None)`.
     """
     dist_info_metadata = None
     for d in data_files:
