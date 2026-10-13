@@ -1,0 +1,11 @@
+{
+  "has_encodings": true,
+  "status": "ok",
+  "stdlib_is_in_runfiles": {
+    "encodings": true,
+    "json": true,
+    "os": true,
+    "sysconfig": true
+  },
+  "sys_executable_is_in_runfiles": true
+}
