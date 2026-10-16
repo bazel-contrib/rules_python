@@ -20,6 +20,13 @@ load(":bazel_config_mode.bzl", "bazel_config_mode")
 load(":distribution_filegroup.bzl", "distribution_filegroup")
 load(":py_exec_tools_toolchain.bzl", "current_interpreter_executable")
 load(":py_interpreter_program.bzl", "py_interpreter_program")
+load(
+    ":runfiles_groups.bzl",
+    "py_executable_runfiles_group_describer",
+    "py_library_runfiles_group_describer",
+    "python_runtime_runfiles",
+    "python_runtime_runfiles_group_describer",
+)
 load(":sentinel_impl.bzl", "sentinel")
 load(":stamp_impl.bzl", "stamp_build_setting")
 load(":uncachable_version_file.bzl", "define_uncachable_version_file")
@@ -846,6 +853,24 @@ bzl_library(
 )
 
 bzl_library(
+    name = "runfiles_groups",
+    srcs = ["runfiles_groups.bzl"],
+    deps = [
+        ":attributes",
+        ":common",
+        ":flags",
+        ":py_executable",
+        ":py_executable_info",
+        ":py_info",
+        ":py_internal",
+        ":py_library",
+        ":reexports",
+        ":toolchain_types",
+        "@rules_runfiles_group//runfiles_group:lib",
+    ],
+)
+
+bzl_library(
     name = "runtime_env_repo",
     srcs = ["runtime_env_repo.bzl"],
     deps = [":repo_utils"],
@@ -1039,4 +1064,27 @@ bzl_library(
 bzl_library(
     name = "visibility",
     srcs = ["visibility.bzl"],
+)
+
+# Runfiles group describers of the Python rules (see runfiles_groups.bzl), the
+# defaults of their _runfiles_group_describer attributes. Not actually public;
+# only public because they're implicit dependencies of rules built via the rule
+# builders.
+py_library_runfiles_group_describer(
+    name = "py_library_runfiles_group_describer",
+    visibility = ["//visibility:public"],
+)
+
+py_executable_runfiles_group_describer(
+    name = "py_executable_runfiles_group_describer",
+    visibility = ["//visibility:public"],
+)
+
+python_runtime_runfiles_group_describer(name = "python_runtime_runfiles_group_describer")
+
+# The interpreter and standard library as one runfiles group, merged in by every
+# py_binary and py_test.
+python_runtime_runfiles(
+    name = "python_runtime_runfiles",
+    visibility = ["//visibility:public"],
 )

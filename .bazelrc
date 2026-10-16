@@ -90,3 +90,7 @@ build:macos --host_copt=-Wno-sign-compare
 import %workspace%/specialized_configs.bazelrc
 
 try-import user.bazelrc
+
+# TODO: Delete before merging. rules_runfiles_group's describer API isn't in the
+# BCR yet; see https://github.com/bazelbuild/rules_java/pull/368.
+common --registry=https://bazel-contrib.github.io/rules_runfiles_group --registry=https://bcr.bazel.build
