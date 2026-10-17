@@ -16,22 +16,39 @@ package python
 
 import (
 	"bufio"
-	_ "embed"
-	"strings"
+	"bytes"
+	"embed"
+	"io/fs"
 )
 
 var (
-	//go:embed stdlib_list.txt
-	stdlibList string
+	//go:embed stdlib_list/*.txt
+	stdlibFS   embed.FS
 	stdModules map[string]struct{}
 )
 
 func init() {
-	stdModules = make(map[string]struct{})
-	scanner := bufio.NewScanner(strings.NewReader(stdlibList))
-	for scanner.Scan() {
-		stdModules[scanner.Text()] = struct{}{}
+	var err error
+	stdModules, err = loadStdModules(stdlibFS)
+	if err != nil {
+		panic(err)
 	}
+}
+
+func loadStdModules(fsys fs.ReadFileFS) (map[string]struct{}, error) {
+	data, err := fsys.ReadFile("stdlib_list/selected.txt")
+	if err != nil {
+		data, err = fsys.ReadFile("stdlib_list/default.txt")
+		if err != nil {
+			return nil, err
+		}
+	}
+	modules := make(map[string]struct{})
+	scanner := bufio.NewScanner(bytes.NewReader(data))
+	for scanner.Scan() {
+		modules[scanner.Text()] = struct{}{}
+	}
+	return modules, scanner.Err()
 }
 
 func isStdModule(m Module) bool {
