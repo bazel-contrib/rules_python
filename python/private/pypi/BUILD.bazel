@@ -584,6 +584,7 @@ bzl_library(
         ":whl_metadata",
         "//python/private:normalize_name",
         "//python/private:repo_utils",
+        "@package_metadata//purl:srcs",
     ],
 )
 
