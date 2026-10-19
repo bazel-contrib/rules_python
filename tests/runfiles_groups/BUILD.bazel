@@ -56,8 +56,20 @@ py_library(
 py_library(
     name = "foo_pkg",
     srcs = ["site-packages/foo_pkg.py"],
-    data = ["site-packages/foo_pkg-1.0.dist-info/METADATA"],
+    data = [
+        "site-packages/_foo_native.so",
+        "site-packages/foo_pkg-1.0.dist-info/METADATA",
+    ],
+    experimental_venvs_site_packages = "//python/config_settings:venvs_site_packages",
     imports = ["site-packages"],
+)
+
+# Wraps foo_pkg like whl_library's :pkg wraps its :srcs; adds no group.
+py_library(
+    name = "foo_pkg_wrapper",
+    srcs = [":foo_pkg"],
+    precompile = "disabled",
+    deps = [":foo_pkg"],
 )
 
 _DATA = [
@@ -74,7 +86,7 @@ py_binary(
     data = _DATA,
     main = "main.py",
     deps = [
-        ":foo_pkg",
+        ":foo_pkg_wrapper",
         ":lib_b",
     ],
 )
@@ -107,6 +119,22 @@ py_reconfig_binary(
     deps = [":lib_b"],
 )
 
+# The venv's links to foo_pkg's files go into foo_pkg's group.
+py_binary(
+    name = "bin_venv",
+    srcs = ["main.py"],
+    config_settings = {
+        "//python/config_settings:venvs_site_packages": "yes",
+    } | select({
+        "@platforms//os:windows": {},
+        "//conditions:default": {
+            "//python/config_settings:bootstrap_impl": "script",
+        },
+    }),
+    main = "main.py",
+    deps = [":foo_pkg_wrapper"],
+)
+
 # Falls back to one group for itself and its deps, because its pyc selection
 # differs from what its deps describe.
 py_binary(
@@ -135,6 +163,7 @@ runfiles_group_analysis_test(
         ":bin_legacy_init",
         ":bin_precompiled",
         ":bin_pyc_collection",
+        ":bin_venv",
         ":test",
     ],
     overlapping_group_behavior = "error",

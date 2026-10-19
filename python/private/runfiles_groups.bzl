@@ -15,8 +15,9 @@
 
 A packaging rule (a container image rule, say) walks a binary with an aspect and
 asks each target's describer which runfiles it adds and which attributes it
-merges runfiles in from. The Python rules point their `_runfiles_group_describer`
-attribute at the describers below.
+merges runfiles in from. The Python rules list the describers below in their
+`_aspect_rule_hints` attribute. The runtime comes from the Python toolchain,
+which the aspect only walks on Bazel 8.8 or later.
 
 Only `//python/private:BUILD.bazel` loads this file; the rules refer to the
 describers by label. With Bazel 8's autoloads, rules_python loading
@@ -36,7 +37,6 @@ load(":py_info.bzl", "PyInfo")
 load(":py_internal.bzl", "py_internal")
 load(":py_library.bzl", "get_package_and_version")
 load(":reexports.bzl", "BuiltinPyInfo")
-load(":toolchain_types.bzl", TOOLCHAIN_TYPE = "TARGET_TOOLCHAIN_TYPE")
 
 # Stamped on every group, so Python groups stay together when a packager has to
 # merge groups to fit a layer limit.
@@ -48,6 +48,12 @@ _RUNTIME_GROUP = "rules_python#runtime"
 # Libraries from PyPI are named by package: whl_library's repository names are an
 # implementation detail.
 _PYPI_GROUP_PREFIX = "rules_python#pypi/"
+
+# The toolchain type //python:toolchain_type is an alias of; the aspect matches
+# toolchains by the actual label.
+_RUNTIME_MERGE_FROM = runfiles_groups.merge_from(
+    toolchain = Label("@bazel_tools//tools/python:toolchain_type"),
+)
 
 def _pyc_collection_enabled(ctx, pyc_collection = PycCollectionAttr.INHERIT):
     # PycCollectionAttr only reads these two attributes.
@@ -68,6 +74,9 @@ def _is_file(target):
 def _is_empty(runfiles):
     return not (runfiles.files or runfiles.symlinks or runfiles.root_symlinks)
 
+def _has_py_info(target):
+    return PyInfo in target or (BuiltinPyInfo != None and BuiltinPyInfo in target)
+
 def _py_info_files(target, pyc_collection_enabled):
     if PyInfo in target:
         return py_info_runfiles_files(target[PyInfo], pyc_collection_enabled)
@@ -78,17 +87,36 @@ def _py_info_files(target, pyc_collection_enabled):
 def _kind(label):
     return "first_party" if label.repo_name == "" else "third_party"
 
+def _pypi_entry(package, content, weight = None):
+    return runfiles_groups.entry(
+        name = _PYPI_GROUP_PREFIX + package,
+        content = content,
+        kind = "third_party",
+        rank = runfiles_groups.RANK_SHARED_DEPS,
+        weight = weight,
+        merge_affinity = _MERGE_AFFINITY,
+    )
+
 def _own_files(target, ctx, pyc_collection_enabled):
     """The files a target itself puts into a consuming binary's runfiles."""
     info = target[PyInfo]
 
+    # A Python target in srcs (a wheel's :pkg wraps its :srcs) describes its
+    # own files.
+    foreign = {
+        f: None
+        for dep in ctx.rule.attr.srcs
+        if _has_py_info(dep)
+        for f in dep[DefaultInfo].files.to_list()
+    }
+
     # Sources that aren't .py files (directories, .pyc files) are outputs, but
     # never runfiles.
-    sources = {f: None for f in info.direct_original_sources.to_list()}
+    sources = {f: None for f in info.direct_original_sources.to_list() if f not in foreign}
     direct = [
         f
         for f in target[DefaultInfo].files.to_list()
-        if f not in sources or is_py_source(f)
+        if f not in foreign and (f not in sources or is_py_source(f))
     ]
     transitive = []
     if pyc_collection_enabled:
@@ -129,11 +157,11 @@ def _data_fallback(ctx, dep):
     content = runfiles_groups.union(ctx, [default_info.files, default_info.data_runfiles])
     return runfiles_groups.entry(name = dep.label, content = content)
 
-def _srcs_fallback(_ctx, dep):
-    runfiles = dep[DefaultInfo].default_runfiles
-    if _is_file(dep) or _is_empty(runfiles):
+def _srcs_fallback(ctx, dep):
+    # Plain files are in the merging target's own group.
+    if _is_file(dep):
         return None
-    return runfiles_groups.entry(name = dep.label, content = runfiles)
+    return _dep_fallback(ctx, dep, py_outputs = False)
 
 def _describe_py_library(target, ctx):
     pyc_collection_enabled = _pyc_collection_enabled(ctx)
@@ -148,22 +176,22 @@ def _describe_py_library(target, ctx):
             for files in _py_info_files(dep, pyc_collection_enabled)
         ])
 
+    weight = len(ctx.rule.files.srcs) + len(ctx.rule.files.data)
     package, _ = get_package_and_version(ctx.rule.files.data)
     if package:
-        name = _PYPI_GROUP_PREFIX + package
-        kind = "third_party"
+        entry = _pypi_entry(package, content, weight)
     else:
-        name = ctx.label
         kind = _kind(ctx.label)
-    return runfiles_groups.node(
-        add = [runfiles_groups.entry(
-            name = name,
+        entry = runfiles_groups.entry(
+            name = ctx.label,
             content = content,
             kind = kind,
             rank = runfiles_groups.RANK_SHARED_DEPS if kind == "third_party" else runfiles_groups.RANK_EXECUTABLE,
-            weight = len(ctx.rule.files.srcs) + len(ctx.rule.files.data),
+            weight = weight,
             merge_affinity = _MERGE_AFFINITY,
-        )] if content else [],
+        )
+    return runfiles_groups.node(
+        add = [entry] if content else [],
         merge_from = [
             runfiles_groups.merge_from("data", fallback = _data_fallback),
             runfiles_groups.merge_from("deps", fallback = _library_dep_fallback),
@@ -175,6 +203,41 @@ py_library_runfiles_group_describer = runfiles_groups.make_describer_rule(
     describe = _describe_py_library,
 )
 
+def _venv_entries(ctx, venv_runfiles):
+    """Splits the venv's links to PyPI package files into those packages' groups.
+
+    A packager that copies symlinked files can then keep each link with the
+    file it points to, instead of copying shared libraries into the binary's
+    group.
+
+    Args:
+        ctx: The aspect ctx of the binary.
+        venv_runfiles: runfiles; PyExecutableInfo.venv_runfiles.
+
+    Returns:
+        tuple of the PyPI entries and the venv runfiles left for the binary.
+    """
+    packages = {
+        entry.link_to_file: entry.package
+        for entry in depset(transitive = [
+            dep[PyInfo].venv_symlinks
+            for dep in ctx.rule.attr.deps
+            if PyInfo in dep
+        ]).to_list()
+        if entry.link_to_file and entry.package
+    }
+    by_package = {}
+    own_links = {}
+    for link in venv_runfiles.root_symlinks.to_list():
+        package = packages.get(link.target_file)
+        links = by_package.setdefault(package, {}) if package else own_links
+        links[link.path] = link.target_file
+    entries = [
+        _pypi_entry(package, ctx.runfiles(root_symlinks = links))
+        for package, links in by_package.items()
+    ]
+    return entries, ctx.runfiles(transitive_files = venv_runfiles.files, root_symlinks = own_links)
+
 def _describe_py_executable(target, ctx):
     info = target[PyExecutableInfo]
     pyc_collection_enabled = _pyc_collection_enabled(ctx, ctx.rule.attr.pyc_collection)
@@ -182,7 +245,8 @@ def _describe_py_executable(target, ctx):
         _own_files(target, ctx, pyc_collection_enabled),
         depset([f for f in (info.build_data_file, info.stage2_bootstrap) if f]),
     ]
-    content.extend([rf for rf in (info.venv_runfiles, info.venv_interpreter_runfiles) if rf])
+    venv_runfiles = info.venv_runfiles
+    add = []
 
     # Two cases where the binary's group takes its dependencies:
     # * The legacy __init__.py files: they're generated for every directory in
@@ -195,15 +259,18 @@ def _describe_py_executable(target, ctx):
         merge_from = []
     elif pyc_collection_enabled != _pyc_collection_enabled(ctx):
         content.append(info.app_runfiles)
-        merge_from = ["_runfiles_group_python_runtime"]
+        merge_from = [_RUNTIME_MERGE_FROM]
     else:
+        if venv_runfiles:
+            add, venv_runfiles = _venv_entries(ctx, venv_runfiles)
         merge_from = [
-            "_runfiles_group_python_runtime",
+            _RUNTIME_MERGE_FROM,
             runfiles_groups.merge_from("_debugger_flag", fallback = _executable_dep_fallback),
             runfiles_groups.merge_from("data", fallback = _data_fallback),
             runfiles_groups.merge_from("deps", fallback = _executable_dep_fallback),
             runfiles_groups.merge_from("srcs", fallback = _srcs_fallback),
         ]
+    content.extend([rf for rf in (venv_runfiles, info.venv_interpreter_runfiles) if rf])
 
     return runfiles_groups.node(
         add = [runfiles_groups.entry(
@@ -211,7 +278,7 @@ def _describe_py_executable(target, ctx):
             content = runfiles_groups.union(ctx, content),
             kind = _kind(ctx.label),
             merge_affinity = _MERGE_AFFINITY,
-        )],
+        )] + add,
         merge_from = merge_from,
         executable_group = ctx.label,
     )
@@ -220,8 +287,9 @@ py_executable_runfiles_group_describer = runfiles_groups.make_describer_rule(
     describe = _describe_py_executable,
 )
 
-def _describe_python_runtime(target, _ctx):
-    files = target[DefaultInfo].files
+def _describe_py_runtime_pair(target, ctx):
+    runtime = target[platform_common.ToolchainInfo].py3_runtime
+    files = get_runtime_files(ctx, runtime) if runtime else depset()
     return runfiles_groups.node(add = [runfiles_groups.entry(
         name = _RUNTIME_GROUP,
         content = files,
@@ -231,26 +299,6 @@ def _describe_python_runtime(target, _ctx):
         merge_affinity = _MERGE_AFFINITY,
     )] if files else [])
 
-python_runtime_runfiles_group_describer = runfiles_groups.make_describer_rule(
-    describe = _describe_python_runtime,
-)
-
-def _python_runtime_runfiles_impl(ctx):
-    return [DefaultInfo(files = get_runtime_files(ctx))]
-
-python_runtime_runfiles = rule(
-    implementation = _python_runtime_runfiles_impl,
-    doc = """\
-The runtime files a binary puts into its runfiles, as one runfiles group.
-
-Every binary merges in the same target, so a packager builds the group once per
-configuration rather than once per binary.
-""",
-    attrs = {
-        "_runfiles_group_attrs": attr.string_list(default = []),
-        "_runfiles_group_describer": attr.label(
-            default = ":python_runtime_runfiles_group_describer",
-        ),
-    },
-    toolchains = [TOOLCHAIN_TYPE],
+py_runtime_pair_runfiles_group_describer = runfiles_groups.make_describer_rule(
+    describe = _describe_py_runtime_pair,
 )

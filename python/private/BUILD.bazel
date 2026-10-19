@@ -24,8 +24,7 @@ load(
     ":runfiles_groups.bzl",
     "py_executable_runfiles_group_describer",
     "py_library_runfiles_group_describer",
-    "python_runtime_runfiles",
-    "python_runtime_runfiles_group_describer",
+    "py_runtime_pair_runfiles_group_describer",
 )
 load(":sentinel_impl.bzl", "sentinel")
 load(":stamp_impl.bzl", "stamp_build_setting")
@@ -869,7 +868,6 @@ bzl_library(
         ":py_internal",
         ":py_library",
         ":reexports",
-        ":toolchain_types",
         "@rules_runfiles_group//runfiles_group:lib",
     ],
 )
@@ -1070,10 +1068,9 @@ bzl_library(
     srcs = ["visibility.bzl"],
 )
 
-# Runfiles group describers of the Python rules (see runfiles_groups.bzl), the
-# defaults of their _runfiles_group_describer attributes. Not actually public;
-# only public because they're implicit dependencies of rules built via the rule
-# builders.
+# Runfiles group describers of the Python rules (see runfiles_groups.bzl), held
+# by their _aspect_rule_hints attributes. Not actually public; only public
+# because they're implicit dependencies of rules built via the rule builders.
 py_library_runfiles_group_describer(
     name = "py_library_runfiles_group_describer",
     visibility = ["//visibility:public"],
@@ -1084,11 +1081,7 @@ py_executable_runfiles_group_describer(
     visibility = ["//visibility:public"],
 )
 
-python_runtime_runfiles_group_describer(name = "python_runtime_runfiles_group_describer")
-
-# The interpreter and standard library as one runfiles group, merged in by every
-# py_binary and py_test.
-python_runtime_runfiles(
-    name = "python_runtime_runfiles",
+py_runtime_pair_runfiles_group_describer(
+    name = "py_runtime_pair_runfiles_group_describer",
     visibility = ["//visibility:public"],
 )
