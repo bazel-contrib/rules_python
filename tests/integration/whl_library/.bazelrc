@@ -1,2 +1,5 @@
 common --incompatible_default_to_explicit_init_py
 test --test_output=errors
+
+# TODO: Delete before merging; see the root .bazelrc.
+common --registry=https://bazel-contrib.github.io/rules_runfiles_group --registry=https://bcr.bazel.build

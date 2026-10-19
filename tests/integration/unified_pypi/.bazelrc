@@ -1,1 +1,4 @@
 common --experimental_enable_bzlmod
+
+# TODO: Delete before merging; see the root .bazelrc.
+common --registry=https://bazel-contrib.github.io/rules_runfiles_group --registry=https://bcr.bazel.build

@@ -35,3 +35,6 @@ common:fast-tests --test_tag_filters=-large,-enormous,-integration-test
 build --config=pyrefly
 build:pyrefly --aspects=//tests/support/pyrefly:pyrefly.bzl%pyrefly_aspect
 build:pyrefly --output_groups=+pyrefly
+
+# TODO: Delete before merging; see the root .bazelrc.
+common --registry=https://bazel-contrib.github.io/rules_runfiles_group --registry=https://bcr.bazel.build

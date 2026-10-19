@@ -5,3 +5,6 @@ build --enable_runfiles
 
 coverage --java_runtime_version=remotejdk_11
 common:bazel7.x --incompatible_python_disallow_native_rules
+
+# TODO: Delete before merging; see the root .bazelrc.
+common --registry=https://bazel-contrib.github.io/rules_runfiles_group --registry=https://bcr.bazel.build
