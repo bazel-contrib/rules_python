@@ -868,7 +868,7 @@ bzl_library(
         ":py_internal",
         ":py_library",
         ":reexports",
-        "@rules_runfiles_group//runfiles_group:lib",
+        "@rules_runfiles_group//runfiles_group:describe",
     ],
 )
 

@@ -27,7 +27,7 @@ A library's group holds what it contributes to a consuming binary: the files the
 binary takes from its PyInfo, plus its plain data files.
 """
 
-load("@rules_runfiles_group//runfiles_group:lib.bzl", "runfiles_groups")
+load("@rules_runfiles_group//runfiles_group:describe.bzl", "describe")
 load(":attributes.bzl", "PycCollectionAttr")
 load(":common.bzl", "is_py_source", "py_info_runfiles_files")
 load(":flags.bzl", "PyiDepsToRunfilesFlag")
@@ -51,7 +51,7 @@ _PYPI_GROUP_PREFIX = "rules_python#pypi/"
 
 # The toolchain type //python:toolchain_type is an alias of; the aspect matches
 # toolchains by the actual label.
-_RUNTIME_MERGE_FROM = runfiles_groups.merge_from(
+_RUNTIME_MERGE_FROM = describe.merge_from(
     toolchain = Label("@bazel_tools//tools/python:toolchain_type"),
 )
 
@@ -84,15 +84,23 @@ def _py_info_files(target, pyc_collection_enabled):
         return py_info_runfiles_files(target[BuiltinPyInfo], pyc_collection_enabled)
     return []
 
+def _union(ctx, contents):
+    # Each content is a depset of File or a runfiles object.
+    files = [c for c in contents if type(c) == "depset"]
+    runfiles = [c for c in contents if type(c) != "depset"]
+    if not runfiles:
+        return depset(transitive = files)
+    return ctx.runfiles(transitive_files = depset(transitive = files)).merge_all(runfiles)
+
 def _kind(label):
     return "first_party" if label.repo_name == "" else "third_party"
 
 def _pypi_entry(package, content, weight = None):
-    return runfiles_groups.entry(
+    return describe.entry(
         name = _PYPI_GROUP_PREFIX + package,
         content = content,
         kind = "third_party",
-        rank = runfiles_groups.RANK_SHARED_DEPS,
+        rank = describe.RANK_SHARED_DEPS,
         weight = weight,
         merge_affinity = _MERGE_AFFINITY,
     )
@@ -140,7 +148,7 @@ def _dep_fallback(ctx, dep, py_outputs):
         content.append(runfiles)
     if not content:
         return None
-    return runfiles_groups.entry(name = dep.label, content = runfiles_groups.union(ctx, content))
+    return describe.entry(name = dep.label, content = _union(ctx, content))
 
 def _library_dep_fallback(ctx, dep):
     # py_library adds the .py outputs of a dep without PyInfo to its own PyInfo.
@@ -154,8 +162,8 @@ def _data_fallback(ctx, dep):
     default_info = dep[DefaultInfo]
     if _is_file(dep) or (not default_info.files and _is_empty(default_info.data_runfiles)):
         return None
-    content = runfiles_groups.union(ctx, [default_info.files, default_info.data_runfiles])
-    return runfiles_groups.entry(name = dep.label, content = content)
+    content = _union(ctx, [default_info.files, default_info.data_runfiles])
+    return describe.entry(name = dep.label, content = content)
 
 def _srcs_fallback(ctx, dep):
     # Plain files are in the merging target's own group.
@@ -182,24 +190,24 @@ def _describe_py_library(target, ctx):
         entry = _pypi_entry(package, content, weight)
     else:
         kind = _kind(ctx.label)
-        entry = runfiles_groups.entry(
+        entry = describe.entry(
             name = ctx.label,
             content = content,
             kind = kind,
-            rank = runfiles_groups.RANK_SHARED_DEPS if kind == "third_party" else runfiles_groups.RANK_EXECUTABLE,
+            rank = describe.RANK_SHARED_DEPS if kind == "third_party" else describe.RANK_EXECUTABLE,
             weight = weight,
             merge_affinity = _MERGE_AFFINITY,
         )
-    return runfiles_groups.node(
+    return describe.node(
         add = [entry] if content else [],
         merge_from = [
-            runfiles_groups.merge_from("data", fallback = _data_fallback),
-            runfiles_groups.merge_from("deps", fallback = _library_dep_fallback),
-            runfiles_groups.merge_from("srcs", fallback = _srcs_fallback),
+            describe.merge_from("data", fallback = _data_fallback),
+            describe.merge_from("deps", fallback = _library_dep_fallback),
+            describe.merge_from("srcs", fallback = _srcs_fallback),
         ],
     )
 
-py_library_runfiles_group_describer = runfiles_groups.make_describer_rule(
+py_library_runfiles_group_describer = describe.make_describer_rule(
     describe = _describe_py_library,
 )
 
@@ -265,17 +273,17 @@ def _describe_py_executable(target, ctx):
             add, venv_runfiles = _venv_entries(ctx, venv_runfiles)
         merge_from = [
             _RUNTIME_MERGE_FROM,
-            runfiles_groups.merge_from("_debugger_flag", fallback = _executable_dep_fallback),
-            runfiles_groups.merge_from("data", fallback = _data_fallback),
-            runfiles_groups.merge_from("deps", fallback = _executable_dep_fallback),
-            runfiles_groups.merge_from("srcs", fallback = _srcs_fallback),
+            describe.merge_from("_debugger_flag", fallback = _executable_dep_fallback),
+            describe.merge_from("data", fallback = _data_fallback),
+            describe.merge_from("deps", fallback = _executable_dep_fallback),
+            describe.merge_from("srcs", fallback = _srcs_fallback),
         ]
     content.extend([rf for rf in (venv_runfiles, info.venv_interpreter_runfiles) if rf])
 
-    return runfiles_groups.node(
-        add = [runfiles_groups.entry(
+    return describe.node(
+        add = [describe.entry(
             name = ctx.label,
-            content = runfiles_groups.union(ctx, content),
+            content = _union(ctx, content),
             kind = _kind(ctx.label),
             merge_affinity = _MERGE_AFFINITY,
         )] + add,
@@ -283,22 +291,22 @@ def _describe_py_executable(target, ctx):
         executable_group = ctx.label,
     )
 
-py_executable_runfiles_group_describer = runfiles_groups.make_describer_rule(
+py_executable_runfiles_group_describer = describe.make_describer_rule(
     describe = _describe_py_executable,
 )
 
 def _describe_py_runtime_pair(target, ctx):
     runtime = target[platform_common.ToolchainInfo].py3_runtime
     files = get_runtime_files(ctx, runtime) if runtime else depset()
-    return runfiles_groups.node(add = [runfiles_groups.entry(
+    return describe.node(add = [describe.entry(
         name = _RUNTIME_GROUP,
         content = files,
         kind = "foundation",
-        rank = runfiles_groups.RANK_FOUNDATION,
+        rank = describe.RANK_FOUNDATION,
         do_not_merge = True,
         merge_affinity = _MERGE_AFFINITY,
     )] if files else [])
 
-py_runtime_pair_runfiles_group_describer = runfiles_groups.make_describer_rule(
+py_runtime_pair_runfiles_group_describer = describe.make_describer_rule(
     describe = _describe_py_runtime_pair,
 )
