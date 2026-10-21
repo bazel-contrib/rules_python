@@ -133,14 +133,14 @@ The runtime to use for Python 3 targets. Must have `python_version` set to
 `PY3`.
 """,
         ),
-        "_visible_for_testing": attr.label(
-            default = labels.VISIBLE_FOR_TESTING,
-        ),
         # Read by rules_runfiles_group's packaging aspects; see runfiles_groups.bzl.
         "_aspect_rule_hints": attr.label_list(
             default = ["//python/private:py_runtime_pair_runfiles_group_describer"],
         ),
         "_runfiles_group_attrs": attr.string_list(default = []),
+        "_visible_for_testing": attr.label(
+            default = labels.VISIBLE_FOR_TESTING,
+        ),
     },
     fragments = ["py"],
     doc = """

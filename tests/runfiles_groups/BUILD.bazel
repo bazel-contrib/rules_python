@@ -6,7 +6,8 @@ load("//python:py_test.bzl", "py_test")
 load("//tests/support:py_reconfig.bzl", "py_reconfig_binary")
 load(":test_rules.bzl", "outputs_and_runfiles", "outputs_only")
 
-# Packagers walk the Python toolchain, which needs Bazel 8.8 or later.
+# Packagers walk the Python toolchain through toolchains_aspects, which takes
+# "*" since Bazel 8.8.0 and a propagation filter since Bazel 9.0.0.
 _WALKS_TOOLCHAINS = [] if (
     bazel_features.rules.aspect_propagation_context or
     bazel_features.rules.supports_toolchains_aspects_star

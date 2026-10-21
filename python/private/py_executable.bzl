@@ -93,16 +93,16 @@ EXECUTABLE_ATTRS = dicts.add(
     WINDOWS_CONSTRAINTS_ATTRS,
     # starlark flags attributes
     {
-        "_build_python_zip_flag": attr.label(default = "//python/config_settings:build_python_zip"),
-        "_default_to_explicit_init_py_flag": attr.label(default = "//python/config_settings:incompatible_default_to_explicit_init_py"),
-        "_python_import_all_repositories_flag": attr.label(default = "//python/config_settings:experimental_python_import_all_repositories"),
-        "_python_path_flag": attr.label(default = "//python/config_settings:python_path"),
         # Read by rules_runfiles_group's packaging aspects; see runfiles_groups.bzl.
         "_aspect_rule_hints": attr.label_list(default = [
             "//python/private:py_executable_runfiles_group_describer",
             # What //python:toolchain_type is an alias of.
             "@bazel_tools//tools/python:toolchain_type",
         ]),
+        "_build_python_zip_flag": attr.label(default = "//python/config_settings:build_python_zip"),
+        "_default_to_explicit_init_py_flag": attr.label(default = "//python/config_settings:incompatible_default_to_explicit_init_py"),
+        "_python_import_all_repositories_flag": attr.label(default = "//python/config_settings:experimental_python_import_all_repositories"),
+        "_python_path_flag": attr.label(default = "//python/config_settings:python_path"),
         "_runfiles_group_attrs": attr.string_list(default = ["_debugger_flag", "data", "deps", "srcs"]),
     },
     {
@@ -1478,11 +1478,11 @@ def get_runtime_files(ctx, runtime):
     """Returns the runtime files an executable puts into its runfiles.
 
     Args:
-        ctx: The rule or aspect ctx.
-        runtime: PyRuntimeInfo; the runtime of the executable.
+        ctx: {type}`ctx` the rule or aspect ctx.
+        runtime: {type}`PyRuntimeInfo` the runtime of the executable.
 
     Returns:
-        depset[File]
+        {type}`depset[File]`
     """
     direct = []  # List of files
     transitive = []  # List of depsets
