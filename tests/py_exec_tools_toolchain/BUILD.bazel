@@ -12,8 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load(":py_exec_tools_toolchain_tests.bzl", "py_exec_tools_toolchain_test_suite")
+load(
+    ":py_exec_tools_toolchain_tests.bzl",
+    "interpreter_run_in_action_test",
+    "py_exec_tools_toolchain_test_suite",
+)
 
 py_exec_tools_toolchain_test_suite(
     name = "py_exec_tools_toolchain_tests",
+)
+
+interpreter_run_in_action_test(
+    name = "test_run_interpreter_as_action",
 )
