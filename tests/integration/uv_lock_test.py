@@ -266,6 +266,10 @@ class UvLockIntegrationTest(runner.TestCase):
             self.assertIn('name = "my-local-pkg"\nversion = "2.0.0"', updated_lock)
             self.assertIn('name = "other-local-pkg"\nversion = "1.0.0"', updated_lock)
         finally:
+            # All test methods share self.repo_root (BIT_WORKSPACE_DIR), and in
+            # local runs pyproject.toml is a runfiles symlink to the host source
+            # tree. Restore pyproject.toml and remove uv.lock so subsequent test
+            # methods and the host working tree are not left with test-only edits.
             pyproject.write_text(orig_pyproject)
             lock_file.unlink(missing_ok=True)
 
