@@ -53,6 +53,19 @@ py_library(
     deps = [":lib_a"],
 )
 
+# A console script, listed in the wheel's data both on its own and in a
+# filegroup, like whl_library does.
+genrule(
+    name = "foo_console_script",
+    outs = ["scripts/foo"],
+    cmd = "touch $@",
+)
+
+filegroup(
+    name = "foo_bin",
+    srcs = [":foo_console_script"],
+)
+
 # Looks like a library from a wheel: grouped by package name.
 py_library(
     name = "foo_pkg",
@@ -60,6 +73,8 @@ py_library(
     data = [
         "site-packages/_foo_native.so",
         "site-packages/foo_pkg-1.0.dist-info/METADATA",
+        ":foo_bin",
+        ":foo_console_script",
     ],
     experimental_venvs_site_packages = "//python/config_settings:venvs_site_packages",
     imports = ["site-packages"],

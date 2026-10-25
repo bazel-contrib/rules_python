@@ -302,9 +302,9 @@ def _describe_py_library(target, ctx):
     """Describes a `py_library`: one group for its own files.
 
     The group is named after the distribution for a library with a
-    `.dist-info/METADATA` file in `data` (i.e. one from a wheel), and by the
-    library's label otherwise. Its weight is the number of files in `srcs` and
-    `data`.
+    `.dist-info/METADATA` file in `data` (i.e. one from a wheel), and takes
+    everything in its `data` too. Otherwise it's named by the library's label.
+    Its weight is the number of files in `srcs` and `data`.
 
     Args:
         target: {type}`Target` the library.
@@ -326,9 +326,14 @@ def _describe_py_library(target, ctx):
         ])
 
     weight = len(ctx.rule.files.srcs) + len(ctx.rule.files.data)
+    data = describe.merge_from("data", fallback = _data_fallback)
     package, _ = get_package_and_version(ctx.rule.files.data)
     if package:
         entry = _pypi_entry(package, content, weight)
+
+        # whl_library lists a console script in `data` both on its own and in a
+        # filegroup, which would put it in two groups.
+        data = describe.merge_from("data", fallback = _data_fallback, into = entry.name)
     else:
         kind = _kind(ctx.label)
         entry = describe.entry(
@@ -342,7 +347,7 @@ def _describe_py_library(target, ctx):
     return describe.node(
         add = [entry] if content else [],
         merge_from = [
-            describe.merge_from("data", fallback = _data_fallback),
+            data,
             describe.merge_from("deps", fallback = _library_dep_fallback),
             describe.merge_from("srcs", fallback = _srcs_fallback),
         ],
