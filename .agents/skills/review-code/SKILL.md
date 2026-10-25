@@ -85,12 +85,39 @@ file from `.agents/skills/review-code/`:
   committed and uncommitted branch changes without newer `upstream/main`
   commits.
 - Launch all sub-agents concurrently using `invoke_subagent`.
-- Update `code-review-results.md` as sub-agent responses come in.
-- The artifact must include:
-  - Overall summary and verdict across audit categories.
-  - Detailed analysis and findings from each sub-agent.
-  - Actionable findings and fix suggestions with specific code snippets, diffs,
-    and clickable file links for any violations found.
+- Update `code-review-results.md` as sub-agent responses come in, omitting all
+  passing-check prose. Do not use bold for the introduction or lead-in of a
+  bulleted list or bullet item; use **bold** for any questions the user needs
+  to answer. Structure `code-review-results.md` as follows:
+
+  ````markdown
+  # Code Review: <Target / PR>
+
+  Verdict: `<PASS | NEEDS_FIXES | NEEDS_HUMAN_SIGN_OFF>` (<N> open, <H>
+  needing human sign-off, <M> resolved)
+
+  ## Open Issues
+
+  ### <ID>. [<SEVERITY>] <Short title> — [<file>:<line>](file:///...)
+  * Problem: <1-2 sentences stating what is wrong and why.>
+  * Proposed Fix:
+    ```<lang>
+    <replacement snippet or diff>
+    ```
+  * Draft Comment: `<comment text in user's voice>`
+  * Author Response: <If the author replied to this comment thread, quote or
+    summarize their response here, bolding any question to answer.>
+  * Draft Reply: `<proposed reply in user's voice, if applicable>`
+
+  ## Resolved Issues
+
+  * ~~<ID>. [<SEVERITY>] <Short title> ([<file>:<line>](file:///...))~~ —
+    Resolved: <How it was fixed or resolved (e.g., fixed in commit N,
+    updated in working copy, or dismissed per reviewer).>
+
+  ## Passing Domains
+  <Comma-separated list of audited domains with 0 issues>
+  ````
 - Once all sub-agents finish, finalize `code-review-results.md` and provide a
   concise summary with the overall verdict and a clickable markdown link to
   `code-review-results.md` in the response.

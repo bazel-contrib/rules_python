@@ -52,13 +52,7 @@ repos:
         name: Sort runtimes manifest
         language: system
         entry: ./python/private/tools/sort_manifest.py
-        files: ^python/private/runtimes_manifest\.txt$
-      - id: sync-runtimes-manifest
-        name: Sync runtimes manifest workspace
-        language: system
-        entry: ./python/private/tools/sync_runtimes_manifest_workspace.py
-        files: ^python/private/runtimes_manifest\.txt$
-        pass_filenames: false
+        files: ^python/private/runtimes_manifest\.bzl$
       - id: sync-downloader-configs
         name: Sync downloader configs
         language: system

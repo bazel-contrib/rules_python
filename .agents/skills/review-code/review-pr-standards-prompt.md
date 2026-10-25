@@ -15,8 +15,8 @@ Your sole task is to audit PR titles and PR descriptions against
 5. Inspect the PR description and comments for open questions, `TODO` items,
    or "Things we could do / follow-ups" sections. Evaluate each item against
    the diff and project rules, flag items requiring resolution or user input
-   with `ACTION_REQUIRED` or `USER_DECISION_REQUIRED`, and verify the PR has
-   the `"do not merge"` label when open questions are present (add it or flag
-   as `ACTION_REQUIRED` if missing).
+   with `BLOCKER`, `QUESTION`, or `HUMAN-SIGN-OFF`, and verify the PR has the
+   `"do not merge"` label when open questions are present (add it or flag as
+   `BLOCKER` if missing).
 
 @.agents/skills/review-code/review-report-format.md

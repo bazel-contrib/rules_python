@@ -27,7 +27,7 @@ load(
 load("//python/private:platform_info.bzl", "platform_info")
 
 ##load("@rules_python_internal//:manifest_tool_versions.bzl", "MANIFEST_ENTRIES")
-load("//python/private:runtimes_manifest_workspace.bzl", "MANIFEST_TEXT")
+load("//python/private:runtimes_manifest.bzl", "MANIFEST_TEXT")
 
 # Values present in the @platforms//os package
 MACOS_NAME = "osx"

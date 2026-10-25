@@ -30,6 +30,7 @@ load(":pyproject_utils.bzl", "read_pyproject", "version_from_requires_python")
 load(":python_register_toolchains.bzl", "python_register_toolchains")
 load(":pythons_hub.bzl", "hub_repo")
 load(":repo_utils.bzl", "repo_utils")
+load(":runtimes_manifest.bzl", "MANIFEST_TEXT")
 load(
     ":toolchains_repo.bzl",
     "host_compatible_python_repo",
@@ -39,13 +40,20 @@ load(
 )
 load(":version.bzl", "version")
 
-def parse_modules(*, module_ctx, logger = None, _fail = fail):
+def parse_modules(
+        *,
+        module_ctx,
+        logger = None,
+        _fail = fail,
+        _default_runtime_manifest = MANIFEST_TEXT):
     """Parse the modules and return a struct for registrations.
 
     Args:
         module_ctx: {type}`module_ctx` module context.
         logger: {type}`repo_utils.logger` A logger to use.
         _fail: {type}`function` the failure function, mainly for testing.
+        _default_runtime_manifest: {type}`str` the built-in runtimes manifest,
+            only overridden for testing.
 
     Returns:
         A struct with the following attributes:
@@ -84,7 +92,12 @@ def parse_modules(*, module_ctx, logger = None, _fail = fail):
     # Map of string Major.Minor or Major.Minor.Patch to the toolchain_info struct
     global_toolchain_versions = {}
 
-    config = _get_toolchain_config(mctx = module_ctx, modules = module_ctx.modules, _fail = _fail)
+    config = _get_toolchain_config(
+        mctx = module_ctx,
+        modules = module_ctx.modules,
+        default_runtime_manifest = _default_runtime_manifest,
+        _fail = _fail,
+    )
 
     default_python_version = _compute_default_python_version(module_ctx)
 
@@ -762,11 +775,12 @@ def _populate_from_pbs_manifest(
         mctx,
         add_runtime_manifest_urls = [],
         add_runtime_manifest_files = [],
+        add_runtime_manifest_contents = [],
         runtime_manifest_sha = "",
         base_urls = [],
         available_versions,
         _fail):
-    manifest_contents = []
+    manifest_contents = list(add_runtime_manifest_contents)
 
     if add_runtime_manifest_urls:
         manifest_path = mctx.path("runtime_manifest")
@@ -835,12 +849,19 @@ def _populate_from_pbs_manifest(
             v_dict.setdefault("url", {})[platform_key] = urls
             v_dict.setdefault("strip_prefix", {})[platform_key] = strip_prefix
 
-def _get_toolchain_config(*, mctx, modules, _fail = fail):
+def _get_toolchain_config(
+        *,
+        mctx,
+        modules,
+        default_runtime_manifest,
+        _fail = fail):
     """Computes the configs for toolchains.
 
     Args:
         mctx: The module context.
         modules: The modules from module_ctx
+        default_runtime_manifest: The contents of the built-in runtimes
+            manifest.
         _fail: Function to call for failing; only used for testing.
 
     Returns:
@@ -864,7 +885,9 @@ def _get_toolchain_config(*, mctx, modules, _fail = fail):
 
     _populate_from_pbs_manifest(
         mctx = mctx,
-        add_runtime_manifest_files = [Label("//python/private:runtimes_manifest.txt")],
+        # Loaded rather than read by Label, so the remote repo contents cache
+        # does not have to materialize this repo.
+        add_runtime_manifest_contents = [default_runtime_manifest],
         base_urls = DEFAULT_RELEASE_BASE_URLS,
         available_versions = available_versions,
         _fail = _fail,

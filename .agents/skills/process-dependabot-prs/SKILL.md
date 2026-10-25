@@ -82,13 +82,20 @@ Classify each PR as **OK**, **OK (with trivial fixes)**, or **Problematic**:
 
 Once the user confirms:
 
-1. **Handle Conflicts or Stale Branches**:
+1. **Close Duplicate or Superseded PRs**:
+   - When closing/skipping a duplicate or superseded PR, close it and post a
+     comment noting which PR supersedes it:
+     ```bash
+     gh pr close <pr_number> --repo bazel-contrib/rules_python \
+       --comment "Superseded by #<superseding_pr_number>."
+     ```
+2. **Handle Conflicts or Stale Branches**:
    - If a pure Dependabot PR has merge conflicts after another PR merges, run:
      ```bash
      gh pr comment <pr_number> --repo bazel-contrib/rules_python \
        --body "@dependabot recreate"
      ```
-2. **Fix Trivial Failures (When Needed)**:
+3. **Fix Trivial Failures (When Needed)**:
    - Fetch and check out the PR branch:
      ```bash
      git fetch upstream <headRefName>
@@ -115,11 +122,11 @@ Once the user confirms:
      ```bash
      git push upstream HEAD:<headRefName>
      ```
-3. **Approve the PR**:
+4. **Approve the PR**:
    ```bash
    gh pr review <pr_number> --repo bazel-contrib/rules_python --approve
    ```
-4. **Merge Using `merge-pr`**:
+5. **Merge Using `merge-pr`**:
    - Follow [merge-pr](../merge-pr/SKILL.md) to enqueue the PR (`gh pr merge
      <pr_number> --repo bazel-contrib/rules_python --auto --squash`) and launch
      a `Merge PR Shepherd` subagent to monitor CI, retry flakes, and track the

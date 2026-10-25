@@ -1,6 +1,16 @@
+"""Manifest of built-in Python runtimes.
+
+It's a .bzl file so that both WORKSPACE mode and Bzlmod can load the manifest
+directly without needing to read a file by Label (which would otherwise force
+Bazel's remote repository contents cache to materialize the entire repository).
+"""
+
+MANIFEST_TEXT = """
 # Manifest of runtimes to make available
-# Originally generated circa 2026-06 from the runtimes in TOOL_VERSIONS from the original python/versions.bzl
-# To sort this file, execute: ./python/private/tools/sort_manifest.py python/private/runtimes_manifest.txt
+# Originally generated circa 2026-06 from the runtimes in TOOL_VERSIONS from
+# the original python/versions.bzl
+# To sort this file, execute:
+#   ./python/private/tools/sort_manifest.py python/private/runtimes_manifest.bzl
 
 1409acd9a506e2d1d3b65c1488db4e40d8f19d09a7df099667c87a506f71c0ef  20220227/cpython-3.10.2+20220227-aarch64-apple-darwin-install_only.tar.gz
 8f351a8cc348bb45c0f95b8634c8345ec6e749e483384188ad865b7428342703  20220227/cpython-3.10.2+20220227-aarch64-unknown-linux-gnu-install_only.tar.gz
@@ -1038,3 +1048,4 @@ ceb5637723387877f65b869c3d2cc36975a689824df0d075f0f39d26afb0d2b6  20261003/cpyth
 986fda009bd9f37397f47a52d9bb37b761e7bc3d7dc0403a5702c050ee9cd091  20261003/cpython-3.15.0rc3+20261003-x86_64-unknown-linux-musl-freethreaded-install_only_stripped.tar.gz
 4a69a480e523e9ed4d5deb941a0c0ccfe1001f3269f6b3091975f059c14de99d  20261003/cpython-3.15.0rc3+20261003-x86_64-unknown-linux-musl-install_only.tar.gz
 2be25b45a6f84cc46f6f0cb144c4292dd0e5bbdb3f07442a0f270b51ecc7da0f  20261003/cpython-3.15.0rc3+20261003-x86_64-unknown-linux-musl-install_only_stripped.tar.gz
+"""

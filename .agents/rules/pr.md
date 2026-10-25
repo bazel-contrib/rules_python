@@ -52,5 +52,5 @@ Before drafting any pull request description, strictly adhere to the rules in
   * During code review, inspect the PR description and comments for open
     questions, `TODO` items, or "Things we could do / follow-up" notes.
     Evaluate each item against the diff and project rules, flag unresolved
-    items with `ACTION_REQUIRED` or `USER_DECISION_REQUIRED`, and verify the
+    items with `BLOCKER`, `QUESTION`, or `HUMAN-SIGN-OFF`, and verify the
     `"do not merge"` label is applied if open questions remain.

@@ -456,11 +456,9 @@ def _test_archive_flavor_platform_keys(env):
                 is_root = True,
                 toolchain = [python_ext.toolchain(python_version = "3.14")],
             ),
-            mock_files = {
-                "python/private/runtimes_manifest.txt": _ARCHIVE_FLAVOR_MANIFEST,
-            },
         ),
         logger = repo_utils.logger(verbosity_level = 0, name = "python"),
+        _default_runtime_manifest = _ARCHIVE_FLAVOR_MANIFEST,
     )
     tool_versions = py.config.default["tool_versions"]
     platform = "x86_64-unknown-linux-gnu"
