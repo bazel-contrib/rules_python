@@ -1,30 +1,23 @@
-# Copyright 2026 The Bazel Authors. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 """Runfiles group describers of the Python rules, for rules_runfiles_group.
 
-A packaging rule (a container image rule, say) walks a binary with an aspect and
-asks each target's describer which runfiles it adds and which attributes it
-merges runfiles in from. The Python rules list the describers below in their
-`_aspect_rule_hints` attribute. The runtime comes from the Python toolchain,
-which the aspect only walks on Bazel 8.8 or later.
+Packaging rules built on rules_runfiles_group (e.g. rules_img's
+`image_from_binary`) split a binary's runfiles into groups, typically one image
+layer each. They walk the binary with an aspect and call the describer each
+target lists in its `_aspect_rule_hints`, which says what runfiles the target
+adds itself and which attributes the aspect merges groups in from.
 
-Only `//python/private:BUILD.bazel` loads this file; the rules refer to the
-describers by label. With Bazel 8's autoloads, rules_python loading
-rules_runfiles_group from the files that define the rules is a load cycle.
+A `py_binary` or `py_test` gets these groups:
 
-A library's group holds what it contributes to a consuming binary: the files the
-binary takes from its PyInfo, plus its plain data files.
+* `rules_python#runtime`: the interpreter and standard library, described by the
+  Python toolchain's `py_runtime_pair`. The aspect only walks toolchains on
+  Bazel 8.8 or later.
+* `rules_python#pypi/<distribution>`: one per PyPI distribution.
+* One per `py_library`, and one per rule target in `data`, named by its label.
+* The binary's own: its sources, bootstrap files and venv.
+
+Only `//python/private:BUILD.bazel` loads this file, and the rules refer to the
+describers by label: with Bazel 8's autoloads, loading rules_runfiles_group from
+the files that define the rules is a load cycle.
 """
 
 load("@rules_runfiles_group//runfiles_group:describe.bzl", "describe")
@@ -42,11 +35,10 @@ load(":reexports.bzl", "BuiltinPyInfo")
 # merge groups to fit a layer limit.
 _MERGE_AFFINITY = "rules_python"
 
-# The interpreter and standard library, shared by every binary in a configuration.
 _RUNTIME_GROUP = "rules_python#runtime"
 
-# Libraries from PyPI are named by package: whl_library's repository names are an
-# implementation detail.
+# Named by distribution rather than by label: whl_library's repository names are
+# an implementation detail.
 _PYPI_GROUP_PREFIX = "rules_python#pypi/"
 
 # The toolchain type //python:toolchain_type is an alias of; the aspect matches
@@ -56,6 +48,17 @@ _RUNTIME_MERGE_FROM = describe.merge_from(
 )
 
 def _pyc_collection_enabled(ctx, pyc_collection = PycCollectionAttr.INHERIT):
+    """Whether a binary includes implicit pyc files instead of their sources.
+
+    Args:
+        ctx: {type}`ctx` the aspect ctx.
+        pyc_collection: {type}`str` a binary's `pyc_collection` attribute; the
+            default gives the configuration's choice.
+
+    Returns:
+        {type}`bool`
+    """
+
     # PycCollectionAttr only reads these two attributes.
     return PycCollectionAttr.is_pyc_collection_enabled(struct(attr = struct(
         pyc_collection = pyc_collection,
@@ -63,21 +66,56 @@ def _pyc_collection_enabled(ctx, pyc_collection = PycCollectionAttr.INHERIT):
     )))
 
 def _is_file(target):
-    # A source file owns itself, a generated file is owned by the rule that
-    # generates it, and a rule target owns its own outputs.
+    """Whether a target is a single file rather than a rule.
+
+    Args:
+        target: {type}`Target` an attribute's dependency.
+
+    Returns:
+        {type}`bool`
+    """
     files = target[DefaultInfo].files
     if not py_internal.is_singleton_depset(files):
         return False
     file = files.to_list()[0]
+
+    # A source file owns itself and a generated file is owned by the rule that
+    # generates it, while a rule's own outputs are owned by the rule.
     return (file.owner == target.label) == file.is_source
 
 def _is_empty(runfiles):
+    """Whether a runfiles object holds nothing.
+
+    Args:
+        runfiles: {type}`runfiles`
+
+    Returns:
+        {type}`bool`
+    """
     return not (runfiles.files or runfiles.symlinks or runfiles.root_symlinks)
 
 def _has_py_info(target):
+    """Whether a target provides PyInfo or the builtin PyInfo.
+
+    Args:
+        target: {type}`Target`
+
+    Returns:
+        {type}`bool`
+    """
     return PyInfo in target or (BuiltinPyInfo != None and BuiltinPyInfo in target)
 
 def _py_info_files(target, pyc_collection_enabled):
+    """The files a binary takes from a target's PyInfo.
+
+    Args:
+        target: {type}`Target`
+        pyc_collection_enabled: {type}`bool` whether the binary includes
+            implicit pyc files instead of their sources.
+
+    Returns:
+        {type}`list[depset[File]]` empty for a target without PyInfo.
+    """
     if PyInfo in target:
         return py_info_runfiles_files(target[PyInfo], pyc_collection_enabled)
     if BuiltinPyInfo != None and BuiltinPyInfo in target:
@@ -85,7 +123,15 @@ def _py_info_files(target, pyc_collection_enabled):
     return []
 
 def _union(ctx, contents):
-    # Each content is a depset of File or a runfiles object.
+    """Combines group contents into one.
+
+    Args:
+        ctx: {type}`ctx` the aspect ctx.
+        contents: {type}`list[depset[File] | runfiles]`
+
+    Returns:
+        {type}`depset[File] | runfiles` a depset if every content is one.
+    """
     files = [c for c in contents if type(c) == "depset"]
     runfiles = [c for c in contents if type(c) != "depset"]
     if not runfiles:
@@ -93,9 +139,28 @@ def _union(ctx, contents):
     return ctx.runfiles(transitive_files = depset(transitive = files)).merge_all(runfiles)
 
 def _kind(label):
+    """The `kind` of the group of a target's own files.
+
+    Args:
+        label: {type}`Label` the target's label.
+
+    Returns:
+        {type}`str` `first_party` for the main repository, else `third_party`.
+    """
     return "first_party" if label.repo_name == "" else "third_party"
 
 def _pypi_entry(package, content, weight = None):
+    """An entry in the group of a PyPI distribution.
+
+    Args:
+        package: {type}`str` the distribution name, as normalized by
+            `get_package_and_version`.
+        content: {type}`depset[File] | runfiles`
+        weight: {type}`int | None` see `describe.entry`.
+
+    Returns:
+        {type}`RunfilesGroupInfo`
+    """
     return describe.entry(
         name = _PYPI_GROUP_PREFIX + package,
         content = content,
@@ -106,10 +171,24 @@ def _pypi_entry(package, content, weight = None):
     )
 
 def _own_files(target, ctx, pyc_collection_enabled):
-    """The files a target itself puts into a consuming binary's runfiles."""
+    """The files a target itself puts into a binary's runfiles.
+
+    That is its sources (or their implicit pyc files), its other outputs, and
+    the plain files in its `data`. Its dependencies' files are left to their own
+    groups.
+
+    Args:
+        target: {type}`Target` a `py_library`, `py_binary` or `py_test`.
+        ctx: {type}`ctx` the aspect ctx.
+        pyc_collection_enabled: {type}`bool` whether the binary includes
+            implicit pyc files instead of their sources.
+
+    Returns:
+        {type}`depset[File]`
+    """
     info = target[PyInfo]
 
-    # A Python target in srcs (a wheel's :pkg wraps its :srcs) describes its
+    # A Python target in srcs (whl_library's :pkg wraps its :srcs) describes its
     # own files.
     foreign = {
         f: None
@@ -132,14 +211,24 @@ def _own_files(target, ctx, pyc_collection_enabled):
     else:
         direct.extend([f for f in sources if is_py_source(f)])
 
-    # Plain files in `data` belong to the target's own group (and so to each
-    # target listing them); rule targets get groups of their own.
+    # A plain file listed in several targets' data lands in each of their groups.
     for dep in ctx.rule.attr.data:
         if _is_file(dep):
             direct.append(dep[DefaultInfo].files.to_list()[0])
     return depset(direct, transitive = transitive)
 
 def _dep_fallback(ctx, dep, py_outputs):
+    """The group of a dependency that doesn't describe its own groups.
+
+    Args:
+        ctx: {type}`ctx` the aspect ctx of the merging target.
+        dep: {type}`Target` the dependency.
+        py_outputs: {type}`bool` whether to include the dependency's .py outputs
+            when it has no PyInfo.
+
+    Returns:
+        {type}`RunfilesGroupInfo | None` None if it contributes nothing.
+    """
     content = _py_info_files(dep, _pyc_collection_enabled(ctx))
     if py_outputs and not content:
         content.append(depset([f for f in dep[DefaultInfo].files.to_list() if is_py_source(f)]))
@@ -151,14 +240,43 @@ def _dep_fallback(ctx, dep, py_outputs):
     return describe.entry(name = dep.label, content = _union(ctx, content))
 
 def _library_dep_fallback(ctx, dep):
-    # py_library adds the .py outputs of a dep without PyInfo to its own PyInfo.
+    """`_dep_fallback` for a `py_library`'s `deps`.
+
+    A `py_library` adds the .py outputs of a dependency without PyInfo to its own
+    PyInfo, so the dependency's group holds them.
+
+    Args:
+        ctx: {type}`ctx` the aspect ctx of the library.
+        dep: {type}`Target` the dependency.
+
+    Returns:
+        {type}`RunfilesGroupInfo | None`
+    """
     return _dep_fallback(ctx, dep, py_outputs = True)
 
 def _executable_dep_fallback(ctx, dep):
+    """`_dep_fallback` for a binary's `deps`.
+
+    Args:
+        ctx: {type}`ctx` the aspect ctx of the binary.
+        dep: {type}`Target` the dependency.
+
+    Returns:
+        {type}`RunfilesGroupInfo | None`
+    """
     return _dep_fallback(ctx, dep, py_outputs = False)
 
 def _data_fallback(ctx, dep):
-    # Plain files are in the merging target's own group.
+    """The group of a rule target in `data` that doesn't describe its own groups.
+
+    Args:
+        ctx: {type}`ctx` the aspect ctx of the merging target.
+        dep: {type}`Target` the dependency.
+
+    Returns:
+        {type}`RunfilesGroupInfo | None` None for a plain file, which is in the
+        merging target's own group, or a target that contributes nothing.
+    """
     default_info = dep[DefaultInfo]
     if _is_file(dep) or (not default_info.files and _is_empty(default_info.data_runfiles)):
         return None
@@ -166,17 +284,40 @@ def _data_fallback(ctx, dep):
     return describe.entry(name = dep.label, content = content)
 
 def _srcs_fallback(ctx, dep):
-    # Plain files are in the merging target's own group.
+    """The group of a rule target in `srcs` that doesn't describe its own groups.
+
+    Args:
+        ctx: {type}`ctx` the aspect ctx of the merging target.
+        dep: {type}`Target` the dependency.
+
+    Returns:
+        {type}`RunfilesGroupInfo | None` None for a plain file, which is in the
+        merging target's own group.
+    """
     if _is_file(dep):
         return None
     return _dep_fallback(ctx, dep, py_outputs = False)
 
 def _describe_py_library(target, ctx):
+    """Describes a `py_library`: one group for its own files.
+
+    The group is named after the distribution for a library with a
+    `.dist-info/METADATA` file in `data` (i.e. one from a wheel), and by the
+    library's label otherwise. Its weight is the number of files in `srcs` and
+    `data`.
+
+    Args:
+        target: {type}`Target` the library.
+        ctx: {type}`ctx` the aspect ctx.
+
+    Returns:
+        {type}`struct` from `describe.node`.
+    """
     pyc_collection_enabled = _pyc_collection_enabled(ctx)
     content = _own_files(target, ctx, pyc_collection_enabled)
 
-    # With pyi_deps_to_runfiles, a binary takes the files of pyi_deps from
-    # this target's PyInfo, but not their runfiles.
+    # With pyi_deps_to_runfiles, a binary takes the files of pyi_deps from this
+    # target's PyInfo, but not their runfiles.
     if PyiDepsToRunfilesFlag.is_enabled(struct(attr = ctx.rule.attr, var = ctx.var)):
         content = depset(transitive = [content] + [
             files
@@ -212,18 +353,19 @@ py_library_runfiles_group_describer = describe.make_describer_rule(
 )
 
 def _venv_entries(ctx, venv_runfiles):
-    """Splits the venv's links to PyPI package files into those packages' groups.
+    """Moves the venv's links to PyPI distribution files into their groups.
 
-    A packager that copies symlinked files can then keep each link with the
-    file it points to, instead of copying shared libraries into the binary's
-    group.
+    A packager that stores symlinks as copies of their targets can then keep each
+    link next to the file it points to, instead of copying the file (typically a
+    shared library) into the binary's group.
 
     Args:
-        ctx: The aspect ctx of the binary.
-        venv_runfiles: runfiles; PyExecutableInfo.venv_runfiles.
+        ctx: {type}`ctx` the aspect ctx of the binary.
+        venv_runfiles: {type}`runfiles` the binary's `PyExecutableInfo.venv_runfiles`.
 
     Returns:
-        tuple of the PyPI entries and the venv runfiles left for the binary.
+        {type}`tuple[list[RunfilesGroupInfo], runfiles]` the entries for the
+        distributions' groups, and the venv runfiles left for the binary's.
     """
     packages = {
         entry.link_to_file: entry.package
@@ -247,6 +389,19 @@ def _venv_entries(ctx, venv_runfiles):
     return entries, ctx.runfiles(transitive_files = venv_runfiles.files, root_symlinks = own_links)
 
 def _describe_py_executable(target, ctx):
+    """Describes a `py_binary` or `py_test`.
+
+    Its group holds its own files, bootstrap files and venv, and is the group
+    the packager puts the executable in. The runtime and the dependencies'
+    groups are merged in.
+
+    Args:
+        target: {type}`Target` the binary.
+        ctx: {type}`ctx` the aspect ctx.
+
+    Returns:
+        {type}`struct` from `describe.node`.
+    """
     info = target[PyExecutableInfo]
     pyc_collection_enabled = _pyc_collection_enabled(ctx, ctx.rule.attr.pyc_collection)
     content = [
@@ -296,6 +451,18 @@ py_executable_runfiles_group_describer = describe.make_describer_rule(
 )
 
 def _describe_py_runtime_pair(target, ctx):
+    """Describes a Python toolchain: one group for its runtime's files.
+
+    Every binary using the toolchain merges in the same group, so a packager
+    builds it once.
+
+    Args:
+        target: {type}`Target` the `py_runtime_pair`.
+        ctx: {type}`ctx` the aspect ctx.
+
+    Returns:
+        {type}`struct` from `describe.node`.
+    """
     runtime = target[platform_common.ToolchainInfo].py3_runtime
     files = get_runtime_files(ctx, runtime) if runtime else depset()
     return describe.node(add = [describe.entry(
