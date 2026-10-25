@@ -74,9 +74,9 @@ def py_repositories(transition_settings = []):
     )
     http_archive(
         name = "rules_runfiles_group",
-        sha256 = "17437bb769ecef3d6b14333a1f82d46f0703e9eb645208428a3af0875e79f6d7",
+        sha256 = "0c5a2998f970e8ec27daa9bc10c3cd0d4a7167371acd70974a75ab8aafb41c74",
         strip_prefix = "rules_runfiles_group-d105dfab75fb550bcfc0d2cc033b27fad0dfc2e4",
-        url = "https://github.com/bazel-contrib/rules_runfiles_group/archive/d105dfab75fb550bcfc0d2cc033b27fad0dfc2e4.tar.gz",
+        url = "https://bazel-contrib.github.io/rules_runfiles_group/assets/rules_runfiles_group/99.0.0-dev.20261019.1.d105dfa/source.tar.gz",
     )
     http_archive(
         name = "toml.bzl",
