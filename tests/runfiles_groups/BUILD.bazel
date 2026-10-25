@@ -1,17 +1,10 @@
-load("@bazel_features//:features.bzl", "bazel_features")
 load("@rules_runfiles_group//runfiles_group:runfiles_group_analysis_test.bzl", "runfiles_group_analysis_test")
 load("//python:py_binary.bzl", "py_binary")
 load("//python:py_library.bzl", "py_library")
 load("//python:py_test.bzl", "py_test")
 load("//tests/support:py_reconfig.bzl", "py_reconfig_binary")
+load(":runfiles_groups_tests.bzl", "WALKS_TOOLCHAINS", "runfiles_groups_test_suite")
 load(":test_rules.bzl", "outputs_and_runfiles", "outputs_only")
-
-# Packagers walk the Python toolchain through toolchains_aspects, which takes
-# "*" since Bazel 8.8.0 and a propagation filter since Bazel 9.0.0.
-_WALKS_TOOLCHAINS = [] if (
-    bazel_features.rules.aspect_propagation_context or
-    bazel_features.rules.supports_toolchains_aspects_star
-) else ["@platforms//:incompatible"]
 
 outputs_only(name = "outputs_only")
 
@@ -175,7 +168,7 @@ runfiles_group_analysis_test(
         ":test",
     ],
     overlapping_group_behavior = "error",
-    target_compatible_with = _WALKS_TOOLCHAINS,
+    target_compatible_with = WALKS_TOOLCHAINS,
 )
 
 runfiles_group_analysis_test(
@@ -194,5 +187,7 @@ runfiles_group_analysis_test(
         "@@//tests/runfiles_groups:srcs_with_runfiles",
         "@@//tests/runfiles_groups:bin",
     ],
-    target_compatible_with = _WALKS_TOOLCHAINS,
+    target_compatible_with = WALKS_TOOLCHAINS,
 )
+
+runfiles_groups_test_suite(name = "runfiles_groups_tests")

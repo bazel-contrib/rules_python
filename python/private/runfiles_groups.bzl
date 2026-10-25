@@ -367,14 +367,19 @@ def _venv_entries(ctx, venv_runfiles):
         {type}`tuple[list[RunfilesGroupInfo], runfiles]` the entries for the
         distributions' groups, and the venv runfiles left for the binary's.
     """
+
+    # Keyed by every file an entry covers, not just the one it links to: where
+    # distributions share a directory (namespace packages), the venv links each
+    # file in it instead.
     packages = {
-        entry.link_to_file: entry.package
+        file: entry.package
         for entry in depset(transitive = [
             dep[PyInfo].venv_symlinks
             for dep in ctx.rule.attr.deps
             if PyInfo in dep
         ]).to_list()
-        if entry.link_to_file and entry.package
+        if entry.package
+        for file in entry.files.to_list()
     }
     by_package = {}
     own_links = {}
