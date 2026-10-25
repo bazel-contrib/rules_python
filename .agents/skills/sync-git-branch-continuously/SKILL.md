@@ -84,3 +84,15 @@ To check the status or inspect the output of the active background sync loop:
 ```bash
 tail -n 20 "/tmp/sync_git_${REPO_NAME}_${BRANCH_NAME}.log"
 ```
+
+## Authentication Failures
+
+When `git pull` or `git push` fails due to invalid or expired credentials:
+
+1.  Keep the background sync process running so it automatically resumes if
+    credentials are refreshed incidentally. Never mask or sanitize
+    authentication errors to suppress wakeups.
+2.  Prompt the user via `ask_question` so a UI popup alerts them to
+    re-authenticate.
+3.  After the user responds, trigger an immediate sync cycle (`kill -USR1
+    <PID>`) and verify the sync log.
