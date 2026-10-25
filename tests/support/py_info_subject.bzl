@@ -19,6 +19,7 @@ def _new_py_info_subject(info, *, meta):
     # buildifier: disable=uninitialized
     public = struct(
         # go/keep-sorted start
+        direct_implicit_pyc_files = lambda *a, **k: _py_info_subject_direct_implicit_pyc_files(self, *a, **k),
         direct_original_sources = lambda *a, **k: _py_info_subject_direct_original_sources(self, *a, **k),
         direct_pyc_files = lambda *a, **k: _py_info_subject_direct_pyc_files(self, *a, **k),
         direct_pyi_files = lambda *a, **k: _py_info_subject_direct_pyi_files(self, *a, **k),
@@ -52,6 +53,16 @@ def py_info_subject(info, *, meta):
         A `PyInfoSubject` struct
     """
     return _new_py_info_subject(info, meta = meta)
+
+def _py_info_subject_direct_implicit_pyc_files(self):
+    """Returns a `DepsetFileSubject` for the `direct_implicit_pyc_files` attribute.
+
+    Method: PyInfoSubject.direct_implicit_pyc_files
+    """
+    return subjects.depset_file(
+        self.actual.direct_implicit_pyc_files,
+        meta = self.meta.derive("direct_implicit_pyc_files()"),
+    )
 
 def _py_info_subject_direct_original_sources(self):
     """Returns a `DepsetFileSubject` for the `direct_original_sources` attribute.

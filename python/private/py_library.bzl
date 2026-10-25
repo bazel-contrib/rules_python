@@ -223,14 +223,24 @@ Source files are no longer added to the runfiles directly.
 :::
 """
 
-def _get_package_and_version(ctx):
+def get_package_and_version(data_files):
     """Return package name and version
 
     If the package comes from PyPI then it will have a `.dist-info` as part of `data`, which
     allows us to get the name of the package and its version.
+
+    Args:
+        data_files: {type}`list[File]` the files in the library's `data`
+            attribute.
+
+    Returns:
+        {type}`tuple[str | None, str | None]` the distribution name, lowercased
+        with runs of `-`, `_` and `.` turned into `_` (e.g. `google_cloud_storage`),
+        and the normalized version; `(None, None)` without a
+        `.dist-info/METADATA` file.
     """
     dist_info_metadata = None
-    for d in ctx.files.data:
+    for d in data_files:
         # work on case insensitive FSes
         if d.basename.lower() != "metadata":
             continue
@@ -257,7 +267,7 @@ def _get_imports_and_venv_symlinks(ctx):
     imports = depset()
     venv_symlinks = []
     if VenvsSitePackages.is_enabled(ctx):
-        package, version_str = _get_package_and_version(ctx)
+        package, version_str = get_package_and_version(ctx.files.data)
 
         # NOTE: Already a list, but buildifier thinks its a depset and
         # adds to_list() calls later.

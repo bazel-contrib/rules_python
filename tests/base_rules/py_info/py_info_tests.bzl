@@ -23,6 +23,7 @@ load("//tests/support:py_info_subject.bzl", "py_info_subject")
 
 def _provide_py_info_impl(ctx):
     kwargs = {
+        "direct_implicit_pyc_files": depset(ctx.files.direct_implicit_pyc_files),
         "direct_original_sources": depset(ctx.files.direct_original_sources),
         "direct_pyc_files": depset(ctx.files.direct_pyc_files),
         "direct_pyi_files": depset(ctx.files.direct_pyi_files),
@@ -58,6 +59,7 @@ def _provide_py_info_impl(ctx):
 provide_py_info = rule(
     implementation = _provide_py_info_impl,
     attrs = {
+        "direct_implicit_pyc_files": attr.label_list(allow_files = True),
         "direct_original_sources": attr.label_list(allow_files = True),
         "direct_pyc_files": attr.label_list(allow_files = True),
         "direct_pyi_files": attr.label_list(allow_files = True),
@@ -120,6 +122,7 @@ def _test_py_info_builder(name):
             "trans-original.py",
             "direct.pyi",
             "trans.pyi",
+            "direct-implicit.pyc",
         ],
     )
 
@@ -132,6 +135,7 @@ def _test_py_info_builder(name):
             name = py_info_name,
             transitive_sources = ["py{}-trans.py".format(n)],
             direct_pyc_files = ["py{}-direct.pyc".format(n)],
+            direct_implicit_pyc_files = ["py{}-direct-implicit.pyc".format(n)],
             imports = ["py{}import".format(n)],
             transitive_pyc_files = ["py{}-trans.pyc".format(n)],
             direct_original_sources = ["py{}-original-direct.py".format(n)],
@@ -156,9 +160,11 @@ def _test_py_info_builder_impl(env, targets):
         trans_original_py,
         direct_pyi,
         trans_pyi,
+        direct_implicit_pyc,
     ) = targets.misc[DefaultInfo].files.to_list()
     builder = PyInfoBuilder.new()
     builder.direct_pyc_files.add(direct_pyc)
+    builder.direct_implicit_pyc_files.add(direct_implicit_pyc)
     builder.direct_original_sources.add(original_py)
     builder.direct_pyi_files.add(direct_pyi)
     builder.merge_has_py2_only_sources(True)
@@ -215,6 +221,11 @@ def _test_py_info_builder_impl(env, targets):
                 "tests/base_rules/py_info/direct.pyc",
                 "tests/base_rules/py_info/py4-direct.pyc",
                 "tests/base_rules/py_info/py6-direct.pyc",
+            ])
+            subject.direct_implicit_pyc_files().contains_exactly([
+                "tests/base_rules/py_info/direct-implicit.pyc",
+                "tests/base_rules/py_info/py4-direct-implicit.pyc",
+                "tests/base_rules/py_info/py6-direct-implicit.pyc",
             ])
             subject.transitive_pyc_files().contains_exactly([
                 "tests/base_rules/py_info/trans.pyc",
