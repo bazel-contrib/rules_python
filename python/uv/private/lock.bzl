@@ -38,6 +38,11 @@ The args passed to `uv` by default when running the runnable target.
 
 The env passed to the execution.
 """,
+        "project_lock": """
+:type: str
+
+The path to the `uv.lock` file in the project directory.
+""",
         # Preserve the wrapper's runtime files and symlink mappings together;
         # a regular depset cannot represent the full runfiles layout.
         "runfiles": """
@@ -299,8 +304,9 @@ def _common_lock(ctx, locker):
         _RunLockInfo(
             args = args.run_info,
             env = ctx.attr.env,
+            project_lock = project_lock,
             runfiles = ctx.runfiles(
-                files = srcs + [uv],
+                files = srcs + ctx.files.existing_output + [uv],
                 transitive_files = python_files,
             ).merge(uv_default_info.default_runfiles),
             template = ctx.files._template[0],
@@ -504,16 +510,18 @@ def _run_impl(ctx):
         return shell.quote(arg)
 
     info = ctx.attr.lock[_RunLockInfo]
+    if ctx.label.package:
+        src_out = "{}/{}".format(ctx.label.package, ctx.attr.output)
+    else:
+        src_out = ctx.attr.output
 
     executable = ctx.actions.declare_file(ctx.label.name + ext)
     ctx.actions.expand_template(
         template = info.template,
         substitutions = {
             '"{{args}}"': " ".join([_maybe_path(arg) for arg in info.args]),
-            "{{src_out}}": "{}/{}".format(ctx.label.package, ctx.attr.output).replace(
-                "/",
-                path_sep,
-            ),
+            "{{project_lock}}": info.project_lock.replace("/", path_sep),
+            "{{src_out}}": src_out.replace("/", path_sep),
         },
         output = executable,
         is_executable = True,
