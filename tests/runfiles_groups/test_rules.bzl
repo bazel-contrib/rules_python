@@ -2,6 +2,7 @@
 
 load("@rules_runfiles_group//runfiles_group:identity_packager.bzl", "RunfilesGroupIdentityInfo", "runfiles_groups_identity_aspect")
 load("@rules_runfiles_group//runfiles_group:lib.bzl", "runfiles_groups")
+load("@rules_runfiles_group//runfiles_group:providers.bzl", "RunfilesGroupTransformInfo")
 
 def _outputs_only_impl(ctx):
     files = [ctx.actions.declare_file(ctx.label.name + suffix) for suffix in (".a", ".b")]
@@ -70,3 +71,21 @@ resolved_groups = rule(
         "binary": attr.label(aspects = [_aspect_hints_aspect, runfiles_groups_identity_aspect]),
     },
 )
+
+_ML_DISTRIBUTIONS = ["rules_python#pypi/foo_pkg"]
+
+def _bucket_ml(resolved):
+    return runfiles_groups.resolved(
+        [
+            runfiles_groups.derive(group, merge_affinity = "ml", do_not_merge = True) if runfiles_groups.name_str(group.name) in _ML_DISTRIBUTIONS else group
+            for group in resolved.groups
+        ],
+        executable_group = resolved.executable_group,
+    )
+
+def _bucket_ml_impl(_ctx):
+    return [RunfilesGroupTransformInfo(transform = _bucket_ml)]
+
+# An example of configuring how a binary's groups are packaged: in a binary's
+# aspect_hints, it keeps foo_pkg's group from being merged into others.
+bucket_ml = rule(implementation = _bucket_ml_impl)
