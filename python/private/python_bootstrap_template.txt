@@ -438,6 +438,7 @@ print(site.getsitepackages(["{venv_src}"])[-1])
         venv_abs_path = join(venv, venv_rel_path)
         link_to = normpath(join(runfiles_root, link_to_rf_path))
         venv_parent = dirname(venv_abs_path)
+        # A cached venv can leave this parent as a dangling link to an old EXTRACT_ROOT.
         if os.path.islink(venv_parent):
             try:
                 os.stat(venv_parent)
