@@ -73,6 +73,12 @@ class PyWheelLibraryTest(unittest.TestCase):
         self.assertTrue(copied_exec.is_file())
         self.assertTrue(os.access(copied_exec, os.X_OK))
 
+    def test_sdist_wheel_and_pre_build_patch(self):
+        sys.dont_write_bytecode = True
+        sdist_demo = importlib.import_module("sdist_demo")
+        self.assertEqual(sdist_demo.GREETING, "patched_before_build")
+        self.assertEqual(importlib.metadata.version("sdist-demo"), "0.5.0")
+
 
 if __name__ == "__main__":
     unittest.main()

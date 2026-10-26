@@ -160,18 +160,30 @@ def _resolve_wheel_entry_dest(
     name: str,
     parts: list[str],
     expected_data_dir: str,
+    *,
+    wheel_dist_info_dir: str = "",
+    target_dist_info_dir: str = "",
 ) -> str | None:
     if parts[-1] in _BAZEL_REPO_FILES:
         return None
-    if parts[0] != expected_data_dir:
-        return f"site-packages/{name}"
-    if len(parts) <= 2:
-        return None
-    dest_prefix = _DATA_CATEGORIES.get(parts[1])
-    if not dest_prefix:
-        raise ValueError(f"Unknown .data category {parts[1]!r} in wheel entry {name!r}")
-    rel_path = "/".join(parts[2:])
-    return f"{dest_prefix}/{rel_path}" if rel_path else None
+    if parts[0] == expected_data_dir:
+        if len(parts) <= 2:
+            return None
+        dest_prefix = _DATA_CATEGORIES.get(parts[1])
+        if not dest_prefix:
+            raise ValueError(
+                f"Unknown .data category {parts[1]!r} in wheel entry {name!r}"
+            )
+        rel_path = "/".join(parts[2:])
+        return f"{dest_prefix}/{rel_path}" if rel_path else None
+    if (
+        wheel_dist_info_dir
+        and target_dist_info_dir
+        and target_dist_info_dir != wheel_dist_info_dir
+        and parts[0] == wheel_dist_info_dir
+    ):
+        return f"site-packages/{target_dist_info_dir}/{'/'.join(parts[1:])}"
+    return f"site-packages/{name}"
 
 
 def _map_wheel_entry_destination(
@@ -179,6 +191,9 @@ def _map_wheel_entry_destination(
     parts: list[str],
     expected_data_dir: str,
     seen_destinations: dict[str, str],
+    *,
+    wheel_dist_info_dir: str = "",
+    target_dist_info_dir: str = "",
 ) -> str | None:
     """Map a wheel archive entry to its installed relative path under the TreeArtifact root.
 
@@ -186,7 +201,13 @@ def _map_wheel_entry_destination(
     distinct wheel entries map to the same destination path (checked
     case-insensitively across platforms).
     """
-    dest_rel = _resolve_wheel_entry_dest(name, parts, expected_data_dir)
+    dest_rel = _resolve_wheel_entry_dest(
+        name,
+        parts,
+        expected_data_dir,
+        wheel_dist_info_dir=wheel_dist_info_dir,
+        target_dist_info_dir=target_dist_info_dir,
+    )
     if dest_rel is None:
         return None
 
@@ -211,6 +232,8 @@ def plan_wheel_entries(
     entry_points_content: str | None,
     srcs_exclude_rx: list[re.Pattern[str]],
     data_exclude_rx: list[re.Pattern[str]],
+    *,
+    target_dist_info_dir: str = "",
 ) -> Iterator[tuple[zipfile.ZipInfo, str, bool]]:
     """Yield `(info, dest_rel_or_script_name, is_shebang_script)` for wheel entries."""
     expected_data_dir = expected_data_dir_for_dist_info(dist_info_dir)
@@ -228,6 +251,8 @@ def plan_wheel_entries(
             parts,
             expected_data_dir,
             seen_destinations,
+            wheel_dist_info_dir=dist_info_dir,
+            target_dist_info_dir=target_dist_info_dir,
         )
         if dest_rel is None:
             continue

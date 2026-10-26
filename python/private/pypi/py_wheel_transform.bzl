@@ -5,9 +5,13 @@ load("//python/private:common.bzl", "actions_run")
 load("//python/private:py_internal.bzl", _py_builtins = "py_internal")
 load("//python/private:rule_builders.bzl", "ruleb")
 load("//python/private:toolchain_types.bzl", "EXEC_TOOLS_TOOLCHAIN_TYPE")
+load(":py_sdist_wheel.bzl", "PyBuiltWheelInfo")
 
 def _py_wheel_transform_impl(ctx):
-    wheel_input = ctx.file.wheel
+    built_info = (
+        ctx.attr.wheel[PyBuiltWheelInfo] if PyBuiltWheelInfo in ctx.attr.wheel else None
+    )
+    wheel_input = built_info.directory if built_info != None else ctx.file.wheel
     out_wheel_dir = ctx.actions.declare_directory(ctx.attr.name + ".whldir")
 
     args = ctx.actions.args()
@@ -44,7 +48,16 @@ def _py_wheel_transform_impl(ctx):
         progress_message = "Transforming wheel %{input} into %{output}",
     )
 
-    return [DefaultInfo(files = depset([out_wheel_dir]))]
+    providers = [DefaultInfo(files = depset([out_wheel_dir]))]
+    if built_info != None:
+        providers.append(
+            PyBuiltWheelInfo(
+                directory = out_wheel_dir,
+                distribution = built_info.distribution,
+                version = built_info.version,
+            ),
+        )
+    return providers
 
 py_wheel_transform = ruleb.Rule(
     implementation = _py_wheel_transform_impl,
@@ -79,7 +92,11 @@ wrapper's `RUNFILES_*` and `PYTHONSAFEPATH`/`PYTHONPATH`/`PYTHONHOME` launcher v
         "wheel": lambda: attrb.Label(
             mandatory = True,
             allow_single_file = True,
-            doc = "The input `.whl` file or `.whldir` TreeArtifact directory.",
+            doc = """
+The input `.whl` file, `.whldir` TreeArtifact directory, or `py_sdist_wheel`
+target (for action-built sdists in a pip hub, pass `@pypi//<pkg>:whldir` rather
+than `:whl`).
+""",
         ),
         "_wheel_layout": lambda: attrb.Label(
             allow_single_file = True,

@@ -17,4 +17,8 @@ for var in RUNFILES_DIR RUNFILES_MANIFEST_FILE PYTHONSAFEPATH PYTHONPATH PYTHONH
   fi
 done
 
+if [[ "$(basename "${WHEEL_FILE}")" != *-*-*-*-*.whl ]]; then
+  echo "ERROR: WHEEL_FILE basename is not a canonical PEP 427 wheel filename: $(basename "${WHEEL_FILE}")" >&2
+  exit 1
+fi
 cp "${WHEEL_FILE}" "${WHEEL_OUTPUT_ROOT}/$(basename "${WHEEL_FILE}")"

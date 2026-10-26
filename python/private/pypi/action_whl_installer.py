@@ -333,6 +333,7 @@ def _finalize_dist_info(
     site_packages_dir: Path,
     dist_info_dir: str,
     *,
+    wheel_dist_info_dir: str = "",
     data_exclude_rx: list[re.Pattern[str]],
     used_data_dir: bool,
     expected_data_dir: str,
@@ -348,18 +349,43 @@ def _finalize_dist_info(
             f.write(INSTALLER_URL)
 
     record_path = dist_info_path / "RECORD"
-    if not (used_data_dir and record_path.is_file()):
+    renamed_dist_info = bool(
+        wheel_dist_info_dir and dist_info_dir != wheel_dist_info_dir
+    )
+    if not ((used_data_dir or renamed_dist_info) and record_path.is_file()):
         return
 
     with open(record_path, encoding="utf-8") as f:
         lines = rewrite_record_lines(
             f,
             target_os,
-            expected_data_dir,
+            expected_data_dir if used_data_dir else "",
             rewritten_scripts,
+            wheel_dist_info_dir=wheel_dist_info_dir,
+            target_dist_info_dir=dist_info_dir,
         )
     with open(record_path, "w", encoding="utf-8", newline="\n") as f:
         f.write("".join(lines))
+
+
+def _write_entry_points_output(
+    entry_points_output: Path,
+    site_packages_dir: Path,
+    dist_info_dir: str,
+    fallback_text: str,
+    touched_site_rel: set[str],
+) -> None:
+    ep_rel = f"{dist_info_dir}/entry_points.txt" if dist_info_dir else ""
+    ep_path = site_packages_dir / ep_rel if ep_rel else None
+    if ep_path is not None and ep_path.is_file():
+        text = ep_path.read_text(encoding="utf-8")
+    elif ep_rel and ep_rel in touched_site_rel:
+        text = ""
+    else:
+        text = fallback_text
+    entry_points_output.parent.mkdir(parents=True, exist_ok=True)
+    with open(entry_points_output, "w", encoding="utf-8", newline="\n") as f:
+        f.write(text)
 
 
 def _install_from_existing_dir(
@@ -368,7 +394,7 @@ def _install_from_existing_dir(
     site_packages_dir: Path,
     srcs_exclude_rx: list[re.Pattern[str]],
     data_exclude_rx: list[re.Pattern[str]],
-) -> tuple[str, set[str]]:
+) -> tuple[str, set[str], str]:
     shutil.copytree(installed_dir, dest_dir, dirs_exist_ok=True)
     for p in dest_dir.rglob("*"):
         try:
@@ -382,6 +408,16 @@ def _install_from_existing_dir(
         if d.is_dir() and d.name.endswith(".dist-info")
     )
     dist_info_dir = dist_info_dirs[0] if dist_info_dirs else ""
+    ep_file = (
+        site_packages_dir / dist_info_dir / "entry_points.txt"
+        if dist_info_dir
+        else None
+    )
+    entry_points_text = (
+        ep_file.read_text(encoding="utf-8")
+        if ep_file is not None and ep_file.is_file()
+        else ""
+    )
     touched_site_rel: set[str] = set()
 
     for p in sorted(dest_dir.rglob("*")):
@@ -403,7 +439,7 @@ def _install_from_existing_dir(
             touched_site_rel.add(p.relative_to(site_packages_dir).as_posix())
         p.unlink()
 
-    return dist_info_dir, touched_site_rel
+    return dist_info_dir, touched_site_rel, entry_points_text
 
 
 def _extract_from_wheel(
@@ -414,7 +450,8 @@ def _extract_from_wheel(
     target_os: str,
     srcs_exclude_rx: list[re.Pattern[str]],
     data_exclude_rx: list[re.Pattern[str]],
-) -> str:
+    dist_info_dir_override: str = "",
+) -> tuple[str, str]:
     if wheel_path.is_dir():
         wheel_path = single_wheel_in(wheel_path)
     site_packages_dir.mkdir(parents=True, exist_ok=True)
@@ -423,18 +460,20 @@ def _extract_from_wheel(
     used_data_dir = False
 
     with zipfile.ZipFile(wheel_path) as z:
-        dist_info_dir, _, entry_points_content = find_wheel_dist_info_and_entry_points(
-            z
+        wheel_dist_info_dir, _, entry_points_content = (
+            find_wheel_dist_info_and_entry_points(z)
         )
-        expected_data_dir = expected_data_dir_for_dist_info(dist_info_dir)
+        expected_data_dir = expected_data_dir_for_dist_info(wheel_dist_info_dir)
         data_dir_prefix = f"{expected_data_dir}/"
+        dist_info_dir = dist_info_dir_override or wheel_dist_info_dir
 
         for info, dest_or_script, is_shebang in plan_wheel_entries(
             z,
-            dist_info_dir,
+            wheel_dist_info_dir,
             entry_points_content,
             srcs_exclude_rx,
             data_exclude_rx,
+            target_dist_info_dir=dist_info_dir,
         ):
             if info.filename.startswith(data_dir_prefix):
                 used_data_dir = True
@@ -457,13 +496,14 @@ def _extract_from_wheel(
     _finalize_dist_info(
         site_packages_dir,
         dist_info_dir,
+        wheel_dist_info_dir=wheel_dist_info_dir,
         data_exclude_rx=data_exclude_rx,
         used_data_dir=used_data_dir,
         expected_data_dir=expected_data_dir,
         target_os=target_os,
         rewritten_scripts=rewritten_scripts,
     )
-    return dist_info_dir
+    return dist_info_dir, entry_points_content or ""
 
 
 def _validate_installed_site_packages(
@@ -555,6 +595,7 @@ def install_wheel(
     dest_dir: Path,
     *,
     installed_dir: Path | None = None,
+    entry_points_output: Path | None = None,
     target_os: str = "unix",
     srcs_exclude_globs: list[str] | None = None,
     data_exclude_globs: list[str] | None = None,
@@ -563,6 +604,7 @@ def install_wheel(
     patch_strip: int = 0,
     expected_site_paths: list[str] | None = None,
     validation_source: str = "extracted_files",
+    dist_info_dir_override: str = "",
     precompile: bool = False,
     pyc_tag: str = "",
     precompile_invalidation_mode: str = "checked_hash",
@@ -578,7 +620,7 @@ def install_wheel(
     data_exclude_rx = [glob_to_regex(g) for g in (data_exclude_globs or ())]
 
     if installed_dir is not None:
-        dist_info_dir, touched_site_rel = _install_from_existing_dir(
+        dist_info_dir, touched_site_rel, entry_points_text = _install_from_existing_dir(
             installed_dir,
             dest_dir,
             site_packages_dir,
@@ -588,13 +630,14 @@ def install_wheel(
     else:
         if wheel_path is None:
             raise ValueError("Either wheel_path or installed_dir must be provided")
-        dist_info_dir = _extract_from_wheel(
+        dist_info_dir, entry_points_text = _extract_from_wheel(
             wheel_path,
             dest_dir,
             site_packages_dir,
             target_os=target_os,
             srcs_exclude_rx=srcs_exclude_rx,
             data_exclude_rx=data_exclude_rx,
+            dist_info_dir_override=dist_info_dir_override,
         )
         touched_site_rel = set()
 
@@ -610,6 +653,15 @@ def install_wheel(
         update_record_for_touched_files(
             site_packages_dir,
             dist_info_dir,
+            touched_site_rel,
+        )
+
+    if entry_points_output is not None:
+        _write_entry_points_output(
+            entry_points_output,
+            site_packages_dir,
+            dist_info_dir,
+            entry_points_text,
             touched_site_rel,
         )
 
@@ -656,6 +708,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     parser.add_argument("--wheel", type=Path, default=None)
     parser.add_argument("--installed-dir", type=Path, default=None)
     parser.add_argument("--directory", type=Path, required=True)
+    parser.add_argument("--entry-points-output", type=Path, default=None)
     parser.add_argument(
         "--target-os",
         choices=["unix", "windows"],
@@ -707,6 +760,10 @@ def main(argv: Sequence[str] | None = None) -> None:
         default=[],
     )
     parser.add_argument(
+        "--dist-info-dir",
+        default="",
+    )
+    parser.add_argument(
         "--precompile",
         action="store_true",
         default=False,
@@ -749,6 +806,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         args.wheel,
         args.directory,
         installed_dir=args.installed_dir,
+        entry_points_output=args.entry_points_output,
         target_os=args.target_os,
         srcs_exclude_globs=args.srcs_exclude_globs,
         data_exclude_globs=args.data_exclude_globs,
@@ -759,6 +817,7 @@ def main(argv: Sequence[str] | None = None) -> None:
             args.expected_site_paths if args.validate_site_packages else None
         ),
         validation_source=args.validation_source,
+        dist_info_dir_override=args.dist_info_dir,
         precompile=args.precompile,
         pyc_tag=args.pyc_tag,
         precompile_invalidation_mode=args.precompile_invalidation_mode,

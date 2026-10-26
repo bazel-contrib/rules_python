@@ -243,7 +243,7 @@ py_sdist_wheel(
         ":classic_bdep",
         ":custom_build_helper",
         ":custom_shadow_dep",
-        ":demo_wheel_lib",
+        ":demo_wheel_lib_venv",
     ],
     config_settings_list = {
         "--global-option": [
@@ -303,6 +303,26 @@ whl_filegroup(
     whl = ":sdist_demo-0.5.0.whldir",
 )
 
+py_wheel_transform(
+    name = "transformed_sdist_demo_whl",
+    env = {"EXPECTED_SH_ENV": "from_transform"},
+    transform = ":sh_transform",
+    wheel = ":sdist_demo-0.5.0.whldir",
+)
+
+py_wheel_library(
+    name = "sdist_demo_wheel_lib",
+    site_paths = ["sdist_demo"],
+    wheel = ":transformed_sdist_demo_whl",
+)
+
+py_wheel_library(
+    name = "sdist_demo_wheel_lib_venv",
+    experimental_venvs_site_packages = "//python/config_settings:venvs_site_packages",
+    site_paths = ["sdist_demo"],
+    wheel = ":sdist_demo-0.5.0.whldir",
+)
+
 genrule(
     name = "gen_cext_sdist",
     outs = ["sdist_cext-0.1.0.tar.gz"],
@@ -342,6 +362,10 @@ filegroup(
 
 py_wheel_library(
     name = "sdist_cext_wheel_lib",
+    site_paths = [
+        "cext_demo",
+        "sdist_cext",
+    ],
     target_compatible_with = select({
         "@platforms//os:windows": ["@platforms//:incompatible"],
         "//conditions:default": [],
@@ -403,6 +427,7 @@ py_test(
     },
     deps = [
         ":demo_wheel_lib",
+        ":sdist_demo_wheel_lib",
     ],
 )
 
@@ -425,6 +450,7 @@ py_reconfig_test(
     venvs_site_packages = "yes",
     deps = [
         ":demo_wheel_lib_venv",
+        ":sdist_demo_wheel_lib_venv",
     ],
 )
 
@@ -445,6 +471,7 @@ py_reconfig_test(
     precompile_flag = "enabled",
     deps = [
         ":demo_wheel_lib",
+        ":sdist_demo_wheel_lib",
     ],
 )
 
@@ -468,6 +495,7 @@ py_reconfig_test(
     venvs_site_packages = "yes",
     deps = [
         ":demo_wheel_lib_venv",
+        ":sdist_demo_wheel_lib_venv",
     ],
 )
 
@@ -522,5 +550,6 @@ py_reconfig_test(
     venvs_site_packages = "yes",
     deps = [
         ":demo_wheel_lib_reuse_omit",
+        ":sdist_demo_wheel_lib_venv",
     ],
 )
