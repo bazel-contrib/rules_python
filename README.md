@@ -1,6 +1,7 @@
 # Python Rules for Bazel
 
 [![Build status](https://badge.buildkite.com/0bcfe58b6f5741aacb09b12485969ba7a1205955a45b53e854.svg?branch=main)](https://buildkite.com/bazel/rules-python-python)
+[![GitHub CI status](https://github.com/bazel-contrib/rules_python/actions/workflows/ci.yaml/badge.svg?branch=main&event=push)](https://github.com/bazel-contrib/rules_python/actions/workflows/ci.yaml?query=branch%3Amain+event%3Apush)
 
 ## Overview
 
