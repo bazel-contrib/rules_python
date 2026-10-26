@@ -72,12 +72,13 @@ resolved_groups = rule(
     },
 )
 
-_ML_DISTRIBUTIONS = ["rules_python#pypi/foo_pkg"]
+# Stand-ins for heavy distributions like torch and nvidia-*.
+_ML_DISTRIBUTIONS = ["rules_python#pypi/ns_alpha", "rules_python#pypi/ns_beta"]
 
 def _bucket_ml(resolved):
     return runfiles_groups.resolved(
         [
-            runfiles_groups.derive(group, merge_affinity = "ml", do_not_merge = True) if runfiles_groups.name_str(group.name) in _ML_DISTRIBUTIONS else group
+            runfiles_groups.derive(group, merge_affinity = "ml") if runfiles_groups.name_str(group.name) in _ML_DISTRIBUTIONS else group
             for group in resolved.groups
         ],
         executable_group = resolved.executable_group,
@@ -87,5 +88,6 @@ def _bucket_ml_impl(_ctx):
     return [RunfilesGroupTransformInfo(transform = _bucket_ml)]
 
 # An example of configuring how a binary's groups are packaged: in a binary's
-# aspect_hints, it keeps foo_pkg's group from being merged into others.
+# aspect_hints, it gives the ML distributions their own merge affinity, so a
+# packager that has to merge groups merges them with each other, not the rest.
 bucket_ml = rule(implementation = _bucket_ml_impl)

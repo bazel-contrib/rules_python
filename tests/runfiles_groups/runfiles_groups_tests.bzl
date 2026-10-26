@@ -20,9 +20,12 @@ WALKS_TOOLCHAINS = [] if (
 
 _tests = []
 
-def _test_namespace_package_venv_links(name):
-    # Both distributions ship nspkg/__init__.py, like pkgutil-style namespace
-    # packages, so the venv can't link nspkg as one directory.
+def _namespace_distributions(name):
+    """Defines two distributions that both ship nspkg/__init__.py.
+
+    Like pkgutil-style namespace packages, so the venv can't link nspkg as
+    one directory.
+    """
     for distribution, module in [("ns_alpha", "alpha"), ("ns_beta", "beta")]:
         rt_util.helper_target(
             py_library,
@@ -35,12 +38,15 @@ def _test_namespace_package_venv_links(name):
             experimental_venvs_site_packages = "//python/config_settings:venvs_site_packages",
             imports = ["{}/site-packages".format(distribution)],
         )
+    return [name + "_ns_alpha", name + "_ns_beta"]
+
+def _test_namespace_package_venv_links(name):
     rt_util.helper_target(
         py_binary,
         name = name + "_bin",
         srcs = ["main.py"],
         main = "main.py",
-        deps = [name + "_ns_alpha", name + "_ns_beta"],
+        deps = _namespace_distributions(name),
     )
     rt_util.helper_target(
         resolved_groups,
@@ -80,7 +86,7 @@ def _test_configure_with_aspect_hints(name):
         name = name + "_bin",
         srcs = ["main.py"],
         main = "main.py",
-        deps = [":foo_pkg"],
+        deps = _namespace_distributions(name) + [":foo_pkg"],
         aspect_hints = [name + "_bucket_ml"],
     )
     rt_util.helper_target(
@@ -96,9 +102,10 @@ def _test_configure_with_aspect_hints(name):
     )
 
 def _test_configure_with_aspect_hints_impl(env, target):
-    foo_pkg = target[ResolvedGroupsInfo].groups["rules_python#pypi/foo_pkg"]
-    env.expect.that_str(foo_pkg.merge_affinity).equals("ml")
-    env.expect.that_bool(foo_pkg.do_not_merge).equals(True)
+    groups = target[ResolvedGroupsInfo].groups
+    for distribution in ["ns_alpha", "ns_beta"]:
+        env.expect.that_str(groups["rules_python#pypi/" + distribution].merge_affinity).equals("ml")
+    env.expect.that_str(groups["rules_python#pypi/foo_pkg"].merge_affinity).equals("rules_python")
 
 _tests.append(_test_configure_with_aspect_hints)
 
