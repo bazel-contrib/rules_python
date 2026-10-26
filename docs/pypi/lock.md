@@ -4,7 +4,8 @@
 # Lock
 
 :::{note}
-Currently `rules_python` only supports `requirements.txt` format.
+`rules_python` supports `requirements.txt` and `uv.lock` (bzlmod only)
+formats.
 
 #{gh-issue}`2787` tracks `pylock.toml` support.
 :::
@@ -86,13 +87,13 @@ lock(
 
 #### `[tool.uv]` settings from pyproject.toml
 
-When a `pyproject.toml` file is among the {attr}`lock.srcs`, the
+When a `pyproject.toml` file is among the {arg}`lock.srcs`, the
 {obj}`lock` rule auto-detects the project directory and passes
-`--project <dir>` to `uv pip compile`. This causes `uv` to read
+`--project <dir>` to `uv`. This causes `uv` to read
 `[tool.uv]` settings from that `pyproject.toml`, such as
 `no-build-isolation`, `exclude-dependencies`, and workspace members.
 
-If multiple `pyproject.toml` files are in {attr}`lock.srcs`, the one
+If multiple `pyproject.toml` files are in {arg}`lock.srcs`, the one
 with the shortest directory path is selected (this heuristic works for
 typical uv workspace layouts where the root configuration is at the
 shortest path).
@@ -112,11 +113,48 @@ lock(
 :::{warning}
 **Known limitations of auto-detection**
 
-1. **Workspace heuristic** — the shortest-path selection may incorrectly assume the upper-most
-   workspace `pyproject.toml` is the correct one. For monorepos with multiple independent
-   sub-projects, you must set `project` explicitly for each {obj}`lock` target.
-1. **No test target** — unlike {obj}`compile_pip_requirements`, no test target is auto-created; see
-   the {obj}`lock` docs for how to add one manually using `diff_test` from `bazel_skylib`.
+1. **Workspace heuristic** — the shortest-path selection may incorrectly assume
+   the upper-most workspace `pyproject.toml` is the correct one. For monorepos
+   with multiple independent sub-projects, you must set `project` explicitly
+   for each {obj}`lock` target.
+1. **No test target** — unlike {obj}`compile_pip_requirements`, no test target
+   is auto-created; see the {obj}`lock` docs for how to add one manually using
+   `diff_test` from `bazel_skylib`.
 :::
+
+## uv.lock (bzlmod only)
+
+The {obj}`lock` rule also supports generating cross-platform `uv.lock` files
+using `uv lock` when {arg}`lock.out` ends with `.lock` (such as `uv.lock`).
+
+### Example usage
+
+In `BUILD.bazel`:
+
+```starlark
+load("@rules_python//python/uv:lock.bzl", "lock")
+
+lock(
+    name = "uv_lock",
+    srcs = ["pyproject.toml"],
+    out = "uv.lock",
+)
+```
+
+Run `bazel run //:uv_lock.update` to generate or update `uv.lock`, then pass it
+to {obj}`pip.parse` in `MODULE.bazel` via {attr}`pip.parse.uv_lock`:
+
+```starlark
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+pip.parse(
+    hub_name = "my_deps",
+    python_version = "3.13",
+    uv_lock = "//:uv.lock",
+)
+use_repo(pip, "my_deps")
+```
+
+`[tool.uv]` settings auto-detection and the {arg}`lock.project` attribute work
+the same way as described in the `uv pip compile` section above.
 
 For more documentation see {obj}`lock`.

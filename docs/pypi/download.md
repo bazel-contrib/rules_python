@@ -19,6 +19,8 @@ pip.parse(
     hub_name = "my_deps",
     python_version = "3.13",
     requirements_lock = "//:requirements_lock_3_11.txt",
+    # Or use a uv.lock file:
+    # uv_lock = "//:uv.lock",
 )
 
 use_repo(pip, "my_deps")

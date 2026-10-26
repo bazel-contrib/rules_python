@@ -387,7 +387,7 @@ modifications and the locking is not done from scratch.
     ),
     "project": attr.string(
         doc = """\
-Overrides the `--project` directory passed to `uv pip compile`.
+Overrides the `--project` directory passed to `uv`.
 If not set, the project directory is auto-detected: when
 `pyproject.toml` files are in {obj}`lock.srcs`, the one with the
 shortest directory path is selected. This makes `uv` read
@@ -629,12 +629,12 @@ def lock(
     """Pin the requirements based on the src files.
 
     This macro creates the following targets:
-    - `name`: the target that creates the requirements.txt file in a build
-      action. This target will have `no-cache` and `requires-network` added
-      to its tags.
+    - `name`: the target that creates the lock file (`uv.lock` or
+      `requirements.txt`) in a build action. This target will have `no-cache`
+      and `requires-network` added to its tags.
     - `name.run`: a runnable target that can be used to pass extra parameters
       to the same command that would be run in the `name` action. This will
-      update the source copy of the requirements file. You can customize the
+      update the source copy of the lock file. You can customize the
       args via the command line, but it requires being able to run `uv` (and
       possibly `python`) directly on your host. This target uses the `uv`
       cache and inherits its cache settings from the environment, including
@@ -642,9 +642,10 @@ def lock(
       data or `--no-cache` to disable caching. Build actions, including those
       used by `name.update`, disable the `uv` cache.
     - `name.update`: a target that can be run to update the source-tree version
-      of the requirements lock file. The output can be fed to the
-      {obj}`pip.parse` bzlmod extension tag class. Note, you can use
-      `native_test` to wrap this target to make a test. You can't customize the
+      of the lock file. The output can be fed to the {obj}`pip.parse` bzlmod
+      extension tag class via {attr}`pip.parse.uv_lock` or
+      {attr}`pip.parse.requirements_lock`. Note, you can use `native_test` to
+      wrap this target to make a test. You can't customize the
       args via command line, but you can use RBE to generate requirements
       (offload execution and run for different platforms). Note, that for RBE
       to be usable, one needs to ensure that the nodes running the action have
@@ -662,8 +663,12 @@ def lock(
     Args:
         name: {type}`str` The prefix of all targets created by this macro.
         srcs: {type}`list[Label]` The sources that will be used. Add all of the
-            files that would be passed as srcs to the `uv pip compile` command.
-        out: {type}`str` The output file relative to the package.
+            files that would be passed as srcs to `uv pip compile`, or the
+            `pyproject.toml` files when generating `uv.lock`.
+        out: {type}`str` The output file relative to the package. If the file
+            name ends with `.lock` (e.g. `uv.lock`), `uv lock` is used to
+            generate a `uv.lock` file; otherwise `uv pip compile` is used to
+            generate a `requirements.txt`-formatted file.
         args: {type}`list[str]` The list of args to pass to uv. Note, these are
             written into the runnable `name.run` target.
         env: {type}`dict[str, str]` the environment variables to set. Note, this
@@ -683,7 +688,7 @@ def lock(
             are compiling the requirements file for using it as a constraints
             file. Defaults to `False`.
         project: {type}`str | None` overrides the `--project` directory
-            passed to `uv pip compile`. By default the project directory
+            passed to `uv`. By default the project directory
             is auto-detected: when {obj}`lock.srcs` contains
             `pyproject.toml` files, the one with the shortest directory
             path is selected. This causes `uv` to read `[tool.uv]`
