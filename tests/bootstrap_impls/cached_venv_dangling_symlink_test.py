@@ -67,13 +67,14 @@ class CachedVenvDanglingSymlinkTest(unittest.TestCase):
             new_package.mkdir(parents=True)
             (new_package / "__init__.py").touch()
             bootstrap["RUNTIME_VENV_SYMLINKS"] = {
-                "Lib/site-packages/annotated_types/__init__.py":
-                    "new/annotated_types/__init__.py",
+                "Lib/site-packages/annotated_types/__init__.py": "new/annotated_types/__init__.py",
             }
 
             bootstrap["_create_venv"](str(runfiles), [])
 
-            package = root / "cache/_main/_process.venv/Lib/site-packages/annotated_types"
+            package = (
+                root / "cache/_main/_process.venv/Lib/site-packages/annotated_types"
+            )
             package_init = package / "__init__.py"
             self.assertTrue(package.is_dir())
             self.assertFalse(package.is_symlink())
