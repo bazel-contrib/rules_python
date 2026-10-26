@@ -380,10 +380,15 @@ had written it entirely themselves. This means:
 *   **Vetting the correctness and functionality:** You are responsible for
     thoroughly testing and verifying that the code is correct, functional, and
     meets all project requirements and standards.
-*   **Disclosing human oversight in a PR comment:** Keep the PR description
-    clean for use as the merge commit message. After creating the PR, post a
-    comment disclosing the level of human oversight (e.g., closely
-    human-directed/reviewed, semi-autonomous, or fully autonomous).
+*   **Disclosing AI usage and comment handling in a PR comment:** Keep the PR
+    description clean for use as the merge commit message. After creating the
+    PR, post a comment so maintainers understand who or what they are
+    interacting with: disclose the level of human oversight (e.g., closely
+    human-directed/reviewed, semi-autonomous, or fully autonomous) and explain
+    how comments on the PR will be handled (e.g., whether an agent
+    automatically monitors and replies to comments, whether a human reviews and
+    approves agent responses before posting, or whether the human author
+    responds directly).
 *   **Avoiding bot comment spam:** Do not post comments for every CI run or
     commit push, and do not narrate build IDs, commit SHAs, line counts, or
     trivial diff details (such as noting a push is "comment-only"). Only post

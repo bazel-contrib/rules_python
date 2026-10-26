@@ -57,8 +57,12 @@ execution logs, or check checklists in the PR description.
   and `buildifier` locally before opening or updating a PR.
 * **Post AI disclosure as a PR comment (not in the PR description):** When an
   AI agent creates or interacts on a PR, post a single comment after the PR is
-  created disclosing the level of human oversight (e.g., `human-reviewed`,
-  `semi-autonomous`, or `autonomous`).
+  created so maintainers understand who/what they are interacting with. State
+  the level of human oversight (e.g., `human-reviewed`, `semi-autonomous`, or
+  `autonomous`) and explain how comments on the PR will be handled (e.g.,
+  whether an agent automatically monitors and replies to review comments,
+  whether a human reviews and approves agent responses/changes before posting,
+  or whether the human author handles comments directly).
 * **No CI status spam or commit narration:** Do not post comments for every CI
   run, and do not narrate build IDs, commit SHAs, patch line/file counts, or
   trivial diff details (e.g., stating a push is "comment-only"). GitHub

@@ -16,8 +16,12 @@ PR Instructions/requirements
 * Update docs and tests, and run `bazel test` and `buildifier` locally prior
   to pushing.
 * AI-assisted PRs:
-  * After creating the PR, post a separate comment disclosing the level of
-    human oversight (e.g., human-reviewed, semi-autonomous, or autonomous).
+  * After creating the PR, post a separate comment so maintainers understand
+    who/what they are interacting with: state the level of human oversight
+    (e.g., human-reviewed, semi-autonomous, or autonomous) and explain how
+    comments on the PR will be handled (e.g., whether an agent automatically
+    monitors and replies, whether a human reviews/approves agent replies before
+    posting, or whether the human responds directly).
   * Do not post comments for every CI run or narrate build IDs, commit SHAs,
     or trivial diff details. Reply `PTAL` once CI is passing and ready for
     review.

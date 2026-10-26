@@ -41,10 +41,14 @@ Before drafting any pull request description, strictly adhere to the rules in
   individual file modifications, test execution logs/checklists, or AI
   disclosure metadata in PR descriptions or commit messages.
 * **AI Disclosure & Comment Etiquette**: Keep the PR description clean for use
-  as the merge commit message. Disclose human oversight level in a separate PR
-  comment after creation. Never post comments for every CI run or narrate build
-  IDs, commit SHAs, line counts, or trivial diff details (e.g.,
-  "comment-only"); comment `PTAL` only when ready for re-review.
+  as the merge commit message. After creating a PR, post a separate comment so
+  maintainers understand who/what they are interacting with: state the level of
+  human oversight and explain how comments on the PR will be handled (whether
+  an agent autonomously monitors and replies, whether a human reviews/approves
+  agent responses before posting, or whether the human responds directly).
+  Never post comments for every CI run or narrate build IDs, commit SHAs, line
+  counts, or trivial diff details (e.g., "comment-only"); comment `PTAL` only
+  when ready for re-review.
 * High-level overview only: state *why* the change is made and *how* at a
   conceptual level. Link related issues (e.g. `Work towards #<issue>`).
 * **Conciseness & Style (Strunk & White)**: Omit needless words. Use clear,
