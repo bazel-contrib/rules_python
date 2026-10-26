@@ -209,7 +209,7 @@ def create_plan(job_name, log_path, errors):
         else "🔍 **Classification**: **Code / Configuration Issue**"
     )
     fix_advice = (
-        f"Retry the failed job (`buildkite-retry-job`). {flake_reason}"
+        f"Retry the failed job (`retry-ci-job`). {flake_reason}"
         if is_flake
         else "Resolve the root cause in the relevant source / build files."
     )

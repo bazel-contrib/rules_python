@@ -260,7 +260,9 @@ def main():
                                     f"⚠️ Remote CI Buildkite Job '{jname}' is blocked!\n\n"
                                     f"Build ID: {build_id} | Job ID: {jid}\n"
                                     f"Log URL: {log_url}\n\n"
-                                    f"Action required: Unblock the job using the buildkite-retry-job skill (`retry_buildkite_jobs.py {args.pr} --unblock`)."
+                                    "Action required: Unblock the job using the "
+                                    f"retry-ci-job skill (`retry_ci_jobs.py --pr {args.pr} "
+                                    "--unblock`)."
                                 )
                                 subprocess.run(
                                     [
