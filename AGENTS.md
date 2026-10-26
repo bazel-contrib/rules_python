@@ -47,7 +47,25 @@ because it interferes with code review comments.
 ### PR descriptions
 
 Follow the advice in `CONTRIBUTING.md` for PR descriptions. PR descriptions
-become the commit message upon merge.
+become the commit message upon merge. Keep the PR description clean and
+suitable for use as the commit message; do not put AI disclosures, test
+execution logs, or check checklists in the PR description.
+
+### GitHub PR interaction and AI disclosure
+
+* **Run local checks before pushing:** Run `bazel test --config=fast-tests`
+  and `buildifier` locally before opening or updating a PR.
+* **Post AI disclosure as a PR comment (not in the PR description):** When an
+  AI agent creates or interacts on a PR, post a single comment after the PR is
+  created disclosing the level of human oversight (e.g., `human-reviewed`,
+  `semi-autonomous`, or `autonomous`).
+* **No CI status spam or commit narration:** Do not post comments for every CI
+  run, and do not narrate build IDs, commit SHAs, patch line/file counts, or
+  trivial diff details (e.g., stating a push is "comment-only"). GitHub
+  already displays commits and check statuses.
+* **Comment only when actionable:** Only post a PR comment to answer a
+  reviewer's question, ask a clarifying question, or briefly indicate the PR
+  is ready for re-review (e.g., `PTAL`) once CI is passing.
 
 ### Python pytest conventions
 

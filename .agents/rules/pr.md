@@ -37,8 +37,14 @@ Before drafting any pull request description, strictly adhere to the rules in
 * **PR Metadata Discrepancies**: If a PR title or description diverges from
   the branch's actual scope, notify the user of the discrepancy and ask for
   confirmation before updating GitHub.
-* **NEVER** include a list of per-file edits or changelog bullet points of
-  individual file modifications in PR descriptions or commit messages.
+* **NEVER** include a list of per-file edits, changelog bullet points of
+  individual file modifications, test execution logs/checklists, or AI
+  disclosure metadata in PR descriptions or commit messages.
+* **AI Disclosure & Comment Etiquette**: Keep the PR description clean for use
+  as the merge commit message. Disclose human oversight level in a separate PR
+  comment after creation. Never post comments for every CI run or narrate build
+  IDs, commit SHAs, line counts, or trivial diff details (e.g.,
+  "comment-only"); comment `PTAL` only when ready for re-review.
 * High-level overview only: state *why* the change is made and *how* at a
   conceptual level. Link related issues (e.g. `Work towards #<issue>`).
 * **Conciseness & Style (Strunk & White)**: Omit needless words. Use clear,
