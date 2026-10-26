@@ -996,6 +996,11 @@ bzl_library(
 )
 
 bzl_library(
+    name = "py_dist_info",
+    srcs = ["py_dist_info.bzl"],
+)
+
+bzl_library(
     name = "py_exec_tools_info",
     srcs = ["py_exec_tools_info.bzl"],
 )
