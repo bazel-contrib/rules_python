@@ -60,7 +60,9 @@ file from `.agents/skills/review-code/`:
    - Focus: Audits workflow files (`.github/**`) and workflow tests against
      `.agents/rules/github_actions_workflows.md` (e.g. `chmod +x` executable
      permissions, shebangs, action and tool versions,
-     `./.github/actions/setup-bazel` wrapper usage, fallback jobs).
+     `./.github/actions/setup-bazel` wrapper usage, fallback jobs, and shell,
+     script, CLI flag, `$GITHUB_OUTPUT`, or workflow-command injection
+     vulnerabilities).
 
 8. **`rules_python` Usage Sub-Agent** (`Role: "rules_python Usage Auditor"`):
    - Prompt file:

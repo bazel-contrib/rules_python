@@ -55,6 +55,36 @@ globs: ".github/workflows/**,.github/actions/**,.github/dependabot.yml"
   into a single flat directory first (reading paths from the rule's `.txt`
   manifest) so `<cfg>/...` subdirectories are not preserved in the artifact.
 
+## Security review
+* **No `${{ ... }}` in `run:` or `script:` Blocks**: Never interpolate
+  `${{ ... }}` expressions (including `${{ secrets.* }}`) directly into `run:`
+  shell scripts or `actions/github-script` `script:` bodies, even inside
+  quotes. Bind expressions to `env:` variables (strictly step-scoped for
+  `secrets.*`) and reference them as quoted shell variables (`"$VAR"`) or
+  `process.env.VAR`.
+* **Untrusted Git Ref Names (`github.head_ref`, `github.ref_name`)**: Treat
+  branch and tag names as untrusted input. Git ref names allow quotes (`'`, `"`)
+  and shell metacharacters (`;`, `&`, `|`, `$()`, `` ` ``); reject or guard
+  against quotes and `#` before writing refs to `.bazelrc`.
+* **CLI Argument & Option-Flag Injection**: Validate untrusted inputs (such as
+  slash-command arguments from issue or PR comments) against strict allowlist
+  regexes before writing to `$GITHUB_OUTPUT` or passing to tools. Separate
+  options from positional arguments with `--` when expanding arrays into CLI
+  commands (e.g. `cmd "${ARGS[@]}" -- "${positional[@]}"`).
+* **Authorize Before Mutating State**: In comment- or event-triggered workflows,
+  verify actor authorization (`author_association` or user allowlist) before
+  writing to `$GITHUB_OUTPUT` or `$GITHUB_ENV`, posting reactions, or triggering
+  failure-reporting jobs.
+* **Single-Line `$GITHUB_OUTPUT` and `$GITHUB_ENV` Writes**: Reject `\n` and
+  `\r` in keys and values before writing `key=value` lines to `$GITHUB_OUTPUT`
+  or `$GITHUB_ENV`. In line-anchored regexes over comment or PR bodies, match
+  horizontal whitespace (`[ \t]`) and non-linebreak characters (`[^\r\n]`)
+  rather than `\s` or `.`.
+* **Suppress Untrusted Stdout in Privileged Jobs**: Never echo raw PR bodies,
+  titles, or comment bodies to stdout (pass `--quiet` to `grep`, and use
+  `printf '%s\n'` instead of `echo`), preventing `::...::` workflow command
+  injection.
+
 ## Workflow Scripts & Testing
 * **Separate Script Files (No Inline Scripts)**: Factor non-trivial scripts
   (such as multi-line shell or Python logic) into standalone files (e.g. `.sh`
