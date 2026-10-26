@@ -143,6 +143,7 @@ _LOADABLE_SYMBOLS = {
     ],
     "//python:py_dist_info.bzl": [
         # keep sorted
+        "PyDistInfo",
         "py_dist_info",
     ],
     "//python:py_info.bzl": [

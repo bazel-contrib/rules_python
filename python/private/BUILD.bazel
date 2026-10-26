@@ -729,10 +729,10 @@ bzl_library(
     srcs = ["py_wheel.bzl"],
     deps = [
         ":attributes",
+        ":py_dist_info",
         ":py_info",
         ":py_package",
         ":rule_builders",
-        ":stamp_impl",
         ":toolchain_types",
         ":transition_labels",
         ":version",
@@ -998,6 +998,13 @@ bzl_library(
 bzl_library(
     name = "py_dist_info",
     srcs = ["py_dist_info.bzl"],
+    deps = [
+        ":attributes",
+        ":rule_builders",
+        ":stamp_impl",
+        ":toolchain_types",
+        ":transition_labels",
+    ],
 )
 
 bzl_library(

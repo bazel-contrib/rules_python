@@ -209,6 +209,7 @@ bzl_library(
     deps = [
         ":py_binary",
         "//python/private:bzlmod_enabled",
+        "//python/private:py_dist_info",
         "//python/private:py_package",
         "//python/private:py_wheel",
         "//python/private:util",

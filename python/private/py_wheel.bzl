@@ -15,10 +15,16 @@
 "Implementation of py_wheel rule"
 
 load(":attributes.bzl", "CONFIG_SETTINGS_ATTR", "apply_config_settings_attr")
+load(
+    ":py_dist_info.bzl",
+    "DIST_INFO_ATTR_NAMES",
+    "PyDistInfo",
+    "create_dist_info_attrs",
+    "replace_make_variables",
+)
 load(":py_info.bzl", "PyInfo")
 load(":py_package.bzl", "py_package_lib")
 load(":rule_builders.bzl", "ruleb")
-load(":stamp_impl.bzl", "is_stamping_enabled")
 load(":toolchain_types.bzl", "TARGET_TOOLCHAIN_TYPE")
 load(":transition_labels.bzl", "TRANSITION_LABELS")
 load(":version.bzl", "version")
@@ -34,7 +40,9 @@ PyWheelInfo = provider(
     },
 )
 
-_distribution_attrs = {
+ALLOWED_DATA_FILE_PREFIX = ("purelib", "platlib", "headers", "scripts", "data")
+
+_wheel_only_attrs = {
     "abi": attr.string(
         default = "none",
         doc = """
@@ -49,24 +57,85 @@ default.
 :::
 """,
     ),
+    "add_path_prefix": attr.string(
+        default = "",
+        doc = """\
+Path prefix to prepend to files added to the generated package.
+This prefix will be prepended **after** the paths are first stripped of the prefixes
+specified in `strip_path_prefixes`.
+
+For example:
++ `"foo/" will prepend to `"bar/baz/file.py"` as `"foo/bar/baz/file.py"`
++ `"foo_" will prepend to `"bar/baz/file.py"` as `"foo_bar/baz/file.py"`
++ `stripping ["bar/"] and adding "foo/" will change `"bar/baz/file.py"` to `"foo/baz/file.py"`
+
+:::{versionadded} 2.0.0
+The {attr}`add_path_prefix` attribute was added.
+:::
+""",
+    ),
     "compress": attr.bool(
         default = True,
         doc = "Enable compression of the final archive.",
     ),
-    "distribution": attr.string(
-        mandatory = True,
-        doc = """\
-Name of the distribution.
+    "data_files": attr.label_keyed_string_dict(
+        doc = ("""
+Mapping of data files to go into the wheel.
 
-This should match the project name on PyPI. It's also the name that is used to
-refer to the package in other packages' dependencies.
+The keys are targets of files to include, and the values are the `.data`-relative
+path to use.
 
-Workspace status keys are expanded using `{NAME}` format, for example:
- - `distribution = "package.{CLASSIFIER}"`
- - `distribution = "{DISTRIBUTION}"`
+Any file that is not normally installed inside site-packages goes into the .data
+directory, named as the .dist-info directory but with the .data/ extension. If
+the destination of a file or group of files ends in a `/`, the destination is a
+folder and files are placed with their existing basenames under that folder.
 
-For the available keys, see <https://bazel.build/docs/user-manual#workspace-status>
+For example:
+
+```
+":file1.txt": "data/file1.txt",   # Destination: <wheelname>.data/data/file1.txt
+":file1.txt": "data/",            # Destination: <wheelname>.data/data/file1.txt
+":file1.txt": "data/special.txt", # Destination: <wheelname>.data/data/special.txt
+
+filegroup(name = "files", srcs = [":file1.txt", ":file2.txt"])
+":files": "data/",                # Destinations: <wheelname>.data/data/file1.txt, <wheelname>.data/data/file2.txt
+```
+
+Allowed paths: {prefixes}
+
+:::{{versionchanged}} 2.0.0
+Values can end in slash (`/`) to indicate that all files of the target should
+be moved under that directory.
+:::
+""".format(prefixes = ALLOWED_DATA_FILE_PREFIX)),
+        allow_files = True,
+    ),
+    "deps": attr.label_list(
+        doc = """
+Targets to be included in the distribution.
+
+The targets to package are usually `py_library` rules or filesets (for
+packaging data files).
+
+Note it's usually better to package `py_library` targets and use
+`entry_points` attribute to specify `console_scripts` than to package
+`py_binary` rules. `py_binary` targets would wrap a executable script that
+tries to locate `.runfiles` directory which is not packaged in the wheel.
 """,
+    ),
+    "dist_info": attr.label(
+        doc = """
+A {obj}`py_dist_info` target providing `.dist-info` metadata for the wheel.
+
+If not provided, the `py_wheel` macro automatically constructs a `py_dist_info`
+target from the distribution metadata attributes passed to `py_wheel`.
+If `dist_info` is specified, passing any of the distribution metadata attributes
+directly to `py_wheel` is an error.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+        providers = [PyDistInfo],
     ),
     "platform": attr.string(
         default = "any",
@@ -108,194 +177,6 @@ by default.
 :::
 """,
     ),
-    "stamp": attr.int(
-        doc = """\
-Whether to encode build information into the wheel. Possible values:
-
-- `stamp = 1`: Always stamp the build information into the wheel, even in \
-[--nostamp](https://docs.bazel.build/versions/main/user-manual.html#flag--stamp) builds. \
-This setting should be avoided, since it potentially kills remote caching for the target and \
-any downstream actions that depend on it.
-
-- `stamp = 0`: Always replace build information by constant values. This gives good build result caching.
-
-- `stamp = -1`: Embedding of build information is controlled by the \
-[--[no]stamp](https://docs.bazel.build/versions/main/user-manual.html#flag--stamp) flag.
-
-Stamped targets are not rebuilt unless their dependencies change.
-        """,
-        default = -1,
-        values = [1, 0, -1],
-    ),
-    "version": attr.string(
-        mandatory = True,
-        doc = """\
-Version number of the package.
-
-Note that this attribute supports stamp format strings as well as 'make variables'.
-For example:
-  - `version = "1.2.3-{BUILD_TIMESTAMP}"`
-  - `version = "{BUILD_EMBED_LABEL}"`
-  - `version = "$(VERSION)"`
-
-Note that Bazel's output filename cannot include the stamp information, as outputs must be known
-during the analysis phase and the stamp data is available only during the action execution.
-
-The [`py_wheel`](#py_wheel) macro produces a `.dist`-suffix target which creates a
-`dist/` folder containing the wheel with the stamped name, suitable for publishing.
-
-See [`py_wheel_dist`](#py_wheel_dist) for more info.
-""",
-    ),
-    "_stamp_flag": attr.label(
-        doc = "A setting used to determine whether or not the `--stamp` flag is enabled",
-        default = Label("//python/private:stamp"),
-    ),
-}
-
-_feature_flags = {}
-
-ALLOWED_DATA_FILE_PREFIX = ("purelib", "platlib", "headers", "scripts", "data")
-_requirement_attrs = {
-    "extra_requires": attr.string_list_dict(
-        doc = ("A mapping of [extras](https://peps.python.org/pep-0508/#extras) options to lists of requirements (similar to `requires`). This attribute " +
-               "is mutually exclusive with `extra_requires_file`."),
-    ),
-    "extra_requires_files": attr.label_keyed_string_dict(
-        doc = ("A mapping of requirements files (similar to `requires_file`) to the name of an [extras](https://peps.python.org/pep-0508/#extras) option " +
-               "This attribute is mutually exclusive with `extra_requires`."),
-        allow_files = True,
-    ),
-    "requires": attr.string_list(
-        doc = ("List of requirements for this package. See the section on " +
-               "[Declaring required dependency](https://setuptools.readthedocs.io/en/latest/userguide/dependency_management.html#declaring-dependencies) " +
-               "for details and examples of the format of this argument. This " +
-               "attribute is mutually exclusive with `requires_file`."),
-    ),
-    "requires_file": attr.label(
-        doc = ("A file containing a list of requirements for this package. See the section on " +
-               "[Declaring required dependency](https://setuptools.readthedocs.io/en/latest/userguide/dependency_management.html#declaring-dependencies) " +
-               "for details and examples of the format of this argument. This " +
-               "attribute is mutually exclusive with `requires`."),
-        allow_single_file = True,
-    ),
-}
-
-_entrypoint_attrs = {
-    "console_scripts": attr.string_dict(
-        doc = """\
-Deprecated console_script entry points, e.g. `{'main': 'examples.wheel.main:main'}`.
-
-Deprecated: prefer the `entry_points` attribute, which supports `console_scripts` as well as other entry points.
-""",
-    ),
-    "entry_points": attr.string_list_dict(
-        doc = """\
-entry_points, e.g. `{'console_scripts': ['main = examples.wheel.main:main']}`.
-""",
-    ),
-}
-
-_other_attrs = {
-    "add_path_prefix": attr.string(
-        default = "",
-        doc = """\
-Path prefix to prepend to files added to the generated package.
-This prefix will be prepended **after** the paths are first stripped of the prefixes
-specified in `strip_path_prefixes`.
-
-For example:
-+ `"foo/" will prepend to `"bar/baz/file.py"` as `"foo/bar/baz/file.py"`
-+ `"foo_" will prepend to `"bar/baz/file.py"` as `"foo_bar/baz/file.py"`
-+ `stripping ["bar/"] and adding "foo/" will change `"bar/baz/file.py"` to `"foo/baz/file.py"`
-
-:::{versionadded} 2.0.0
-The {attr}`add_path_prefix` attribute was added.
-:::
-""",
-    ),
-    "author": attr.string(
-        doc = "A string specifying the author of the package.",
-        default = "",
-    ),
-    "author_email": attr.string(
-        doc = "A string specifying the email address of the package author.",
-        default = "",
-    ),
-    "classifiers": attr.string_list(
-        doc = "A list of strings describing the categories for the package. For valid classifiers see <https://pypi.org/classifiers>",
-    ),
-    "data_files": attr.label_keyed_string_dict(
-        doc = ("""
-Mapping of data files to go into the wheel.
-
-The keys are targets of files to include, and the values are the `.data`-relative
-path to use.
-
-Any file that is not normally installed inside site-packages goes into the .data
-directory, named as the .dist-info directory but with the .data/ extension. If
-the destination of a file or group of files ends in a `/`, the destination is a
-folder and files are placed with their existing basenames under that folder.
-
-For example:
-
-```
-":file1.txt": "data/file1.txt",   # Destination: <wheelname>.data/data/file1.txt
-":file1.txt": "data/",            # Destination: <wheelname>.data/data/file1.txt
-":file1.txt": "data/special.txt", # Destination: <wheelname>.data/data/special.txt
-
-filegroup(name = "files", srcs = [":file1.txt", ":file2.txt"])
-":files": "data/",                # Destinations: <wheelname>.data/data/file1.txt, <wheelname>.data/data/file2.txt
-```
-
-Allowed paths: {prefixes}
-
-:::{{versionchanged}} 2.0.0
-Values can end in slash (`/`) to indicate that all files of the target should
-be moved under that directory.
-:::
-""".format(prefixes = ALLOWED_DATA_FILE_PREFIX)),
-        allow_files = True,
-    ),
-    "description_content_type": attr.string(
-        doc = ("The type of contents in description_file. " +
-               "If not provided, the type will be inferred from the extension of description_file. " +
-               "Also see <https://packaging.python.org/en/latest/specifications/core-metadata/#description-content-type>"),
-    ),
-    "description_file": attr.label(
-        doc = "A file containing text describing the package.",
-        allow_single_file = True,
-    ),
-    "extra_distinfo_files": attr.label_keyed_string_dict(
-        doc = "Extra files to add to distinfo directory in the archive.",
-        allow_files = True,
-    ),
-    "homepage": attr.string(
-        doc = "A string specifying the URL for the package homepage.",
-        default = "",
-    ),
-    "license": attr.string(
-        doc = "A string specifying the license of the package.",
-        default = "",
-    ),
-    "project_urls": attr.string_dict(
-        doc = ("A string dict specifying additional browsable URLs for the project and corresponding labels, " +
-               "where label is the key and url is the value. " +
-               'e.g `{{"Bug Tracker": "http://bitbucket.org/tarek/distribute/issues/"}}`'),
-    ),
-    "python_requires": attr.string(
-        doc = """
-Python versions required by this distribution, e.g. '>=3.5,<3.7'.
-
-Supports make variables, e.g. `python_requires = "==$(PY_MAJOR_DOT_MINOR).*"`.
-See {rule}`py_runtime_pair` for variables provided by the Python toolchain.
-
-:::{versionchanged} VERSION_NEXT_FEATURE
-Supports make variables.
-:::
-""",
-        default = "",
-    ),
     "strip_path_prefixes": attr.string_list(
         default = [],
         doc = """\
@@ -308,17 +189,12 @@ For example:
   `"foo/file2.py"` to `"file2.py"`
 """,
     ),
-    "summary": attr.string(
-        doc = "A one-line summary of what the distribution does",
+    "_wheelmaker": attr.label(
+        executable = True,
+        cfg = "exec",
+        default = "//tools:wheelmaker",
     ),
 }
-
-_PROJECT_URL_LABEL_LENGTH_LIMIT = 32
-_DESCRIPTION_FILE_EXTENSION_TO_TYPE = {
-    "md": "text/markdown",
-    "rst": "text/x-rst",
-}
-_DEFAULT_DESCRIPTION_FILE_TYPE = "text/plain"
 
 def _escape_filename_distribution_name(name):
     """Escape the distribution name component of a filename.
@@ -381,26 +257,51 @@ def _escape_filename_segment(segment):
             escaped += "_"
     return escaped
 
-def _replace_make_variables(flag, ctx):
-    """Replace $(VERSION) etc make variables in flag"""
-    if "$" in flag:
-        for varname, varsub in ctx.var.items():
-            flag = flag.replace("$(%s)" % varname, varsub)
-    return flag
-
 def _input_file_to_arg(input_file):
     """Converts a File object to string for --input_file argument to wheelmaker"""
     return "%s;%s" % (py_package_lib.path_inside_wheel(input_file), input_file.path)
 
+def _has_dist_info_attr(ctx, attr_name):
+    value = getattr(ctx.attr, attr_name)
+    if attr_name == "stamp":
+        return value != -1
+    return bool(value)
+
 def _py_wheel_impl(ctx):
-    abi = _replace_make_variables(ctx.attr.abi, ctx)
-    platform = _replace_make_variables(ctx.attr.platform, ctx)
-    python_requires = _replace_make_variables(ctx.attr.python_requires, ctx)
-    python_tag = _replace_make_variables(ctx.attr.python_tag, ctx)
-    version_str = _replace_make_variables(ctx.attr.version, ctx)
+    if not ctx.attr.dist_info:
+        fail("`dist_info` attribute is required on {}".format(ctx.label))
+
+    # If the user passed `dist_info` explicitly rather than using the implicit
+    # `<name>.dist_info` target created by the `py_wheel` macro, reject any
+    # direct `.dist-info` metadata attributes on `py_wheel`.
+    implicit_dist_info_name = ctx.label.name + ".dist_info"
+    is_implicit_dist_info = (
+        ctx.attr.dist_info.label.package == ctx.label.package and
+        ctx.attr.dist_info.label.name == implicit_dist_info_name
+    )
+    if not is_implicit_dist_info:
+        conflicting_attrs = [
+            attr_name
+            for attr_name in DIST_INFO_ATTR_NAMES
+            if _has_dist_info_attr(ctx, attr_name)
+        ]
+        if conflicting_attrs:
+            fail(
+                "Cannot specify {} together with `dist_info` on {}".format(
+                    ", ".join(["`{}`".format(a) for a in conflicting_attrs]),
+                    ctx.label,
+                ),
+            )
+
+    dist_info = ctx.attr.dist_info[PyDistInfo]
+    abi = replace_make_variables(ctx.attr.abi, ctx)
+    platform = replace_make_variables(ctx.attr.platform, ctx)
+    python_tag = replace_make_variables(ctx.attr.python_tag, ctx)
+    distribution = dist_info.distribution
+    version_str = dist_info.version
 
     filename_segments = [
-        _escape_filename_distribution_name(ctx.attr.distribution),
+        _escape_filename_distribution_name(distribution),
         version.normalize(version_str),
         _escape_filename_segment(python_tag),
         _escape_filename_segment(abi),
@@ -420,13 +321,13 @@ def _py_wheel_impl(ctx):
         direct = ctx.files.deps + direct_pyi_files,
     )
 
-    # Inputs to this rule which are not to be packaged.
-    # Currently this is only the description file (if used).
     other_inputs = []
 
     # Wrap the inputs into a file to reduce command line length, deferring
     # depset expansion to execution time via Args.add_all with map_each.
-    packageinputfile = ctx.actions.declare_file(ctx.attr.name + "_target_wrapped_inputs.txt")
+    packageinputfile = ctx.actions.declare_file(
+        ctx.attr.name + "_target_wrapped_inputs.txt",
+    )
     package_args = ctx.actions.args()
     package_args.set_param_file_format("multiline")
     package_args.add_all(inputs_to_package, map_each = _input_file_to_arg)
@@ -434,155 +335,46 @@ def _py_wheel_impl(ctx):
     other_inputs.append(packageinputfile)
 
     args = ctx.actions.args()
-    args.add("--name", ctx.attr.distribution)
+    args.add("--name", distribution)
     args.add("--version", version_str)
     args.add("--python_tag", python_tag)
     args.add("--abi", abi)
     args.add("--platform", platform)
     args.add("--out", outfile)
     args.add("--name_file", name_file)
-    args.add_all(ctx.attr.strip_path_prefixes, format_each = "--strip_path_prefix=%s")
+    args.add_all(
+        ctx.attr.strip_path_prefixes,
+        format_each = "--strip_path_prefix=%s",
+    )
     args.add("--path_prefix", ctx.attr.add_path_prefix)
 
     # Pass workspace status files if stamping is enabled
-    if is_stamping_enabled(ctx.attr):
+    if dist_info.stamping_enabled:
         args.add("--volatile_status_file", ctx.version_file)
         args.add("--stable_status_file", ctx.info_file)
         other_inputs.extend([ctx.version_file, ctx.info_file])
 
     args.add("--input_file_list", packageinputfile)
 
-    # Note: Description file and version are not embedded into metadata.txt yet,
-    # it will be done later by wheelmaker script.
-    metadata_file = ctx.actions.declare_file(ctx.attr.name + ".metadata.txt")
-    metadata_contents = ["Metadata-Version: 2.1"]
-    metadata_contents.append("Name: %s" % ctx.attr.distribution)
+    other_inputs.append(dist_info.metadata_file)
+    args.add("--metadata_file", dist_info.metadata_file)
 
-    if ctx.attr.author:
-        metadata_contents.append("Author: %s" % ctx.attr.author)
-    if ctx.attr.author_email:
-        metadata_contents.append("Author-email: %s" % ctx.attr.author_email)
-    if ctx.attr.homepage:
-        metadata_contents.append("Home-page: %s" % ctx.attr.homepage)
-    if ctx.attr.license:
-        metadata_contents.append("License: %s" % ctx.attr.license)
-    if ctx.attr.description_content_type:
-        metadata_contents.append("Description-Content-Type: %s" % ctx.attr.description_content_type)
-    elif ctx.attr.description_file:
-        # infer the content type from description file extension.
-        description_file_type = _DESCRIPTION_FILE_EXTENSION_TO_TYPE.get(
-            ctx.file.description_file.extension,
-            _DEFAULT_DESCRIPTION_FILE_TYPE,
-        )
-        metadata_contents.append("Description-Content-Type: %s" % description_file_type)
-    if ctx.attr.summary:
-        metadata_contents.append("Summary: %s" % ctx.attr.summary)
+    if dist_info.entry_points_file:
+        other_inputs.append(dist_info.entry_points_file)
+        args.add("--entry_points_file", dist_info.entry_points_file)
 
-    for label, url in sorted(ctx.attr.project_urls.items()):
-        if len(label) > _PROJECT_URL_LABEL_LENGTH_LIMIT:
-            fail("`label` {} in `project_urls` is too long. It is limited to {} characters.".format(len(label), _PROJECT_URL_LABEL_LENGTH_LIMIT))
-        metadata_contents.append("Project-URL: %s, %s" % (label, url))
-
-    for c in ctx.attr.classifiers:
-        metadata_contents.append("Classifier: %s" % c)
-
-    if python_requires:
-        metadata_contents.append("Requires-Python: %s" % python_requires)
-
-    if ctx.attr.requires and ctx.attr.requires_file:
-        fail("`requires` and `requires_file` are mutually exclusive. Please update {}".format(ctx.label))
-
-    for requires in ctx.attr.requires:
-        metadata_contents.append("Requires-Dist: %s" % requires)
-    if ctx.attr.requires_file:
-        # The @ prefixed paths will be resolved by the PyWheel action.
-        # Expanding each line containing a constraint in place of this
-        # directive.
-        metadata_contents.append("Requires-Dist: @%s" % ctx.file.requires_file.path)
-        other_inputs.append(ctx.file.requires_file)
-
-    if ctx.attr.extra_requires and ctx.attr.extra_requires_files:
-        fail("`extra_requires` and `extra_requires_files` are mutually exclusive. Please update {}".format(ctx.label))
-    for option, option_requirements in sorted(ctx.attr.extra_requires.items()):
-        metadata_contents.append("Provides-Extra: %s" % option)
-        for requirement in option_requirements:
-            metadata_contents.append(
-                "Requires-Dist: %s; extra == '%s'" % (requirement, option),
-            )
-    extra_requires_files = {}
-    for option_requires_target, option in ctx.attr.extra_requires_files.items():
-        if option in extra_requires_files:
-            fail("Duplicate `extra_requires_files` option '{}' found on target {}".format(option, ctx.label))
-        option_requires_files = option_requires_target[DefaultInfo].files.to_list()
-        if len(option_requires_files) != 1:
-            fail("Labels in `extra_requires_files` must result in a single file, but {label} provides {files} from {owner}".format(
-                label = ctx.label,
-                files = option_requires_files,
-                owner = option_requires_target.label,
-            ))
-        extra_requires_files.update({option: option_requires_files[0]})
-
-    for option, option_requires_file in sorted(extra_requires_files.items()):
-        metadata_contents.append("Provides-Extra: %s" % option)
-        metadata_contents.append(
-            # The @ prefixed paths will be resolved by the PyWheel action.
-            # Expanding each line containing a constraint in place of this
-            # directive and appending the extra option.
-            "Requires-Dist: @%s; extra == '%s'" % (option_requires_file.path, option),
-        )
-        other_inputs.append(option_requires_file)
-
-    ctx.actions.write(
-        output = metadata_file,
-        content = "\n".join(metadata_contents) + "\n",
-    )
-    other_inputs.append(metadata_file)
-    args.add("--metadata_file", metadata_file)
-
-    # Merge console_scripts into entry_points.
-    entrypoints = dict(ctx.attr.entry_points)  # Copy so we can mutate it
-    if ctx.attr.console_scripts:
-        # Copy a console_scripts group that may already exist, so we can mutate it.
-        console_scripts = list(entrypoints.get("console_scripts", []))
-        entrypoints["console_scripts"] = console_scripts
-        for name, ref in ctx.attr.console_scripts.items():
-            console_scripts.append("{name} = {ref}".format(name = name, ref = ref))
-
-    # If any entry_points are provided, construct the file here and add it to the files to be packaged.
-    # see: https://packaging.python.org/specifications/entry-points/
-    if entrypoints:
-        lines = []
-        for group, entries in sorted(entrypoints.items()):
-            if lines:
-                # Blank line between groups
-                lines.append("")
-            lines.append("[{group}]".format(group = group))
-            lines += sorted(entries)
-        entry_points_file = ctx.actions.declare_file(ctx.attr.name + "_entry_points.txt")
-        content = "\n".join(lines)
-        ctx.actions.write(output = entry_points_file, content = content)
-        other_inputs.append(entry_points_file)
-        args.add("--entry_points_file", entry_points_file)
-
-    if ctx.attr.description_file:
-        description_file = ctx.file.description_file
-        args.add("--description_file", description_file)
-        other_inputs.append(description_file)
+    if dist_info.description_file:
+        args.add("--description_file", dist_info.description_file)
+        other_inputs.append(dist_info.description_file)
 
     if not ctx.attr.compress:
         args.add("--no_compress")
 
-    for target, filename in ctx.attr.extra_distinfo_files.items():
-        target_files = target[DefaultInfo].files.to_list()
-        if len(target_files) != 1:
-            fail(
-                "Multi-file target listed in extra_distinfo_files %s",
-                filename,
-            )
-        other_inputs.extend(target_files)
+    for filename, file in dist_info.extra_distinfo_files.items():
+        other_inputs.append(file)
         args.add(
             "--extra_distinfo_file",
-            filename + ";" + target_files[0].path,
+            filename + ";" + file.path,
         )
 
     for target, filename in ctx.attr.data_files.items():
@@ -613,7 +405,10 @@ def _py_wheel_impl(ctx):
 
     ctx.actions.run(
         mnemonic = "PyWheel",
-        inputs = depset(direct = other_inputs, transitive = [inputs_to_package]),
+        inputs = depset(
+            direct = other_inputs,
+            transitive = [inputs_to_package, dist_info.metadata_inputs],
+        ),
         outputs = [outfile, name_file],
         arguments = [args],
         executable = ctx.executable._wheelmaker,
@@ -633,40 +428,12 @@ def _py_wheel_impl(ctx):
         ),
     ]
 
-def _concat_dicts(*dicts):
-    result = {}
-    for d in dicts:
-        result.update(d)
-    return result
-
 py_wheel_lib = struct(
     implementation = _py_wheel_impl,
-    attrs = _concat_dicts(
-        {
-            "deps": attr.label_list(
-                doc = """\
-Targets to be included in the distribution.
-
-The targets to package are usually `py_library` rules or filesets (for packaging data files).
-
-Note it's usually better to package `py_library` targets and use
-`entry_points` attribute to specify `console_scripts` than to package
-`py_binary` rules. `py_binary` targets would wrap a executable script that
-tries to locate `.runfiles` directory which is not packaged in the wheel.
-""",
-            ),
-            "_wheelmaker": attr.label(
-                executable = True,
-                cfg = "exec",
-                default = "//tools:wheelmaker",
-            ),
-        },
-        _distribution_attrs,
-        _feature_flags,
-        _requirement_attrs,
-        _entrypoint_attrs,
-        _other_attrs,
-        CONFIG_SETTINGS_ATTR,
+    attrs = (
+        _wheel_only_attrs |
+        create_dist_info_attrs(distribution_mandatory = False) |
+        CONFIG_SETTINGS_ATTR
     ),
 )
 
