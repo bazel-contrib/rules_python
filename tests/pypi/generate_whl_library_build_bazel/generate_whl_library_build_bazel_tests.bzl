@@ -15,7 +15,11 @@
 ""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-load("//python/private/pypi:generate_whl_library_build_bazel.bzl", "generate_whl_library_build_bazel")  # buildifier: disable=bzl-visibility
+load(
+    "//python/private/pypi:generate_whl_library_build_bazel.bzl",
+    "generate_wheel_files_bzl",
+    "generate_whl_library_build_bazel",
+)  # buildifier: disable=bzl-visibility
 
 _tests = []
 
@@ -354,7 +358,11 @@ def _test_action_install_glob_warning(env):
         (True, 'filegroup(name = "hdrs", srcs = glob(["site-packages/**/*.h"]))', True),
         (True, 'load("//bazel:pip_parse_targets.bzl", "define_targets")\ndefine_targets()', False),
         (False, 'filegroup(name = "hdrs", srcs = glob(["site-packages/**/*.h"]))', False),
-        (True, '# never use glob(["*.h"]) here\npy_library(name = "extra")', False),
+        (
+            True,
+            '# never use glob(["*.h"]) here\nload("@rules_python//python:pip.bzl", "wheel_glob")\nfilegroup(name = "hdrs", srcs = wheel_glob(["site-packages/**/*.h"]))',
+            False,
+        ),
         (True, 'filegroup(name = "hdrs", srcs = glob (["site-packages/**/*.h"]))', True),
     ]:
         warnings = []
@@ -378,10 +386,69 @@ def _test_action_install_glob_warning(env):
         )
         env.expect.that_int(len(warnings)).equals(1 if want_warn else 0)
         if want_warn:
-            env.expect.that_str(warnings[0]).contains(
+            for substr in (
                 "may glob wheel contents; globs match nothing under experimental_action_install",
-            )
-            env.expect.that_str(warnings[0]).contains("':srcs' TreeArtifact")
+                "wheel_glob()",
+                "py_wheel_headers",
+                "py_wheel_transform",
+                "post_install_patches",
+                "py_wheel_extract_files",
+            ):
+                env.expect.that_str(warnings[0]).contains(substr)
+
+    # wheel_glob( in additive_build_content auto-loads wheel_glob and does not warn.
+    wheel_glob_warnings = []
+    wheel_glob_build = generate_whl_library_build_bazel(
+        metadata_version = "0",
+        metadata_name = "foo",
+        dep_template = "@pypi//{name}:{target}",
+        name = "foo.whl",
+        config_load = "@pypi//:config.bzl",
+        action_install = True,
+        extracted_files = ["site-packages/foo/libfoo.so"],
+        annotation = struct(
+            copy_files = {},
+            copy_executables = {},
+            data = [],
+            data_exclude_glob = [],
+            srcs_exclude_glob = [],
+            additive_build_content = 'filegroup(name = "libs", srcs = wheel_glob(["site-packages/**/*.so"]))',
+        ),
+        logger = struct(warn = wheel_glob_warnings.append),
+    )
+    env.expect.that_int(len(wheel_glob_warnings)).equals(0)
+    env.expect.that_str(wheel_glob_build).contains(
+        'load("@rules_python//python/private/pypi:py_wheel_extract_files.bzl", "wheel_glob")',
+    )
+
+    wheel_files_bzl = generate_wheel_files_bzl([
+        "site-packages/foo/__init__.py",
+        "site-packages/foo/libfoo.so",
+    ])
+    env.expect.that_str(wheel_files_bzl).contains('"site-packages/foo/libfoo.so"')
+    env.expect.that_str(wheel_files_bzl).contains("def wheel_glob(")
+    env.expect.that_str(wheel_files_bzl).contains('wheel_library = Label("//:_wheel_install")')
+    env.expect.that_str(wheel_files_bzl).contains("is_executable = False")
+
+    # Classic mode also auto-loads wheel_glob when additive_build_content uses wheel_glob(.
+    classic_wheel_glob_build = generate_whl_library_build_bazel(
+        metadata_version = "0",
+        metadata_name = "foo",
+        dep_template = "@pypi//{name}:{target}",
+        name = "foo.whl",
+        config_load = "@pypi//:config.bzl",
+        annotation = struct(
+            copy_files = {},
+            copy_executables = {},
+            data = [],
+            data_exclude_glob = [],
+            srcs_exclude_glob = [],
+            additive_build_content = 'filegroup(name = "libs", srcs = wheel_glob(["site-packages/**/*.so"]))',
+        ),
+    )
+    env.expect.that_str(classic_wheel_glob_build).contains(
+        'load("@rules_python//python/private/pypi:py_wheel_extract_files.bzl", "wheel_glob")',
+    )
 
 _tests.append(_test_action_install_glob_warning)
 

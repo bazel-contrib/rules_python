@@ -28,12 +28,25 @@ load("//python/private/pypi:multi_pip_parse.bzl", _multi_pip_parse = "multi_pip_
 load("//python/private/pypi:package_annotation.bzl", _package_annotation = "package_annotation")
 load("//python/private/pypi:pip_compile.bzl", "pip_compile")
 load("//python/private/pypi:pip_repository.bzl", "pip_repository")
+load("//python/private/pypi:py_installed_wheel_info.bzl", _PyInstalledWheelInfo = "PyInstalledWheelInfo")
+load(
+    "//python/private/pypi:py_wheel_extract_files.bzl",
+    _py_wheel_extract_files = "py_wheel_extract_files",
+    _wheel_glob = "wheel_glob",
+)
+load("//python/private/pypi:py_wheel_headers.bzl", _py_wheel_headers = "py_wheel_headers")
+load("//python/private/pypi:py_wheel_transform.bzl", _py_wheel_transform = "py_wheel_transform")
 load("//python/private/pypi:whl_library_alias.bzl", _whl_library_alias = "whl_library_alias")
 load("//python/private/whl_filegroup:whl_filegroup.bzl", _whl_filegroup = "whl_filegroup")
 
+PyInstalledWheelInfo = _PyInstalledWheelInfo
 compile_pip_requirements = pip_compile
 package_annotation = _package_annotation
 pip_parse = pip_repository
+py_wheel_extract_files = _py_wheel_extract_files
+py_wheel_headers = _py_wheel_headers
+py_wheel_transform = _py_wheel_transform
+wheel_glob = _wheel_glob
 whl_filegroup = _whl_filegroup
 
 # Extra utilities visible to rules_python users.

@@ -1,0 +1,6 @@
+--- a/demo_pkg/__init__.py
++++ b/demo_pkg/__init__.py
+@@ -1,2 +1,2 @@
+-VALUE = "original"
++VALUE = "patched_in_action"
+ TRANSFORMED = "custom_marker"

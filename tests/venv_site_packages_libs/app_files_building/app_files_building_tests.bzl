@@ -619,12 +619,12 @@ def _test_optimized_grouping_pkgutil_whls_impl(env, target):
                 break
         if is_action_install:
             break
-    sp_prefix = "srcs/site-packages" if is_action_install else "site-packages"
+    sp_prefix = "_wheel_install/site-packages" if is_action_install else "site-packages"
     if is_action_install:
-        ns1_init_files = ["../+internal_dev_deps+pkgutil_nspkg1/srcs"]
+        ns1_init_files = ["../+internal_dev_deps+pkgutil_nspkg1/_wheel_install"]
         ns1_one_files = ns1_init_files
         ns1_dist_files = ns1_init_files
-        ns2_init_files = ["../+internal_dev_deps+pkgutil_nspkg2/srcs"]
+        ns2_init_files = ["../+internal_dev_deps+pkgutil_nspkg2/_wheel_install"]
         ns2_two_files = ns2_init_files
         ns2_dist_files = ns2_init_files
     else:

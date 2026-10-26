@@ -95,10 +95,13 @@ In this mode:
   installation action using its documented CLI (`@params` file); worker settings
   (`--//tools/precompiler:execution_requirements` and `testing.ExecutionInfo`)
   do not apply.
-- In `pip.whl_mods`, `filegroups` is not supported, `copy_files` /
-  `copy_executables` cannot reference wheel-extracted paths as sources, and
-  `native.glob()` in `additive_build_content` matches no wheel files (a warning
-  is emitted).
+- In `pip.whl_mods`, `filegroups`, `copy_files`, and `copy_executables` extract
+  files from downloaded wheels via `py_wheel_extract_files`, and
+  `additive_build_content` should use `wheel_glob(...)` (or
+  `load(":wheel_files.bzl", "wheel_glob")` from external `.bzl` macros),
+  `py_wheel_headers`, `py_wheel_transform`, `post_install_patches`, or
+  `py_wheel_extract_files` instead of `native.glob(...)` over extracted wheel
+  paths (`site-packages/`, `include/`, `data/`).
 :::
 
 :::{versionadded} VERSION_NEXT_FEATURE

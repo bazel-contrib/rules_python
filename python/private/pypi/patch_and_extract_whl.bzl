@@ -2,7 +2,11 @@
 
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
-load(":generate_whl_library_build_bazel.bzl", "generate_whl_library_build_bazel")
+load(
+    ":generate_whl_library_build_bazel.bzl",
+    "generate_wheel_files_bzl",
+    "generate_whl_library_build_bazel",
+)
 load(":labels.bzl", "DEFAULT_DATA_EXCLUDE")
 load(":patch_whl.bzl", "get_whl_patches", "patch_whl")
 load(":pep508_requirement.bzl", "requirement")
@@ -166,6 +170,13 @@ def _inspect_whl_for_action_install(
     if inspection["has_entry_points_txt"]:
         rctx.file("entry_points.txt", inspection["entry_points_content"])
         extra_kwargs["has_entry_points_txt"] = True
+
+    wheel_files_list = list(inspection["extracted_files"])
+    for s in inspection.get("shebang_scripts", []):
+        bin_s = "bin/" + s
+        if bin_s not in wheel_files_list:
+            wheel_files_list.append(bin_s)
+    rctx.file("wheel_files.bzl", generate_wheel_files_bzl(sorted(wheel_files_list)))
 
     return struct(
         metadata = metadata,

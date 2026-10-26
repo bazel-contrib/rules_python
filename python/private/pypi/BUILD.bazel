@@ -44,6 +44,20 @@ py_interpreter_program(
     visibility = ["//visibility:public"],
 )
 
+py_interpreter_program(
+    name = "wheel_transformer",
+    interpreter_args = ["-B"],
+    main = "wheel_transformer.py",
+    visibility = ["//visibility:private"],
+)
+
+py_interpreter_program(
+    name = "wheel_files_extractor",
+    interpreter_args = ["-B"],
+    main = "wheel_files_extractor.py",
+    visibility = ["//visibility:public"],
+)
+
 py_library(
     name = "rewriters_lib",
     srcs = [
@@ -58,7 +72,9 @@ py_library(
     srcs = [
         "action_whl_installer.py",
         "inspect_whl.py",
+        "wheel_files_extractor.py",
         "wheel_layout.py",
+        "wheel_transformer.py",
     ],
     data = ["namespace_pkg_tmpl.py"],
     imports = ["."],
@@ -657,9 +673,51 @@ bzl_library(
 )
 
 bzl_library(
+    name = "py_installed_wheel_info",
+    srcs = ["py_installed_wheel_info.bzl"],
+)
+
+bzl_library(
+    name = "py_wheel_headers",
+    srcs = ["py_wheel_headers.bzl"],
+    deps = [
+        ":py_installed_wheel_info",
+        "@bazel_skylib//lib:paths",
+        "@rules_cc//cc/common",
+    ],
+)
+
+bzl_library(
+    name = "py_wheel_extract_files",
+    srcs = ["py_wheel_extract_files.bzl"],
+    deps = [
+        ":py_installed_wheel_info",
+        "//python/private:attr_builders",
+        "//python/private:common",
+        "//python/private:rule_builders",
+        "//python/private:toolchain_types",
+        "@bazel_skylib//lib:paths",
+        "@bazel_skylib//lib:types",
+    ],
+)
+
+bzl_library(
+    name = "py_wheel_transform",
+    srcs = ["py_wheel_transform.bzl"],
+    deps = [
+        "//python/private:attr_builders",
+        "//python/private:common",
+        "//python/private:py_internal",
+        "//python/private:rule_builders",
+        "//python/private:toolchain_types",
+    ],
+)
+
+bzl_library(
     name = "py_wheel_library",
     srcs = ["py_wheel_library.bzl"],
     deps = [
+        ":py_installed_wheel_info",
         "//python/private:attr_builders",
         "//python/private:attributes",
         "//python/private:builders",
@@ -686,10 +744,12 @@ bzl_library(
         ":gen_wheel_record",
         ":labels",
         ":namespace_pkgs",
+        ":py_wheel_extract_files",
         ":py_wheel_library",
         ":venv_entry_point",
         ":venv_rewrite_shebang",
         "//python:py_library",
+        "@bazel_skylib//lib:types",
         "@bazel_skylib//rules:copy_file",
     ],
 )

@@ -1,4 +1,19 @@
+load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
+load("@rules_cc//cc:cc_import.bzl", "cc_import")
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
+load("//python:py_binary.bzl", "py_binary")
 load("//python:py_test.bzl", "py_test")
+load(
+    "//python/private/pypi:py_wheel_extract_files.bzl",
+    "py_wheel_extract_files",
+    "wheel_glob",
+)  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:py_wheel_headers.bzl", "py_wheel_headers")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:py_wheel_library.bzl", "py_wheel_library")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:py_wheel_transform.bzl", "py_wheel_transform")  # buildifier: disable=bzl-visibility
+load("//tests/pypi/py_wheel_library/spoke_pkg:wheel_files.bzl", spoke_wheel_glob = "wheel_glob")
+load("//tests/support:py_reconfig.bzl", "py_reconfig_test")
 load(":py_wheel_library_bzl_tests.bzl", "py_wheel_library_bzl_test_suite")
 
 py_test(
@@ -9,4 +24,301 @@ py_test(
 
 py_wheel_library_bzl_test_suite(
     name = "py_wheel_library_bzl_tests",
+)
+
+py_binary(
+    name = "make_test_wheel",
+    srcs = ["make_test_wheel.py"],
+    main = "make_test_wheel.py",
+)
+
+genrule(
+    name = "gen_demo_whl",
+    outs = ["demo_pkg-1.2.3-py3-none-any.whl"],
+    cmd = "$(execpath :make_test_wheel) $@",
+    tools = [":make_test_wheel"],
+    visibility = ["//visibility:public"],
+)
+
+sh_binary(
+    name = "sh_transform",
+    srcs = ["sh_transform.sh"],
+)
+
+py_binary(
+    name = "transform_wheel",
+    srcs = ["transform_wheel.py"],
+    main = "transform_wheel.py",
+)
+
+py_wheel_transform(
+    name = "step1_transformed_demo_whl",
+    env = {"EXPECTED_SH_ENV": "from_transform"},
+    transform = ":sh_transform",
+    wheel = ":gen_demo_whl",
+)
+
+py_wheel_transform(
+    name = "transformed_demo_whl",
+    data = ["marker.txt"],
+    env = {"DATA_MARKER_FILE": "$(execpath marker.txt)"},
+    transform = ":transform_wheel",
+    wheel = ":step1_transformed_demo_whl",
+)
+
+_DEMO_EXTRACTED_FILES = [
+    "site-packages/bad_top_mod.py",
+    "site-packages/demo_pkg-1.2.3.dist-info/METADATA",
+    "site-packages/demo_pkg/__init__.py",
+    "site-packages/demo_pkg/include/demo_header.h",
+    "site-packages/demo_pkg/lib/libdemo.so",
+]
+
+py_wheel_library(
+    name = "demo_wheel_lib",
+    extracted_files = _DEMO_EXTRACTED_FILES,
+    post_install_patch_strip = 1,
+    post_install_patches = ["post_install.patch"],
+    wheel = ":transformed_demo_whl",
+)
+
+py_wheel_library(
+    name = "demo_wheel_lib_venv",
+    experimental_venvs_site_packages = "//python/config_settings:venvs_site_packages",
+    extracted_files = _DEMO_EXTRACTED_FILES,
+    post_install_patch_strip = 1,
+    post_install_patches = ["post_install.patch"],
+    tags = [
+        "pypi_name=demo-pkg",
+        "pypi_version=1.2.3",
+    ],
+    wheel = ":transformed_demo_whl",
+)
+
+py_wheel_headers(
+    name = "demo_headers",
+    include_dirs = ["site-packages/demo_pkg/include"],
+    wheel_library = ":demo_wheel_lib",
+)
+
+py_wheel_headers(
+    name = "demo_headers_root_default",
+    wheel_library = ":demo_wheel_lib",
+)
+
+py_wheel_extract_files(
+    name = "extracted_patched_init",
+    paths = ["site-packages/demo_pkg/__init__.py"],
+    wheel_library = ":demo_wheel_lib",
+)
+
+copy_file(
+    name = "copied_patched_init_copy",
+    src = ":extracted_patched_init",
+    out = "copied_patched_init.py",
+)
+
+py_wheel_extract_files(
+    name = "extracted_exec_script",
+    is_executable = True,
+    paths = ["site-packages/demo_pkg/__init__.py"],
+    wheel_library = ":demo_wheel_lib",
+)
+
+copy_file(
+    name = "copied_exec_script_copy",
+    src = ":extracted_exec_script",
+    out = "copied_exec_script.py",
+    is_executable = True,
+)
+
+py_wheel_extract_files(
+    name = "extracted_fg_files",
+    paths = [
+        "site-packages/demo_pkg/__init__.py",
+        "site-packages/demo_pkg/include/demo_header.h",
+    ],
+    wheel_library = ":demo_wheel_lib",
+)
+
+_LIBDEMO_MATCHES = wheel_glob(
+    [
+        "site-packages/demo_pkg/lib/libdemo.so",
+        "site-packages/demo_pkg/lib/libdemo.dylib",
+    ],
+    files = _DEMO_EXTRACTED_FILES,
+    wheel_library = ":demo_wheel_lib",
+)
+
+cc_import(
+    name = "demo_shared_lib",
+    shared_library = _LIBDEMO_MATCHES[0] if len(_LIBDEMO_MATCHES) == 1 else fail("Expected 1 match"),
+)
+
+# Second wheel_glob call in the same package with overlapping match (libdemo.so)
+# to verify package-level de-duplication across calls.
+_OVERLAPPING_GLOB_MATCHES = wheel_glob(
+    [
+        "site-packages/demo_pkg/lib/libdemo.*",
+        "site-packages/demo_pkg/include/*.h",
+    ],
+    files = _DEMO_EXTRACTED_FILES,
+    wheel_library = ":demo_wheel_lib",
+)
+
+# Cross-package wheel_files.bzl call using default wheel_library = Label("//...:_wheel_install").
+_CROSS_PKG_METADATA = spoke_wheel_glob([
+    "site-packages/demo_pkg-1.2.3.dist-info/METADATA",
+])
+
+filegroup(
+    name = "custom_extracted_fg",
+    srcs = [":extracted_fg_files"] + _OVERLAPPING_GLOB_MATCHES + _CROSS_PKG_METADATA,
+)
+
+cc_test(
+    name = "headers_test",
+    srcs = ["headers_test.cc"],
+    data = [":demo_shared_lib"],
+    deps = [
+        ":demo_headers",
+        ":demo_headers_root_default",
+    ],
+)
+
+py_test(
+    name = "py_wheel_library_test",
+    srcs = ["py_wheel_library_test.py"],
+    data = [
+        "copied_exec_script.py",
+        "copied_patched_init.py",
+        ":custom_extracted_fg",
+    ],
+    env = {
+        "COPIED_EXEC_SCRIPT": "$(rootpath copied_exec_script.py)",
+        "COPIED_PATCHED_INIT": "$(rootpath copied_patched_init.py)",
+        "EXPECT_PRECOMPILE": "0",
+    },
+    deps = [
+        ":demo_wheel_lib",
+    ],
+)
+
+py_reconfig_test(
+    name = "py_wheel_library_venv_test",
+    srcs = ["py_wheel_library_test.py"],
+    bootstrap_impl = "script",
+    data = [
+        "copied_exec_script.py",
+        "copied_patched_init.py",
+        ":custom_extracted_fg",
+    ],
+    env = {
+        "COPIED_EXEC_SCRIPT": "$(rootpath copied_exec_script.py)",
+        "COPIED_PATCHED_INIT": "$(rootpath copied_patched_init.py)",
+        "EXPECT_PRECOMPILE": "0",
+        "EXPECT_VENV_SITE_PACKAGES": "1",
+    },
+    main = "py_wheel_library_test.py",
+    venvs_site_packages = "yes",
+    deps = [
+        ":demo_wheel_lib_venv",
+    ],
+)
+
+py_reconfig_test(
+    name = "py_wheel_library_precompile_enabled_test",
+    srcs = ["py_wheel_library_test.py"],
+    data = [
+        "copied_exec_script.py",
+        "copied_patched_init.py",
+        ":custom_extracted_fg",
+    ],
+    env = {
+        "COPIED_EXEC_SCRIPT": "$(rootpath copied_exec_script.py)",
+        "COPIED_PATCHED_INIT": "$(rootpath copied_patched_init.py)",
+        "EXPECT_PRECOMPILE": "1",
+    },
+    main = "py_wheel_library_test.py",
+    precompile_flag = "enabled",
+    deps = [
+        ":demo_wheel_lib",
+    ],
+)
+
+py_reconfig_test(
+    name = "py_wheel_library_venv_precompile_test",
+    srcs = ["py_wheel_library_test.py"],
+    bootstrap_impl = "script",
+    data = [
+        "copied_exec_script.py",
+        "copied_patched_init.py",
+        ":custom_extracted_fg",
+    ],
+    env = {
+        "COPIED_EXEC_SCRIPT": "$(rootpath copied_exec_script.py)",
+        "COPIED_PATCHED_INIT": "$(rootpath copied_patched_init.py)",
+        "EXPECT_PRECOMPILE": "1",
+        "EXPECT_VENV_SITE_PACKAGES": "1",
+    },
+    main = "py_wheel_library_test.py",
+    precompile_flag = "enabled",
+    venvs_site_packages = "yes",
+    deps = [
+        ":demo_wheel_lib_venv",
+    ],
+)
+
+py_wheel_library(
+    name = "demo_wheel_lib_inner_nopc",
+    experimental_venvs_site_packages = "//python/config_settings:venvs_site_packages",
+    extracted_files = _DEMO_EXTRACTED_FILES,
+    precompile = "disabled",
+    tags = [
+        "pypi_name=demo-pkg",
+        "pypi_version=1.2.3",
+    ],
+    wheel = ":transformed_demo_whl",
+)
+
+py_wheel_library(
+    name = "demo_wheel_lib_reuse_omit",
+    experimental_venvs_site_packages = "//python/config_settings:venvs_site_packages",
+    extracted_files = _DEMO_EXTRACTED_FILES,
+    precompile_source_retention = "omit_source",
+    tags = [
+        "pypi_name=demo-pkg",
+        "pypi_version=1.2.3",
+    ],
+    wheel = ":demo_wheel_lib_inner_nopc",
+)
+
+py_wheel_extract_files(
+    name = "extracted_from_omit_source",
+    paths = ["site-packages/demo_pkg/__init__.py"],
+    wheel_library = ":demo_wheel_lib_reuse_omit",
+)
+
+py_reconfig_test(
+    name = "py_wheel_library_venv_reuse_omit_test",
+    srcs = ["py_wheel_library_test.py"],
+    bootstrap_impl = "script",
+    data = [
+        "copied_exec_script.py",
+        "copied_patched_init.py",
+        ":custom_extracted_fg",
+        ":extracted_from_omit_source",
+    ],
+    env = {
+        "COPIED_EXEC_SCRIPT": "$(rootpath copied_exec_script.py)",
+        "COPIED_PATCHED_INIT": "$(rootpath copied_patched_init.py)",
+        "EXPECT_OMIT_SOURCE": "1",
+        "EXPECT_VENV_SITE_PACKAGES": "1",
+    },
+    main = "py_wheel_library_test.py",
+    precompile_flag = "enabled",
+    venvs_site_packages = "yes",
+    deps = [
+        ":demo_wheel_lib_reuse_omit",
+    ],
 )

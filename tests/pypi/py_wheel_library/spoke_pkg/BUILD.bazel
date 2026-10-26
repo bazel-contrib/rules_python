@@ -1,0 +1,35 @@
+load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
+load("@bazel_skylib//rules:write_file.bzl", "write_file")
+load("//python/private/pypi:generate_whl_library_build_bazel.bzl", "generate_wheel_files_bzl")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:whl_library_srcs.bzl", "whl_library_srcs")  # buildifier: disable=bzl-visibility
+load(":wheel_files.bzl", "FILES")
+
+whl_library_srcs(
+    name = "//tests/pypi/py_wheel_library:gen_demo_whl",
+    action_install = True,
+    extracted_files = FILES,
+    tags = [
+        "pypi_name=demo-pkg",
+        "pypi_version=1.2.3",
+    ],
+)
+
+write_file(
+    name = "gen_expected_wheel_files_bzl",
+    out = "expected_wheel_files.bzl",
+    content = [
+        generate_wheel_files_bzl(FILES)
+            .replace("@rules_python//", "//")
+            .replace(
+            'Label("//:_wheel_install")',
+            'Label("//tests/pypi/py_wheel_library/spoke_pkg:_wheel_install")',
+        ),
+    ],
+    newline = "unix",
+)
+
+diff_test(
+    name = "wheel_files_bzl_sync_test",
+    file1 = "wheel_files.bzl",
+    file2 = ":gen_expected_wheel_files_bzl",
+)

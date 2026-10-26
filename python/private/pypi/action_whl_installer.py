@@ -29,12 +29,14 @@ import wheel_layout
 from venv_shebang_rewriter import rewrite_shebang_bytes
 from wheel_layout import (
     INSTALLER_URL,
+    apply_unified_patch,
     create_namespace_inits,
     expected_data_dir_for_dist_info,
     find_wheel_dist_info_and_entry_points,
     glob_to_regex,
     is_excluded,
     plan_wheel_entries,
+    single_wheel_in,
     update_record_for_touched_files,
 )
 from wheel_record_rewriter import rewrite_record_lines
@@ -360,29 +362,62 @@ def _finalize_dist_info(
         f.write("".join(lines))
 
 
-def install_wheel(
+def _install_from_existing_dir(
+    installed_dir: Path,
+    dest_dir: Path,
+    site_packages_dir: Path,
+    srcs_exclude_rx: list[re.Pattern[str]],
+    data_exclude_rx: list[re.Pattern[str]],
+) -> tuple[str, set[str]]:
+    shutil.copytree(installed_dir, dest_dir, dirs_exist_ok=True)
+    for p in dest_dir.rglob("*"):
+        try:
+            os.chmod(p, os.stat(p).st_mode | 0o200)
+        except OSError:
+            pass
+    site_packages_dir.mkdir(parents=True, exist_ok=True)
+    dist_info_dirs = sorted(
+        d.name
+        for d in site_packages_dir.iterdir()
+        if d.is_dir() and d.name.endswith(".dist-info")
+    )
+    dist_info_dir = dist_info_dirs[0] if dist_info_dirs else ""
+    touched_site_rel: set[str] = set()
+
+    for p in sorted(dest_dir.rglob("*")):
+        if not p.is_file():
+            continue
+        if "__pycache__" in p.parts and p.suffix == ".pyc":
+            if p.is_relative_to(site_packages_dir):
+                touched_site_rel.add(p.relative_to(site_packages_dir).as_posix())
+            p.unlink()
+            if not any(p.parent.iterdir()):
+                p.parent.rmdir()
+            continue
+
+        rel_dest = p.relative_to(dest_dir).as_posix()
+        rx = srcs_exclude_rx if p.suffix == ".py" else data_exclude_rx
+        if not is_excluded(rel_dest, rx):
+            continue
+        if p.is_relative_to(site_packages_dir):
+            touched_site_rel.add(p.relative_to(site_packages_dir).as_posix())
+        p.unlink()
+
+    return dist_info_dir, touched_site_rel
+
+
+def _extract_from_wheel(
     wheel_path: Path,
     dest_dir: Path,
+    site_packages_dir: Path,
     *,
-    target_os: str = "unix",
-    srcs_exclude_globs: list[str] | None = None,
-    data_exclude_globs: list[str] | None = None,
-    create_namespace_inits_flag: bool = False,
-    precompile: bool = False,
-    pyc_tag: str = "",
-    precompile_invalidation_mode: str = "checked_hash",
-    precompile_optimize_level: int = 0,
-    precompile_source_retention: str = "keep_source",
-    python_version: str = "",
-    src_name_prefix: str = "",
-    precompiler_tool: Path | None = None,
-) -> None:
-    """Extract and install `wheel_path` into `dest_dir`."""
-    site_packages_dir = dest_dir / "site-packages"
+    target_os: str,
+    srcs_exclude_rx: list[re.Pattern[str]],
+    data_exclude_rx: list[re.Pattern[str]],
+) -> str:
+    if wheel_path.is_dir():
+        wheel_path = single_wheel_in(wheel_path)
     site_packages_dir.mkdir(parents=True, exist_ok=True)
-
-    srcs_exclude_rx = [glob_to_regex(g) for g in (srcs_exclude_globs or ())]
-    data_exclude_rx = [glob_to_regex(g) for g in (data_exclude_globs or ())]
 
     rewritten_scripts: set[str] = set()
     used_data_dir = False
@@ -428,31 +463,188 @@ def install_wheel(
         target_os=target_os,
         rewritten_scripts=rewritten_scripts,
     )
+    return dist_info_dir
+
+
+def _validate_installed_site_packages(
+    site_packages_dir: Path,
+    expected_site_paths: list[str],
+    *,
+    srcs_exclude_rx: list[re.Pattern[str]],
+    data_exclude_rx: list[re.Pattern[str]],
+    omit_py_source: bool,
+    validation_source: str,
+) -> None:
+    norm_paths = sorted(
+        {
+            sp.strip("/")
+            for sp in expected_site_paths
+            if sp.strip("/") and not sp.strip("/").endswith(".dist-info")
+        }
+    )
+
+    def _site_path_present(sp: str) -> bool:
+        if (site_packages_dir / sp).exists():
+            return True
+        if omit_py_source and sp.endswith(".py"):
+            return (site_packages_dir / f"{sp[:-3]}.pyc").exists()
+        return False
+
+    def _is_covered(rel: str) -> bool:
+        if "__pycache__" in rel.split("/"):
+            return True
+        if any(rel == sp or rel.startswith(sp + "/") for sp in norm_paths):
+            return True
+        if omit_py_source and rel.endswith(".pyc"):
+            py_equiv = rel[:-4] + ".py"
+            return any(
+                py_equiv == sp or py_equiv.startswith(sp + "/") for sp in norm_paths
+            )
+        return False
+
+    missing = [
+        sp
+        for sp in norm_paths
+        if not _site_path_present(sp)
+        and not is_excluded(
+            f"site-packages/{sp}",
+            srcs_exclude_rx if sp.endswith(".py") else data_exclude_rx,
+        )
+    ]
+    uncovered: list[str] = []
+    for p in sorted(site_packages_dir.rglob("*")):
+        if not p.is_file():
+            continue
+        rel = p.relative_to(site_packages_dir).as_posix()
+        if not rel.partition("/")[0].endswith(".dist-info") and not _is_covered(rel):
+            uncovered.append(rel)
+    if not missing and not uncovered:
+        return
+
+    missing_str = (
+        repr(missing)
+        if len(missing) <= 5
+        else f"{missing[:5]!r} (+{len(missing) - 5} more)"
+    )
+    uncovered_str = (
+        repr(uncovered)
+        if len(uncovered) <= 5
+        else f"{uncovered[:5]!r} (+{len(uncovered) - 5} more)"
+    )
+    if validation_source == "extracted_files":
+        raise ValueError(
+            "Installed site-packages entries do not match extracted_files "
+            f"in venv mode (missing={missing_str}, uncovered={uncovered_str}); "
+            "transform/patch changed top-level entries "
+            "(update extracted_files or set venvs_site_packages=no)"
+        )
+    remedy = (
+        "fix site_paths or set venvs_site_packages=no"
+        if norm_paths
+        else "set site_paths (or extracted_files) or set venvs_site_packages=no"
+    )
+    raise ValueError(
+        "Installed site-packages entries do not match expected site_paths "
+        f"in venv mode (missing={missing_str}, uncovered={uncovered_str}); "
+        f"{remedy}"
+    )
+
+
+def install_wheel(
+    wheel_path: Path | None,
+    dest_dir: Path,
+    *,
+    installed_dir: Path | None = None,
+    target_os: str = "unix",
+    srcs_exclude_globs: list[str] | None = None,
+    data_exclude_globs: list[str] | None = None,
+    create_namespace_inits_flag: bool = False,
+    patches: list[Path] | None = None,
+    patch_strip: int = 0,
+    expected_site_paths: list[str] | None = None,
+    validation_source: str = "extracted_files",
+    precompile: bool = False,
+    pyc_tag: str = "",
+    precompile_invalidation_mode: str = "checked_hash",
+    precompile_optimize_level: int = 0,
+    precompile_source_retention: str = "keep_source",
+    python_version: str = "",
+    src_name_prefix: str = "",
+    precompiler_tool: Path | None = None,
+) -> None:
+    """Extract and install `wheel_path` (`.whl` or `.whldir`) or `installed_dir` into `dest_dir`."""
+    site_packages_dir = dest_dir / "site-packages"
+    srcs_exclude_rx = [glob_to_regex(g) for g in (srcs_exclude_globs or ())]
+    data_exclude_rx = [glob_to_regex(g) for g in (data_exclude_globs or ())]
+
+    if installed_dir is not None:
+        dist_info_dir, touched_site_rel = _install_from_existing_dir(
+            installed_dir,
+            dest_dir,
+            site_packages_dir,
+            srcs_exclude_rx,
+            data_exclude_rx,
+        )
+    else:
+        if wheel_path is None:
+            raise ValueError("Either wheel_path or installed_dir must be provided")
+        dist_info_dir = _extract_from_wheel(
+            wheel_path,
+            dest_dir,
+            site_packages_dir,
+            target_os=target_os,
+            srcs_exclude_rx=srcs_exclude_rx,
+            data_exclude_rx=data_exclude_rx,
+        )
+        touched_site_rel = set()
+
+    for patch_file in patches or ():
+        touched_site_rel.update(
+            apply_unified_patch(
+                site_packages_dir,
+                patch_file,
+                strip=patch_strip,
+            )
+        )
+    if touched_site_rel and dist_info_dir:
+        update_record_for_touched_files(
+            site_packages_dir,
+            dist_info_dir,
+            touched_site_rel,
+        )
 
     if create_namespace_inits_flag:
         create_namespace_inits(
             site_packages_dir, _NAMESPACE_PKG_TMPL_PATH.read_text(encoding="utf-8")
         )
 
-    if not precompile:
-        return
-
-    pyc_touched = precompile_site_packages(
-        dest_dir,
-        site_packages_dir,
-        pyc_tag=pyc_tag,
-        invalidation_mode=precompile_invalidation_mode,
-        optimize_level=precompile_optimize_level,
-        source_retention=precompile_source_retention,
-        python_version=python_version,
-        src_name_prefix=src_name_prefix,
-        precompiler_tool=precompiler_tool,
-    )
-    if pyc_touched:
-        update_record_for_touched_files(
+    if precompile:
+        pyc_touched = precompile_site_packages(
+            dest_dir,
             site_packages_dir,
-            dist_info_dir,
-            pyc_touched,
+            pyc_tag=pyc_tag,
+            invalidation_mode=precompile_invalidation_mode,
+            optimize_level=precompile_optimize_level,
+            source_retention=precompile_source_retention,
+            python_version=python_version,
+            src_name_prefix=src_name_prefix,
+            precompiler_tool=precompiler_tool,
+        )
+        if pyc_touched and dist_info_dir:
+            update_record_for_touched_files(
+                site_packages_dir,
+                dist_info_dir,
+                pyc_touched,
+            )
+
+    if expected_site_paths is not None:
+        _validate_installed_site_packages(
+            site_packages_dir,
+            expected_site_paths,
+            srcs_exclude_rx=srcs_exclude_rx,
+            data_exclude_rx=data_exclude_rx,
+            omit_py_source=precompile and precompile_source_retention == "omit_source",
+            validation_source=validation_source,
         )
 
 
@@ -461,7 +653,8 @@ def main(argv: Sequence[str] | None = None) -> None:
         description="Extract a wheel into a TreeArtifact directory.",
         fromfile_prefix_chars="@",
     )
-    parser.add_argument("--wheel", type=Path, required=True)
+    parser.add_argument("--wheel", type=Path, default=None)
+    parser.add_argument("--installed-dir", type=Path, default=None)
     parser.add_argument("--directory", type=Path, required=True)
     parser.add_argument(
         "--target-os",
@@ -484,6 +677,34 @@ def main(argv: Sequence[str] | None = None) -> None:
         "--create-namespace-inits",
         action="store_true",
         default=False,
+    )
+    parser.add_argument(
+        "--patch",
+        action="append",
+        dest="patches",
+        type=Path,
+        default=[],
+    )
+    parser.add_argument(
+        "--patch-strip",
+        type=int,
+        default=0,
+    )
+    parser.add_argument(
+        "--validate-site-packages",
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
+        "--validation-source",
+        choices=["extracted_files", "site_paths"],
+        default="extracted_files",
+    )
+    parser.add_argument(
+        "--expected-site-path",
+        action="append",
+        dest="expected_site_paths",
+        default=[],
     )
     parser.add_argument(
         "--precompile",
@@ -527,10 +748,17 @@ def main(argv: Sequence[str] | None = None) -> None:
     install_wheel(
         args.wheel,
         args.directory,
+        installed_dir=args.installed_dir,
         target_os=args.target_os,
         srcs_exclude_globs=args.srcs_exclude_globs,
         data_exclude_globs=args.data_exclude_globs,
         create_namespace_inits_flag=args.create_namespace_inits,
+        patches=args.patches,
+        patch_strip=args.patch_strip,
+        expected_site_paths=(
+            args.expected_site_paths if args.validate_site_packages else None
+        ),
+        validation_source=args.validation_source,
         precompile=args.precompile,
         pyc_tag=args.pyc_tag,
         precompile_invalidation_mode=args.precompile_invalidation_mode,

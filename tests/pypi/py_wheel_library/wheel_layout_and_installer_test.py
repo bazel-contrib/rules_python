@@ -15,7 +15,9 @@ import zipfile
 
 import action_whl_installer
 import inspect_whl
+import wheel_files_extractor
 import wheel_layout
+import wheel_transformer
 
 
 def _write_zip(path: pathlib.Path, entries: dict[str, bytes | str]) -> pathlib.Path:
@@ -542,6 +544,312 @@ class WheelLayoutAndInstallerTest(unittest.TestCase):
                     / f"site-packages/eight/__pycache__/f5_bad.{pyc_tag}.pyc"
                 ).is_file()
             )
+
+    def test_patch_behavior_and_record_update(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            target = root / "pkg/mod.py"
+            target.parent.mkdir(parents=True)
+
+            # 1. Stale context fails strictly.
+            target.write_bytes(b"line1 = 1\r\nline2 = 'changed'\r\n")
+            stale_patch = root / "stale.patch"
+            stale_patch.write_bytes(
+                b"--- a/pkg/mod.py\n"
+                b"+++ b/pkg/mod.py\n"
+                b"@@ -1,2 +1,2 @@\n"
+                b" line1 = 1\n"
+                b"-line2 = 'expected'\n"
+                b"+line2 = 'patched'\n"
+            )
+            with self.assertRaisesRegex(ValueError, "context mismatch"):
+                wheel_layout.apply_unified_patch(root, stale_patch, strip=1)
+
+            # 2. CRLF preservation on LF patch with strip=1.
+            target.write_bytes(b"line1 = 1\r\nline2 = 'expected'\r\n")
+            touched = wheel_layout.apply_unified_patch(root, stale_patch, strip=1)
+            self.assertEqual(touched, {"pkg/mod.py"})
+            self.assertEqual(target.read_bytes(), b"line1 = 1\r\nline2 = 'patched'\r\n")
+
+            # 3. Table-driven patch engine edge cases (positive & negative).
+            for name, init_files, patch_bytes, strip, expected in [
+                (
+                    "u0_insert_and_no_newline_and_format_patch_footer",
+                    {"pkg/f.py": b"a\n-- keep\nb"},
+                    b"--- a/pkg/f.py\n+++ b/pkg/f.py\n"
+                    b"@@ -1,0 +2,1 @@\n+mid\n"
+                    b"@@ -2,2 +3,1 @@\n--- keep\n b\n\\ No newline at end of file\n"
+                    b"-- \n2.45.0\n",
+                    1,
+                    {"pkg/f.py": b"a\nmid\nb"},
+                ),
+                (
+                    "non_utf8_bytes",
+                    {"pkg/bin.py": b"# \xff\xfe\nx = 1\n"},
+                    b"--- a/pkg/bin.py\n+++ b/pkg/bin.py\n@@ -1,2 +1,2 @@\n # \xff\xfe\n-x = 1\n+x = 2\n",
+                    1,
+                    {"pkg/bin.py": b"# \xff\xfe\nx = 2\n"},
+                ),
+                (
+                    "create_over_existing",
+                    {"pkg/e.py": b"old\n"},
+                    b"--- /dev/null\n+++ b/pkg/e.py\n@@ -0,0 +1 @@\n+new\n",
+                    1,
+                    "attempts to create existing file",
+                ),
+                (
+                    "partial_delete",
+                    {"pkg/d.py": b"1\n2\n"},
+                    b"--- a/pkg/d.py\n+++ /dev/null\n@@ -1,1 +0,0 @@\n-1\n",
+                    1,
+                    "did not consume entire file",
+                ),
+                (
+                    "out_of_order_hunks",
+                    {"pkg/o.py": b"1\n2\n3\n"},
+                    b"--- a/pkg/o.py\n+++ b/pkg/o.py\n@@ -3,1 +3,1 @@\n-3\n+three\n@@ -1,1 +1,1 @@\n-1\n+one\n",
+                    1,
+                    "context mismatch",
+                ),
+                (
+                    "traversal",
+                    {},
+                    b"--- /dev/null\n+++ b/../../escape.py\n@@ -0,0 +1 @@\n+x = 1\n",
+                    1,
+                    "escapes root",
+                ),
+                (
+                    "abs_path",
+                    {},
+                    b"--- /dev/null\n+++ /abs/escape.py\n@@ -0,0 +1 @@\n+x = 1\n",
+                    0,
+                    "Unsafe patch path",
+                ),
+                (
+                    "binary_patch",
+                    {},
+                    b"GIT binary patch\nliteral 0\n",
+                    1,
+                    "Unsupported binary or rename/copy",
+                ),
+                (
+                    "rename_directive",
+                    {},
+                    b"rename from a/x.py\nrename to b/y.py\n",
+                    1,
+                    "Unsupported binary or rename/copy",
+                ),
+                (
+                    "orphan_hunk_before_header",
+                    {},
+                    b"@@ -1,1 +1,1 @@\n-a\n+b\n",
+                    1,
+                    "Hunk without preceding",
+                ),
+                (
+                    "stray_body_line",
+                    {"pkg/s.py": b"a\n"},
+                    b"--- a/pkg/s.py\n+++ b/pkg/s.py\n@@ -1,1 +1,1 @@\nSTRAY\n",
+                    1,
+                    "Malformed hunk line",
+                ),
+                (
+                    "git_create_at_strip_0",
+                    {},
+                    b"--- /dev/null\n+++ b/pkg/new.py\n@@ -0,0 +1 @@\n+x = 1\n",
+                    0,
+                    r"patch looks git-formatted \(a/ b/ prefixes\); use strip=1",
+                ),
+                (
+                    "git_modify_at_strip_0",
+                    {"pkg/m.py": b"x = 1\n"},
+                    b"--- a/pkg/m.py\n+++ b/pkg/m.py\n@@ -1,1 +1,1 @@\n-x = 1\n+x = 2\n",
+                    0,
+                    r"patch looks git-formatted \(a/ b/ prefixes\); use strip=1",
+                ),
+            ]:
+                with self.subTest(case=name), tempfile.TemporaryDirectory() as case_tmp:
+                    case_root = pathlib.Path(case_tmp)
+                    for rel, data in init_files.items():
+                        p = case_root / rel
+                        p.parent.mkdir(parents=True, exist_ok=True)
+                        p.write_bytes(data)
+                    pf = case_root / "case.patch"
+                    pf.write_bytes(patch_bytes)
+                    if isinstance(expected, str):
+                        with self.assertRaisesRegex(ValueError, expected):
+                            wheel_layout.apply_unified_patch(case_root, pf, strip=strip)
+                    else:
+                        wheel_layout.apply_unified_patch(case_root, pf, strip=strip)
+                        for rel, exp_bytes in expected.items():
+                            self.assertEqual((case_root / rel).read_bytes(), exp_bytes)
+
+            # 4. RECORD update for modified and comma-containing paths.
+            dist_info = root / "pkg-1.0.dist-info"
+            dist_info.mkdir(parents=True, exist_ok=True)
+            comma_file = root / "pkg/a,b.py"
+            comma_file.write_bytes(b"X = 10\n")
+            (dist_info / "RECORD").write_text(
+                '"pkg/a,b.py",sha256=old,1\npkg/mod.py,sha256=keep,5\n',
+                encoding="utf-8",
+            )
+            wheel_layout.update_record_for_touched_files(
+                root, "pkg-1.0.dist-info", {"pkg/a,b.py"}
+            )
+            record_text = (dist_info / "RECORD").read_text(encoding="utf-8")
+            self.assertIn('"pkg/a,b.py",sha256=', record_text)
+            self.assertNotIn("sha256=old", record_text)
+            self.assertIn("pkg/mod.py,sha256=keep,5\n", record_text)
+
+            # 5. Venv site-packages validation catches added/removed top-level entries.
+            whl = _write_zip(
+                root / "vcheck-1.0-py3-none-any.whl",
+                {
+                    "vcheck-1.0.dist-info/METADATA": "Name: vcheck\nVersion: 1.0\n",
+                    "vcheck/__init__.py": "X = 1\n",
+                    "extra_top.py": "Y = 2\n",
+                },
+            )
+            with self.assertRaisesRegex(
+                ValueError,
+                r"do not match extracted_files.*uncovered=\['extra_top\.py'\]",
+            ):
+                action_whl_installer.install_wheel(
+                    wheel_path=whl,
+                    dest_dir=root / "vcheck_out",
+                    expected_site_paths=["vcheck"],
+                    validation_source="extracted_files",
+                )
+            with self.assertRaisesRegex(
+                ValueError,
+                r"do not match expected site_paths.*missing=\['missing_mod'\]",
+            ):
+                action_whl_installer.install_wheel(
+                    wheel_path=whl,
+                    dest_dir=root / "vcheck_out_missing",
+                    expected_site_paths=["vcheck", "extra_top.py", "missing_mod"],
+                    validation_source="site_paths",
+                )
+
+    def test_single_wheel_in_and_scrub_env(self):
+        env = {
+            "RUNFILES_DIR": "/some/runfiles",
+            "PYTHONSAFEPATH": "1",
+            "CUSTOM_VAR": "keep",
+        }
+        wheel_transformer.scrub_bazel_env(env)
+        self.assertEqual(env, {"CUSTOM_VAR": "keep"})
+
+        with tempfile.TemporaryDirectory() as tmp:
+            whldir = pathlib.Path(tmp) / "out.whldir"
+            whldir.mkdir()
+            with self.assertRaisesRegex(ValueError, "Expected 1 .whl file"):
+                wheel_layout.single_wheel_in(whldir)
+
+            whl = _write_zip(
+                whldir / "pkg-1.0-py3-none-any.whl",
+                {"pkg-1.0.dist-info/METADATA": "Name: pkg\nVersion: 1.0\n"},
+            )
+            self.assertEqual(
+                wheel_layout.single_wheel_in(whldir, check_stray=True), whl
+            )
+
+            (whldir / "stray.txt").write_text("oops", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "Unexpected non-wheel files"):
+                wheel_layout.single_wheel_in(whldir, check_stray=True)
+
+    def test_wheel_files_extractor(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            whl = _write_zip(
+                root / "fgpkg-1.0-py3-none-any.whl",
+                {
+                    "fgpkg-1.0.dist-info/METADATA": "Name: fgpkg\nVersion: 1.0\n",
+                    "fgpkg/__init__.py": "X = 1\n",
+                    "fgpkg/data.txt": "hello\n",
+                    "fgpkg-1.0.data/headers/fg.h": "#pragma once\n",
+                    "fgpkg-1.0.data/scripts/fg_cli": "#!python\nprint('cli')\n",
+                },
+            )
+            installed = root / "installed"
+            action_whl_installer.install_wheel(whl, installed)
+            out_data = root / "extracted/data.txt"
+            out_cli = root / "extracted/fg_cli"
+            wheel_files_extractor.extract_wheel_files(
+                installed,
+                [("site-packages/fgpkg/data.txt", out_data)],
+                executable=False,
+            )
+            wheel_files_extractor.extract_wheel_files(
+                installed,
+                [("bin/fg_cli", out_cli)],
+                executable=True,
+            )
+            self.assertEqual(out_data.read_text(encoding="utf-8"), "hello\n")
+            self.assertTrue(out_cli.stat().st_mode & 0o111)
+
+            # Windows shebang script fallback (bin/fg_cli -> bin/fg_cli.bat)
+            installed_win = root / "installed_win"
+            action_whl_installer.install_wheel(whl, installed_win, target_os="windows")
+            out_win_cli = root / "extracted/fg_cli_win"
+            wheel_files_extractor.extract_wheel_files(
+                installed_win,
+                [("bin/fg_cli", out_win_cli)],
+                executable=True,
+            )
+            self.assertTrue(out_win_cli.is_file())
+
+            # Fallback wheel extraction when installed tree has omit_source
+            pyc_tag = sys.implementation.cache_tag
+            py_ver = f"{sys.version_info.major}.{sys.version_info.minor}"
+            installed_omit = root / "installed_omit"
+            action_whl_installer.install_wheel(
+                whl,
+                installed_omit,
+                precompile=True,
+                pyc_tag=pyc_tag,
+                precompile_source_retention="omit_source",
+                python_version=py_ver,
+            )
+            self.assertFalse(
+                (installed_omit / "site-packages/fgpkg/__init__.py").exists()
+            )
+            out_init = root / "extracted/__init__.py"
+            wheel_files_extractor.extract_wheel_files(
+                installed_omit,
+                [("site-packages/fgpkg/__init__.py", out_init)],
+                fallback_wheel=whl,
+            )
+            self.assertEqual(out_init.read_text(encoding="utf-8"), "X = 1\n")
+
+            # Re-installing from installed_dir with different precompile settings
+            reinstalled_omit = root / "reinstalled_omit"
+            action_whl_installer.install_wheel(
+                None,
+                reinstalled_omit,
+                installed_dir=installed,
+                precompile=True,
+                pyc_tag=pyc_tag,
+                precompile_source_retention="omit_source",
+                python_version=py_ver,
+            )
+            self.assertFalse(
+                (reinstalled_omit / "site-packages/fgpkg/__init__.py").exists()
+            )
+            self.assertTrue(
+                (reinstalled_omit / "site-packages/fgpkg/__init__.pyc").is_file()
+            )
+
+            with self.assertRaisesRegex(ValueError, "escapes wheel directory"):
+                wheel_files_extractor.extract_wheel_files(
+                    installed,
+                    [("../outside.txt", root / "extracted/outside.txt")],
+                )
+            with self.assertRaises(FileNotFoundError):
+                wheel_files_extractor.extract_wheel_files(
+                    installed,
+                    [("site-packages/fgpkg/missing.txt", root / "extracted/m.txt")],
+                )
 
 
 if __name__ == "__main__":

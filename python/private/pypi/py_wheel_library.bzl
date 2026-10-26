@@ -42,6 +42,7 @@ load(
 )
 load("//python/private:venv_runfiles.bzl", "get_venv_symlinks")
 load("//python/private:version.bzl", "version")
+load(":py_installed_wheel_info.bzl", "PyInstalledWheelInfo")
 
 PY_WHEEL_LIBRARY_ATTRS = COMMON_ATTRS | WINDOWS_CONSTRAINTS_ATTRS | {
     "data_exclude": lambda: attrb.StringList(
@@ -67,6 +68,22 @@ namespace packages.
         default = [],
         doc = """
 Relative paths to pkgutil-style namespace package __init__.py files.
+""",
+    ),
+    "post_install_patch_strip": lambda: attrb.Int(
+        default = 0,
+        doc = """
+Number of leading path components to strip when applying `post_install_patches`
+(for example, set to `1` to strip `a/` and `b/` from git-formatted diffs).
+""",
+    ),
+    "post_install_patches": lambda: attrb.LabelList(
+        allow_files = True,
+        default = [],
+        doc = """
+Unified diff patch files to apply against the installed wheel's `site-packages/`
+directory after extracting the wheel. Git-formatted diffs (`a/` and `b/`
+prefixes) require `post_install_patch_strip = 1`.
 """,
     ),
     "precompile": PY_SRCS_ATTRS["precompile"],
@@ -167,13 +184,23 @@ def _resolve_invalidation_mode(ctx):
         return PrecompileInvalidationModeAttr.UNCHECKED_HASH
     return PrecompileInvalidationModeAttr.CHECKED_HASH
 
-def _add_precompile_args(ctx, args, out_short_path, exec_tools_toolchain, source_retention):
+def _expected_site_paths_from_extracted(extracted_files):
+    seen = {}
+    for f in extracted_files:
+        if not f.startswith("site-packages/"):
+            continue
+        top = f[len("site-packages/"):].partition("/")[0]
+        if top and not top.endswith(".dist-info"):
+            seen[top] = True
+    return seen.keys()
+
+def _add_precompile_args(ctx, args, out_short_path, exec_tools_toolchain, invalidation_mode, source_retention):
     target_runtime = ctx.toolchains[TARGET_TOOLCHAIN_TYPE].py3_runtime
     version_info = target_runtime.interpreter_version_info
     python_version = "{}.{}".format(version_info.major, version_info.minor)
     args.add("--precompile")
     args.add("--pyc-tag", target_runtime.pyc_tag)
-    args.add("--precompile-invalidation-mode", _resolve_invalidation_mode(ctx))
+    args.add("--precompile-invalidation-mode", invalidation_mode)
     args.add("--precompile-optimize-level", str(ctx.attr.precompile_optimize_level))
     args.add("--precompile-source-retention", source_retention)
     args.add("--python-version", python_version)
@@ -267,38 +294,56 @@ def _compute_wheel_venv_symlinks(
         ))
     return venv_symlinks
 
-def _py_wheel_library_impl(ctx):
-    exec_tools_toolchain = ctx.toolchains[EXEC_TOOLS_TOOLCHAIN_TYPE]
-    if exec_tools_toolchain == None:
-        fail(
-            "experimental_action_install requires the exec_tools toolchain " +
-            "(set //python/config_settings:exec_tools_toolchain=enabled)",
-        )
-
+def _run_wheel_install_action(
+        ctx,
+        *,
+        installed_info,
+        effective_srcs_exclude,
+        effective_data_exclude,
+        is_windows,
+        create_namespace_inits,
+        venvs_site_packages_enabled,
+        should_precompile,
+        invalidation_mode,
+        source_retention,
+        keep_source,
+        exec_tools_toolchain):
     out = ctx.actions.declare_directory(ctx.attr.name)
-    is_windows = is_windows_platform(ctx)
-    venvs_site_packages_enabled = VenvsSitePackages.is_enabled(ctx)
-    create_namespace_inits = (
-        not ctx.attr.enable_implicit_namespace_pkgs and
-        not venvs_site_packages_enabled
-    )
-    should_precompile = _should_precompile(ctx, exec_tools_toolchain)
-    source_retention = PrecompileSourceRetentionAttr.get_effective_value(ctx)
-    keep_source = (
-        not should_precompile or
-        source_retention == PrecompileSourceRetentionAttr.KEEP_SOURCE
-    )
-
     args = ctx.actions.args()
-    args.add("--wheel", ctx.file.wheel)
+
+    if installed_info != None and installed_info.wheel == None:
+        if not installed_info.keep_source and (keep_source or ctx.files.post_install_patches):
+            fail(
+                "Cannot apply post_install_patches or restore .py sources from '{}' because its .py sources were omitted (precompile_source_retention = 'omit_source')".format(
+                    ctx.attr.wheel.label,
+                ),
+            )
+        args.add_all("--installed-dir", [installed_info.directory], expand_directories = False)
+        install_source_file = installed_info.directory
+        underlying_wheel = None
+    else:
+        install_source_file = (
+            installed_info.wheel if installed_info != None else ctx.file.wheel
+        )
+        args.add_all("--wheel", [install_source_file], expand_directories = False)
+        underlying_wheel = None if ctx.files.post_install_patches else install_source_file
+
     args.add_all("--directory", [out], expand_directories = False)
     args.add("--target-os", "windows" if is_windows else "unix")
-    for pattern in ctx.attr.srcs_exclude:
+    for pattern in effective_srcs_exclude:
         args.add("--srcs-exclude-glob", pattern)
-    for pattern in ctx.attr.data_exclude:
+    for pattern in effective_data_exclude:
         args.add("--data-exclude-glob", pattern)
     if create_namespace_inits:
         args.add("--create-namespace-inits")
+    if ctx.files.post_install_patches:
+        args.add("--patch-strip", str(ctx.attr.post_install_patch_strip))
+        for patch_file in ctx.files.post_install_patches:
+            args.add("--patch", patch_file)
+    if venvs_site_packages_enabled:
+        args.add("--validate-site-packages")
+        for sp in _expected_site_paths_from_extracted(ctx.attr.extracted_files):
+            args.add("--expected-site-path", sp)
 
     extra_tools = []
     if should_precompile:
@@ -307,6 +352,7 @@ def _py_wheel_library_impl(ctx):
             args,
             out.short_path,
             exec_tools_toolchain,
+            invalidation_mode,
             source_retention,
         )
 
@@ -319,12 +365,82 @@ def _py_wheel_library_impl(ctx):
             "PYTHONDONTWRITEBYTECODE": "1",
             "PYTHONPATH": helper_files[0].dirname,
         },
-        inputs = [ctx.file.wheel] + helper_files,
+        inputs = [install_source_file] + ctx.files.post_install_patches + helper_files,
         outputs = [out],
         tools = extra_tools,
         mnemonic = "PyWheelInstall",
-        progress_message = "Installing wheel {} into %{{output}}".format(ctx.file.wheel.basename),
+        progress_message = "Installing wheel {} into %{{output}}".format(install_source_file.basename),
     )
+    return out, underlying_wheel
+
+def _py_wheel_library_impl(ctx):
+    exec_tools_toolchain = ctx.toolchains[EXEC_TOOLS_TOOLCHAIN_TYPE]
+    if exec_tools_toolchain == None:
+        fail(
+            "experimental_action_install requires the exec_tools toolchain " +
+            "(set //python/config_settings:exec_tools_toolchain=enabled)",
+        )
+
+    is_windows = is_windows_platform(ctx)
+    venvs_site_packages_enabled = VenvsSitePackages.is_enabled(ctx)
+    create_namespace_inits = (
+        not ctx.attr.enable_implicit_namespace_pkgs and
+        not venvs_site_packages_enabled
+    )
+    should_precompile = _should_precompile(ctx, exec_tools_toolchain)
+    source_retention = PrecompileSourceRetentionAttr.get_effective_value(ctx)
+    keep_source = (
+        not should_precompile or
+        source_retention == PrecompileSourceRetentionAttr.KEEP_SOURCE
+    )
+    invalidation_mode = _resolve_invalidation_mode(ctx) if should_precompile else ""
+
+    installed_info = (
+        ctx.attr.wheel[PyInstalledWheelInfo] if PyInstalledWheelInfo in ctx.attr.wheel else None
+    )
+    effective_srcs_exclude = list(ctx.attr.srcs_exclude)
+    effective_data_exclude = list(ctx.attr.data_exclude)
+    if installed_info != None:
+        for p in installed_info.settings_key[4]:
+            if p not in effective_srcs_exclude:
+                effective_srcs_exclude.append(p)
+        for p in installed_info.settings_key[5]:
+            if p not in effective_data_exclude:
+                effective_data_exclude.append(p)
+
+    settings_key = (
+        should_precompile,
+        keep_source,
+        invalidation_mode,
+        ctx.attr.precompile_optimize_level if should_precompile else 0,
+        tuple(effective_srcs_exclude),
+        tuple(effective_data_exclude),
+        create_namespace_inits,
+    )
+
+    can_reuse_installed = (
+        installed_info != None and
+        not ctx.files.post_install_patches and
+        installed_info.settings_key == settings_key
+    )
+    if can_reuse_installed:
+        out = installed_info.directory
+        underlying_wheel = installed_info.wheel
+    else:
+        out, underlying_wheel = _run_wheel_install_action(
+            ctx,
+            installed_info = installed_info,
+            effective_srcs_exclude = effective_srcs_exclude,
+            effective_data_exclude = effective_data_exclude,
+            is_windows = is_windows,
+            create_namespace_inits = create_namespace_inits,
+            venvs_site_packages_enabled = venvs_site_packages_enabled,
+            should_precompile = should_precompile,
+            invalidation_mode = invalidation_mode,
+            source_retention = source_retention,
+            keep_source = keep_source,
+            exec_tools_toolchain = exec_tools_toolchain,
+        )
 
     out_rf_path = runfiles_root_path(ctx, out.short_path)
     site_packages_rf_path = paths.join(out_rf_path, "site-packages")
@@ -365,6 +481,13 @@ def _py_wheel_library_impl(ctx):
     providers = [
         DefaultInfo(files = depset([out]), runfiles = runfiles),
         py_info,
+        PyInstalledWheelInfo(
+            directory = out,
+            keep_source = keep_source,
+            precompiled = should_precompile,
+            settings_key = settings_key,
+            wheel = underlying_wheel,
+        ),
         create_instrumented_files_info(ctx, source_attributes = []),
         PyCcLinkParamsInfo(cc_info = cc_info),
         create_output_group_info(py_info.transitive_sources, extra_groups = {}),
@@ -402,7 +525,7 @@ consumers must handle directory `File`s.
 :::
 """,
     attrs = PY_WHEEL_LIBRARY_ATTRS,
-    provides = [PyCcLinkParamsInfo, PyInfo] + _MaybeBuiltinPyInfo,
+    provides = [PyCcLinkParamsInfo, PyInfo, PyInstalledWheelInfo] + _MaybeBuiltinPyInfo,
     toolchains = [
         ruleb.ToolchainType(TARGET_TOOLCHAIN_TYPE, mandatory = False),
         ruleb.ToolchainType(EXEC_TOOLS_TOOLCHAIN_TYPE, mandatory = False),
