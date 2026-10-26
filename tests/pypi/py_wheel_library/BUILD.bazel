@@ -1,9 +1,13 @@
+load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
 load("@rules_cc//cc:cc_import.bzl", "cc_import")
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
 load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
+load("//python:pip.bzl", "whl_filegroup")
 load("//python:py_binary.bzl", "py_binary")
+load("//python:py_library.bzl", "py_library")
 load("//python:py_test.bzl", "py_test")
+load("//python/private/pypi:py_sdist_wheel.bzl", "py_sdist_wheel")  # buildifier: disable=bzl-visibility
 load(
     "//python/private/pypi:py_wheel_extract_files.bzl",
     "py_wheel_extract_files",
@@ -183,6 +187,204 @@ cc_test(
     deps = [
         ":demo_headers",
         ":demo_headers_root_default",
+    ],
+)
+
+py_binary(
+    name = "make_test_sdist",
+    srcs = ["make_test_sdist.py"],
+    main = "make_test_sdist.py",
+)
+
+genrule(
+    name = "gen_demo_sdist",
+    outs = ["sdist_demo-main.tar.gz"],
+    cmd = "$(execpath :make_test_sdist) $@",
+    tools = [":make_test_sdist"],
+)
+
+string_flag(
+    name = "always_venvs_site_packages",
+    build_setting_default = "yes",
+    values = [
+        "yes",
+        "no",
+    ],
+)
+
+py_library(
+    name = "classic_bdep",
+    srcs = ["classic_bdep/site-packages/classic_bdep/__init__.py"],
+    data = ["classic_bdep/site-packages/classic_bdep-1.0.dist-info/METADATA"],
+    experimental_venvs_site_packages = ":always_venvs_site_packages",
+    imports = ["classic_bdep/site-packages"],
+    tags = [
+        "pypi_name=classic_bdep",
+        "pypi_version=1.0",
+    ],
+)
+
+py_library(
+    name = "custom_build_helper",
+    srcs = ["custom_build_helper/helper_mod.py"],
+    data = ["custom_build_helper/helper_data.txt"],
+    imports = ["custom_build_helper"],
+)
+
+py_library(
+    name = "custom_shadow_dep",
+    srcs = ["custom_shadow_dep/packaging/__init__.py"],
+    imports = ["custom_shadow_dep"],
+)
+
+py_sdist_wheel(
+    name = "sdist_demo-0.5.0.whldir",
+    build_deps = [
+        ":classic_bdep",
+        ":custom_build_helper",
+        ":custom_shadow_dep",
+        ":demo_wheel_lib",
+    ],
+    config_settings_list = {
+        "--global-option": [
+            "--quiet",
+            "--verbose",
+        ],
+    },
+    distribution = "sdist-demo",
+    pre_build_patch_strips = [1],
+    pre_build_patches = ["pre_build.patch"],
+    sdist = ":gen_demo_sdist",
+    version = "0.5.0",
+)
+
+# Verify two bare-named py_sdist_wheel targets building the same sdist in one
+# package do not collide on declared output filenames.
+py_sdist_wheel(
+    name = "sdist_demo_bare_a",
+    build_deps = [
+        ":classic_bdep",
+        ":custom_build_helper",
+        ":custom_shadow_dep",
+        ":demo_wheel_lib",
+    ],
+    distribution = "sdist-demo",
+    pre_build_patch_strips = [1],
+    pre_build_patches = ["pre_build.patch"],
+    sdist = ":gen_demo_sdist",
+    version = "0.5.0",
+)
+
+py_sdist_wheel(
+    name = "sdist_demo_bare_b",
+    build_deps = [
+        ":classic_bdep",
+        ":custom_build_helper",
+        ":custom_shadow_dep",
+        ":demo_wheel_lib",
+    ],
+    distribution = "sdist-demo",
+    pre_build_patch_strips = [1],
+    pre_build_patches = ["pre_build.patch"],
+    sdist = ":gen_demo_sdist",
+    version = "0.5.0",
+)
+
+filegroup(
+    name = "sdist_demo_whldir_fg",
+    srcs = [":sdist_demo-0.5.0.whldir"],
+    output_group = "whldir",
+)
+
+whl_filegroup(
+    name = "sdist_demo_whl_fg",
+    pattern = "sdist_demo/__init__.py",
+    runfiles = True,
+    whl = ":sdist_demo-0.5.0.whldir",
+)
+
+genrule(
+    name = "gen_cext_sdist",
+    outs = ["sdist_cext-0.1.0.tar.gz"],
+    cmd = "$(execpath :make_test_sdist) --c-ext $@",
+    tools = [":make_test_sdist"],
+)
+
+py_sdist_wheel(
+    name = "sdist_cext_a.whldir",
+    sdist = ":gen_cext_sdist",
+    target_compatible_with = select({
+        "@platforms//os:windows": ["@platforms//:incompatible"],
+        "//conditions:default": [],
+    }),
+)
+
+filegroup(
+    name = "sdist_cext_a_whldir_fg",
+    srcs = [":sdist_cext_a.whldir"],
+    output_group = "whldir",
+)
+
+py_sdist_wheel(
+    name = "sdist_cext_b.whldir",
+    sdist = ":gen_cext_sdist",
+    target_compatible_with = select({
+        "@platforms//os:windows": ["@platforms//:incompatible"],
+        "//conditions:default": [],
+    }),
+)
+
+filegroup(
+    name = "sdist_cext_b_whldir_fg",
+    srcs = [":sdist_cext_b.whldir"],
+    output_group = "whldir",
+)
+
+py_wheel_library(
+    name = "sdist_cext_wheel_lib",
+    target_compatible_with = select({
+        "@platforms//os:windows": ["@platforms//:incompatible"],
+        "//conditions:default": [],
+    }),
+    wheel = ":sdist_cext_a.whldir",
+)
+
+py_test(
+    name = "sdist_cext_test",
+    srcs = ["sdist_cext_test.py"],
+    data = [
+        ":sdist_cext_a.whldir",
+        ":sdist_cext_a_whldir_fg",
+        ":sdist_cext_b.whldir",
+        ":sdist_cext_b_whldir_fg",
+    ],
+    target_compatible_with = select({
+        "@platforms//os:windows": ["@platforms//:incompatible"],
+        "//conditions:default": [],
+    }),
+    deps = [
+        ":sdist_cext_wheel_lib",
+        "//python/runfiles",
+    ],
+)
+
+py_test(
+    name = "sdist_wheel_builder_test",
+    srcs = [
+        "make_test_sdist.py",
+        "sdist_wheel_builder_test.py",
+    ],
+    data = [
+        ":sdist_demo-0.5.0.whldir",
+        ":sdist_demo_bare_a",
+        ":sdist_demo_bare_b",
+        ":sdist_demo_whl_fg",
+        ":sdist_demo_whldir_fg",
+    ],
+    main = "sdist_wheel_builder_test.py",
+    deps = [
+        "//python/private/pypi:sdist_wheel_builder_lib",
+        "//python/runfiles",
     ],
 )
 
