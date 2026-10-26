@@ -7,7 +7,9 @@ load("@rules_testing//lib:truth.bzl", "matching")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
 load("//python:py_info.bzl", "PyInfo")
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:py_wheel_extract_files.bzl", "wheel_glob")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:py_wheel_library.bzl", "py_wheel_library")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:whl_library_srcs.bzl", "whl_library_srcs")  # buildifier: disable=bzl-visibility
 load("//tests/support:py_info_subject.bzl", "py_info_subject")
 load(
     "//tests/support:support.bzl",
@@ -318,6 +320,50 @@ def _test_missing_exec_tools_toolchain_fails_impl(env, target):
 _tests.append(_test_missing_exec_tools_toolchain_fails)
 
 def py_wheel_library_bzl_test_suite(name):
+    """Create the analysis test suite for `py_wheel_library`.
+
+    Args:
+        name: The name of the test suite.
+    """
+
+    # Real (non-mocked) whl_library_srcs + wheel_glob verification on an
+    # action-built sdist with empty site_paths using real native.existing_rule.
+    whl_library_srcs(
+        name = name + ".empty_site_paths-0.5.0.sdist_build.whl",
+        action_install = True,
+        sdist_filename = ":gen_demo_sdist",
+        sdist = {
+            "build_deps": [
+                ":classic_bdep",
+                ":custom_build_helper",
+                ":custom_shadow_dep",
+                ":demo_wheel_lib",
+            ],
+            "distribution": "sdist-demo",
+            "pre_build_patch_strips": [1],
+            "pre_build_patches": ["pre_build.patch"],
+            "site_paths": [],
+            "tags": ["manual"],
+            "version": "0.5.0",
+        },
+        tags = ["manual"],
+        native = struct(
+            existing_rule = native.existing_rule,
+            filegroup = lambda **kwargs: native.filegroup(tags = ["manual"], **kwargs),
+        ),
+    )
+    sdist_glob_errors = []
+    wheel_glob(["**"], _fail = sdist_glob_errors.append)
+    if (
+        len(sdist_glob_errors) != 1 or
+        "cannot be used with an action-built sdist" not in sdist_glob_errors[0]
+    ):
+        fail(
+            "Expected wheel_glob() to fail on real action-built sdist with empty site_paths, got: {}".format(
+                sdist_glob_errors,
+            ),
+        )
+
     test_suite(
         name = name,
         tests = _tests,

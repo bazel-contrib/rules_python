@@ -4,6 +4,7 @@ load("@bazel_skylib//lib:types.bzl", "types")
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
 load("//python:py_library.bzl", "py_library")
 load(":gen_wheel_record.bzl", "gen_wheel_record")
+load(":generate_whl_library_build_bazel.bzl", "split_sdist_config_settings")
 load(
     ":labels.bzl",
     "DATA_LABEL",
@@ -11,9 +12,11 @@ load(
     "DIST_INFO_LABEL",
     "EXTRACTED_WHEEL_FILES",
     "PY_SRCS_LABEL",
+    "WHEEL_DIR_PUBLIC_LABEL",
     "WHEEL_FILE",
 )
 load(":namespace_pkgs.bzl", _create_inits = "create_inits")
+load(":py_sdist_wheel.bzl", "py_sdist_wheel")
 load(":py_wheel_extract_files.bzl", "py_wheel_extract_files", "wheel_glob")
 load(":py_wheel_library.bzl", "py_wheel_library")
 load(":venv_entry_point.bzl", "venv_entry_point")
@@ -82,10 +85,35 @@ def _is_wheel_internal_path(src, extracted_files, shebang_scripts):
 def _validate_action_install_args(
         name,
         *,
+        sdist,
         filegroups,
+        copy_files,
+        copy_executables,
         extracted_files,
         shebang_scripts,
         _fail):
+    if sdist != None:
+        if filegroups != None:
+            _fail(
+                (
+                    "In '{}', custom glob-based 'filegroups' ({}) are not supported for action-built sdists " +
+                    "under experimental_action_install (use py_wheel_extract_files or wheel_glob on downloaded wheels)."
+                ).format(name, ", ".join(sorted(filegroups.keys()))),
+            )
+            return False
+        internal_copy_srcs = [
+            src
+            for src in list(copy_files.keys()) + list(copy_executables.keys())
+            if _is_wheel_internal_path(src, extracted_files, shebang_scripts)
+        ]
+        if internal_copy_srcs:
+            _fail(
+                (
+                    "In '{}', wheel-internal 'copy_files'/'copy_executables' ({}) are not supported for action-built sdists " +
+                    "under experimental_action_install (use py_wheel_extract_files or wheel_glob on downloaded wheels)."
+                ).format(name, ", ".join(sorted(internal_copy_srcs))),
+            )
+            return False
     if filegroups != None and not extracted_files and not shebang_scripts:
         _fail(
             (
@@ -201,11 +229,13 @@ def whl_library_srcs(
         extracted_files = [],
         has_entry_points_txt = False,
         shebang_scripts = [],
+        sdist = None,
         visibility = ["//visibility:public"],
         _fail = fail,
         rules = struct(
             copy_file = copy_file,
             py_library = py_library,
+            py_sdist_wheel = py_sdist_wheel,
             py_wheel_extract_files = py_wheel_extract_files,
             py_wheel_library = py_wheel_library,
             venv_entry_point = venv_entry_point,
@@ -243,6 +273,7 @@ def whl_library_srcs(
         extracted_files: {type}`list[str]` Relative paths under the installed wheel directory.
         has_entry_points_txt: {type}`bool` Whether a fetch-time `entry_points.txt` file exists in the package.
         shebang_scripts: {type}`list[str]` Top-level script names in `.data/scripts/` with `#!python` shebangs.
+        sdist: {type}`dict | None` Keyword arguments for `py_sdist_wheel` (plus `site_paths`) when building an sdist in an action.
         native: {type}`native` The native struct for overriding in tests.
         _fail: {type}`callable` The fail function for overriding in tests.
         rules: {type}`struct` A struct with references to rules for creating targets.
@@ -252,7 +283,10 @@ def whl_library_srcs(
 
     if action_install and not _validate_action_install_args(
         name,
+        sdist = sdist,
         filegroups = filegroups,
+        copy_files = copy_files,
+        copy_executables = copy_executables,
         extracted_files = extracted_files,
         shebang_scripts = shebang_scripts,
         _fail = _fail,
@@ -278,7 +312,7 @@ def whl_library_srcs(
             if bin_s not in all_wheel_files:
                 all_wheel_files.append(bin_s)
 
-        wheel_install_target = "_wheel_install"
+        wheel_install_target = "_wheel_install" if sdist == None else PY_SRCS_LABEL
         extract_state = {}
 
         _add_action_install_copies(
@@ -296,12 +330,35 @@ def whl_library_srcs(
             _fail = _fail,
         )
 
+        if sdist != None:
+            sdist_kwargs = dict(sdist)
+            site_paths = sdist_kwargs.pop("site_paths", [])
+            split_sdist_config_settings(sdist_kwargs)
+            rules.py_sdist_wheel(
+                name = name,
+                sdist = sdist_filename,
+                visibility = visibility,
+                **sdist_kwargs
+            )
+        else:
+            site_paths = []
+
         if hasattr(native, "filegroup"):
+            # Note: For action-built sdists (`sdist != None`), `:whl_file` / `:whl`
+            # points to `<dist>-<ver>.sdist_build.whl`: contents are the built wheel;
+            # the filename is not a valid wheel filename — use `:whldir` for the real one.
             native.filegroup(
                 name = WHEEL_FILE,
                 srcs = [whl_file or name],
                 visibility = visibility,
             )
+            if sdist != None:
+                native.filegroup(
+                    name = WHEEL_DIR_PUBLIC_LABEL,
+                    srcs = [name],
+                    output_group = "whldir",
+                    visibility = visibility,
+                )
 
         _add_action_install_custom_filegroups(
             filegroups = filegroups,
@@ -316,16 +373,30 @@ def whl_library_srcs(
         )
 
         if hasattr(native, "filegroup"):
-            for fg_name, fg_srcs in [
-                (EXTRACTED_WHEEL_FILES, [PY_SRCS_LABEL]),
-                (DIST_INFO_LABEL, ["entry_points.txt"] if has_entry_points_txt else []),
-                (DATA_LABEL, [PY_SRCS_LABEL] + bins_for_data_label),
-            ]:
-                if filegroups != None and fg_name in filegroups:
-                    continue
+            if filegroups == None or EXTRACTED_WHEEL_FILES not in filegroups:
                 native.filegroup(
-                    name = fg_name,
-                    srcs = fg_srcs,
+                    name = EXTRACTED_WHEEL_FILES,
+                    srcs = [PY_SRCS_LABEL],
+                    visibility = visibility,
+                )
+            if filegroups == None or DIST_INFO_LABEL not in filegroups:
+                if sdist != None:
+                    native.filegroup(
+                        name = DIST_INFO_LABEL,
+                        srcs = [":" + PY_SRCS_LABEL],
+                        output_group = "dist_info",
+                        visibility = visibility,
+                    )
+                else:
+                    native.filegroup(
+                        name = DIST_INFO_LABEL,
+                        srcs = ["entry_points.txt"] if has_entry_points_txt else [],
+                        visibility = visibility,
+                    )
+            if filegroups == None or DATA_LABEL not in filegroups:
+                native.filegroup(
+                    name = DATA_LABEL,
+                    srcs = [PY_SRCS_LABEL] + bins_for_data_label,
                     visibility = visibility,
                 )
 
@@ -340,25 +411,35 @@ def whl_library_srcs(
                 tags = tags,
                 experimental_venvs_site_packages = _VENV_SITE_PACKAGES_FLAG,
             )
-
-            # NOTE: `_wheel_install` is an internal implementation detail exposed with
-            # `visibility` solely so `:wheel_files.bzl` (`wheel_glob`) can reference it
-            # when loaded from external packages. Do not depend on `:_wheel_install`
-            # directly; depend on `:srcs` (or `:pkg`) instead.
-            rules.py_wheel_library(
-                name = wheel_install_target,
-                wheel = whl_file or name,
-                data = [],
-                visibility = visibility,
-                **common_wheel_kwargs
-            )
-            rules.py_wheel_library(
-                name = PY_SRCS_LABEL,
-                wheel = ":" + wheel_install_target,
-                data = data,
-                visibility = visibility,
-                **common_wheel_kwargs
-            )
+            if site_paths:
+                common_wheel_kwargs["site_paths"] = site_paths
+            if sdist == None:
+                # NOTE: `_wheel_install` is an internal implementation detail exposed with
+                # `visibility` solely so `:wheel_files.bzl` (`wheel_glob`) can reference it
+                # when loaded from external packages. Do not depend on `:_wheel_install`
+                # directly; depend on `:srcs` (or `:pkg`) instead.
+                rules.py_wheel_library(
+                    name = wheel_install_target,
+                    wheel = whl_file or name,
+                    data = [],
+                    visibility = visibility,
+                    **common_wheel_kwargs
+                )
+                rules.py_wheel_library(
+                    name = PY_SRCS_LABEL,
+                    wheel = ":" + wheel_install_target,
+                    data = data,
+                    visibility = visibility,
+                    **common_wheel_kwargs
+                )
+            else:
+                rules.py_wheel_library(
+                    name = PY_SRCS_LABEL,
+                    wheel = name,
+                    data = data,
+                    visibility = visibility,
+                    **common_wheel_kwargs
+                )
         return
 
     existing_bin_names = {ep["name"].lower(): None for ep in entry_points.values()}

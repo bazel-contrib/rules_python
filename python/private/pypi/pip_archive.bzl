@@ -3,13 +3,23 @@
 load("//python/private:auth.bzl", "get_auth")
 load("//python/private:envsubst.bzl", "envsubst")
 load("//python/private:is_standalone_interpreter.bzl", "is_standalone_interpreter")
+load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
-load(":attrs.bzl", "ATTRS", "use_isolated")
+load("//python/private:version.bzl", "version")
+load(":attrs.bzl", "ATTRS", "use_action_install", "use_isolated")
 load(":deps.bzl", "all_repo_names", "record_files")
-load(":patch_and_extract_whl.bzl", "patch_and_extract_whl")
+load(
+    ":generate_whl_library_build_bazel.bzl",
+    "generate_sdist_wheel_files_bzl",
+    "parse_sdist_extra_pip_args",
+)
+load(":patch_and_extract_whl.bzl", "patch_and_extract_whl", "write_whl_library_repo")
+load(":pep508_requirement.bzl", "requirement")
 load(":pypi_repo_utils.bzl", "pypi_repo_utils")
 load(":urllib.bzl", "urllib")
+load(":version_from_filename.bzl", "version_from_filename")
 load(":whl_archive.bzl", "whl_archive_attrs")
+load(":whl_metadata.bzl", "parse_entry_points")
 
 _CPPFLAGS = "CPPFLAGS"
 _COMMAND_LINE_TOOLS_PATH_SLUG = "commandlinetools"
@@ -242,6 +252,122 @@ def _create_repository_execution_environment(rctx, python_interpreter, logger = 
         env[_CPPFLAGS] = " ".join(cppflags)
     return env
 
+def inspect_sdist_and_generate_build(
+        rctx,
+        *,
+        sdist_filename,
+        python_interpreter,
+        logger):
+    """Inspect an sdist archive at fetch time and write `BUILD.bazel` and `wheel_files.bzl`.
+
+    Args:
+        rctx: The repository context.
+        sdist_filename: {type}`str` Filename of the downloaded sdist archive.
+        python_interpreter: {type}`path` Resolved Python interpreter path.
+        logger: Repository logger instance.
+
+    Returns:
+        Repository metadata from `write_whl_library_repo`.
+    """
+    annotation = None if not rctx.attr.annotation else struct(**json.decode(rctx.read(rctx.attr.annotation)))
+    inspect_env = {
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "PYTHONHOME": _get_python_home(rctx, python_interpreter, logger),
+        "PYTHONPATH": pypi_repo_utils.construct_pythonpath(
+            rctx,
+            entries = rctx.attr._python_path_entries,
+        ),
+    }
+    inspection = json.decode(pypi_repo_utils.execute_checked_stdout(
+        rctx,
+        python = python_interpreter,
+        srcs = [
+            rctx.attr._inspect_sdist,
+            rctx.attr._wheel_layout,
+        ],
+        op = "InspectSdist({})".format(sdist_filename),
+        arguments = [
+            str(rctx.path(rctx.attr._inspect_sdist)),
+            "--sdist",
+            str(rctx.path(sdist_filename)),
+        ],
+        environment = inspect_env,
+        logger = logger,
+    ))
+
+    req = requirement(rctx.attr.requirement)
+    pkg_name = req.name
+    pkg_version = req.version or version_from_filename(sdist_filename)
+    if not pkg_name or not pkg_version:
+        fail("Failed to determine package name and version for sdist '{}'".format(sdist_filename))
+
+    metadata = struct(
+        name = pkg_name,
+        version = pkg_version,
+        requires_dist = inspection.get("requires_dist", []),
+        provides_extra = inspection.get("provides_extra", []),
+    )
+
+    sdist = {
+        "distribution": pkg_name,
+        "site_paths": inspection.get("site_paths", []),
+        "version": pkg_version,
+    }
+    if inspection.get("build_requires"):
+        sdist["build_requires"] = inspection["build_requires"]
+    if rctx.attr.environment:
+        sdist["environment"] = dict(rctx.attr.environment)
+    if rctx.attr.add_libdir_to_library_search_path:
+        sdist["add_libdir_to_library_search_path"] = True
+    if rctx.attr.extra_pip_args:
+        resolved_extra_pip_args = [
+            envsubst(pip_arg, rctx.attr.envsubst, rctx.getenv)
+            for pip_arg in rctx.attr.extra_pip_args
+        ]
+        pip_config_settings = parse_sdist_extra_pip_args(
+            resolved_extra_pip_args,
+            logger = logger,
+            name = sdist_filename,
+        )
+        if pip_config_settings:
+            sdist["config_settings"] = pip_config_settings
+
+    if rctx.attr.whl_patches:
+        pre_build_patches = []
+        pre_build_patch_strips = []
+        for patch_file, json_args in rctx.attr.whl_patches.items():
+            patch_dst = struct(**json.decode(json_args))
+            if sdist_filename in patch_dst.whls:
+                pre_build_patches.append(str(patch_file))
+                pre_build_patch_strips.append(patch_dst.patch_strip)
+        if pre_build_patches:
+            sdist["pre_build_patches"] = pre_build_patches
+            sdist["pre_build_patch_strips"] = pre_build_patch_strips
+        else:
+            logger.warn(
+                "None of the whl_patches entries matched sdist filename '{}'".format(sdist_filename),
+            )
+
+    whl_target_name = "{}-{}.sdist_build.whl".format(
+        normalize_name(metadata.name),
+        version.normalize(metadata.version),
+    )
+    rctx.file("wheel_files.bzl", generate_sdist_wheel_files_bzl())
+
+    return write_whl_library_repo(
+        rctx,
+        name = whl_target_name,
+        metadata = metadata,
+        sdist_filename = sdist_filename,
+        annotation = annotation,
+        data_exclude = rctx.attr.pip_data_exclude,
+        namespace_package_files = inspection.get("namespace_package_files", []),
+        entry_points = parse_entry_points(inspection.get("entry_points_content", "")),
+        logger = logger,
+        action_install = True,
+        sdist = sdist,
+    )
+
 def _pip_archive_impl(rctx):
     logger = repo_utils.logger(rctx)
 
@@ -296,6 +422,15 @@ def _pip_archive_impl(rctx):
         python_interpreter = rctx.attr.python_interpreter,
         python_interpreter_target = rctx.attr.python_interpreter_target,
     )
+    if sdist_filename and use_action_install(rctx, rctx.attr):
+        inspect_sdist_and_generate_build(
+            rctx,
+            sdist_filename = sdist_filename,
+            python_interpreter = python_interpreter,
+            logger = logger,
+        )
+        return
+
     args = [
         "-m",
         "python.private.pypi.whl_installer.wheel_installer",
@@ -360,6 +495,9 @@ pip_archive_attrs = {
 
 pip_archive = repository_rule(
     attrs = pip_archive_attrs | {
+        "_inspect_sdist": attr.label(
+            default = Label("//python/private/pypi:inspect_sdist.py"),
+        ),
         "_python_path_entries": attr.label_list(
             # Get the root directory of these rules and keep them as a default attribute
             # in order to avoid unnecessary repository fetching restarts.

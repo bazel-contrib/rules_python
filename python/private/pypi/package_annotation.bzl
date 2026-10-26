@@ -21,13 +21,17 @@ def package_annotation(
         data = [],
         data_exclude_glob = [],
         filegroups = {},
+        sdist_build_deps = [],
+        sdist_config_settings = {},
+        site_paths = [],
         srcs_exclude_glob = []):
     """Annotations to apply to the BUILD file content from package generated from a `pip_repository` rule.
 
     [cf]: https://github.com/bazelbuild/bazel-skylib/blob/main/docs/copy_file_doc.md
 
     :::{versionchanged} VERSION_NEXT_FEATURE
-    Added the `filegroups` parameter.
+    Added the `filegroups`, `sdist_build_deps`, `sdist_config_settings`, and
+    `site_paths` parameters.
     :::
 
     Args:
@@ -40,11 +44,23 @@ def package_annotation(
         data_exclude_glob (list, optional): A list of exclude glob patterns to add as `data` to the generated
             `py_library` target.
         filegroups (dict, optional): A mapping of filegroup target names to glob patterns (or include/exclude dicts).
+        sdist_build_deps (list, optional): Explicit build dependency labels for `py_sdist_wheel` when building an sdist in an action.
+        sdist_config_settings (dict, optional): PEP 517 `--config-settings` key/value pairs for `py_sdist_wheel`.
+        site_paths (list, optional): Override predicted `site-packages/` paths when building an sdist in an action.
         srcs_exclude_glob (list, optional): A list of labels to add as `srcs` to the generated `py_library` target.
 
     Returns:
         str: A json encoded string of the provided content.
     """
+    optional_fields = {}
+    for k, val in [
+        ("filegroups", filegroups),
+        ("sdist_build_deps", sdist_build_deps),
+        ("sdist_config_settings", sdist_config_settings),
+        ("site_paths", site_paths),
+    ]:
+        if val:
+            optional_fields[k] = val
     return json.encode(struct(
         additive_build_content = additive_build_content,
         copy_files = copy_files,
@@ -52,5 +68,5 @@ def package_annotation(
         data = data,
         data_exclude_glob = data_exclude_glob,
         srcs_exclude_glob = srcs_exclude_glob,
-        **({"filegroups": filegroups} if filegroups else {})
+        **optional_fields
     ))

@@ -27,6 +27,15 @@ exports_files(
     visibility = ["//visibility:public"],
 )
 
+exports_files(
+    srcs = [
+        "inspect_sdist.py",
+        "inspect_whl.py",
+        "wheel_layout.py",
+    ],
+    visibility = ["//:__subpackages__"],
+)
+
 filegroup(
     name = "action_whl_installer_helpers",
     srcs = [
@@ -86,6 +95,7 @@ py_library(
     name = "wheel_installer_lib",
     srcs = [
         "action_whl_installer.py",
+        "inspect_sdist.py",
         "inspect_whl.py",
         "wheel_files_extractor.py",
         "wheel_layout.py",
@@ -254,7 +264,10 @@ bzl_library(
 bzl_library(
     name = "generate_whl_library_build_bazel",
     srcs = ["generate_whl_library_build_bazel.bzl"],
-    deps = ["//python/private:text_util"],
+    deps = [
+        "//python/private:text_util",
+        "@bazel_skylib//lib:types",
+    ],
 )
 
 bzl_library(
@@ -589,8 +602,13 @@ bzl_library(
     name = "whl_library_targets",
     srcs = ["whl_library_targets.bzl"],
     deps = [
+        ":env_marker_setting",
+        ":labels",
+        ":pep508_deps",
+        ":py_sdist_wheel",
         ":whl_library_deps_targets",
         ":whl_library_srcs",
+        "//python/private:normalize_name",
     ],
 )
 
@@ -621,14 +639,20 @@ bzl_library(
     deps = [
         ":attrs",
         ":deps",
+        ":generate_whl_library_build_bazel",
         ":patch_and_extract_whl",
+        ":pep508_requirement",
         ":pypi_repo_utils",
         ":urllib",
+        ":version_from_filename",
         ":whl_archive",
+        ":whl_metadata",
         "//python/private:auth",
         "//python/private:envsubst",
         "//python/private:is_standalone_interpreter",
+        "//python/private:normalize_name",
         "//python/private:repo_utils",
+        "//python/private:version",
     ],
 )
 
@@ -786,8 +810,10 @@ bzl_library(
     srcs = ["whl_library_srcs.bzl"],
     deps = [
         ":gen_wheel_record",
+        ":generate_whl_library_build_bazel",
         ":labels",
         ":namespace_pkgs",
+        ":py_sdist_wheel",
         ":py_wheel_extract_files",
         ":py_wheel_library",
         ":venv_entry_point",

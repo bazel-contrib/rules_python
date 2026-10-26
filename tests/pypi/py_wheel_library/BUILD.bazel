@@ -553,3 +553,13 @@ py_reconfig_test(
         ":sdist_demo_wheel_lib_venv",
     ],
 )
+
+py_test(
+    name = "inspect_sdist_test",
+    srcs = ["inspect_sdist_test.py"],
+    data = [":gen_demo_sdist"],
+    deps = [
+        "//python/private/pypi:wheel_installer_lib",
+        "//python/runfiles",
+    ],
+)

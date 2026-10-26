@@ -609,6 +609,8 @@ def _create_whl_repos(
             whl_modifications = whl_modifications,
         )
         for src in whl.srcs:
+            if not src.filename.endswith(".whl") and whl_library_args.get("experimental_action_install"):
+                _add_extra_aliases(self, {whl.name: ["whldir"]})
             repo = _whl_repo(
                 src = src,
                 index_url = whl.index_url,

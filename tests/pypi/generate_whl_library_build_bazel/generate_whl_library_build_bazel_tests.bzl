@@ -17,8 +17,10 @@
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load(
     "//python/private/pypi:generate_whl_library_build_bazel.bzl",
+    "generate_sdist_wheel_files_bzl",
     "generate_wheel_files_bzl",
     "generate_whl_library_build_bazel",
+    "parse_sdist_extra_pip_args",
 )  # buildifier: disable=bzl-visibility
 
 _tests = []
@@ -451,6 +453,143 @@ def _test_action_install_glob_warning(env):
     )
 
 _tests.append(_test_action_install_glob_warning)
+
+def _test_action_sdist(env):
+    pip_warnings = []
+    parsed_cs = parse_sdist_extra_pip_args(
+        [
+            "--index-url",
+            "https://pypi.org/simple",
+            "-i",
+            "https://mirror.example.com",
+            "--extra-index-url=https://extra.example.com",
+            "--trusted-host",
+            "mirror.example.com",
+            "--find-links=.",
+            "-f",
+            "wheels",
+            "--no-index",
+            "--isolated",
+            "--cert=/etc/ssl/cert.pem",
+            "--client-cert",
+            "/etc/ssl/client.pem",
+            "--proxy",
+            "http://proxy:8080",
+            "--retries=3",
+            "--timeout",
+            "30",
+            "--cache-dir=/tmp/cache",
+            "--no-cache-dir",
+            "--prefer-binary",
+            "--only-binary=:none:",
+            "--no-binary",
+            ":all:",
+            "--pre",
+            "--require-hashes",
+            "--quiet",
+            "-q",
+            "--no-deps",
+            "--use-pep517",
+            "--platform=manylinux2014_x86_64",
+            "-C",
+            "cmake.define.FOO=from_pip_args",
+            "-Ckeep_from_pip=1",
+            "--config-settings",
+            "setup-args=-Dbar=2",
+            "--config-settings=build-dir=build",
+            "-C--global-option=--quiet",
+            "-C--global-option=--force",
+            "-Cmalformed_no_equals",
+            "--global-option=--cpp_implementation",
+        ],
+        logger = struct(warn = pip_warnings.append),
+        name = "foo-1.0.tar.gz",
+    )
+    env.expect.that_dict(parsed_cs).contains_exactly({
+        "--global-option": ["--quiet", "--force"],
+        "build-dir": "build",
+        "cmake.define.FOO": "from_pip_args",
+        "keep_from_pip": "1",
+        "setup-args": "-Dbar=2",
+    })
+    env.expect.that_int(len(pip_warnings)).equals(1)
+    env.expect.that_str(pip_warnings[0]).contains("-Cmalformed_no_equals")
+    env.expect.that_str(pip_warnings[0]).contains("--global-option=--cpp_implementation")
+    env.expect.that_str(pip_warnings[0]).contains("ignored in experimental_action_install sdist builds")
+
+    sdist_wheel_files_bzl = generate_sdist_wheel_files_bzl()
+    env.expect.that_str(sdist_wheel_files_bzl).contains("FILES = []")
+    env.expect.that_str(sdist_wheel_files_bzl).contains("cannot be used with an action-built sdist")
+
+    want = """\
+load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
+load("@pypi//:config.bzl", "packages")
+load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets")
+
+package(default_visibility = ["//visibility:public"])
+
+whl_library_targets(
+    action_install = True,
+    copy_executables = {},
+    copy_files = {},
+    data = [],
+    data_exclude = [],
+    dep_template = "@pypi//{name}:{target}",
+    include = packages,
+    metadata_name = "foo",
+    name = "foo-1.0.sdist_build.whl",
+    sdist = {
+        "add_libdir_to_library_search_path": True,
+        "build_requires": ["setuptools>=61", "wheel"],
+        "config_settings": {"cmake.define.FOO": "from_whl_mods", "keep_from_pip": "1"},
+        "config_settings_list": {"--global-option": ["--quiet", "--force"]},
+        "environment": {"FOO_ENV": "1"},
+        "pre_build_patch_strips": [1],
+        "pre_build_patches": ["//patches:fix.patch"],
+        "site_paths": ["foo"],
+    },
+    sdist_filename = "foo-1.0.tar.gz",
+    srcs_exclude = [],
+    tags = [
+        "pypi_name=foo",
+        "pypi_version=1.0",
+    ],
+)
+"""
+    actual = generate_whl_library_build_bazel(
+        metadata_version = "1.0",
+        metadata_name = "foo",
+        dep_template = "@pypi//{name}:{target}",
+        name = "foo-1.0.sdist_build.whl",
+        sdist_filename = "foo-1.0.tar.gz",
+        config_load = "@pypi//:config.bzl",
+        action_install = True,
+        annotation = struct(
+            copy_files = {},
+            copy_executables = {},
+            data = [],
+            data_exclude_glob = [],
+            sdist_config_settings = {"cmake.define.FOO": "from_whl_mods"},
+            srcs_exclude_glob = [],
+            additive_build_content = None,
+        ),
+        sdist = {
+            "add_libdir_to_library_search_path": True,
+            "build_requires": ["setuptools>=61", "wheel"],
+            "config_settings": {
+                "--global-option": ["--quiet", "--force"],
+                "cmake.define.FOO": "from_pip_args",
+                "keep_from_pip": "1",
+            },
+            "environment": {"FOO_ENV": "1"},
+            "pre_build_patch_strips": [1],
+            "pre_build_patches": ["//patches:fix.patch"],
+            "site_paths": ["foo"],
+        },
+    )
+    env.expect.that_str(actual.replace("@@", "@")).equals(want)
+
+_tests.append(_test_action_sdist)
 
 def generate_whl_library_build_bazel_test_suite(name):
     """Create the test suite.

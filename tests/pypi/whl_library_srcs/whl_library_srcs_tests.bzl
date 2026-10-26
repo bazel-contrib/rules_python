@@ -22,6 +22,7 @@ load(
     "wheel_glob",
 )  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:whl_library_srcs.bzl", "whl_library_srcs")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:whl_library_targets.bzl", "whl_library_targets")  # buildifier: disable=bzl-visibility
 load("//tests/support/mocks:mocks.bzl", "mocks")
 
 _tests = []
@@ -727,6 +728,137 @@ def _test_wheel_glob_dedup_and_sdist_failure(env):
     ).equals("")
 
 _tests.append(_test_wheel_glob_dedup_and_sdist_failure)
+
+def _test_action_sdist(env):
+    py_sdist_wheel_calls = []
+    py_wheel_library_calls = []
+    env_marker_setting_calls = []
+    filegroup_calls = []
+
+    whl_library_targets(
+        name = "foo-1.0.sdist_build.whl",
+        action_install = True,
+        sdist_filename = "foo-1.0.tar.gz",
+        metadata_name = "foo",
+        dep_template = "@pypi//{name}:{target}",
+        include = ["foo", "hatchling", "cython", "tomli", "setuptools_scm"],
+        sdist = {
+            "add_libdir_to_library_search_path": True,
+            "build_deps": [
+                "@@+pip+pypi//setuptools_scm:pkg",
+                "@@//third_party/flit_core:flit_core",
+                "@@//:custom_builder_bundle",
+            ],
+            "build_requires": [
+                "setuptools>=61",
+                "setuptools-scm>=8",
+                "flit-core>=3.8",
+                "some-custom-backend>=1.0",
+                "hatchling>=1.18",
+                "tomli>=1.0; python_version < '3.11'",
+                "cython; python_version >= '3.8'",
+                "cffi; implementation_name == 'pypy'",
+                "nonexistent; extra == 'dev'",
+            ],
+            "config_settings": {"--build-option": "--pure"},
+            "environment": {"FOO_ENV": "1"},
+            "pre_build_patch_strips": [1],
+            "pre_build_patches": ["//patches:pre.patch"],
+            "site_paths": ["foo"],
+        },
+        tags = ["pypi_name=foo", "pypi_version=1.0"],
+        native = struct(
+            alias = lambda **_: None,
+            filegroup = lambda **kwargs: filegroup_calls.append(kwargs),
+            glob = lambda *args, **kwargs: env.fail("glob should not be called in action mode"),
+        ),
+        rules = struct(
+            env_marker_setting = lambda **kwargs: env_marker_setting_calls.append(kwargs),
+            py_sdist_wheel = lambda **kwargs: py_sdist_wheel_calls.append(kwargs),
+            py_wheel_library = lambda **kwargs: py_wheel_library_calls.append(kwargs),
+        ),
+    )
+
+    env.expect.that_int(len(py_sdist_wheel_calls)).equals(1)
+    sdist_call = py_sdist_wheel_calls[0]
+    env.expect.that_str(sdist_call["name"]).equals("foo-1.0.sdist_build.whl")
+    env.expect.that_str(sdist_call["sdist"]).equals("foo-1.0.tar.gz")
+    env.expect.that_dict(sdist_call).contains_at_least({
+        "add_libdir_to_library_search_path": True,
+        "build_deps": [
+            "@@+pip+pypi//setuptools_scm:pkg",
+            "@@//third_party/flit_core:flit_core",
+            "@@//:custom_builder_bundle",
+            "@pypi//hatchling:pkg",
+        ] + select({
+            ":is_include_sdist_build_cython_true": ["@pypi//cython:pkg"],
+            "//conditions:default": [],
+        }),
+        "config_settings": {"--build-option": "--pure"},
+        "environment": {"FOO_ENV": "1"},
+        "pre_build_patch_strips": [1],
+        "pre_build_patches": ["//patches:pre.patch"],
+    })
+    env.expect.that_collection(env_marker_setting_calls).contains_exactly([
+        {
+            "expression": 'python_version >= "3.8"',
+            "name": "include_sdist_build_cython",
+            "visibility": ["//visibility:private"],
+        },
+    ])
+    env.expect.that_collection(filegroup_calls).contains_at_least([
+        {
+            "name": "whl_file",
+            "srcs": ["foo-1.0.sdist_build.whl"],
+            "visibility": ["//visibility:public"],
+        },
+        {
+            "name": "whldir",
+            "output_group": "whldir",
+            "srcs": ["foo-1.0.sdist_build.whl"],
+            "visibility": ["//visibility:public"],
+        },
+        {
+            "name": "dist_info",
+            "output_group": "dist_info",
+            "srcs": [":srcs"],
+            "visibility": ["//visibility:public"],
+        },
+    ])
+
+    env.expect.that_int(len(py_wheel_library_calls)).equals(1)
+    whl_call = py_wheel_library_calls[0]
+    env.expect.that_str(whl_call["name"]).equals("srcs")
+    env.expect.that_str(whl_call["wheel"]).equals("foo-1.0.sdist_build.whl")
+    env.expect.that_collection(whl_call["site_paths"]).contains_exactly(["foo"])
+
+    # Verify sdist fails with guidance naming py_wheel_extract_files on custom filegroups
+    # or wheel-internal copy_files.
+    sdist_fg_errors = []
+    whl_library_srcs(
+        name = "foo-1.0.sdist_build.whl",
+        action_install = True,
+        sdist_filename = "foo-1.0.tar.gz",
+        sdist = {"site_paths": ["foo"]},
+        filegroups = {"custom_fg": ["site-packages/**"]},
+        _fail = sdist_fg_errors.append,
+    )
+    env.expect.that_int(len(sdist_fg_errors)).equals(1)
+    env.expect.that_str(sdist_fg_errors[0]).contains("py_wheel_extract_files")
+
+    sdist_copy_errors = []
+    whl_library_srcs(
+        name = "foo-1.0.sdist_build.whl",
+        action_install = True,
+        sdist_filename = "foo-1.0.tar.gz",
+        sdist = {"site_paths": ["foo"]},
+        copy_files = {"site-packages/foo/cfg.txt": "copied_cfg.txt"},
+        _fail = sdist_copy_errors.append,
+    )
+    env.expect.that_int(len(sdist_copy_errors)).equals(1)
+    env.expect.that_str(sdist_copy_errors[0]).contains("py_wheel_extract_files")
+
+_tests.append(_test_action_sdist)
 
 def whl_library_srcs_test_suite(name):
     """create the test suite.

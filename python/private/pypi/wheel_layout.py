@@ -67,9 +67,13 @@ def is_excluded(path: str, compiled_globs: list[re.Pattern[str]]) -> bool:
 
 
 def is_pkgutil_namespace_init(content: str) -> bool:
-    """Whether an `__init__.py` declares a pkgutil namespace package."""
+    """Whether an `__init__.py` declares a pkgutil or pkg_resources namespace package."""
+    if "__path__ =" in content and "pkgutil" in content and "extend_path(" in content:
+        return True
     return (
-        "__path__ =" in content and "pkgutil" in content and "extend_path(" in content
+        "pkg_resources" in content
+        and "def declare_namespace" not in content
+        and bool(re.search(r"\bdeclare_namespace\(\s*__name__\s*\)", content))
     )
 
 

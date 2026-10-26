@@ -14,6 +14,7 @@
 
 """Generate the BUILD.bazel contents for a repo defined by a whl_library."""
 
+load("@bazel_skylib//lib:types.bzl", "types")
 load("//python/private:text_util.bzl", "render")
 
 _RENDER = {
@@ -29,6 +30,7 @@ _RENDER = {
     "include": str,
     "repo": lambda maybe_label: repr(str(maybe_label)),
     "requires_dist": render.list,
+    "sdist": render.dict,
     "shebang_scripts": render.list,
     "srcs_exclude": render.list,
     "tags": render.list,
@@ -61,6 +63,151 @@ def _check_additive_build_content_for_glob(content):
         if "glob(" in without_wheel_glob or "glob (" in without_wheel_glob:
             return True
     return False
+
+_QUIET_SDIST_PIP_FLAGS_NO_VALUE = {
+    "--disable-pip-version-check": True,
+    "--isolated": True,
+    "--no-cache-dir": True,
+    "--no-color": True,
+    "--no-deps": True,
+    "--no-index": True,
+    "--pre": True,
+    "--prefer-binary": True,
+    "--quiet": True,
+    "--require-hashes": True,
+    "--use-pep517": True,
+    "--verbose": True,
+    "-q": True,
+    "-v": True,
+}
+
+_QUIET_SDIST_PIP_FLAGS_WITH_VALUE = {
+    "--abi": True,
+    "--cache-dir": True,
+    "--cert": True,
+    "--client-cert": True,
+    "--exists-action": True,
+    "--extra-index-url": True,
+    "--find-links": True,
+    "--implementation": True,
+    "--index-url": True,
+    "--keyring-provider": True,
+    "--log": True,
+    "--no-binary": True,
+    "--only-binary": True,
+    "--platform": True,
+    "--progress-bar": True,
+    "--proxy": True,
+    "--python-version": True,
+    "--retries": True,
+    "--timeout": True,
+    "--trusted-host": True,
+    "-f": True,
+    "-i": True,
+}
+
+def _add_config_setting(config_settings, key, value):
+    if key in config_settings:
+        existing = config_settings[key]
+        if types.is_list(existing):
+            existing.append(value)
+        else:
+            config_settings[key] = [existing, value]
+    else:
+        config_settings[key] = value
+
+def split_sdist_config_settings(sdist_dict):
+    """Split list-valued entries in `sdist_dict["config_settings"]` into `config_settings_list`.
+
+    Args:
+        sdist_dict: {type}`dict` Mutable sdist keyword arguments dict updated in place.
+    """
+    if "config_settings" not in sdist_dict:
+        return
+    scalar_cs = {}
+    list_cs = dict(sdist_dict.get("config_settings_list", {}))
+    for k, v in sdist_dict["config_settings"].items():
+        if types.is_list(v):
+            list_cs[k] = v
+        else:
+            scalar_cs[k] = v
+    if scalar_cs:
+        sdist_dict["config_settings"] = scalar_cs
+    else:
+        sdist_dict.pop("config_settings")
+    if list_cs:
+        sdist_dict["config_settings_list"] = list_cs
+
+def parse_sdist_extra_pip_args(extra_pip_args, logger = None, name = ""):
+    """Parse `extra_pip_args` for an action-mode sdist build.
+
+    Extracts `-C` / `--config-settings` into a `config_settings` dict (accumulating
+    repeated keys into lists), silently ignores standard index/network/fetch flags,
+    and warns via `logger.warn` on any other unrecognized args.
+
+    Args:
+        extra_pip_args: {type}`list[str]` Extra pip arguments configured on the repo.
+        logger: Optional repository logger used to emit warnings.
+        name: {type}`str` Package or sdist filename for warning messages.
+
+    Returns:
+        {type}`dict[str, str | list[str]]` Parsed PEP 517 config settings.
+    """
+    config_settings = {}
+    ignored = []
+    mode = None
+
+    for raw_arg in extra_pip_args or []:
+        if mode == "config_setting":
+            k, has_eq, v = raw_arg.partition("=")
+            _add_config_setting(config_settings, k, v if has_eq else "")
+            mode = None
+            continue
+        if mode == "skip_value":
+            mode = None
+            continue
+
+        if raw_arg in ("-C", "--config-settings", "--config-setting"):
+            mode = "config_setting"
+            continue
+        if raw_arg.startswith("--config-settings="):
+            kv = raw_arg[len("--config-settings="):]
+            k, has_eq, v = kv.partition("=")
+            _add_config_setting(config_settings, k, v if has_eq else "")
+            continue
+        if raw_arg.startswith("--config-setting="):
+            kv = raw_arg[len("--config-setting="):]
+            k, has_eq, v = kv.partition("=")
+            _add_config_setting(config_settings, k, v if has_eq else "")
+            continue
+        if raw_arg.startswith("-C") and len(raw_arg) > 2:
+            kv = raw_arg[2:]
+            k, has_eq, v = kv.partition("=")
+            if has_eq:
+                _add_config_setting(config_settings, k, v)
+                continue
+
+        if raw_arg in _QUIET_SDIST_PIP_FLAGS_NO_VALUE:
+            continue
+        if raw_arg in _QUIET_SDIST_PIP_FLAGS_WITH_VALUE:
+            mode = "skip_value"
+            continue
+        flag_name, has_eq, _ = raw_arg.partition("=")
+        if has_eq and flag_name in _QUIET_SDIST_PIP_FLAGS_WITH_VALUE:
+            continue
+        if (raw_arg.startswith("-i") or raw_arg.startswith("-f")) and len(raw_arg) > 2 and not raw_arg.startswith("--"):
+            continue
+
+        ignored.append(raw_arg)
+
+    if ignored and logger:
+        logger.warn(
+            "In '{}', extra_pip_args {} are ignored in experimental_action_install sdist builds (use -C / --config-settings or sdist_config_settings instead).".format(
+                name,
+                ignored,
+            ),
+        )
+    return config_settings
 
 def generate_whl_library_build_bazel(
         *,
@@ -101,14 +248,28 @@ def generate_whl_library_build_bazel(
     ]
     kwargs["tags"] = tags
 
-    if not requires_dist:
+    sdist = kwargs.get("sdist")
+    if sdist != None:
+        sdist = dict(sdist)
+        if annotation:
+            if hasattr(annotation, "sdist_build_deps") and annotation.sdist_build_deps:
+                sdist["build_deps"] = annotation.sdist_build_deps
+            if hasattr(annotation, "sdist_config_settings") and annotation.sdist_config_settings:
+                sdist["config_settings"] = dict(sdist.get("config_settings", {})) | dict(annotation.sdist_config_settings)
+            if hasattr(annotation, "site_paths") and annotation.site_paths:
+                sdist["site_paths"] = annotation.site_paths
+        split_sdist_config_settings(sdist)
+        kwargs["sdist"] = {k: sdist[k] for k in sorted(sdist)}
+
+    if not requires_dist and not (sdist and sdist.get("build_requires")):
         # no deps, we can leave the extra loads out
         pass
     elif config_load:
         loads.append("""load("{}", "{}")""".format(config_load, "packages"))
         kwargs["include"] = "packages"
-        kwargs["requires_dist"] = requires_dist
-    else:
+        if requires_dist:
+            kwargs["requires_dist"] = requires_dist
+    elif requires_dist:
         kwargs["requires_dist"] = requires_dist
 
     loads.extend([
@@ -177,7 +338,14 @@ def generate_whl_library_build_bazel(
     return contents.rstrip() + "\n"
 
 def generate_wheel_files_bzl(extracted_files):
-    """Generate the contents of `wheel_files.bzl` for a wheel repository."""
+    """Generate the contents of `wheel_files.bzl` for a wheel repository.
+
+    Args:
+        extracted_files: {type}`list[str]` Sorted list of wheel-relative file paths.
+
+    Returns:
+        {type}`str` Starlark source for `wheel_files.bzl`.
+    """
     return """\
 \"\"\"Generated wheel file list and wheel_glob wrapper.\"\"\"
 
@@ -206,3 +374,20 @@ def wheel_glob(
 """.format(
         files = render.list(extracted_files),
     )
+
+def generate_sdist_wheel_files_bzl():
+    """Generate stub `wheel_files.bzl` for an action-built sdist repository.
+
+    Returns:
+        {type}`str` Starlark source for `wheel_files.bzl` that fails with guidance on `wheel_glob()`.
+    """
+    return """\
+FILES = []
+
+def wheel_glob(*args, **kwargs):
+    fail(
+        "wheel_glob() cannot be used with an action-built sdist because wheel contents " +
+        "are not known at loading time under experimental_action_install. Use a " +
+        "pre-built wheel or py_wheel_headers / py_wheel_transform instead.",
+    )
+"""

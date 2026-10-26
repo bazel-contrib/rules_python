@@ -14,11 +14,88 @@
 
 """Macro to generate all of the targets present in a {obj}`whl_library`."""
 
-load(":whl_library_deps_targets.bzl", _whl_library_deps_targets = "whl_library_deps_targets")
+load("//python/private:normalize_name.bzl", "normalize_name")
+load(":labels.bzl", "PY_LIBRARY_PUBLIC_LABEL")
+load(":pep508_deps.bzl", _pep508_deps = "deps")
+load(":py_sdist_wheel.bzl", "BOOTSTRAP_BUILD_PACKAGES")
+load(
+    ":whl_library_deps_targets.bzl",
+    "config_settings",
+    "select_deps",
+    _whl_library_deps_targets = "whl_library_deps_targets",
+)
 load(":whl_library_srcs.bzl", _whl_library_srcs = "whl_library_srcs")
 
 whl_library_deps_targets = _whl_library_deps_targets
 whl_library_srcs = _whl_library_srcs
+
+def _resolve_sdist_build_deps(
+        *,
+        name,
+        sdist,
+        metadata_name,
+        dep_template,
+        group_deps,
+        include,
+        kwargs):
+    sdist = dict(sdist)
+    build_requires = sdist.pop("build_requires", [])
+    build_deps = list(sdist.get("build_deps", []))
+    if not (build_requires and dep_template):
+        if build_deps:
+            sdist["build_deps"] = build_deps
+        return sdist
+
+    user_dep_names = []
+    for d in build_deps:
+        _, _, pkg_and_target = d.partition("//")
+        pkg_part, _, target_part = pkg_and_target.partition(":")
+        if pkg_part:
+            user_dep_names.append(normalize_name(pkg_part.rpartition("/")[2]))
+        if target_part:
+            user_dep_names.append(normalize_name(target_part))
+    excludes = group_deps + BOOTSTRAP_BUILD_PACKAGES.keys() + user_dep_names
+
+    if include and not build_deps:
+        all_build_reqs = _pep508_deps(
+            name = metadata_name,
+            requires_dist = build_requires,
+            excludes = excludes,
+        )
+        include_set = {normalize_name(n): True for n in include}
+        missing = [r for r in all_build_reqs.deps if r not in include_set]
+        if missing:
+            fail(
+                "In '{}', sdist build requires {} which are not present in the pip hub ".format(
+                    name,
+                    ", ".join(missing),
+                ) +
+                "packages or bootstrap dependencies ({}). Add them to your requirements ".format(
+                    ", ".join(sorted(BOOTSTRAP_BUILD_PACKAGES.keys())),
+                ) +
+                "lockfile or specify 'sdist_build_deps' via pip.whl_mods / package_annotation.",
+            )
+
+    build_pkg_deps = _pep508_deps(
+        name = metadata_name,
+        requires_dist = build_requires,
+        excludes = excludes,
+        include = include,
+    )
+    config_settings(
+        dependencies_with_markers = build_pkg_deps.deps_select,
+        setting_prefix = "include_sdist_build_",
+        **({"rules": kwargs["rules"]} if "rules" in kwargs else {})
+    )
+    build_deps = select_deps(
+        deps = build_deps,
+        package_deps = build_pkg_deps,
+        tmpl = dep_template.format(name = "{}", target = PY_LIBRARY_PUBLIC_LABEL),
+        setting_prefix = "include_sdist_build_",
+    )
+    if build_deps:
+        sdist["build_deps"] = build_deps
+    return sdist
 
 def whl_library_targets(
         *,
@@ -45,6 +122,7 @@ def whl_library_targets(
         extracted_files = [],
         has_entry_points_txt = False,
         shebang_scripts = [],
+        sdist = None,
         visibility = ["//visibility:public"],
         **kwargs):
     """The macro to create whl targets from the METADATA.
@@ -77,9 +155,21 @@ def whl_library_targets(
         extracted_files: {type}`list[str]` Relative paths under the installed wheel directory.
         has_entry_points_txt: {type}`bool` Whether a fetch-time `entry_points.txt` file exists in the package.
         shebang_scripts: {type}`list[str]` Top-level script names in `.data/scripts/` with `#!python` shebangs.
+        sdist: {type}`dict | None` Keyword arguments for `py_sdist_wheel` (plus `build_requires` and `site_paths`) when building an sdist in an action.
         visibility: {type}`list[str]` The visibility of the targets.
         **kwargs: Extra args passed to the {obj}`whl_library_deps_targets` and {obj}`whl_library_srcs`.
     """
+    if sdist != None:
+        sdist = _resolve_sdist_build_deps(
+            name = name,
+            sdist = sdist,
+            metadata_name = metadata_name,
+            dep_template = dep_template,
+            group_deps = group_deps,
+            include = include,
+            kwargs = kwargs,
+        )
+
     whl_library_srcs(
         name = name,
         whl_file = whl_file,
@@ -98,6 +188,7 @@ def whl_library_targets(
         extracted_files = extracted_files,
         has_entry_points_txt = has_entry_points_txt,
         shebang_scripts = shebang_scripts,
+        sdist = sdist,
         **kwargs
     )
 
