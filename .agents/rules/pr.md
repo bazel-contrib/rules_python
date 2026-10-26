@@ -66,9 +66,14 @@ Before drafting any pull request description, strictly adhere to the rules in
     `"do not merge"` label is applied if open questions remain.
 
 ## PR Review Comments & Thread Resolution
-* End every posted PR comment or review reply with an italicized disclosure line
-  identifying it as an agent-generated response and indicating whether it was
-  automatically generated or user-reviewed/approved.
+* End every posted PR comment or review reply with an italicized disclosure
+  line:
+  * If the exact comment text was not shown to and approved by the user before
+    posting (including automatic PR AI disclosure comments):
+    `*This is an automatically generated agent comment.*`
+  * Only if the user was shown the exact comment text and explicitly approved
+    posting it:
+    `*This is an agent-generated comment reviewed and approved by the user.*`
 * After fixing an inline PR review thread, reply with the commit hash and
   explanation (`addPullRequestReviewThreadReply`) and resolve the thread
   (`resolveReviewThread`) via `gh api graphql`, batching at most 3-4 threads per

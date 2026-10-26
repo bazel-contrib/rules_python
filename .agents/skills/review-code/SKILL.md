@@ -188,8 +188,11 @@ file from `.agents/skills/review-code/`:
   any issues addressed in the interim to `## Resolved Issues` in
   `code-review-results.md`, and drop their candidate comments.
 - When posting comments or replies to a PR, append an italicized disclosure line
-  at the end of each comment identifying it as an agent-generated response and
-  stating whether it was automatically generated or user-reviewed/approved.
+  at the end of each comment:
+  `*This is an agent-generated comment reviewed and approved by the user.*` if
+  the user reviewed and approved posting the comment, or
+  `*This is an automatically generated agent comment.*` if posted without user
+  review.
 
 ### Synthesis & Anti-Noise Gate (Guardrails)
 
