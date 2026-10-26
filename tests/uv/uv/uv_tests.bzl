@@ -329,6 +329,50 @@ def _test_default_building(env):
 
 _tests.append(_test_default_building)
 
+def _test_default_auth_applies_to_versions(env):
+    calls = []
+    uv = _process_modules(
+        env,
+        module_ctx = _uv_mock_mctx(
+            _mod(
+                default = [
+                    _default(
+                        base_url = "https://example.org",
+                        manifest_filename = "manifest.json",
+                        version = "1.0.0",
+                        netrc = "~/.my_netrc",
+                        auth_patterns = {"foo": "bar"},
+                    ),
+                    _default(
+                        platform = "linux",
+                        compatible_with = ["@platforms//os:linux"],
+                    ),
+                ],
+                configure = [
+                    _configure(),  # use defaults, including auth
+                ],
+            ),
+        ),
+        uv_repository = lambda **kwargs: calls.append(kwargs),
+    )
+
+    uv.names().contains_exactly([
+        "1_0_0_linux",
+    ])
+    env.expect.that_collection(calls).contains_exactly([
+        {
+            "auth_patterns": {"foo": "bar"},
+            "name": "uv_1_0_0_linux",
+            "netrc": "~/.my_netrc",
+            "platform": "linux",
+            "sha256": "deadbeef",
+            "urls": ["https://example.org/1.0.0/linux"],
+            "version": "1.0.0",
+        },
+    ])
+
+_tests.append(_test_default_auth_applies_to_versions)
+
 def _test_complex_configuring(env):
     calls = []
     uv = _process_modules(

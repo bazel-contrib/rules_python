@@ -67,11 +67,59 @@ compile_pip_requirements(
 )
 ```
 
-### uv pip compile (bzlmod only)
+### uv pip compile
 
 We also have a setup for the `uv pip compile` way of generating lock files.
 This is well tested with the public PyPI index, but you may hit some rough
 edges with private mirrors.
+
+#### Setup
+
+A `uv` toolchain has to be registered, as well as a Python toolchain, which
+{obj}`lock` uses to run `uv` with a hermetic interpreter.
+
+##### Bzlmod
+
+`rules_python` registers the `uv` toolchains for you; `MODULE.bazel` only has
+to configure the version to download with the {obj}`uv` module extension:
+
+```starlark
+uv = use_extension(
+    "@rules_python//python/uv:uv.bzl",
+    "uv",
+    dev_dependency = True,
+)
+uv.configure(version = "0.13.5")
+```
+
+Without `version`, the default version of `rules_python` is used. See
+{obj}`uv.configure` for using a mirror, explicit URLs or extra platforms.
+
+##### WORKSPACE
+
+The setup has two steps: {obj}`uv_toolchains_manifest` fetches the release
+manifests of the `uv` versions you want, and the {obj}`uv_register_toolchains`
+it exposes creates the toolchains for the platforms those releases have
+archives for and registers them:
+
+```starlark
+load("@rules_python//python/uv:repositories.bzl", "uv_toolchains_manifest")
+
+uv_toolchains_manifest(
+    name = "uv_manifest",
+    versions = ["0.13.5"],
+)
+
+load("@uv_manifest//:dist_manifest.bzl", "uv_register_toolchains")
+
+uv_register_toolchains(name = "uv")
+```
+
+Any released `uv` version can be fetched this way; the download URLs and
+checksums are read from the release manifests. The `configure` argument of
+{obj}`uv_register_toolchains` takes the same entries as {obj}`uv.configure`;
+see its documentation for using a mirror, explicit URLs without a manifest,
+extra platforms, or combining its toolchains with ones you define yourself.
 
 #### Example usage
 

@@ -18,7 +18,6 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("//python:py_binary.bzl", "py_binary")
-load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 load("//python/private:common_labels.bzl", "labels")
 load("//python/private:toolchain_types.bzl", "EXEC_TOOLS_TOOLCHAIN_TYPE")  # buildifier: disable=bzl-visibility
 load(":toolchain_types.bzl", "UV_TOOLCHAIN_TYPE")
@@ -643,21 +642,31 @@ def lock(
       used by `name.update`, disable the `uv` cache.
     - `name.update`: a target that can be run to update the source-tree version
       of the lock file. The output can be fed to the {obj}`pip.parse` bzlmod
-      extension tag class via {attr}`pip.parse.uv_lock` or
-      {attr}`pip.parse.requirements_lock`. Note, you can use `native_test` to
-      wrap this target to make a test. You can't customize the
-      args via command line, but you can use RBE to generate requirements
-      (offload execution and run for different platforms). Note, that for RBE
-      to be usable, one needs to ensure that the nodes running the action have
-      internet connectivity or the indexes are provided in a different way for
-      a fully offline operation.
+      extension tag class (via {attr}`pip.parse.uv_lock` or
+      {attr}`pip.parse.requirements_lock`) or the {obj}`pip_parse` WORKSPACE
+      macro. Note, you can use `native_test` to wrap this target to make a test.
+      You can't customize the args via command line, but you can use RBE to
+      generate requirements (offload execution and run for different
+      platforms). Note, that for RBE to be usable, one needs to ensure that the
+      nodes running the action have internet connectivity or the indexes are
+      provided in a different way for a fully offline operation.
 
     :::{note}
     All of the targets have `manual` tags as locking results cannot be cached.
     :::
 
+    :::{note}
+    A `uv` toolchain must be registered: under bzlmod via the {obj}`uv` module
+    extension, under WORKSPACE via {obj}`uv_register_toolchains`.
+    :::
+
     :::{versionchanged} VERSION_NEXT_PATCH
     The `name.run` target uses the `uv` cache by default.
+    :::
+
+    :::{versionchanged} VERSION_NEXT_FEATURE
+    WORKSPACE builds are supported; previously the targets were marked
+    incompatible unless bzlmod was enabled.
     :::
 
     Args:
@@ -699,7 +708,8 @@ def lock(
             {versionadded} 2.1.0
         python_version: {type}`str | None` the python_version to transition to
             when locking the requirements. Defaults to the default python version
-            configured by the {obj}`python` module extension.
+            configured by the {obj}`python` module extension or, under
+            WORKSPACE, by the registered Python toolchains.
         **kwargs: common kwargs passed to rules.
     """
     update_target = "{}.update".format(name)
@@ -711,8 +721,6 @@ def lock(
     maybe_out = _maybe_file(out)
 
     tags = ["manual"] + kwargs.pop("tags", [])
-    if not BZLMOD_ENABLED:
-        kwargs["target_compatible_with"] = ["@platforms//:incompatible"]
 
     uv_kwargs = {
         "is_windows": select({

@@ -46,6 +46,15 @@ bzl_library(
 )
 
 bzl_library(
+    name = "repositories",
+    srcs = ["repositories.bzl"],
+    deps = [
+        "//python/uv/private:uv_register_toolchains",
+        "//python/uv/private:uv_toolchains_manifest",
+    ],
+)
+
+bzl_library(
     name = "uv",
     srcs = ["uv.bzl"],
     deps = ["//python/uv/private:uv"],
