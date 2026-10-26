@@ -114,7 +114,6 @@ use_repo(
     "pythons_hub",
 )
 
-# EXPERIMENTAL: This is experimental and may be changed or removed without notice
 uv = use_extension(
     "@rules_python//python/uv:uv.bzl",
     "uv",

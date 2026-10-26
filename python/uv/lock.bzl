@@ -66,8 +66,6 @@ lock(
     project = "subproject",
 )
 ```
-
-EXPERIMENTAL: This is experimental and may be changed without notice.
 """
 
 load("//python/uv/private:lock.bzl", _lock = "lock")

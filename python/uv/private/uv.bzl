@@ -12,11 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-EXPERIMENTAL: This is experimental and may be removed without notice
-
-A module extension for working with uv.
-"""
+"""A module extension for working with uv."""
 
 load("//python/private:auth.bzl", "AUTH_ATTRS", "get_auth")
 load("//python/private:common_labels.bzl", "labels")

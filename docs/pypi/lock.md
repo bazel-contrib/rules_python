@@ -68,9 +68,9 @@ compile_pip_requirements(
 
 ### uv pip compile (bzlmod only)
 
-We also have an experimental setup for the `uv pip compile` way of generating lock files.
-This is well tested with the public PyPI index, but you may hit some rough edges with private
-mirrors.
+We also have a setup for the `uv pip compile` way of generating lock files.
+This is well tested with the public PyPI index, but you may hit some rough
+edges with private mirrors.
 
 #### Example usage
 
