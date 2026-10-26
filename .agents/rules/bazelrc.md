@@ -16,3 +16,6 @@ globs: "*.bazelrc,.bazelrc"
 * **Invocation Privacy**: Keep local invocations private. Never add
   `--build_metadata=VISIBILITY=PUBLIC` to repository-level or user bazelrc
   files; configure public visibility and CI metadata only in CI.
+* Use `--disk_cache=` (or `--nodisk_cache` in Bazel 10+) to disable disk
+  caching; `--disk_cache=false` sets the cache directory to `./false` prior to
+  Bazel 10.

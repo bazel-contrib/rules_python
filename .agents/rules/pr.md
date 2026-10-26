@@ -54,3 +54,12 @@ Before drafting any pull request description, strictly adhere to the rules in
     Evaluate each item against the diff and project rules, flag unresolved
     items with `BLOCKER`, `QUESTION`, or `HUMAN-SIGN-OFF`, and verify the
     `"do not merge"` label is applied if open questions remain.
+
+## PR Review Comments & Thread Resolution
+* End every posted PR comment or review reply with an italicized disclosure line
+  identifying it as an agent-generated response and indicating whether it was
+  automatically generated or user-reviewed/approved.
+* After fixing an inline PR review thread, reply with the commit hash and
+  explanation (`addPullRequestReviewThreadReply`) and resolve the thread
+  (`resolveReviewThread`) via `gh api graphql`, batching at most 3-4 threads per
+  request to avoid `502 Bad Gateway` timeouts.

@@ -18,9 +18,10 @@ globs: "*.bzl,BUILD,BUILD.bazel,*.bazel"
 
 ## Manual Tag on Internal Macro Helper Targets
 * When macros instantiate internal helper targets (such as private rule targets
-  for artifact extraction or linking support), always include `tags = ["manual"]`.
-* **Why**: This prevents internal helper targets from being implicitly built when
-  wildcard target patterns (e.g., `//...`) are expanded.
+  for artifact extraction or linking support), always include
+  `tags = ["manual"]`.
+* **Why**: This prevents internal helper targets from being implicitly built
+  when wildcard target patterns (e.g., `//...`) are expanded.
 
 ## Private Alias Pattern when Appending to User `deps`
 * When macros append internal helper targets to user-provided dependency lists
@@ -79,7 +80,27 @@ globs: "*.bzl,BUILD,BUILD.bazel,*.bazel"
 * **`repository_ctx.repo_metadata`**: `repository_ctx.repo_metadata` was
   introduced in Bazel 8.3.0.
 
+## BUILD & Target Hygiene
+* Do not use deprecated `$(location)` or `$(locations)`. In execution-root
+  contexts (such as `genrule.cmd`), use `$(execpath ...)` and
+  `$(execpaths ...)`.
+* Do not define overlapping `filegroup` targets or `exports_files` globs in the
+  same `BUILD` package; reconcile or compose them.
+* Move complex loops and branching out of `BUILD` files into `.bzl` macros.
+* When exposing data files across packages, define a named `filegroup` in the
+  owning package rather than referencing raw source files in caller `data`.
+
 ## Code Style & Conventions
+* Forward unused wrapper macro arguments via `**kwargs` instead of duplicating
+  the underlying rule or macro signature.
+* Silence unused Starlark variables with `_ = a, b  # @unused`.
+* Prefer analysis-time validation over loading-time checks so defined but
+  unbuilt targets do not cause loading-time failures.
+* Prefer `ctx.actions.write` over spawning a subprocess for small content known
+  at analysis time.
+* In `genrule.cmd` or multi-line command strings, place closing triple quotes
+  immediately after the last argument (`"""\n... --flag"""`) when trailing
+  newlines would break chained commands.
 * **Do Not Export `BUILD` Files Unnecessarily**: Do not add `BUILD` or
   `BUILD.bazel` to `exports_files(...)` unless strictly required.
 * **No Nested List Comprehensions**: Do not write nested list comprehensions
@@ -124,3 +145,12 @@ globs: "*.bzl,BUILD,BUILD.bazel,*.bazel"
 * **Test Suite Registration**: Collect test setup functions in a private
   `_tests` list and register them cleanly via `test_suite(name = name, tests =
   _tests)`.
+* Use `rules_testing`'s built-in `TestingAspectInfo` and `target.attr()` instead
+  of custom aspect providers to inspect rule attributes.
+* For single-target `analysis_test`, use singular `target = ...` and top-level
+  `config_settings = ...` instead of plural `targets = {"subject": ...}`.
+* In multi-target tests, name target variables after their roles rather than
+  `subject`.
+* Use a single `contains_at_least([...])` or `contains_exactly([...])` call
+  instead of chaining multiple `.contains(...)` assertions on the same
+  collection.
