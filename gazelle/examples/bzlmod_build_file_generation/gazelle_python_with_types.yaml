@@ -18,7 +18,6 @@ manifest:
     django_stubs_ext: django_stubs_ext
     idna: idna
     isort: isort
-    lazy_object_proxy: lazy_object_proxy
     magic: python_magic
     mccabe: mccabe
     pathspec: pathspec
@@ -33,7 +32,6 @@ manifest:
     types_tabulate: types_tabulate
     typing_extensions: typing_extensions
     urllib3: urllib3
-    wrapt: wrapt
     yaml: pyyaml
     yamllint: yamllint
   pip_repository:
