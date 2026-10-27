@@ -10,7 +10,19 @@ genrule(
 py_test(
     name = "uv_help_test",
     srcs = ["uv_help_test.py"],
-    data = [":uv_help"],
-    env = {"DATA": "$(rlocationpath :uv_help)"},
+    data = [
+        ":uv_help",
+        "//python/uv:current_toolchain",
+        "//python/uv/bin",
+        "//python/uv/bin:uv",
+        "@uv//bin",
+    ],
+    env = {
+        "DATA": "$(rlocationpath :uv_help)",
+        "UV_BIN": "$(rlocationpath @uv//bin:bin)",
+        "UV_CURRENT_TOOLCHAIN": "$(rlocationpath //python/uv:current_toolchain)",
+        "UV_RULES_PYTHON_BIN": "$(rlocationpath //python/uv/bin:bin)",
+        "UV_RULES_PYTHON_UV": "$(rlocationpath //python/uv/bin:uv)",
+    },
     deps = ["//python/runfiles"],
 )

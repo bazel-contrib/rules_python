@@ -36,8 +36,21 @@ uv = use_extension(
 uv.configure(version = "0.13.5")
 ```
 
+To run `uv` directly:
+```sh
+bazel run @rules_python//python/uv/bin:uv -- --help
+# Or, if `use_repo(uv, "uv")` is in MODULE.bazel:
+bazel run @uv//bin:bin -- --help
+```
+
 Since this is only for locking the requirements files, it should be always
 marked as a `dev_dependency`.
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+Added `@uv//bin:bin` and {obj}`//python/uv/bin:uv` (aliases for
+{obj}`//python/uv:current_toolchain`) to run the configured `uv` binary
+directly.
+:::
 """
 
 _DEFAULT_ATTRS = {

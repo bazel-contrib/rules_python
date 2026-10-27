@@ -32,12 +32,24 @@ def _current_toolchain_impl(ctx):
     original_uv_executable = toolchain_info.uv_toolchain_info.uv[DefaultInfo].files_to_run.executable
 
     # Use `uv` as the name of the binary to make the help message well formatted
-    symlink_uv_executable = ctx.actions.declare_file("current_toolchain/uv".format(original_uv_executable.basename))
-    ctx.actions.symlink(output = symlink_uv_executable, target_file = original_uv_executable)
+    if original_uv_executable.extension:
+        ext = "." + original_uv_executable.extension
+    else:
+        ext = ""
+    symlink_uv_executable = ctx.actions.declare_file(
+        "{}/uv{}".format(ctx.label.name, ext),
+    )
+    ctx.actions.symlink(
+        output = symlink_uv_executable,
+        target_file = original_uv_executable,
+        is_executable = True,
+    )
 
     new_default_info = DefaultInfo(
         files = depset([symlink_uv_executable]),
-        runfiles = toolchain_info.default_info.default_runfiles,
+        runfiles = ctx.runfiles(files = [original_uv_executable]).merge(
+            toolchain_info.default_info.default_runfiles,
+        ),
         executable = symlink_uv_executable,
     )
 

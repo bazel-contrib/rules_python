@@ -1,0 +1,21 @@
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
+
+package(default_visibility = ["//:__subpackages__"])
+
+distribution_filegroup(
+    name = "distribution",
+)
+
+alias(
+    name = "bin",
+    actual = "//python/uv:current_toolchain",
+    tags = ["manual"],
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "uv",
+    actual = "//python/uv:current_toolchain",
+    tags = ["manual"],
+    visibility = ["//visibility:public"],
+)

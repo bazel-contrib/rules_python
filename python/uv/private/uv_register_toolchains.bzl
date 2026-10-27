@@ -139,7 +139,8 @@ def uv_register_toolchains(
     This is the WORKSPACE equivalent of the {obj}`uv` module extension. It
     creates one download repository per `uv` version and platform, and the
     toolchain hub repository `name` with a `toolchain` for each of them, which
-    it registers as `@{name}//:all`; {obj}`lock` can then be used. See the
+    it registers as `@{name}//:all`; {obj}`lock` can then be used, and `uv` can
+    be run directly via `bazel run @{name}//bin:bin -- <args>`. See the
     {ref}`WORKSPACE setup guide <uv-workspace-setup>` for usage examples.
 
     Platforms without an archive in a manifest get no toolchain. The

@@ -94,6 +94,9 @@ uv.configure(version = "0.13.5")
 
 Without `version`, the default version specified by `rules_python` is used.
 See {obj}`uv.configure` for using a mirror, explicit URLs or extra platforms.
+To run the configured `uv` binary directly, run
+`bazel run @rules_python//python/uv/bin:uv -- <args>` (or add
+`use_repo(uv, "uv")` and run `bazel run @uv//bin:bin -- <args>`).
 
 (uv-workspace-setup)=
 ##### WORKSPACE
