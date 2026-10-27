@@ -8,7 +8,7 @@ dependencies = [
     "yamllint>=1.28.0",
     "tabulate~=0.9.0",
     "types-tabulate",
-    "pylint~=2.15.5",
+    "pylint~=4.0.9",
     "python-dateutil>=2.8.2",
     "django",
     "django-stubs",
