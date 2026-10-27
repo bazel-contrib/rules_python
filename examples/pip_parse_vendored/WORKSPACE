@@ -14,6 +14,14 @@ python_register_toolchains(
     python_version = "3.14",
 )
 
+load("@rules_python//python/uv:repositories.bzl", "uv_toolchains_manifest")
+
+uv_toolchains_manifest(name = "uv_manifest")
+
+load("@uv_manifest//:dist_manifest.bzl", "uv_register_toolchains")
+
+uv_register_toolchains(name = "uv")
+
 load("@rules_python//python:pip.bzl", "pip_parse")
 
 # This repository isn't referenced, except by our test that asserts the requirements.bzl is updated.
