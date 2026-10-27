@@ -125,20 +125,14 @@ def _test_configure_tool_toolchains_from_source(name):
     )
 
 def _test_configure_tool_toolchains_from_source_impl(env):
-    manifest_label = str(Label("//python/private:artifacts_manifest.json"))
     http_file = mocks.repo()
     toolchain_repo = mocks.repo()
     tools_toolchains_repo = mocks.repo()
-    mctx = mocks.mctx(
-        mock_files = {
-            manifest_label: "# Stub manifest with only comments.\n# Another comment.\n\n",
-        },
-    )
     configure_tool_toolchains(
-        mctx,
         http_file = http_file.rule,
         prebuilt_exe_zip_maker_toolchain_impl_repo = toolchain_repo.rule,
         tools_toolchains_repo = tools_toolchains_repo.rule,
+        artifacts_manifest_json = "\n",
     )
     env.expect.that_collection(http_file.calls).contains_exactly([])
     env.expect.that_collection(toolchain_repo.calls).contains_exactly([])
@@ -164,7 +158,6 @@ def _test_configure_tool_toolchains_prebuilt(name):
     )
 
 def _test_configure_tool_toolchains_prebuilt_impl(env):
-    manifest_label = str(Label("//python/private:artifacts_manifest.json"))
     manifest_json = json.encode({
         "artifacts": {
             "exe_zip_maker": [
@@ -192,12 +185,11 @@ def _test_configure_tool_toolchains_prebuilt_impl(env):
     http_file = mocks.repo()
     toolchain_repo = mocks.repo()
     tools_toolchains_repo = mocks.repo()
-    mctx = mocks.mctx(mock_files = {manifest_label: manifest_json})
     configure_tool_toolchains(
-        mctx,
         http_file = http_file.rule,
         prebuilt_exe_zip_maker_toolchain_impl_repo = toolchain_repo.rule,
         tools_toolchains_repo = tools_toolchains_repo.rule,
+        artifacts_manifest_json = manifest_json,
     )
     env.expect.that_collection(http_file.calls).contains_exactly([
         {

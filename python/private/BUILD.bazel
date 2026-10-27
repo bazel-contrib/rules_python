@@ -252,6 +252,11 @@ py_library(
 )
 
 bzl_library(
+    name = "artifacts_manifest",
+    srcs = ["artifacts_manifest.bzl"],
+)
+
+bzl_library(
     name = "attr_builders",
     srcs = ["attr_builders.bzl"],
     deps = [

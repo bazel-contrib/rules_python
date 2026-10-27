@@ -20,7 +20,7 @@ def test_generate_artifacts_manifest(tmp_path: Path):
 
     artifacts_dir = tmp_path / "release-artifacts"
     artifacts_dir.mkdir(parents=True)
-    manifest_file = tmp_path / "artifacts_manifest.json"
+    manifest_file = tmp_path / "artifacts_manifest.bzl"
 
     linux_bin = artifacts_dir / "exe_zip_maker-x86_64-unknown-linux-gnu"
     linux_bin.write_bytes(b"linux-binary-contents")
@@ -45,7 +45,10 @@ def test_generate_artifacts_manifest(tmp_path: Path):
         check=True,
     )
 
-    manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
+    manifest_bzl = manifest_file.read_text(encoding="utf-8")
+    _, marker, manifest_json = manifest_bzl.partition('ARTIFACTS_MANIFEST_JSON = """')
+    assert marker
+    manifest = json.loads(manifest_json.removesuffix('"""\n'))
     base_url = "https://github.com/bazel-contrib/rules_python/releases/download/2.4.0"
     assert manifest == {
         "artifacts": {
@@ -93,8 +96,8 @@ def test_create_archive_and_notes_with_manifest(tmp_path: Path):
     repo_dir.mkdir()
     shutil.copy2(module_bazel, repo_dir / "MODULE.bazel")
     (repo_dir / "python/private").mkdir(parents=True)
-    (repo_dir / "python/private/artifacts_manifest.json").write_text(
-        "# stub\n", encoding="utf-8"
+    (repo_dir / "python/private/artifacts_manifest.bzl").write_text(
+        'ARTIFACTS_MANIFEST_JSON = ""\n', encoding="utf-8"
     )
     (repo_dir / "README.md").write_text("# rules_python\n", encoding="utf-8")
 
@@ -114,7 +117,7 @@ def test_create_archive_and_notes_with_manifest(tmp_path: Path):
             "git",
             "add",
             "MODULE.bazel",
-            "python/private/artifacts_manifest.json",
+            "python/private/artifacts_manifest.bzl",
             "README.md",
         ],
         cwd=repo_dir,
@@ -128,10 +131,8 @@ def test_create_archive_and_notes_with_manifest(tmp_path: Path):
         check=True,
     )
 
-    manifest_content = '{"artifacts": {"exe_zip_maker": []}}\n'
-    (repo_dir / "artifacts_manifest.json").write_text(
-        manifest_content, encoding="utf-8"
-    )
+    manifest_content = 'ARTIFACTS_MANIFEST_JSON = """{"artifacts": {}}"""\n'
+    (repo_dir / "artifacts_manifest.bzl").write_text(manifest_content, encoding="utf-8")
 
     subprocess.run(
         [str(archive_script), "2.4.0"],
@@ -146,12 +147,11 @@ def test_create_archive_and_notes_with_manifest(tmp_path: Path):
         names = tar.getnames()
         assert names.count("rules_python-2.4.0/MODULE.bazel") == 1
         assert (
-            names.count("rules_python-2.4.0/python/private/artifacts_manifest.json")
-            == 1
+            names.count("rules_python-2.4.0/python/private/artifacts_manifest.bzl") == 1
         )
 
         manifest_member = tar.extractfile(
-            "rules_python-2.4.0/python/private/artifacts_manifest.json"
+            "rules_python-2.4.0/python/private/artifacts_manifest.bzl"
         )
         assert manifest_member is not None
         archived_manifest = manifest_member.read().decode("utf-8")

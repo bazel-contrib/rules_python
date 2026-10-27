@@ -58,6 +58,7 @@ bzl_library(
     name = "repo",
     srcs = ["repo.bzl"],
     deps = [
+        "//python/private:artifacts_manifest",
         "//python/private:bazel_tools",
         "//python/private:text_util",
         "//python/private:toolchain_types",

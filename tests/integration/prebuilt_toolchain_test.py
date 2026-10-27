@@ -34,7 +34,7 @@ class PrebuiltToolchainTest(runner.TestCase):
 
         # Simulate a release archive where tool dependencies (such as
         # rules_rust) are dev-only and prebuilt toolchains are configured via
-        # artifacts_manifest.json.
+        # artifacts_manifest.bzl.
         module_bazel = self.rules_python_dir / "MODULE.bazel"
         module_content = module_bazel.read_text(encoding="utf-8")
         self.assertIn("\nTOOL_DEPS_DEV_ONLY = False\n", module_content)
@@ -66,9 +66,9 @@ class PrebuiltToolchainTest(runner.TestCase):
                 ],
             },
         }
-        manifest_path = self.rules_python_dir / "python/private/artifacts_manifest.json"
+        manifest_path = self.rules_python_dir / "python/private/artifacts_manifest.bzl"
         manifest_path.write_text(
-            json.dumps(manifest, indent=2) + "\n",
+            f'ARTIFACTS_MANIFEST_JSON = """{json.dumps(manifest)}"""\n',
             encoding="utf-8",
         )
 

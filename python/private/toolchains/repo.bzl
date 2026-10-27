@@ -3,10 +3,10 @@ toolchains.
 """
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
+load("//python/private:artifacts_manifest.bzl", "ARTIFACTS_MANIFEST_JSON")
 load("//python/private:text_util.bzl", "render")
 load("//python/private:toolchain_types.bzl", "EXE_ZIP_MAKER_TOOLCHAIN_TYPE")
 
-_ARTIFACTS_MANIFEST_LABEL = Label("//python/private:artifacts_manifest.json")
 _IS_RUST_EXE_ZIP_MAKER_ENABLED = (
     "@rules_python//python/private/toolchains:is_rust_exe_zip_maker_enabled"
 )
@@ -110,38 +110,34 @@ Mapping from string index to exec_compatible_with constraint labels.
 
 # Called by _config_impl in //python/extensions:config.bzl.
 def configure_tool_toolchains(
-        mctx,
         http_file = http_file,
         prebuilt_exe_zip_maker_toolchain_impl_repo = (
             prebuilt_exe_zip_maker_toolchain_impl_repo
         ),
-        tools_toolchains_repo = tools_toolchains_repo):
+        tools_toolchains_repo = tools_toolchains_repo,
+        artifacts_manifest_json = ARTIFACTS_MANIFEST_JSON):
     """Configures prebuilt or from-source toolchains in `@rules_python_tools`.
 
     Called by the `config` module extension (`//python/extensions:config.bzl`).
-    If `//python/private:artifacts_manifest.json` contains non-comment JSON
-    content (as in release archives), creates an `http_file` repo and a
+    If `ARTIFACTS_MANIFEST_JSON` from `//python/private:artifacts_manifest.bzl`
+    is non-empty (as in release archives), creates an `http_file` repo and a
     `prebuilt_exe_zip_maker_toolchain_impl_repo` repo for each entry in the
     manifest, and registers `toolchain()` declarations in
     `@rules_python_tools//toolchains`.
-    Otherwise (when the manifest file contains only `#`-comments, as in git
-    checkouts and source builds), registers the from-source `toolchain()`
-    declaration in `@rules_python_tools//toolchains`.
+    Otherwise (as in git checkouts and source builds), registers the
+    from-source `toolchain()` declaration in `@rules_python_tools//toolchains`.
 
     Args:
-        mctx: The `module_ctx` object.
         http_file: Repository rule callable for downloading prebuilt tool
             binaries (injectable for testing).
         prebuilt_exe_zip_maker_toolchain_impl_repo: Repository rule callable for
             creating `py_exe_zip_maker_toolchain` repos (injectable for testing).
         tools_toolchains_repo: Repository rule callable for creating
             `@rules_python_tools` (injectable for testing).
+        artifacts_manifest_json: The JSON manifest of prebuilt tool binaries,
+            or empty to build from source (injectable for testing).
     """
-    manifest_content = "\n".join([
-        line
-        for line in mctx.read(_ARTIFACTS_MANIFEST_LABEL).splitlines()
-        if not line.strip().startswith("#")
-    ]).strip()
+    manifest_content = artifacts_manifest_json.strip()
     toolchain_names = []
     toolchain_impls = []
     exec_compatible_with = {}

@@ -88,7 +88,7 @@ def _config_impl(module_ctx):
             if mod.is_root:
                 explicit_init_py_modules[""] = str(tag.default)
 
-    configure_tool_toolchains(module_ctx)
+    configure_tool_toolchains()
     internal_config_repo(
         name = "rules_python_internal",
         transition_setting_generators = transition_setting_generators,

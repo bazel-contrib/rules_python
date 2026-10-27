@@ -4,7 +4,7 @@
 #   see dev/release_artifacts/build.sh. Linux x86_64 runners cross-compile the
 #   files for other Linux CPUs. macOS and Windows files need those OSes' SDKs,
 #   so they're built on those OSes.
-# - `SHA256SUMS` and `artifacts_manifest.json` for the built platform binaries.
+# - `SHA256SUMS` and `artifacts_manifest.bzl` for the built platform binaries.
 # - The release source archive (`rules_python-<ref>.tar.gz`) and
 #   `release_notes.txt`.
 # - The `bazel_runfiles` wheel (`//python/runfiles:wheel.dist`).
@@ -187,14 +187,14 @@ jobs:
           hashFiles('release-artifacts/*') != ''
         run: >-
           dev/release_artifacts/generate_artifacts_manifest.py
-          "$REF" release-artifacts artifacts_manifest.json
+          "$REF" release-artifacts artifacts_manifest.bzl
 
       - name: Upload artifacts manifest
-        if: hashFiles('artifacts_manifest.json') != ''
+        if: hashFiles('artifacts_manifest.bzl') != ''
         uses: actions/upload-artifact@v7
         with:
           name: release-manifest
-          path: artifacts_manifest.json
+          path: artifacts_manifest.bzl
           if-no-files-found: error
 
       - name: Create release archive and notes

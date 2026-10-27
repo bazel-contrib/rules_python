@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generates an artifacts_manifest.json file for built release artifacts."""
+"""Generates an artifacts_manifest.bzl file for built release artifacts."""
 
 from __future__ import annotations
 
@@ -86,6 +86,19 @@ def generate_manifest(
     return {"artifacts": dict(sorted(artifacts.items()))}
 
 
+def render_bzl(manifest: dict[str, dict[str, list[ArtifactEntry]]]) -> str:
+    manifest_json = json.dumps(manifest, indent=2, sort_keys=True)
+    # Embedded in a Starlark string literal, so it must not end the literal
+    # early or rely on escape sequences.
+    if '"""' in manifest_json or "\\" in manifest_json:
+        raise ValueError("Manifest JSON cannot be embedded in a .bzl string")
+    return (
+        '"""Manifest of prebuilt tool binaries for this release."""\n'
+        "\n"
+        f'ARTIFACTS_MANIFEST_JSON = """\n{manifest_json}\n"""\n'
+    )
+
+
 def _main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("tag", help="Release tag name (e.g. 2.4.0).")
@@ -97,7 +110,7 @@ def _main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "output_file",
         type=Path,
-        help="Path to the artifacts_manifest.json file to write.",
+        help="Path to the artifacts_manifest.bzl file to write.",
     )
     parser.add_argument(
         "repo",
@@ -108,14 +121,12 @@ def _main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         manifest = generate_manifest(args.tag, args.artifacts_dir, args.repo)
+        manifest_bzl = render_bzl(manifest)
     except ValueError as err:
         print(f"::error::{err}")
         return 1
     args.output_file.parent.mkdir(parents=True, exist_ok=True)
-    args.output_file.write_text(
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    args.output_file.write_text(manifest_bzl, encoding="utf-8")
     return 0
 
 
