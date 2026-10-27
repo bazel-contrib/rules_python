@@ -92,9 +92,10 @@ uv = use_extension(
 uv.configure(version = "0.13.5")
 ```
 
-Without `version`, the default version of `rules_python` is used. See
-{obj}`uv.configure` for using a mirror, explicit URLs or extra platforms.
+Without `version`, the default version specified by `rules_python` is used.
+See {obj}`uv.configure` for using a mirror, explicit URLs or extra platforms.
 
+(uv-workspace-setup)=
 ##### WORKSPACE
 
 The setup has two steps: {obj}`uv_toolchains_manifest` fetches the release
@@ -117,9 +118,69 @@ uv_register_toolchains(name = "uv")
 
 Any released `uv` version can be fetched this way; the download URLs and
 checksums are read from the release manifests. The `configure` argument of
-{obj}`uv_register_toolchains` takes the same entries as {obj}`uv.configure`;
-see its documentation for using a mirror, explicit URLs without a manifest,
-extra platforms, or combining its toolchains with ones you define yourself.
+{obj}`uv_register_toolchains` takes the same entries as {obj}`uv.configure`.
+
+Bazel prefers toolchains in registration order, so to replace one of the
+registered toolchains with your own, register yours before calling
+`uv_register_toolchains()` and remove ours; to add one without configuring it
+here, register yours after:
+
+```starlark
+uv_toolchains_manifest(
+    name = "uv_manifest",
+    versions = ["0.13.5", "0.6.5"],
+)
+
+load("@uv_manifest//:dist_manifest.bzl", "uv_register_toolchains")
+
+# Preferred over the toolchains registered below.
+register_toolchains("//tools/uv:patched_linux_toolchain")
+
+uv_register_toolchains(
+    name = "uv",
+    configure = [
+        # Replaced by the toolchain registered above.
+        {"platform": "x86_64-unknown-linux-gnu"},
+        # An additional platform for 0.13.5.
+        {
+            "platform": "aarch64-unknown-linux-musl",
+            "compatible_with": [
+                "@platforms//os:linux",
+                "@platforms//cpu:aarch64",
+            ],
+            "target_settings": [Label("//tools/uv:is_musl")],
+        },
+        # The older version with the default platforms. Its toolchains
+        # come after those of 0.13.5 in `@uv//:all`, so they are only
+        # used where no earlier toolchain matches.
+        {"version": "0.6.5"},
+    ],
+)
+
+# Used only when none of the toolchains above match.
+register_toolchains("//tools/uv:freebsd_toolchain")
+```
+
+Using a manifest is optional. Without {obj}`uv_toolchains_manifest`, load
+{obj}`uv_register_toolchains` directly from
+`@rules_python//python/uv:repositories.bzl` and specify `urls` for every
+platform:
+
+```starlark
+load("@rules_python//python/uv:repositories.bzl", "uv_register_toolchains")
+
+uv_register_toolchains(
+    name = "uv",
+    version = "0.13.5",
+    configure = [
+        {
+            "platform": "x86_64-unknown-linux-gnu",
+            "urls": ["https://mirror.example.com/uv/uv-0.13.5-x86_64-unknown-linux-gnu.tar.gz"],
+            "sha256": "...",
+        },
+    ],
+)
+```
 
 #### Example usage
 

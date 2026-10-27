@@ -1,7 +1,4 @@
-"""Create and register `uv` toolchains from a WORKSPACE file.
-
-EXPERIMENTAL: This is experimental and may be removed without notice.
-"""
+"""Create and register `uv` toolchains from a WORKSPACE file."""
 
 load("@bazel_skylib//lib:types.bzl", "types")
 load(":toolchain_types.bzl", "UV_TOOLCHAIN_TYPE")
@@ -142,108 +139,12 @@ def uv_register_toolchains(
     This is the WORKSPACE equivalent of the {obj}`uv` module extension. It
     creates one download repository per `uv` version and platform, and the
     toolchain hub repository `name` with a `toolchain` for each of them, which
-    it registers as `@{name}//:all`; {obj}`lock` can then be used.
+    it registers as `@{name}//:all`; {obj}`lock` can then be used. See the
+    {ref}`WORKSPACE setup guide <uv-workspace-setup>` for usage examples.
 
-    The download URLs and checksums normally come from the release manifests
-    fetched by {obj}`uv_toolchains_manifest`, which binds them to the
-    `uv_register_toolchains` in the `dist_manifest.bzl` it generates:
-
-    ```starlark
-    load(
-        "@rules_python//python:repositories.bzl",
-        "py_repositories",
-        "python_register_toolchains",
-    )
-
-    py_repositories()
-
-    python_register_toolchains(
-        name = "python_3_13",
-        python_version = "3.13",
-    )
-
-    load("@rules_python//python/uv:repositories.bzl", "uv_toolchains_manifest")
-
-    uv_toolchains_manifest(name = "uv_manifest")
-
-    load("@uv_manifest//:dist_manifest.bzl", "uv_register_toolchains")
-
-    uv_register_toolchains(name = "uv")
-    ```
-
-    Platforms without an archive in a manifest get no toolchain, as under
-    bzlmod. The `configure` entries are dicts with the attributes of
-    {obj}`uv.configure`, applied in order with the same rules:
-
-    - an entry without `version` applies to the version of the previous
-      entry, or to `version`;
-    - `platform` with `compatible_with` or `target_settings` adds or
-      replaces a platform;
-    - `platform` with `urls` (and `sha256`) downloads the archive from there
-      instead of the manifest; every platform of that version then needs
-      `urls`, and no manifest is needed for it;
-    - `platform` alone removes the platform.
-
-    Bazel prefers toolchains in registration order, so to replace one of the
-    registered toolchains with your own, register yours before calling
-    `uv_register_toolchains()` and remove ours; to add one without
-    configuring it here, register yours after:
-
-    ```starlark
-    uv_toolchains_manifest(
-        name = "uv_manifest",
-        versions = ["0.13.5", "0.6.5"],
-    )
-
-    load("@uv_manifest//:dist_manifest.bzl", "uv_register_toolchains")
-
-    # Preferred over the toolchains registered below.
-    register_toolchains("//tools/uv:patched_linux_toolchain")
-
-    uv_register_toolchains(
-        name = "uv",
-        configure = [
-            # Replaced by the toolchain registered above.
-            {"platform": "x86_64-unknown-linux-gnu"},
-            # An additional platform for 0.13.5.
-            {
-                "platform": "aarch64-unknown-linux-musl",
-                "compatible_with": [
-                    "@platforms//os:linux",
-                    "@platforms//cpu:aarch64",
-                ],
-                "target_settings": [Label("//tools/uv:is_musl")],
-            },
-            # The older version with the default platforms. Its toolchains
-            # come after those of 0.13.5 in `@uv//:all`, so they are only
-            # used where no earlier toolchain matches.
-            {"version": "0.6.5"},
-        ],
-    )
-
-    # Used only when none of the toolchains above match.
-    register_toolchains("//tools/uv:freebsd_toolchain")
-    ```
-
-    Without a manifest, load `uv_register_toolchains` from
-    `@rules_python//python/uv:repositories.bzl` and give `urls` for every
-    platform:
-
-    ```starlark
-    load("@rules_python//python/uv:repositories.bzl", "uv_register_toolchains")
-
-    uv_register_toolchains(
-        name = "uv",
-        version = "0.13.5",
-        configure = [
-            {
-                "platform": "x86_64-unknown-linux-gnu",
-                "urls": ["https://mirror.example.com/uv/uv-0.13.5-x86_64-unknown-linux-gnu.tar.gz"],
-                "sha256": "...",
-            },
-        ],
-    )
-    ```
+    Platforms without an archive in a manifest get no toolchain. The
+    `configure` entries are dicts with the attributes of {obj}`uv.configure`;
+    refer to the {obj}`uv.configure` documentation for how entries are applied.
 
     :::{note}
     A Python toolchain must be registered as well, e.g. via

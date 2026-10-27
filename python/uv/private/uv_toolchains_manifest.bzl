@@ -1,7 +1,4 @@
-"""Fetch `uv` release manifests from a WORKSPACE file.
-
-EXPERIMENTAL: This is experimental and may be removed without notice.
-"""
+"""Fetch `uv` release manifests from a WORKSPACE file."""
 
 load("//python/private:auth.bzl", "AUTH_ATTRS", "get_auth")
 load("//python/private:text_util.bzl", "render")
