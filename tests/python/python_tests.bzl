@@ -883,6 +883,15 @@ def _test_single_version_override_errors(env):
             ],
             want_error = "Only a single 'python.single_version_override' can be present for '3.12.4'",
         ),
+        struct(
+            overrides = [
+                python_ext.single_version_override(
+                    distutils_content = "foo",
+                    python_version = "3.13.99",
+                ),
+            ],
+            want_error = "When introducing a new python_version '3.13.99', 'sha256' and 'urls' must be specified",
+        ),
     ]:
         errors = []
         parse_modules(

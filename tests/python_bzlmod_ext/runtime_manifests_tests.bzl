@@ -167,6 +167,71 @@ def _test_dynamic_manifest_files_impl(env, target):
 
 _tests.append(_test_dynamic_manifest_files)
 
+def _test_dynamic_manifest_files_default_base_urls(name):
+    rt_util.helper_target(
+        native.filegroup,
+        name = name + "_subject",
+    )
+    analysis_test(
+        name = name,
+        target = name + "_subject",
+        impl = _test_dynamic_manifest_files_default_base_urls_impl,
+    )
+
+def _test_dynamic_manifest_files_default_base_urls_impl(env, target):
+    _ = target  # @unused
+
+    root_module = python_ext.module(
+        name = "runtime_manifests",
+        override = [
+            python_ext.override(
+                add_runtime_manifest_files = [
+                    Label("//:SHA256SUMS"),
+                ],
+            ),
+        ],
+        toolchain = [
+            python_ext.toolchain(
+                python_version = "3.13",
+            ),
+        ],
+    )
+
+    mock_mctx = python_ext.mctx(
+        modules = [root_module],
+        mock_files = {
+            str(Label("//:SHA256SUMS")): """
+cba3455e11ee12f8cb085a27e96ae8aa5492e153263e6577ad89213a46646427  cpython-3.13.99+20261026-x86_64-unknown-linux-gnu-install_only.tar.gz
+""",
+        },
+    )
+
+    res = parse_modules(
+        module_ctx = mock_mctx,
+        logger = _mock_logger,
+    )
+
+    tool_versions = res.config.default["tool_versions"]
+    env.expect.that_bool("3.13.99" in tool_versions).equals(True)
+    env.expect.that_str(res.config.minor_mapping["3.13"]).equals("3.13.99")
+
+    version_info = tool_versions["3.13.99"]
+    env.expect.that_dict(version_info).contains_exactly({
+        "sha256": {
+            "x86_64-unknown-linux-gnu": "cba3455e11ee12f8cb085a27e96ae8aa5492e153263e6577ad89213a46646427",
+        },
+        "strip_prefix": {
+            "x86_64-unknown-linux-gnu": "python",
+        },
+        "url": {
+            "x86_64-unknown-linux-gnu": [
+                "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.13.99+20261026-x86_64-unknown-linux-gnu-install_only.tar.gz",
+            ],
+        },
+    })
+
+_tests.append(_test_dynamic_manifest_files_default_base_urls)
+
 def runtime_manifests_test_suite(name):
     test_suite(
         name = name,

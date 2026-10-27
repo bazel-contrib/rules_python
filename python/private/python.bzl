@@ -275,7 +275,8 @@ def _python_impl(module_ctx):
             minor_mapping = py.config.minor_mapping,
             fail_on_err = False,
         )
-        if not full_python_version:
+        if (not full_python_version or
+            full_python_version not in py.config.default["tool_versions"]):
             logger.info(lambda: (
                 "The actual toolchain for python_version '{version}' " +
                 "has not been registered, but was requested, please configure a toolchain " +
@@ -589,6 +590,14 @@ def _process_single_version_overrides(*, tag, _fail = fail, default):
     available_versions = default["tool_versions"]
     kwargs = default.setdefault("kwargs", {})
 
+    if tag.python_version not in available_versions:
+        if not (tag.sha256 and tag.urls):
+            _fail((
+                "When introducing a new python_version '{}', 'sha256' and " +
+                "'urls' must be specified"
+            ).format(tag.python_version))
+            return
+
     if tag.sha256 or tag.urls:
         if not (tag.sha256 and tag.urls):
             _fail("Both `sha256` and `urls` overrides need to be provided together")
@@ -836,7 +845,16 @@ def _populate_from_pbs_manifest(
         if "://" in location:
             urls = [location]
         else:
-            urls = ["{}/{}".format(b_url, location) for b_url in base_download_urls]
+            urls = []
+            for b_url in base_download_urls:
+                if ("/" not in location and
+                    entry.build_version and
+                    b_url in DEFAULT_RELEASE_BASE_URLS):
+                    urls.append(
+                        "{}/{}/{}".format(b_url, entry.build_version, location),
+                    )
+                else:
+                    urls.append("{}/{}".format(b_url, location))
 
         strip_prefix = "python/install" if entry.archive_flavor == "full" else "python"
 
