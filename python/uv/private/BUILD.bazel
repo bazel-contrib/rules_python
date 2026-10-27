@@ -122,7 +122,6 @@ bzl_library(
         ":dist_manifest",
         ":uv_defaults",
         "//python/private:auth",
-        "//python/private:text_util",
     ],
 )
 

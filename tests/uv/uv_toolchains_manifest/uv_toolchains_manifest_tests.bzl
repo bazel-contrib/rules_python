@@ -84,13 +84,17 @@ DIST_MANIFESTS = {
     "0.13.5": {
         "aarch64-apple-darwin": {
             "sha256": "sha256-of-aarch64-apple-darwin",
-            "urls": ["https://mirror.example.com/archives/uv-aarch64-apple-darwin.tar.gz"],
+            "urls": [
+                "https://mirror.example.com/archives/uv-aarch64-apple-darwin.tar.gz"
+            ]
         },
         "x86_64-unknown-linux-gnu": {
             "sha256": "sha256-of-x86_64-unknown-linux-gnu",
-            "urls": ["https://mirror.example.com/archives/uv-x86_64-unknown-linux-gnu.tar.gz"],
-        },
-    },
+            "urls": [
+                "https://mirror.example.com/archives/uv-x86_64-unknown-linux-gnu.tar.gz"
+            ]
+        }
+    }
 }
 """)
     env.expect.that_str(result.content).contains(
