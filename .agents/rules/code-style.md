@@ -1,7 +1,7 @@
 ---
 trigger: glob
 description: Cross-language code style, control flow, and CLI conventions
-globs: "*.py,*.sh,*.cc,*.h,*.go,*.bzl,*.bazel"
+globs: "*.py,*.sh,*.cc,*.h,*.go,*.bzl,*.bazel,*.yaml,*.yml"
 ---
 
 # Code Style Rules
@@ -31,6 +31,9 @@ Order definitions within a file as:
   domain state.
 * Do not write nested comprehensions or comprehensions with multiple `for`
   clauses; use explicit loops.
+* Avoid long or complex inline expressions (e.g. multi-condition ternaries,
+  compound boolean chains, or dense one-liners). Break them into named
+  intermediate variables, prior preparation steps, or explicit statements.
 
 ## CLI & Flags
 * Comment non-obvious flags (`--force`), non-default schemes, subtle arguments

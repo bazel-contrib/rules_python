@@ -65,7 +65,10 @@ globs: ".github/workflows/**,.github/actions/**,.github/dependabot.yml"
 * **Untrusted Git Ref Names (`github.head_ref`, `github.ref_name`)**: Treat
   branch and tag names as untrusted input. Git ref names allow quotes (`'`, `"`)
   and shell metacharacters (`;`, `&`, `|`, `$()`, `` ` ``); reject or guard
-  against quotes and `#` before writing refs to `.bazelrc`.
+  against quotes and `#` before writing refs to `.bazelrc`. Sanitize the value
+  in a dedicated prior step (e.g. stripping characters outside
+  `[a-zA-Z0-9._/-]`) and output to `$GITHUB_OUTPUT` rather than writing complex
+  inline expression guards.
 * **CLI Argument & Option-Flag Injection**: Validate untrusted inputs (such as
   slash-command arguments from issue or PR comments) against strict allowlist
   regexes before writing to `$GITHUB_OUTPUT` or passing to tools. Separate
@@ -74,7 +77,9 @@ globs: ".github/workflows/**,.github/actions/**,.github/dependabot.yml"
 * **Authorize Before Mutating State**: In comment- or event-triggered workflows,
   verify actor authorization (`author_association` or user allowlist) before
   writing to `$GITHUB_OUTPUT` or `$GITHUB_ENV`, posting reactions, or triggering
-  failure-reporting jobs.
+  failure-reporting jobs. In failure-reporting jobs, gate on
+  `needs.parse_step.result == 'success' && contains(needs.*.result, 'failure')`
+  without adding redundant `outputs.command != ''` predicates.
 * **Single-Line `$GITHUB_OUTPUT` and `$GITHUB_ENV` Writes**: Reject `\n` and
   `\r` in keys and values before writing `key=value` lines to `$GITHUB_OUTPUT`
   or `$GITHUB_ENV`. In line-anchored regexes over comment or PR bodies, match
@@ -82,8 +87,8 @@ globs: ".github/workflows/**,.github/actions/**,.github/dependabot.yml"
   rather than `\s` or `.`.
 * **Suppress Untrusted Stdout in Privileged Jobs**: Never echo raw PR bodies,
   titles, or comment bodies to stdout (pass `--quiet` to `grep`, and use
-  `printf '%s\n'` instead of `echo`), preventing `::...::` workflow command
-  injection.
+  `printf '%s\n'` instead of `echo` to avoid option-flag parsing and escape
+  expansion), preventing `::...::` workflow command injection.
 
 ## Workflow Scripts & Testing
 * **Separate Script Files (No Inline Scripts)**: Factor non-trivial scripts
