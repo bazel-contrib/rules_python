@@ -11,6 +11,9 @@ globs: "docs/**,RELEASING.md"
 * Use hyphens (`-`) in file names instead of underscores (`_`).
 * Document user-visible behavior, not internal workarounds or implementation
   details.
+* **API Docstrings vs. Narrative Docs**: Keep `.bzl` docstrings brief (purpose
+  and arguments). Put setup guides and multi-scenario examples in `docs/`, and
+  link to them with `{ref}` or `{obj}` instead of repeating rules.
 * **How-to Guides (`docs/howto/`)**:
   * Prefer adding sections to an existing topical guide (e.g.
     `docs/howto/build-a-wheel.md`) over creating a separate granular file.

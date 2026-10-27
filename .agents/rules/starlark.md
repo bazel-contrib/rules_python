@@ -72,6 +72,9 @@ globs: "*.bzl,BUILD,BUILD.bazel,*.bazel"
   render `BUILD.bazel` in the rule implementation.
 * **Single-Value Templates**: For generated file templates with one interpolated
   value, use a top-level string and `.format()`.
+* **Data Constants in Generated `.bzl` Files**: Use `json.encode_indent()` to
+  write JSON-compatible data (`dict`, `list`, `str`, `int` without `bool` or
+  `None`) as `.bzl` constants instead of custom formatting helpers.
 * **Reuse `http_file`**: Use `http_file` from
   `@bazel_tools//tools/build_defs/repo:http.bzl` for single-file downloads. Omit
   `downloaded_file_path` unless required and reference `@<repo>//file`.
@@ -124,6 +127,9 @@ globs: "*.bzl,BUILD,BUILD.bazel,*.bazel"
   instead of passing them through `**kwargs`. Document `Args:` and `Returns:`.
 * **Docstring Formatting Invariants**: Use triple-quoted strings for multi-line
   docstrings without trailing backslashes (`\`) for line continuation.
+* **Concise API Docstrings**: Keep docstrings brief: state purpose and
+  arguments, link to shared symbols (`{obj}`) or guides (`{ref}`) instead of
+  repeating rules, and put extended examples in `docs/`.
 * **Workaround Comments**: Comment non-obvious workarounds with the intent, why
   the direct approach fails, and why the workaround works.
 * **No Bazel Copyright Headers**: Do not add Bazel copyright headers to new or
