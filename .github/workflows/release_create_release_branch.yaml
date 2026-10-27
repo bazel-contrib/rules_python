@@ -38,11 +38,12 @@ jobs:
       - name: Attempt Branch Creation
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE: ${{ inputs.issue }}
         run: |
           bazel run \
             --//python/config_settings:py_pbs_distribution=install_only_stripped \
             //dev/release -- \
-            create-release-branch --issue "${{ inputs.issue }}" --remote origin
+            create-release-branch "--issue=$ISSUE" --remote origin
 
   # A no-op job that always runs to prevent "no jobs ran" failures
   # when the main job is skipped.

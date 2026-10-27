@@ -64,9 +64,10 @@ jobs:
           bazel run \
             --//python/config_settings:py_pbs_distribution=install_only_stripped \
             //dev/release -- on-pr-merged \
-            "$PR_NUMBER" \
             --remote origin \
-            --no-dry-run
+            --no-dry-run \
+            -- \
+            "$PR_NUMBER"
 
   call_complete_sync_changelog:
     needs: parse_pr

@@ -26,9 +26,10 @@ jobs:
       - name: Setup Bazel
         uses: ./.github/actions/setup-bazel
       - env:
+          TAG_NAME: ${{ inputs.tag_name || github.ref_name }}
           # This special value tells pypi that the user identity is supplied within the token
           TWINE_USERNAME: __token__
           # Note, the PYPI_API_TOKEN is for the rules-python pypi user, added by @rickylev on
           # https://github.com/bazel-contrib/rules_python/settings/secrets/actions
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: bazel run --stamp --embed_label=${{ inputs.tag_name || github.ref_name }} //python/runfiles:wheel.publish
+        run: bazel run --stamp "--embed_label=$TAG_NAME" //python/runfiles:wheel.publish

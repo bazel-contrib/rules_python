@@ -128,9 +128,13 @@ jobs:
             || '' }}
 
       - name: Build runfiles wheel
+        env:
+          INPUT_REF: ${{ inputs.ref }}
+        # ${INPUT_REF:+...} expands to the --stamp and --embed_label flags only
+        # when INPUT_REF is non-empty (release builds, not pull_request builds).
         run: >-
           bazel build
-          ${{ inputs.ref && format('--stamp --embed_label={0}', inputs.ref) || '' }}
+          ${INPUT_REF:+--stamp "--embed_label=$INPUT_REF"}
           //python/runfiles:wheel.dist
           //python/runfiles:wheel.publish
           //tools/publish:twine
@@ -194,7 +198,9 @@ jobs:
           if-no-files-found: error
 
       - name: Create release archive and notes
-        run: .github/workflows/create_archive_and_notes.sh ${{ inputs.ref }}
+        env:
+          INPUT_REF: ${{ inputs.ref }}
+        run: .github/workflows/create_archive_and_notes.sh "$INPUT_REF"
 
       - name: Upload release archive and notes
         uses: actions/upload-artifact@v7

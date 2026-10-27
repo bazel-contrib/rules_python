@@ -14,6 +14,14 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Sanitize branch name
+      id: sanitize_branch
+      shell: bash
+      env:
+        RAW_BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+      # ${var//[^...]/} strips characters outside the safe ref set [a-zA-Z0-9._/-].
+      run: printf 'branch_name=%s\n' "${RAW_BRANCH_NAME//[^a-zA-Z0-9._\/-]/}" >> "$GITHUB_OUTPUT"
+
     - name: Setup Bazel
       uses: bazel-contrib/setup-bazel@0.19.1
       with:
@@ -40,7 +48,7 @@ runs:
           build --build_metadata=ACTOR=${{ github.actor }}
           build --build_metadata=COMMIT_SHA=${{ github.event.pull_request.head.sha || github.sha }}
           ${{ github.event.pull_request.number && format('build --build_metadata=PR_NUMBER={0}', github.event.pull_request.number) || '' }}
-          ${{ (github.head_ref || github.ref_name) && format('build --build_metadata=BRANCH_NAME={0}', github.head_ref || github.ref_name) || '' }}
+          build --build_metadata=BRANCH_NAME=${{ steps.sanitize_branch.outputs.branch_name }}
           build --build_metadata="BUILDBUDDY_LINKS=[GHA Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
 
     # setup-bazel configures .bazelrc and restores caches. Download Bazelisk
@@ -52,16 +60,19 @@ runs:
       shell: bash
       run: "${GITHUB_ACTION_PATH}/download_bazel.py"
 
-    # Use github-script to write the key directly to user.bazelrc without
-    # passing it via environment variables or CLI args, keeping it out of
-    # process tables and child environments.
+    # Use github-script with step-scoped env vars to write the key directly to
+    # user.bazelrc without passing it via CLI args, job-wide environment
+    # variables, or JS template interpolations.
     - name: Write secret to user.bazelrc
       if: ${{ inputs.buildbuddy_api_key != '' }}
       uses: actions/github-script@v9
+      env:
+        BUILDBUDDY_API_KEY: ${{ inputs.buildbuddy_api_key }}
+        BUILDBUDDY_CONFIG: ${{ inputs.buildbuddy_config }}
       with:
         script: |
           const fs = require('fs');
           fs.appendFileSync(
             'user.bazelrc',
-            `common:${{ inputs.buildbuddy_config }} --remote_header=x-buildbuddy-api-key=${{ inputs.buildbuddy_api_key }}\n`,
+            `common:${process.env.BUILDBUDDY_CONFIG} --remote_header=x-buildbuddy-api-key=${process.env.BUILDBUDDY_API_KEY}\n`,
           );
