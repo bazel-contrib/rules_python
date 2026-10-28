@@ -9,7 +9,6 @@ class PythonVersionScopeTest(runner.TestCase):
     def test_project_scope(self):
         self.run_bazel(
             "build",
-            "--experimental_enable_scl_dialect",
             "--@rules_python//python/config_settings:python_version=3.10",
             "//bindings:check311",
             "//bindings:check312",
@@ -17,7 +16,6 @@ class PythonVersionScopeTest(runner.TestCase):
 
         result = self.run_bazel(
             "cquery",
-            "--experimental_enable_scl_dialect",
             "--@rules_python//python/config_settings:python_version=3.10",
             'filter("native:core", deps(set(//bindings:check311 //bindings:check312)))',
             "--output=label",
@@ -45,7 +43,6 @@ class PythonVersionScopeTest(runner.TestCase):
             )
             self.run_bazel(
                 "build",
-                "--experimental_enable_scl_dialect",
                 "--@rules_python//python/config_settings:python_version=3.10",
                 "//bindings:check311",
                 "//bindings:check312",
@@ -81,7 +78,6 @@ class PythonVersionScopeTest(runner.TestCase):
             )
             self.run_bazel(
                 "build",
-                "--experimental_enable_scl_dialect",
                 "--@rules_python//python/config_settings:python_version=3.10",
                 "//bindings:check311",
                 "//bindings:check312",
