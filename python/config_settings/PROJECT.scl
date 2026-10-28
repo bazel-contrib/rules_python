@@ -1,3 +1,8 @@
-"""Delegate version-flag ownership to the consuming root module."""
+"""Delegate version-flag ownership to the consuming root module.
+
+Bazel looks for project ownership starting at the scoped flag's package.
+Its built-in `actual` project alias forwards that lookup to the consumer's root
+PROJECT.scl, keeping the consumer's ownership policy out of this ruleset.
+"""
 
 project = {"actual": "//:PROJECT.scl"}
