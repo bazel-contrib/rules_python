@@ -377,7 +377,11 @@ def _set_get_index_urls(self, mctx, pip_attr):
         pip_attr.experimental_index_url,
         pip_attr.envsubst,
         mctx.getenv,
-    ) or self._config.index_url
+    ) or envsubst(
+        self._config.index_url,
+        pip_attr.envsubst,
+        mctx.getenv,
+    )
     default_extra_index_urls = pip_attr.experimental_extra_index_urls or []
 
     if not default_index_url:
