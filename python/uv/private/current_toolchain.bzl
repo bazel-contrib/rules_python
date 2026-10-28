@@ -54,6 +54,7 @@ def _current_toolchain_impl(ctx):
     )
 
     template_variable_info = platform_common.TemplateVariableInfo({
+        "UV": symlink_uv_executable.path,
         "UV_BIN": symlink_uv_executable.path,
     })
 

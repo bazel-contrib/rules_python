@@ -3,7 +3,7 @@ load("//python:py_test.bzl", "py_test")
 genrule(
     name = "uv_help",
     outs = ["uv_help.txt"],
-    cmd = "$(UV_BIN) --python-fetch manual --help >$@",
+    cmd = 'test "$(UV)" = "$(UV_BIN)" && $(UV) --python-fetch manual --help >$@',
     toolchains = ["//python/uv:current_toolchain"],
 )
 
