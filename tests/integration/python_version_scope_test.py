@@ -41,11 +41,13 @@ class PythonVersionScopeTest(runner.TestCase):
                     'native_version = "3.10"', 'native_version = "inherit"'
                 )
             )
+            # Building the flag's own package must not need a root PROJECT.scl.
             self.run_bazel(
                 "build",
                 "--@rules_python//python/config_settings:python_version=3.10",
                 "//bindings:check311",
                 "//bindings:check312",
+                "@rules_python//python/config_settings:python_version",
             )
         finally:
             module.write_text(original_module)
