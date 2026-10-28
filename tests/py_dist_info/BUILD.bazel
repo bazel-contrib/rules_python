@@ -1,0 +1,46 @@
+load("//python:packaging.bzl", "py_wheel")
+load("//python:py_dist_info.bzl", "py_dist_info")
+load("//python:py_library.bzl", "py_library")
+load("//python:py_test.bzl", "py_test")
+load(":py_dist_info_tests.bzl", "py_dist_info_test_suite")
+
+package(default_visibility = ["//visibility:private"])
+
+licenses(["notice"])
+
+py_dist_info_test_suite(name = "py_dist_info_tests")
+
+py_dist_info(
+    name = "sample_pkg_dist_info",
+    distribution = "sample_pkg",
+    entry_points = {
+        "sample_pkg.plugins": [
+            "default_plugin = tests.py_dist_info.sample_pkg:run_plugin",
+        ],
+    },
+    summary = "Sample package for testing py_dist_info",
+    version = "3.4.5",
+)
+
+py_library(
+    name = "sample_pkg",
+    srcs = ["sample_pkg.py"],
+    data = [":sample_pkg_dist_info"],
+)
+
+py_wheel(
+    name = "sample_pkg_wheel",
+    dist_info = ":sample_pkg_dist_info",
+    deps = [":sample_pkg"],
+)
+
+py_test(
+    name = "py_dist_info_runtime_test",
+    size = "small",
+    srcs = ["py_dist_info_runtime_test.py"],
+    data = [":sample_pkg_wheel"],
+    deps = [
+        ":sample_pkg",
+        "//python/runfiles",
+    ],
+)

@@ -17,10 +17,17 @@ load("@rules_testing//lib:analysis_test.bzl", "analysis_test", "test_suite")
 load("@rules_testing//lib:truth.bzl", "matching", "subjects")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
 load("//python:packaging.bzl", "py_wheel")
+load("//python:py_dist_info.bzl", "py_dist_info")
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 
 _basic_tests = []
 _tests = []
+
+def _dist_info_target_subject(target):
+    return target.attr(
+        "dist_info",
+        factory = subjects.target,
+    )
 
 def _test_metadata(name):
     rt_util.helper_target(
@@ -31,13 +38,17 @@ def _test_metadata(name):
     )
     analysis_test(
         name = name,
+        collect_actions_recursively = True,
         impl = _test_metadata_impl,
         target = name + "_subject",
     )
 
 def _test_metadata_impl(env, target):
-    action = env.expect.that_target(target).action_generating(
-        "{package}/{name}.metadata.txt",
+    dist_info_target = _dist_info_target_subject(
+        env.expect.that_target(target),
+    )
+    action = dist_info_target.action_generating(
+        "{package}/{name}.dist_info.metadata.txt",
     )
     action.content().split("\n").contains_exactly([
         env.expect.meta.format_str("Name: mydist_{test_name}"),
@@ -130,13 +141,17 @@ def _test_content_type_from_attr(name):
     )
     analysis_test(
         name = name,
+        collect_actions_recursively = True,
         impl = _test_content_type_from_attr_impl,
         target = name + "_subject",
     )
 
 def _test_content_type_from_attr_impl(env, target):
-    action = env.expect.that_target(target).action_generating(
-        "{package}/{name}.metadata.txt",
+    dist_info_target = _dist_info_target_subject(
+        env.expect.that_target(target),
+    )
+    action = dist_info_target.action_generating(
+        "{package}/{name}.dist_info.metadata.txt",
     )
     action.content().split("\n").contains(
         "Description-Content-Type: text/x-rst",
@@ -154,13 +169,17 @@ def _test_content_type_from_description(name):
     )
     analysis_test(
         name = name,
+        collect_actions_recursively = True,
         impl = _test_content_type_from_description_impl,
         target = name + "_subject",
     )
 
 def _test_content_type_from_description_impl(env, target):
-    action = env.expect.that_target(target).action_generating(
-        "{package}/{name}.metadata.txt",
+    dist_info_target = _dist_info_target_subject(
+        env.expect.that_target(target),
+    )
+    action = dist_info_target.action_generating(
+        "{package}/{name}.dist_info.metadata.txt",
     )
     action.content().split("\n").contains(
         "Description-Content-Type: text/markdown",
@@ -227,6 +246,7 @@ def _test_default_make_variables(name):
     )
     analysis_test(
         name = name,
+        collect_actions_recursively = True,
         impl = _test_default_make_variables_impl,
         target = name + "_subject",
     )
@@ -247,8 +267,11 @@ def _test_default_make_variables_impl(env, target):
         "--platform",
         "linux_cpython_t",
     ])
-    metadata_action = env.expect.that_target(target).action_generating(
-        "{package}/{name}.metadata.txt",
+    dist_info_target = _dist_info_target_subject(
+        env.expect.that_target(target),
+    )
+    metadata_action = dist_info_target.action_generating(
+        "{package}/{name}.dist_info.metadata.txt",
     )
     metadata_action.content().split("\n").contains(
         "Requires-Python: ==3.13.*",
@@ -312,6 +335,78 @@ def _test_custom_make_variables_impl(env, target):
     ])
 
 _tests.append(_test_custom_make_variables)
+
+def _test_explicit_dist_info(name):
+    rt_util.helper_target(
+        py_dist_info,
+        name = name + "_custom_dist_info",
+        distribution = "mydist_" + name,
+        summary = "Summary from explicit dist_info",
+        version = "2.3.4",
+    )
+    rt_util.helper_target(
+        py_wheel,
+        name = name + "_subject",
+        dist_info = name + "_custom_dist_info",
+    )
+    analysis_test(
+        name = name,
+        collect_actions_recursively = True,
+        impl = _test_explicit_dist_info_impl,
+        target = name + "_subject",
+    )
+
+def _test_explicit_dist_info_impl(env, target):
+    target_subject = env.expect.that_target(target)
+    target_subject.default_outputs().contains_exactly([
+        "{package}/mydist_{test_name}-2.3.4-py3-none-any.whl",
+    ])
+    action = target_subject.action_named("PyWheel")
+    action.contains_at_least_args([
+        "--name",
+        env.expect.meta.format_str("mydist_{test_name}"),
+        "--version",
+        "2.3.4",
+    ])
+    dist_info_target = _dist_info_target_subject(target_subject)
+    metadata_action = dist_info_target.action_generating(
+        "{package}/{test_name}_custom_dist_info.metadata.txt",
+    )
+    metadata_action.content().split("\n").contains(
+        "Summary: Summary from explicit dist_info",
+    )
+
+_tests.append(_test_explicit_dist_info)
+
+def _test_dist_info_conflict(name):
+    rt_util.helper_target(
+        py_dist_info,
+        name = name + "_custom_dist_info",
+        distribution = "mydist_" + name,
+        version = "2.3.4",
+    )
+    rt_util.helper_target(
+        py_wheel,
+        name = name + "_subject",
+        dist_info = name + "_custom_dist_info",
+        summary = "Conflicting summary",
+        version = "9.9.9",
+    )
+    analysis_test(
+        name = name,
+        impl = _test_dist_info_conflict_impl,
+        target = name + "_subject",
+        expect_failure = True,
+    )
+
+def _test_dist_info_conflict_impl(env, target):
+    env.expect.that_target(target).failures().contains_predicate(
+        matching.str_matches(
+            "Cannot specify `summary`, `version` together with `dist_info`",
+        ),
+    )
+
+_tests.append(_test_dist_info_conflict)
 
 def py_wheel_test_suite(name):
     test_suite(

@@ -121,6 +121,7 @@ _TARGETS = {
     "//python:proto": True,
     "//python:py_binary": True,
     "//python:py_cc_link_params_info": True,
+    "//python:py_dist_info": True,
     "//python:py_exec_tools_info": True,
     "//python:py_exec_tools_toolchain": True,
     "//python:py_executable_info": True,
@@ -139,6 +140,11 @@ _LOADABLE_SYMBOLS = {
     "//python/cc:py_extension.bzl": [
         # keep sorted
         "py_extension",
+    ],
+    "//python:py_dist_info.bzl": [
+        # keep sorted
+        "PyDistInfo",
+        "py_dist_info",
     ],
     "//python:py_info.bzl": [
         # keep sorted

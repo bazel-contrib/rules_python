@@ -52,6 +52,7 @@ filegroup(
         "defs.bzl",
         "packaging.bzl",
         "pip.bzl",
+        "py_dist_info.bzl",
         "pytest_test.bzl",
         "repositories.bzl",
         "versions.bzl",
@@ -65,6 +66,7 @@ filegroup(
 
 exports_files([
     "defs.bzl",
+    "py_dist_info.bzl",
     "pytest_test.bzl",
     "python.bzl",  # Deprecated, please use defs.bzl
 ])
@@ -207,6 +209,7 @@ bzl_library(
     deps = [
         ":py_binary",
         "//python/private:bzlmod_enabled",
+        "//python/private:py_dist_info",
         "//python/private:py_package",
         "//python/private:py_wheel",
         "//python/private:util",
@@ -274,6 +277,13 @@ alias(
     name = "py_cc_link_params_info_bzl",
     actual = ":py_cc_link_params_info",
     deprecation = "Use //python:py_cc_link_params_info instead",
+)
+
+# keep
+bzl_library(
+    name = "py_dist_info",
+    srcs = ["py_dist_info.bzl"],
+    deps = ["//python/private:py_dist_info"],
 )
 
 bzl_library(

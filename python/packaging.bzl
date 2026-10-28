@@ -17,6 +17,11 @@
 load("@bazel_skylib//rules:native_binary.bzl", "native_binary")
 load("//python:py_binary.bzl", "py_binary")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")
+load(
+    "//python/private:py_dist_info.bzl",
+    "DIST_INFO_ATTR_NAMES",
+    "py_dist_info",
+)
 load("//python/private:py_package.bzl", "py_package_lib")
 load("//python/private:py_wheel.bzl", _PyWheelInfo = "PyWheelInfo", _py_wheel = "py_wheel")
 load("//python/private:util.bzl", "copy_propagating_kwargs")
@@ -169,6 +174,12 @@ def py_wheel(
         //path/to:my_wheel.publish --repository testpypi
     ```
 
+    :::{versionchanged} VERSION_NEXT_FEATURE
+    Added support for passing a {obj}`py_dist_info` target via `dist_info`, and
+    automatically generates `<name>.dist_info` when `dist_info` is not
+    specified.
+    :::
+
     Args:
         name:  A unique name for this target.
         twine: A label of the external location of the py_library target for twine
@@ -189,6 +200,22 @@ def py_wheel(
         tags = manual_tags,
         **copy_propagating_kwargs(kwargs)
     )
+
+    if "dist_info" not in kwargs or kwargs["dist_info"] == None:
+        dist_info_target = "{}.dist_info".format(name)
+        dist_info_kwargs = {
+            attr_name: kwargs[attr_name]
+            for attr_name in DIST_INFO_ATTR_NAMES
+            if attr_name in kwargs
+        }
+        if "toolchains" in kwargs:
+            dist_info_kwargs["toolchains"] = kwargs["toolchains"]
+        py_dist_info(
+            name = dist_info_target,
+            tags = manual_tags,
+            **copy_propagating_kwargs(kwargs, dist_info_kwargs)
+        )
+        kwargs["dist_info"] = dist_info_target
 
     _py_wheel(
         name = name,
