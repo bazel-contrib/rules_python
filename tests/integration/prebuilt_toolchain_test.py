@@ -68,7 +68,7 @@ class PrebuiltToolchainTest(runner.TestCase):
         }
         manifest_path = self.rules_python_dir / "python/private/artifacts_manifest.bzl"
         manifest_path.write_text(
-            f'ARTIFACTS_MANIFEST_JSON = """{json.dumps(manifest)}"""\n',
+            f'ARTIFACTS_MANIFEST_JSON = """{json.dumps(manifest, indent=1)}"""\n',
             encoding="utf-8",
         )
 

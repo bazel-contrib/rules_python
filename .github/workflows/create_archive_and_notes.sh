@@ -49,7 +49,8 @@ git archive \
   "$TAG" \
   . \
   ":!MODULE.bazel" \
-  ":!python/private/artifacts_manifest.bzl" | gzip > "$ARCHIVE"
+  ":!python/private/artifacts_manifest.bzl" |
+  gzip > "$ARCHIVE"
 SHA=$(shasum -a 256 "$ARCHIVE" | awk '{print $1}')
 
 cat > release_notes.txt << EOF

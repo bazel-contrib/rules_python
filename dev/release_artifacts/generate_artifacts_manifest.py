@@ -87,7 +87,7 @@ def generate_manifest(
 
 
 def render_bzl(manifest: dict[str, dict[str, list[ArtifactEntry]]]) -> str:
-    manifest_json = json.dumps(manifest, indent=2, sort_keys=True)
+    manifest_json = json.dumps(manifest, indent=1, sort_keys=True)
     # Embedded in a Starlark string literal, so it must not end the literal
     # early or rely on escape sequences.
     if '"""' in manifest_json or "\\" in manifest_json:
