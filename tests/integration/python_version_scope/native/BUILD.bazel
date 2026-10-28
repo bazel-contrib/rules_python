@@ -1,0 +1,27 @@
+load("//:probe.bzl", "probe")
+
+config_setting(
+    name = "py311",
+    flag_values = {"@rules_python//python/config_settings:python_version": "3.11"},
+)
+
+config_setting(
+    name = "py312",
+    flag_values = {"@rules_python//python/config_settings:python_version": "3.12"},
+)
+
+probe(
+    name = "core",
+    value = select({
+        ":py310": "3.10",
+        ":py311": "3.11",
+        ":py312": "3.12",
+        "//conditions:default": "unexpected",
+    }),
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "py310",
+    flag_values = {"@rules_python//python/config_settings:python_version": "3.10"},
+)

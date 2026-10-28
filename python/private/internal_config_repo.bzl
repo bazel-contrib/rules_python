@@ -29,6 +29,7 @@ config = struct(
   build_python_zip_default = {build_python_zip_default},
   supports_whl_extraction = {supports_whl_extraction},
   enable_pystar = True,
+  python_version_scope = {python_version_scope},
   enable_deprecation_warnings = {enable_deprecation_warnings},
   extract_needs_chmod = {extract_needs_chmod},
   bazel_8_or_later = {bazel_8_or_later},
@@ -88,6 +89,9 @@ def _internal_config_repo_impl(rctx):
         bazel_major_version = 99999
         bazel_minor_version = 99999
 
+    if rctx.attr.python_version_scope == "project" and (bazel_major_version, bazel_minor_version) < (9, 2):
+        fail("Python version project scope requires Bazel 9.2 or later")
+
     supports_whl_extraction = False
     extract_needs_chmod = bazel_major_version < 8 or (bazel_major_version == 8 and bazel_minor_version < 6)
     if bazel_major_version >= 8:
@@ -105,6 +109,7 @@ def _internal_config_repo_impl(rctx):
     explicit_init_py_modules = {k: str(v) == "True" for k, v in rctx.attr.explicit_init_py_modules.items()}
 
     rctx.file("rules_python_config.bzl", _CONFIG_TEMPLATE.format(
+        python_version_scope = repr(rctx.attr.python_version_scope),
         build_python_zip_default = repo_utils.get_platforms_os_name(rctx) == "windows",
         enable_deprecation_warnings = _bool_from_environ(rctx, _ENABLE_DEPRECATION_WARNINGS_ENVVAR_NAME, _ENABLE_DEPRECATION_WARNINGS_DEFAULT),
         builtin_py_info_symbol = builtin_py_info_symbol,
@@ -146,6 +151,7 @@ internal_config_repo = repository_rule(
     environ = [],
     attrs = {
         "explicit_init_py_modules": attr.string_dict(),
+        "python_version_scope": attr.string(default = "universal", values = ["universal", "project"]),
         "tool_deps_dev_only": attr.bool(default = True),
         "transition_setting_generators": attr.string_list_dict(),
         "transition_settings": attr.string_list(),

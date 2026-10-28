@@ -198,3 +198,9 @@ py_binary(
     srcs = ["uv_lock_pypi_server.py"],
     deps = [":uv_lock_pypi_server_lib"],
 )
+
+rules_python_integration_test(
+    name = "python_version_scope_test",
+    bazel_versions = ["10.0.0rc2"],
+    py_main = "python_version_scope_test.py",
+)

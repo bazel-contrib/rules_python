@@ -1,0 +1,3 @@
+"""Delegate version-flag ownership to the consuming root module."""
+
+project = {"actual": "//:PROJECT.scl"}

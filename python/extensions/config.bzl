@@ -68,12 +68,34 @@ Internal: value of TOOL_DEPS_DEV_ONLY from rules_python's MODULE.bazel.
     },
 )
 
+_python_version_scope = tag_class(
+    doc = """Opt into project scoping of the Python version flag (root module only).
+
+With `scope = "project"`, the root module's `//:PROJECT.scl` owns the scope.
+Targets outside its active directories reset to the invocation's Python version,
+allowing native dependencies to be shared between version-transitioned binaries.
+Tags from dependency modules are ignored. The default remains `"universal"`. See {doc}`/python-version-project-scope`.
+""",
+    attrs = {
+        "scope": attr.string(mandatory = True, values = ["universal", "project"]),
+    },
+)
+
 def _config_impl(module_ctx):
     transition_setting_generators = {}
     transition_settings = []
     explicit_init_py_modules = {}
     tool_deps_dev_only = True
+    python_version_scope = "universal"
+    scope_configured = False
     for mod in module_ctx.modules:
+        for tag in mod.tags.python_version_scope:
+            if not mod.is_root:
+                continue
+            if scope_configured:
+                fail("python_version_scope may only be configured once")
+            scope_configured = True
+            python_version_scope = tag.scope
         if mod.name == "rules_python":
             for tag in mod.tags.internal_configure:
                 tool_deps_dev_only = tag.tool_deps_dev_only
@@ -95,6 +117,7 @@ def _config_impl(module_ctx):
         transition_settings = transition_settings,
         explicit_init_py_modules = explicit_init_py_modules,
         tool_deps_dev_only = tool_deps_dev_only,
+        python_version_scope = python_version_scope,
     )
 
     pypi_deps()
@@ -115,5 +138,6 @@ config = module_extension(
         "add_transition_setting": _add_transition_setting,
         "explicit_init_py": _explicit_init_py,
         "internal_configure": _internal_configure,
+        "python_version_scope": _python_version_scope,
     },
 )

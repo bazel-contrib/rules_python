@@ -1,0 +1,3 @@
+"""Own bindings and the flag definition; leave the native core outside."""
+
+project = {"active_directories": {"default": ["//bindings", "@@rules_python+"]}}
