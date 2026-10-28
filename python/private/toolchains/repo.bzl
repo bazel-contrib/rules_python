@@ -3,6 +3,9 @@ toolchains.
 """
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
+
+# Loaded rather than read by Label: reading a file of @rules_python by Label
+# makes --experimental_remote_repo_contents_cache materialize the whole repo.
 load("//python/private:artifacts_manifest.bzl", "ARTIFACTS_MANIFEST_JSON")
 load("//python/private:text_util.bzl", "render")
 load("//python/private:toolchain_types.bzl", "EXE_ZIP_MAKER_TOOLCHAIN_TYPE")
