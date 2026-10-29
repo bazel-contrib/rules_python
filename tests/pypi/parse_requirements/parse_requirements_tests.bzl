@@ -112,7 +112,7 @@ bar==0.0.1 --hash=sha256:deadb00f
         "uv_lock_foo_resolution_markers_dedup": """{"package":[{"name":"foo","source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","resolution-markers":["sys_platform == 'linux'"],"wheels":[{"hash":"sha256:aaa","url":"https://files.pythonhosted.org/packages/foo-0.0.1-cp39-cp39-manylinux_2_17_x86_64.whl"},{"hash":"sha256:bbb","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]},{"name":"foo","source":{"registry":"https://pypi.org/simple"},"version":"0.0.2","resolution-markers":["sys_platform == 'darwin'"],"wheels":[{"hash":"sha256:ccc","url":"https://files.pythonhosted.org/packages/foo-0.0.2-cp39-cp39-macosx_11_0_arm64.whl"},{"hash":"sha256:ddd","url":"https://files.pythonhosted.org/packages/foo-0.0.2-py3-none-any.whl"}]}]}""",
         "uv_lock_foo_sdist": """{"package":[{"name":"foo","sdist":{"hash":"sha256:feedcafe","url":"https://files.pythonhosted.org/packages/foo-0.0.1.tar.gz"},"source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]}]}""",
         "uv_lock_foo_sha512": """{"package":[{"name":"foo","source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha512:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]}]}""",
-        "uv_lock_foo_virtual": """{"package":[{"name":"foo","source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]},{"name":"virtual-pkg","source":{"virtual":true},"version":"0.0.0"}]}""",
+        "uv_lock_foo_virtual": """{"package":[{"name":"foo","source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]},{"name":"virtual-pkg","source":{"virtual":true},"version":"0.0.0","dependencies":[{"name":"foo"}]}]}""",
         "uv_lock_foo_with_extras": """{"package":[{"name":"foo","provides-extras":["extra"],"source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]}]}""",
         "uv_lock_git_vcs": """{"package":[{"name":"foo","source":{"git":"https://github.com/org/foo?rev=deadbeef#deadbeef"},"version":"0.1.0"}]}""",
         "uv_lock_git_vcs_subdirectory": """{"package":[{"name":"foo","source":{"git":"https://github.com/org/mono.git?subdirectory=python%2Ffoo&branch=main#0123abcd"},"version":"0.1.0+g0123abcd"}]}""",
@@ -138,11 +138,12 @@ def _make_platforms(platform_names):
         )
     return platforms
 
-def parse_requirements(debug = False, **kwargs):
+def parse_requirements(debug = False, ctx = None, **kwargs):
     """Get requirements by calling the original parse_requirements.
 
     Args:
       debug: If True, set verbosity to TRACE.
+      ctx: An optional context overriding the default test fixtures.
       **kwargs: forwarded to the underlying function.
 
     Returns:
@@ -163,7 +164,7 @@ def parse_requirements(debug = False, **kwargs):
             kwargs["platforms"] = _make_platforms(["linux_x86_64"])
 
     return _parse_requirements(
-        ctx = _mock_ctx(),
+        ctx = ctx or _mock_ctx(),
         logger = repo_utils.logger(struct(
             getenv = {
                 REPO_DEBUG_ENV_VAR: "1",
@@ -1744,6 +1745,171 @@ def _test_uv_lock_requires_dist_extras(env):
     ])
 
 _tests.append(_test_uv_lock_requires_dist_extras)
+
+def _uv_graph_package(name, version = "0.0.1", **kwargs):
+    return dict({
+        "name": name,
+        "source": {"registry": "https://pypi.org/simple"},
+        "version": version,
+        "wheels": [{"url": "https://example.org/{}-{}-py3-none-any.whl".format(name, version)}],
+    }, **kwargs)
+
+def _parse_uv_graph(packages):
+    return {pkg.name: pkg for pkg in parse_requirements(
+        ctx = struct(read = lambda _: json.encode({"package": packages})),
+        uv_lock = "uv.lock",
+        platforms = {
+            "linux_x86_64": struct(
+                env = pep508_env(python_version = "3.11.0", os = "linux", arch = "x86_64"),
+                whl_abi_tags = ["none", "cp311"],
+                whl_platform_tags = ["any", "manylinux_*_x86_64"],
+            ),
+            "osx_aarch64": struct(
+                env = pep508_env(python_version = "3.11.0", os = "osx", arch = "aarch64"),
+                whl_abi_tags = ["none", "cp311"],
+                whl_platform_tags = ["any", "macosx_*_arm64"],
+            ),
+        },
+    )}
+
+def _test_uv_lock_dependency_markers(env):
+    for wheels in [
+        [{"url": "https://example.org/uvloop-0.0.1-cp311-cp311-manylinux_2_17_x86_64.whl"}],
+        [{"url": "https://example.org/uvloop-0.0.1-py3-none-any.whl"}],
+    ]:
+        got = _parse_uv_graph([
+            _uv_graph_package("root", source = {"virtual": "."}, dependencies = [
+                {"marker": "sys_platform == 'linux'", "name": "uvloop"},
+            ]),
+            _uv_graph_package("uvloop", wheels = wheels, sdist = {"url": "https://example.org/uvloop-0.0.1.tar.gz"}),
+        ])
+        env.expect.that_collection(got["uvloop"].srcs).has_size(1)
+        env.expect.that_collection(got["uvloop"].srcs[0].target_platforms).contains_exactly(["linux_x86_64"])
+
+_tests.append(_test_uv_lock_dependency_markers)
+
+def _test_uv_lock_transitive_markers(env):
+    got = _parse_uv_graph([
+        _uv_graph_package("root", source = {"editable": "."}, dependencies = [
+            {"marker": "sys_platform == 'linux'", "name": "parent"},
+        ]),
+        _uv_graph_package("parent", dependencies = [{"name": "child"}]),
+        _uv_graph_package("child"),
+        _uv_graph_package("unreachable"),
+    ])
+    for name in ["parent", "child"]:
+        env.expect.that_collection(got[name].srcs[0].target_platforms).contains_exactly(["linux_x86_64"])
+    env.expect.that_bool(got["unreachable"].is_exposed).equals(False)
+    env.expect.that_collection(got["unreachable"].srcs).has_size(0)
+
+_tests.append(_test_uv_lock_transitive_markers)
+
+def _test_uv_lock_requested_extras(env):
+    got = _parse_uv_graph([
+        _uv_graph_package("root", source = {"virtual": "."}, dependencies = [
+            {"name": "parent"},
+            {"extra": ["fast"], "marker": "sys_platform == 'linux'", "name": "parent"},
+        ]),
+        _uv_graph_package("parent", **{"optional-dependencies": {
+            "fast": [{"extra": "nested", "name": "child"}],
+            "unused": [{"name": "unreachable"}],
+        }}),
+        _uv_graph_package("child", **{"optional-dependencies": {
+            "nested": [{"name": "leaf"}],
+        }}),
+        _uv_graph_package("leaf"),
+        _uv_graph_package("unreachable"),
+    ])
+    env.expect.that_collection(got["parent"].srcs[0].target_platforms).contains_exactly(["linux_x86_64", "osx_aarch64"])
+    for name in ["child", "leaf"]:
+        env.expect.that_collection(got[name].srcs[0].target_platforms).contains_exactly(["linux_x86_64"])
+    env.expect.that_bool(got["unreachable"].is_exposed).equals(False)
+
+_tests.append(_test_uv_lock_requested_extras)
+
+def _test_uv_lock_root_optional_dependencies(env):
+    got = _parse_uv_graph([
+        _uv_graph_package("root", source = {"virtual": "."}, **{"optional-dependencies": {
+            "fast": [{"marker": "sys_platform == 'linux'", "name": "child"}],
+        }}),
+        _uv_graph_package("child"),
+    ])
+    env.expect.that_collection(got["child"].srcs[0].target_platforms).contains_exactly(["linux_x86_64"])
+
+_tests.append(_test_uv_lock_root_optional_dependencies)
+
+def _test_uv_lock_multiple_roots_cycles_and_diamonds(env):
+    # Shared nodes must be marked visited when queued: duplicate entries can
+    # otherwise exhaust a traversal bounded by the number of graph nodes.
+    got = _parse_uv_graph([
+        _uv_graph_package("root", source = {"virtual": "."}, dependencies = [
+            {"marker": "sys_platform == 'linux'", "name": "left"},
+            {"marker": "sys_platform == 'linux'", "name": "right"},
+        ]),
+        _uv_graph_package("workspace", source = {"editable": "workspace"}, dependencies = [
+            {"marker": "sys_platform == 'darwin'", "name": "leaf"},
+        ]),
+        _uv_graph_package("left", dependencies = [{"name": "shared"}]),
+        _uv_graph_package("right", dependencies = [{"name": "shared"}]),
+        _uv_graph_package("shared", dependencies = [{"name": "left"}, {"name": "leaf"}]),
+        _uv_graph_package("leaf", dependencies = [{"name": "tail"}]),
+        _uv_graph_package("tail"),
+    ])
+    for name in ["left", "right", "shared"]:
+        env.expect.that_collection(got[name].srcs[0].target_platforms).contains_exactly(["linux_x86_64"])
+    for name in ["leaf", "tail"]:
+        env.expect.that_collection(got[name].srcs[0].target_platforms).contains_exactly(["linux_x86_64", "osx_aarch64"])
+
+_tests.append(_test_uv_lock_multiple_roots_cycles_and_diamonds)
+
+def _test_uv_lock_duplicate_dependency_edges(env):
+    got = _parse_uv_graph([
+        _uv_graph_package("root", source = {"virtual": "."}, dependencies = [
+            {"marker": "sys_platform == 'linux'", "name": "tail"},
+            {"marker": "sys_platform == 'linux'", "name": "parent"},
+        ]),
+        _uv_graph_package("parent", dependencies = [{"name": "child"}] * 10),
+        _uv_graph_package("child"),
+        _uv_graph_package("tail", dependencies = [{"name": "leaf"}]),
+        _uv_graph_package("leaf"),
+    ])
+    for name in ["parent", "child", "tail", "leaf"]:
+        env.expect.that_collection(got[name].srcs[0].target_platforms).contains_exactly(["linux_x86_64"])
+
+_tests.append(_test_uv_lock_duplicate_dependency_edges)
+
+def _test_uv_lock_dependency_identity(env):
+    got = _parse_uv_graph([
+        _uv_graph_package("root", source = {"virtual": "."}, dependencies = [
+            {"name": "fork", "source": {"registry": "https://pypi.org/simple"}, "version": "0.0.1"},
+            {"name": "scoped", "source": {"registry": "https://pypi.org/simple"}},
+        ]),
+        _uv_graph_package("fork", **{"resolution-markers": ["sys_platform == 'linux'"]}),
+        _uv_graph_package("fork", version = "0.0.2", dependencies = [{"name": "unreachable"}]),
+        _uv_graph_package("scoped"),
+        _uv_graph_package("scoped", source = {"registry": "https://other.example/simple"}, dependencies = [{"name": "unreachable"}]),
+        _uv_graph_package("unreachable"),
+    ])
+    env.expect.that_collection(got["fork"].srcs).has_size(1)
+    env.expect.that_collection(got["fork"].srcs[0].target_platforms).contains_exactly(["linux_x86_64"])
+    env.expect.that_collection(got["scoped"].srcs).has_size(1)
+    env.expect.that_bool(got["unreachable"].is_exposed).equals(False)
+
+_tests.append(_test_uv_lock_dependency_identity)
+
+def _test_uv_lock_partial_extra_markers(env):
+    got = _parse_uv_graph([
+        _uv_graph_package("root", source = {"virtual": "."}, dependencies = [
+            {"marker": "sys_platform == 'linux' and extra == 'fast'", "name": "child"},
+            {"marker": "sys_platform == 'linux' or extra == 'fast'", "name": "union"},
+        ]),
+        _uv_graph_package("child", **{"resolution-markers": ["extra == 'fast'"]}),
+        _uv_graph_package("union", **{"resolution-markers": ["sys_platform == 'linux'", "extra == 'fast'"]}),
+    ])
+    env.expect.that_collection(got["child"].srcs[0].target_platforms).contains_exactly(["linux_x86_64"])
+    env.expect.that_collection(got["union"].srcs[0].target_platforms).contains_exactly(["linux_x86_64", "osx_aarch64"])
+
+_tests.append(_test_uv_lock_partial_extra_markers)
 
 def parse_requirements_test_suite(name):
     """Create the test suite.

@@ -147,6 +147,87 @@ def _parse_requirements_with_uv_lock(
         logger = logger,
     )
 
+def _uv_lock_package_platforms(packages, all_platforms, platforms, extras_map):
+    """Find each lock entry's platforms by walking dependency edges from roots."""
+    by_name = {}
+    roots = []
+    nodes = {}
+    for i, pkg in enumerate(packages):
+        by_name.setdefault(normalize_name(pkg["name"]), []).append(i)
+        nodes[(i, "")] = pkg.get("dependencies", [])
+        for extra, deps in pkg.get("optional-dependencies", {}).items():
+            nodes[(i, extra)] = deps
+        source = pkg.get("source", {})
+        if "virtual" in source or "editable" in source:
+            roots.append((i, ""))
+
+            # Preserve the importer's inclusion of the root project's extras.
+            roots.extend([(i, extra) for extra in extras_map.get(pkg["name"], []) if (i, extra) in nodes])
+
+    # Resolve identities before walking. Forked lock entries can share a name
+    # but differ in version or source; dependency edges may specify both.
+    edges = {}
+    if roots:
+        for node, deps in nodes.items():
+            edges[node] = []
+            for dep in deps:
+                extras = dep.get("extra", [])
+                if type(extras) == "string":
+                    extras = [extras]
+                for i in by_name.get(normalize_name(dep["name"]), []):
+                    pkg = packages[i]
+                    if "version" in dep and dep["version"] != pkg["version"]:
+                        continue
+                    if "source" in dep and dep["source"] != pkg.get("source", {}):
+                        continue
+                    targets = [(i, "")] + [(i, extra) for extra in extras if (i, extra) in nodes]
+                    edges[node].append((dep.get("marker", ""), targets))
+
+    result = [[] for _ in packages]
+    for p in all_platforms:
+        marker_env = platforms[p].env
+        compatible = {
+            i: None
+            for i, pkg in enumerate(packages)
+            if not pkg.get("resolution-markers") or evaluate(
+                " or ".join(pkg["resolution-markers"]),
+                env = marker_env,
+                strict = False,
+            ) != False
+        }
+        if not roots:
+            # Exported/synthetic locks without workspace roots retain the
+            # package-level resolution-marker behavior.
+            for i in compatible:
+                result[i].append(p)
+            continue
+
+        visited = {node: None for node in roots if node[0] in compatible}
+        queue = list(visited)
+        reachable = {}
+
+        # Starlark has no while loops. Mark states when enqueuing so cycles
+        # and diamonds cannot exceed the number of package/extra states.
+        for _ in range(len(nodes)):
+            if not queue:
+                break
+            node = queue.pop()
+            reachable[node[0]] = None
+            for marker, targets in edges[node]:
+                # Unknown values (notably `extra`) may remain as expressions;
+                # only a definitively false platform marker excludes an edge.
+                if marker and evaluate(marker, env = marker_env, strict = False) == False:
+                    continue
+                for target in targets:
+                    if target[0] not in compatible or target in visited:
+                        continue
+                    visited[target] = None
+                    queue.append(target)
+
+        for i in reachable:
+            result[i].append(p)
+    return result
+
 def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, platforms = {}):
     """Parse uv.lock JSON and build the same return structs as parse_requirements.
 
@@ -168,7 +249,8 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
     if not platforms:
         fail("BUG: platforms must be configured")
 
-    for pkg in uv_lock["package"]:
+    package_platforms = _uv_lock_package_platforms(uv_lock["package"], all_platforms, platforms, extras_map)
+    for i, pkg in enumerate(uv_lock["package"]):
         name = pkg["name"]
         version = pkg["version"]
         norm_name = normalize_name(name)
@@ -189,16 +271,7 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
         pkg_extras = sorted(extras_map.get(name, []))
         extra_str = "[{}]".format(",".join(pkg_extras)) if pkg_extras else ""
 
-        markers = pkg.get("resolution-markers", [])
-        if markers:
-            marker_expr = " or ".join(markers)
-            pkg_platforms = [
-                p
-                for p in all_platforms
-                if evaluate(marker_expr, env = platforms[p].env)
-            ]
-        else:
-            pkg_platforms = list(all_platforms)
+        pkg_platforms = package_platforms[i]
 
         # Prepare candidates
         candidates = []
