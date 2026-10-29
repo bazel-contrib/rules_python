@@ -49,14 +49,14 @@ jobs:
           ISSUE: ${{ inputs.issue }}
         run: |
           ARGS=()
-          if [ -n "$VERSION" ]; then
-            ARGS+=("$VERSION")
-          fi
           if [ -n "$ISSUE" ]; then
             ARGS+=("--issue=$ISSUE")
           fi
           ARGS+=("--remote=origin")
           ARGS+=("--no-dry-run")
+          if [ -n "$VERSION" ]; then
+            ARGS+=("--" "$VERSION")
+          fi
           
           bazel run \
             --//python/config_settings:py_pbs_distribution=install_only_stripped \

@@ -155,6 +155,7 @@ sphinx_stardocs(
         "//python/private/zipapp:py_zipapp_rule",
         "//python/uv",
         "//python/uv:lock",
+        "//python/uv:repositories",
         "//python/uv:uv_toolchain",
         "//python/uv:uv_toolchain_info",
         "//python/zipapp:py_zipapp_binary",

@@ -60,6 +60,14 @@ def construct_config_settings(
     _python_version_flag(
         name = _PYTHON_VERSION_FLAG.name,
         build_setting_default = default_version,
+        # Propagate the flag into exec configurations so exec tools (e.g. the
+        # precompiler) use the target's Python version. Bazel 10 resets
+        # Starlark flags in exec configurations unless they have universal
+        # scope (https://github.com/bazelbuild/bazel/issues/26909). It's set
+        # here, not as an attr default, because Bazel ignores scope attr
+        # defaults for flags set on the command line
+        # (https://github.com/bazelbuild/bazel/issues/31806).
+        scope = "universal",
         visibility = ["//visibility:public"],
     )
 
@@ -206,7 +214,12 @@ def _python_version_flag_impl(ctx):
 _python_version_flag = rule(
     implementation = _python_version_flag_impl,
     build_setting = config.string(flag = True),
-    attrs = {},
+    attrs = {
+        # Read by Bazel, not the implementation, to decide whether the flag
+        # propagates into exec configurations. No default because Bazel only
+        # honors an explicitly set value; see construct_config_settings.
+        "scope": attr.string(),
+    },
 )
 
 def _python_version_major_minor_flag_impl(ctx):

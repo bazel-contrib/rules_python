@@ -13,7 +13,6 @@
 # limitations under the License.
 
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
-load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
 
 package(default_visibility = ["//:__subpackages__"])
@@ -28,7 +27,6 @@ distribution_filegroup(
 filegroup(
     name = "lock_copier_template",
     srcs = ["template/lock_copier.py"],
-    target_compatible_with = [] if BZLMOD_ENABLED else ["@platforms//:incompatible"],
     visibility = _NOT_REALLY_PUBLIC,
 )
 
@@ -38,7 +36,6 @@ filegroup(
         "@platforms//os:windows": ["template/uv_lock.bat"],
         "//conditions:default": ["template/uv_lock.sh"],
     }),
-    target_compatible_with = [] if BZLMOD_ENABLED else ["@platforms//:incompatible"],
     visibility = _NOT_REALLY_PUBLIC,
 )
 
@@ -48,7 +45,6 @@ filegroup(
         "@platforms//os:windows": ["template/uv_pip_compile.bat"],
         "//conditions:default": ["template/uv_pip_compile.sh"],
     }),
-    target_compatible_with = [] if BZLMOD_ENABLED else ["@platforms//:incompatible"],
     visibility = _NOT_REALLY_PUBLIC,
 )
 
@@ -57,6 +53,13 @@ bzl_library(
     srcs = ["current_toolchain.bzl"],
     visibility = ["//python/uv:__subpackages__"],
     deps = [":toolchain_types"],
+)
+
+bzl_library(
+    name = "dist_manifest",
+    srcs = ["dist_manifest.bzl"],
+    visibility = ["//python/uv:__subpackages__"],
+    deps = ["//python/private:auth"],
 )
 
 # keep
@@ -69,7 +72,6 @@ bzl_library(
     deps = [
         ":toolchain_types",
         "//python:py_binary",
-        "//python/private:bzlmod_enabled",
         "//python/private:common_labels",
         "//python/private:toolchain_types",
         "@bazel_skylib//lib:paths",
@@ -89,11 +91,37 @@ bzl_library(
     srcs = ["uv.bzl"],
     visibility = ["//python/uv:__subpackages__"],
     deps = [
+        ":dist_manifest",
         ":toolchain_types",
         ":uv_repository",
+        ":uv_toolchain_config",
         ":uv_toolchains_repo",
         "//python/private:auth",
-        "//python/private:common_labels",
+    ],
+)
+
+bzl_library(
+    name = "uv_register_toolchains",
+    srcs = ["uv_register_toolchains.bzl"],
+    visibility = ["//python/uv:__subpackages__"],
+    deps = [
+        ":toolchain_types",
+        ":uv_defaults",
+        ":uv_repository",
+        ":uv_toolchain_config",
+        ":uv_toolchains_repo",
+        "@bazel_skylib//lib:types",
+    ],
+)
+
+bzl_library(
+    name = "uv_toolchains_manifest",
+    srcs = ["uv_toolchains_manifest.bzl"],
+    visibility = ["//python/uv:__subpackages__"],
+    deps = [
+        ":dist_manifest",
+        ":uv_defaults",
+        "//python/private:auth",
     ],
 )
 
@@ -129,8 +157,20 @@ bzl_library(
 )
 
 bzl_library(
+    name = "uv_toolchain_config",
+    srcs = ["uv_toolchain_config.bzl"],
+    visibility = ["//python/uv:__subpackages__"],
+    deps = ["//python/private:common_labels"],
+)
+
+bzl_library(
     name = "toolchain_types",
     srcs = ["toolchain_types.bzl"],
+)
+
+bzl_library(
+    name = "uv_defaults",
+    srcs = ["uv_defaults.bzl"],
 )
 
 bzl_library(

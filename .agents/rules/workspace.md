@@ -11,11 +11,8 @@ basis:
 * Fetch `upstream/main` (`git fetch upstream main`).
 * Base any new branch or worktree upon `upstream/main` (e.g.,
   `git checkout -b <branch> upstream/main`).
-* Run the workspace helper script to configure upstream tracking and safe
-  pushing:
-  ```bash
-  .agents/scripts/setup_triangle_branch.sh <branch>
-  ```
+* Run `.agents/scripts/setup_client.py <branch>` to configure upstream tracking,
+  safe pushing, and client `user.bazelrc`.
 * Never use `git push -u` or `--set-upstream` (it breaks upstream tracking).
 * When pushing to a checked-out PR branch from an external fork, push
   explicitly to that remote (`git push <remote> HEAD:<branch>`). Do not rely on

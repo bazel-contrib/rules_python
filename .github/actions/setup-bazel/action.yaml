@@ -14,12 +14,17 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Sanitize branch name
+      id: sanitize_branch
+      shell: bash
+      env:
+        RAW_BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+      # ${var//[^...]/} strips characters outside the safe ref set [a-zA-Z0-9._/-].
+      run: printf 'branch_name=%s\n' "${RAW_BRANCH_NAME//[^a-zA-Z0-9._\/-]/}" >> "$GITHUB_OUTPUT"
+
     - name: Setup Bazel
       uses: bazel-contrib/setup-bazel@0.19.1
       with:
-        # Windows images have a fixed-version `bazel` on PATH, and Bazelisk
-        # < 1.29.0 has no windows-arm64 build.
-        bazelisk-version: 1.29.0
         bazelisk-cache: true
         disk-cache: true
         # Files hashed to compute the repository cache key. If only `true` is
@@ -36,27 +41,38 @@ runs:
           # pyrefly toolchain or type-check targets before running them.
           build --output_groups=-pyrefly
           build --//python/config_settings:py_pbs_distribution=install_only_stripped
-          # BuildBuddy RBE workers are Linux x86_64; only enable on Linux.
-          ${{ runner.os == 'Linux' && inputs.buildbuddy_api_key && format('common --config={0}', inputs.buildbuddy_config) || '' }}
+          ${{ inputs.buildbuddy_api_key && format('common --config={0}', inputs.buildbuddy_config) || '' }}
+          build --build_metadata=ROLE=CI
+          build --build_metadata=VISIBILITY=PUBLIC
+          build --build_metadata=RUN_ID=${{ github.run_id }}
+          build --build_metadata=ACTOR=${{ github.actor }}
+          build --build_metadata=COMMIT_SHA=${{ github.event.pull_request.head.sha || github.sha }}
+          ${{ github.event.pull_request.number && format('build --build_metadata=PR_NUMBER={0}', github.event.pull_request.number) || '' }}
+          build --build_metadata=BRANCH_NAME=${{ steps.sanitize_branch.outputs.branch_name }}
+          build --build_metadata="BUILDBUDDY_LINKS=[GHA Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
 
-    # setup-bazel only configures Bazelisk and restores caches; the Bazel
-    # binary itself is downloaded by Bazelisk on first invocation. Because
-    # Bazelisk does not retry mid-stream download failures, trigger and retry
-    # the download upfront via `bazel --version`.
+    # setup-bazel configures .bazelrc and restores caches. Download Bazelisk
+    # and the Bazel binary here with retries, SHA-256 verification, and mirror
+    # fallback instead of using setup-bazel's `bazelisk-version` input (which
+    # queries api.github.com/repos/bazelbuild/bazelisk/releases without
+    # retries) or leaving the Bazel download to the first build step.
     - name: Download Bazel
       shell: bash
-      run: "${GITHUB_ACTION_PATH}/download_bazel.sh"
+      run: "${GITHUB_ACTION_PATH}/download_bazel.py"
 
-    # Use github-script to write the key directly to user.bazelrc without
-    # passing it via environment variables or CLI args, keeping it out of
-    # process tables and child environments.
+    # Use github-script with step-scoped env vars to write the key directly to
+    # user.bazelrc without passing it via CLI args, job-wide environment
+    # variables, or JS template interpolations.
     - name: Write secret to user.bazelrc
-      if: ${{ runner.os == 'Linux' && inputs.buildbuddy_api_key != '' }}
-      uses: actions/github-script@v7
+      if: ${{ inputs.buildbuddy_api_key != '' }}
+      uses: actions/github-script@v9
+      env:
+        BUILDBUDDY_API_KEY: ${{ inputs.buildbuddy_api_key }}
+        BUILDBUDDY_CONFIG: ${{ inputs.buildbuddy_config }}
       with:
         script: |
           const fs = require('fs');
           fs.appendFileSync(
             'user.bazelrc',
-            `common:${{ inputs.buildbuddy_config }} --remote_header=x-buildbuddy-api-key=${{ inputs.buildbuddy_api_key }}\n`,
+            `common:${process.env.BUILDBUDDY_CONFIG} --remote_header=x-buildbuddy-api-key=${process.env.BUILDBUDDY_API_KEY}\n`,
           );

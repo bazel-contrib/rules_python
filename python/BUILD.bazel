@@ -434,7 +434,7 @@ bzl_library(
     deps = [
         "//python/private:pbs_manifest",
         "//python/private:platform_info",
-        "//python/private:runtimes_manifest_workspace",
+        "//python/private:runtimes_manifest",
     ],
 )
 

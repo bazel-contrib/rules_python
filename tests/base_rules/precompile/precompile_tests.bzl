@@ -137,6 +137,30 @@ def _test_precompile_enabled_py_library_common_impl(env, target):
         "{package}/__pycache__/lib.fakepy-45.pyc",
     ])
 
+def _test_precompile_flag_enabled_py_library_implicit_pyc(name):
+    rt_util.helper_target(
+        py_library,
+        name = name + "_subject",
+        srcs = ["lib.py"],
+    )
+    analysis_test(
+        name = name,
+        impl = _test_precompile_flag_enabled_py_library_implicit_pyc_impl,
+        target = name + "_subject",
+        config_settings = _COMMON_CONFIG_SETTINGS | {
+            labels.PRECOMPILE: "enabled",
+        },
+    )
+
+def _test_precompile_flag_enabled_py_library_implicit_pyc_impl(env, target):
+    py_info = env.expect.that_target(target).provider(PyInfo, factory = py_info_subject)
+    py_info.direct_pyc_files().contains_exactly([])
+    py_info.direct_implicit_pyc_files().contains_exactly([
+        "{package}/__pycache__/lib.fakepy-45.pyc",
+    ])
+
+_tests.append(_test_precompile_flag_enabled_py_library_implicit_pyc)
+
 def _test_precompile_enabled_py_library_add_to_runfiles_disabled(name):
     _test_precompile_enabled_py_library_setup(
         name = name,

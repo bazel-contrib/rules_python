@@ -1,24 +1,47 @@
-load("@rules_python//python:pip.bzl", "compile_pip_requirements")
+load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
+load("//python/uv:lock.bzl", "lock")
 
-compile_pip_requirements(
+lock(
     name = "multiple_requirements_in",
     srcs = [
         "requirements_1.in",
         "requirements_2.in",
     ],
-    requirements_txt = "multiple_requirements_in.txt",
+    out = "multiple_requirements_in.txt",
+    # It seems that the CI remote executors for the RBE do not have network
+    # connectivity due to current CI setup.
+    tags = ["no-remote-exec"],
+    visibility = ["//:__subpackages__"],
 )
 
-compile_pip_requirements(
+diff_test(
+    name = "multiple_requirements_in_test",
+    timeout = "short",
+    file1 = ":multiple_requirements_in",
+    file2 = "multiple_requirements_in.txt",
+)
+
+lock(
     name = "multiple_pyproject_toml",
     srcs = [
         "a/pyproject.toml",
         "b/pyproject.toml",
     ],
-    requirements_txt = "multiple_pyproject_toml.txt",
+    out = "multiple_pyproject_toml.txt",
+    # It seems that the CI remote executors for the RBE do not have network
+    # connectivity due to current CI setup.
+    tags = ["no-remote-exec"],
+    visibility = ["//:__subpackages__"],
 )
 
-compile_pip_requirements(
+diff_test(
+    name = "multiple_pyproject_toml_test",
+    timeout = "short",
+    file1 = ":multiple_pyproject_toml",
+    file2 = "multiple_pyproject_toml.txt",
+)
+
+lock(
     name = "multiple_inputs",
     srcs = [
         "a/pyproject.toml",
@@ -26,5 +49,16 @@ compile_pip_requirements(
         "requirements_1.in",
         "requirements_2.in",
     ],
-    requirements_txt = "multiple_inputs.txt",
+    out = "multiple_inputs.txt",
+    # It seems that the CI remote executors for the RBE do not have network
+    # connectivity due to current CI setup.
+    tags = ["no-remote-exec"],
+    visibility = ["//:__subpackages__"],
+)
+
+diff_test(
+    name = "multiple_inputs_test",
+    timeout = "short",
+    file1 = ":multiple_inputs",
+    file2 = "multiple_inputs.txt",
 )

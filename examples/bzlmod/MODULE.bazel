@@ -114,7 +114,6 @@ use_repo(
     "pythons_hub",
 )
 
-# EXPERIMENTAL: This is experimental and may be changed or removed without notice
 uv = use_extension(
     "@rules_python//python/uv:uv.bzl",
     "uv",
@@ -122,7 +121,7 @@ uv = use_extension(
     # module is used elsewhere.
     dev_dependency = True,
 )
-uv.configure(version = "0.6.2")
+uv.configure(version = "0.13.5")
 
 # This extension allows a user to create modifications to how rules_python
 # creates different wheel repositories.  Different attributes allow the user
@@ -222,12 +221,7 @@ pip.parse(
     ],
     hub_name = "pip",
     python_version = "3.10",
-    # The requirements files for each platform that we want to support.
-    requirements_by_platform = {
-        # Default requirements file for needs to explicitly provide the platforms
-        "//:requirements_lock_3_10.txt": "linux_*,osx_*",
-        "//:requirements_windows_3_10.txt": "windows_x86_64",
-    },
+    uv_lock = "//:uv.lock",
     # These modifications were created above and we
     # are providing pip.parse with the label of the mod
     # and the name of the wheel.
@@ -239,10 +233,7 @@ pip.parse(
 pip.parse(
     hub_name = "pip",
     python_version = "3.12",
-    requirements_by_platform = {
-        "//:requirements_lock_3_12.txt": "linux_*,osx_*",
-        "//:requirements_windows_3_12.txt": "windows_x86_64,windows_aarch64",
-    },
+    uv_lock = "//:uv.lock",
     whl_modifications = {
         "@whl_mods_hub//:requests.json": "requests",
         "@whl_mods_hub//:wheel.json": "wheel",
@@ -251,10 +242,7 @@ pip.parse(
 pip.parse(
     hub_name = "pip",
     python_version = "3.13",
-    requirements_by_platform = {
-        "//:requirements_lock_3_13.txt": "linux_*,osx_*",
-        "//:requirements_windows_3_13.txt": "windows_x86_64,windows_aarch64",
-    },
+    uv_lock = "//:uv.lock",
     whl_modifications = {
         "@whl_mods_hub//:requests.json": "requests",
         "@whl_mods_hub//:wheel.json": "wheel",
@@ -263,10 +251,7 @@ pip.parse(
 pip.parse(
     hub_name = "pip",
     python_version = "3.14",
-    requirements_by_platform = {
-        "//:requirements_lock_3_14.txt": "linux_*,osx_*",
-        "//:requirements_windows_3_14.txt": "windows_x86_64,windows_aarch64",
-    },
+    uv_lock = "//:uv.lock",
     whl_modifications = {
         "@whl_mods_hub//:requests.json": "requests",
         "@whl_mods_hub//:wheel.json": "wheel",

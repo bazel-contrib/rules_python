@@ -1,17 +1,62 @@
 ---
 version: 2
-updates:
-  # Maintain dependencies for GitHub Actions
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
 
-  - package-ecosystem: "pip"
-    directories:
-      # Maintain dependencies for our tools
-      - "/docs"
-      - "/tools/publish"
+multi-ecosystem-groups:
+  # Dependencies shipped to downstream rules_python users. We prefer the oldest
+  # compatible version for deployment compatibility, and security fixes here
+  # warrant a rules_python release.
+  user-facing:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 3
+    commit-message:
+      prefix: "build(deps-user)"
+    labels:
+      - "dependencies"
+  # Dependencies used only for rules_python development, tests, CI, and examples.
+  dev-only:
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "build(deps-dev)"
+    labels:
+      - "dependencies"
+
+updates:
+  # Maintain dependencies for GitHub Actions
+  - package-ecosystem: "github-actions"
+    multi-ecosystem-group: "dev-only"
+    directories:
+      - "/"
+      - "/.github/actions/setup-bazel"
+    patterns:
+      - "*"
+
+  - package-ecosystem: "uv"
+    multi-ecosystem-group: "user-facing"
+    directories:
+      # Maintain dependencies for our tools
+      - "/tools/**/*"
+    patterns:
+      - "*"
+
+  - package-ecosystem: "cargo"
+    multi-ecosystem-group: "dev-only"
+    directories:
+      - "/crates"
+      - "/crates/**/*"
+    patterns:
+      - "*"
+
+  - package-ecosystem: "uv"
+    multi-ecosystem-group: "dev-only"
+    directories:
+      - "/dev"
+      - "/dev/**/*"
+      - "/examples/**/*"
+      - "/gazelle/examples/**/*"
+      - "/sphinxdocs/dev"
+      - "/tests/**/*"
+    patterns:
+      - "*"

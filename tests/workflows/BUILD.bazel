@@ -78,14 +78,25 @@ pytest_test(
     ],
 )
 
+py_library(
+    name = "download_bazel",
+    testonly = True,
+    srcs = ["//.github/actions/setup-bazel:download_bazel.py"],
+    imports = ["../../.github/actions/setup-bazel"],
+    target_compatible_with = NOT_WINDOWS,
+)
+
 pytest_test(
     name = "setup_bazel_test",
     srcs = ["setup_bazel_test.py"],
     data = [
+        "//:.bazelrc",
+        "//:buildbuddy.bazelrc",
         "//.github/actions/setup-bazel:all_files",
     ],
     target_compatible_with = NOT_WINDOWS,
     deps = [
+        ":download_bazel",
         "//python/runfiles",
         "@pypi//pyyaml",
     ],

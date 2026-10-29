@@ -10,5 +10,6 @@ pip
 pip_tools >= 7.4.0
 setuptools
 tomli
+typing_extensions
 wheel
 zipp

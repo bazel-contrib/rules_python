@@ -12,16 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-EXPERIMENTAL: This is experimental and may be removed without notice
-
-A module extension for working with uv.
-"""
+"""A module extension for working with uv."""
 
 load("//python/private:auth.bzl", "AUTH_ATTRS", "get_auth")
-load("//python/private:common_labels.bzl", "labels")
+load(":dist_manifest.bzl", "DEFAULT_MANIFEST_FILENAME", "dist_manifest_resolver")
 load(":toolchain_types.bzl", "UV_TOOLCHAIN_TYPE")
 load(":uv_repository.bzl", "uv_repository")
+load(":uv_toolchain_config.bzl", "apply_configure", "define_toolchains", "set_config")
 load(":uv_toolchains_repo.bzl", "uv_toolchains_repo")
 
 _DOC = """\
@@ -36,7 +33,7 @@ uv = use_extension(
     # your module is used elsewhere.
     dev_dependency = True,
 )
-uv.configure(version = "0.5.24")
+uv.configure(version = "0.13.5")
 ```
 
 Since this is only for locking the requirements files, it should be always
@@ -60,7 +57,7 @@ The distribution manifest filename to use for the metadata fetching from GH. The
 defaults for this are set in `rules_python` MODULE.bazel file that one can override
 for a specific version.
 """,
-        default = "dist-manifest.json",
+        default = DEFAULT_MANIFEST_FILENAME,
     ),
     "platform": attr.string(
         doc = """\
@@ -82,8 +79,13 @@ last version used in the module or the default version set by `rules_python`.
 } | AUTH_ATTRS
 
 default = tag_class(
-    doc = """\
+    doc = """
 Set the uv configuration defaults.
+
+:::{versionchanged} VERSION_NEXT_PATCH
+`netrc` and `auth_patterns` now apply to the versions configured with
+{obj}`uv.configure`; previously they were accepted but ignored.
+:::
 """,
     attrs = _DEFAULT_ATTRS,
 )
@@ -135,42 +137,6 @@ for a particular version.
     },
 )
 
-def _configure(config, *, platform, compatible_with, target_settings, auth_patterns, urls = [], sha256 = "", override = False, **values):
-    """Set the value in the config if the value is provided"""
-    for key, value in values.items():
-        if not value:
-            continue
-
-        if not override and config.get(key):
-            continue
-
-        config[key] = value
-
-    config.setdefault("auth_patterns", {}).update(auth_patterns)
-    config.setdefault("platforms", {})
-    if not platform:
-        if compatible_with or target_settings or urls:
-            fail("`platform` name must be specified when specifying `compatible_with`, `target_settings` or `urls`")
-    elif compatible_with or target_settings:
-        if not override and config.get("platforms", {}).get(platform):
-            return
-
-        config["platforms"][platform] = struct(
-            name = platform.replace("-", "_").lower(),
-            compatible_with = compatible_with,
-            target_settings = target_settings,
-        )
-    elif urls:
-        if not override and config.get("urls", {}).get(platform):
-            return
-
-        config.setdefault("urls", {})[platform] = struct(
-            sha256 = sha256,
-            urls = urls,
-        )
-    else:
-        config["platforms"].pop(platform)
-
 def process_modules(
         module_ctx,
         hub_name = "uv",
@@ -212,7 +178,7 @@ def process_modules(
             continue
 
         for tag in mod.tags.default:
-            _configure(
+            set_config(
                 defaults,
                 version = tag.version,
                 base_url = tag.base_url,
@@ -233,138 +199,26 @@ def process_modules(
         if not defaults.get(key, None):
             fail("defaults need to be set for '{}'".format(key))
 
-    # resolved per-version configuration. The shape is something like:
-    # versions = {
-    #     "1.0.0": {
-    #         "base_url": "",
-    #         "manifest_filename": "",
-    #         "platforms": {
-    #             "platform_name": struct(
-    #                 compatible_with = [],
-    #                 target_settings = [],
-    #                 urls = [], # can be unset
-    #                 sha256 = "", # can be unset
-    #             ),
-    #         },
-    #     },
-    # }
+    # resolved per-version configuration; see `apply_configure`.
     versions = {}
     for mod in module_ctx.modules:
         if not (mod.is_root or mod.name == "rules_python"):
             continue
 
-        # last_version is the last version used in the MODULE.bazel or the default
-        last_version = None
-        for tag in mod.tags.configure:
-            last_version = tag.version or last_version or defaults["version"]
-            specific_config = versions.setdefault(
-                last_version,
-                {
-                    "base_url": defaults["base_url"],
-                    "manifest_filename": defaults["manifest_filename"],
-                    # shallow copy is enough as the values are structs and will
-                    # be replaced on modification
-                    "platforms": dict(defaults["platforms"]),
-                },
-            )
-
-            _configure(
-                specific_config,
-                base_url = tag.base_url,
-                manifest_filename = tag.manifest_filename,
-                platform = tag.platform,
-                compatible_with = tag.compatible_with,
-                target_settings = tag.target_settings,
-                sha256 = tag.sha256,
-                urls = tag.urls,
-                override = mod.is_root,
-                netrc = tag.netrc,
-                auth_patterns = tag.auth_patterns,
-            )
-
-    if not versions:
-        return hub_repo(
-            name = hub_name,
-            toolchain_type = toolchain_type,
-            toolchain_names = ["none"],
-            toolchain_implementations = {
-                # NOTE @aignas 2025-02-24: the label to the toolchain can be anything
-                "none": labels.NONE,
-            },
-            toolchain_compatible_with = {
-                "none": ["@platforms//:incompatible"],
-            },
-            toolchain_target_settings = {},
+        apply_configure(
+            versions,
+            mod.tags.configure,
+            defaults = defaults,
+            override = mod.is_root,
         )
 
-    toolchain_names = []
-    toolchain_implementations = {}
-    toolchain_compatible_with_by_toolchain = {}
-    toolchain_target_settings = {}
-    for version, config in versions.items():
-        platforms = config["platforms"]
-
-        # Use the manually specified urls
-        urls = {
-            platform: src
-            for platform, src in config.get("urls", {}).items()
-            if src.urls
-        }
-        auth = {
-            "auth_patterns": config.get("auth_patterns"),
-            "netrc": config.get("netrc"),
-        }
-        auth = {k: v for k, v in auth.items() if v}
-
-        # Or fallback to fetching them from GH manifest file
-        # Example file: https://github.com/astral-sh/uv/releases/download/0.6.3/dist-manifest.json
-        if not urls:
-            urls = _get_tool_urls_from_dist_manifest(
-                module_ctx,
-                base_url = "{base_url}/{version}".format(
-                    version = version,
-                    base_url = config["base_url"],
-                ),
-                manifest_filename = config["manifest_filename"],
-                platforms = sorted(platforms),
-                get_auth = get_auth,
-                **auth
-            )
-
-        for platform_name, platform in platforms.items():
-            if platform_name not in urls:
-                continue
-
-            toolchain_name = "{}_{}".format(version.replace(".", "_"), platform_name.lower().replace("-", "_"))
-            uv_repository_name = "{}_{}".format(hub_name, toolchain_name)
-            uv_repository(
-                name = uv_repository_name,
-                version = version,
-                platform = platform_name,
-                urls = urls[platform_name].urls,
-                sha256 = urls[platform_name].sha256,
-                **auth
-            )
-
-            toolchain_names.append(toolchain_name)
-            toolchain_implementations[toolchain_name] = "@{}//:uv_toolchain".format(uv_repository_name)
-            toolchain_compatible_with_by_toolchain[toolchain_name] = [
-                str(label)
-                for label in platform.compatible_with
-            ]
-            if platform.target_settings:
-                toolchain_target_settings[toolchain_name] = [
-                    str(label)
-                    for label in platform.target_settings
-                ]
-
-    return hub_repo(
-        name = hub_name,
+    return define_toolchains(
+        hub_name = hub_name,
+        versions = versions,
+        uv_repository = uv_repository,
+        hub_repo = hub_repo,
         toolchain_type = toolchain_type,
-        toolchain_names = toolchain_names,
-        toolchain_implementations = toolchain_implementations,
-        toolchain_compatible_with = toolchain_compatible_with_by_toolchain,
-        toolchain_target_settings = toolchain_target_settings,
+        resolve_sources = dist_manifest_resolver(module_ctx, get_auth = get_auth),
     )
 
 def _uv_toolchain_extension(module_ctx):
@@ -372,196 +226,6 @@ def _uv_toolchain_extension(module_ctx):
         module_ctx,
         hub_name = "uv",
     )
-
-def _overlap(first_collection, second_collection):
-    for x in first_collection:
-        if x in second_collection:
-            return True
-
-    return False
-
-# See https://github.com/astral-sh/setup-uv/pull/809.
-GITHUB_RELEASES_PREFIX = "https://github.com/astral-sh/uv/releases/download/"
-ASTRAL_MIRROR_PREFIX = "https://releases.astral.sh/github/uv/releases/download/"
-
-def _get_tool_urls_from_dist_manifest(module_ctx, *, base_url, manifest_filename, platforms, get_auth = get_auth, **auth_attrs):
-    """Download the results about remote tool sources.
-
-    This relies on the tools using the cargo packaging to infer the actual
-    sha256 values for each binary.
-
-    Example manifest url: https://github.com/astral-sh/uv/releases/download/0.6.5/dist-manifest.json
-
-    The example format is as below
-
-        dist_version	"0.28.0"
-        announcement_tag	"0.6.5"
-        announcement_tag_is_implicit	false
-        announcement_is_prerelease	false
-        announcement_title	"0.6.5"
-        announcement_changelog	"text"
-        announcement_github_body	"MD text"
-        releases	[
-            {
-                app_name	"uv"
-                app_version	"0.6.5"
-                env	
-                    install_dir_env_var	"UV_INSTALL_DIR"
-                    unmanaged_dir_env_var	"UV_UNMANAGED_INSTALL"
-                    disable_update_env_var	"UV_DISABLE_UPDATE"
-                    no_modify_path_env_var	"UV_NO_MODIFY_PATH"
-                    github_base_url_env_var	"UV_INSTALLER_GITHUB_BASE_URL"
-                    ghe_base_url_env_var	"UV_INSTALLER_GHE_BASE_URL"
-                display_name	"uv"
-                display	true
-            artifacts	[
-                "source.tar.gz"
-                "source.tar.gz.sha256"
-                "uv-installer.sh"
-                "uv-installer.ps1"
-                "sha256.sum"
-                "uv-aarch64-apple-darwin.tar.gz"
-                "uv-aarch64-apple-darwin.tar.gz.sha256"
-                "...
-            ]
-            hosting	
-                order	
-                0	"simple"
-                1	"github"
-                github	
-                    artifact_base_url	"https://github.com"
-                    artifact_download_path	"/astral-sh/uv/releases/download/0.11.2"
-                    owner	"astral-sh"
-                    repo	"uv"
-                simple	
-                    download_url	"https://releases.astral.sh/github/uv/releases/download/0.11.2"
-        artifacts	
-            uv-aarch64-apple-darwin.tar.gz	
-                name	"uv-aarch64-apple-darwin.tar.gz"
-                kind	"executable-zip"
-                target_triples	[
-                    "aarch64-apple-darwin"
-                assets	[
-                    {
-                        id	"uv-aarch64-apple-darwin-exe-uv"
-                        name	"uv"
-                        path	"uv"
-                        kind	"executable"
-                    },
-                    {
-                        id	"uv-aarch64-apple-darwin-exe-uvx"
-                        name	"uvx"
-                        path	"uvx"
-                        kind	"executable"
-                    }
-                ]
-                checksum	"uv-aarch64-apple-darwin.tar.gz.sha256"
-                checksums
-                    sha256	"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-            uv-aarch64-apple-darwin.tar.gz.sha256	
-                name	"uv-aarch64-apple-darwin.tar.gz.sha256"
-                kind	"checksum"
-                target_triples	[
-                    "aarch64-apple-darwin"
-                ]
-    """
-    auth_attr = struct(**auth_attrs)
-    dist_manifest = module_ctx.path(manifest_filename)
-    urls = [base_url + "/" + manifest_filename]
-    result = module_ctx.download(
-        url = urls,
-        output = dist_manifest,
-        auth = get_auth(module_ctx, urls, ctx_attr = auth_attr),
-    )
-    if not result.success:
-        fail(result)
-    dist_manifest = json.decode(module_ctx.read(dist_manifest))
-
-    # Use the simple download_url from the manifest, when available.
-    dist_base_url = (
-        dist_manifest
-            .get("releases", [{}])[0]
-            .get("hosting", {})
-            .get("simple", {})
-            .get("download_url", base_url)
-    )
-
-    # For official releases, add the astral mirror to improve availability.
-    # See https://github.com/astral-sh/setup-uv/pull/809.
-    if dist_base_url.startswith(GITHUB_RELEASES_PREFIX):
-        astral_base_url = ASTRAL_MIRROR_PREFIX + dist_base_url[len(GITHUB_RELEASES_PREFIX):]
-        base_urls = [
-            astral_base_url,
-            dist_base_url,
-        ]
-    else:
-        base_urls = [dist_base_url]
-
-    artifacts = dist_manifest["artifacts"]
-    tool_sources = {}
-    downloads = {}
-    for fname, artifact in artifacts.items():
-        if artifact.get("kind") != "executable-zip":
-            continue
-        target_triples = artifact["target_triples"]
-        if not _overlap(target_triples, platforms):
-            # We are not interested in this platform, so skip.
-            continue
-
-        # Releases of uv >= 0.11.0 have the sha256 directly inline.
-        sha256 = artifact.get("checksums", {}).get("sha256", "")
-        if len(sha256) > 0:
-            for platform in target_triples:
-                tool_sources[platform] = struct(
-                    urls = [
-                        "{}/{}".format(base, fname)
-                        for base in base_urls
-                    ],
-                    sha256 = sha256,
-                )
-            continue
-
-        # For uv < 0.11.0, we'll need to fetch the individual sha256 files.
-        checksum = artifacts[artifact["checksum"]]
-        checksum_fname = checksum["name"]
-        checksum_path = module_ctx.path(checksum_fname)
-        urls = ["{}/{}".format(dist_base_url, checksum_fname)]
-        downloads[checksum_path] = struct(
-            download = module_ctx.download(
-                url = urls,
-                output = checksum_path,
-                block = False,
-                auth = get_auth(module_ctx, urls, ctx_attr = auth_attr),
-            ),
-            archive_fname = fname,
-            platforms = target_triples,
-        )
-
-    for checksum_path, download in downloads.items():
-        result = download.download.wait()
-        if not result.success:
-            fail(result)
-
-        archive_fname = download.archive_fname
-
-        sha256, _, checksummed_fname = module_ctx.read(checksum_path).partition(" ")
-        checksummed_fname = checksummed_fname.strip(" *\n")
-        if checksummed_fname and archive_fname != checksummed_fname:
-            fail("The checksum is for a different file, expected '{}' but got '{}'".format(
-                archive_fname,
-                checksummed_fname,
-            ))
-
-        for platform in download.platforms:
-            tool_sources[platform] = struct(
-                urls = [
-                    "{}/{}".format(base, archive_fname)
-                    for base in base_urls
-                ],
-                sha256 = sha256,
-            )
-
-    return tool_sources
 
 uv = module_extension(
     doc = _DOC,

@@ -37,8 +37,18 @@ Before drafting any pull request description, strictly adhere to the rules in
 * **PR Metadata Discrepancies**: If a PR title or description diverges from
   the branch's actual scope, notify the user of the discrepancy and ask for
   confirmation before updating GitHub.
-* **NEVER** include a list of per-file edits or changelog bullet points of
-  individual file modifications in PR descriptions or commit messages.
+* **NEVER** include a list of per-file edits, changelog bullet points of
+  individual file modifications, test execution logs/checklists, or AI
+  disclosure metadata in PR descriptions or commit messages.
+* **AI Disclosure & Comment Etiquette**: Keep the PR description clean for use
+  as the merge commit message. After creating a PR, post a separate comment so
+  maintainers understand who/what they are interacting with: state the level of
+  human oversight and explain how comments on the PR will be handled (whether
+  an agent autonomously monitors and replies, whether a human reviews/approves
+  agent responses before posting, or whether the human responds directly).
+  Never post comments for every CI run or narrate build IDs, commit SHAs, line
+  counts, or trivial diff details (e.g., "comment-only"); comment `PTAL` only
+  when ready for re-review.
 * High-level overview only: state *why* the change is made and *how* at a
   conceptual level. Link related issues (e.g. `Work towards #<issue>`).
 * **Conciseness & Style (Strunk & White)**: Omit needless words. Use clear,
@@ -52,5 +62,19 @@ Before drafting any pull request description, strictly adhere to the rules in
   * During code review, inspect the PR description and comments for open
     questions, `TODO` items, or "Things we could do / follow-up" notes.
     Evaluate each item against the diff and project rules, flag unresolved
-    items with `ACTION_REQUIRED` or `USER_DECISION_REQUIRED`, and verify the
+    items with `BLOCKER`, `QUESTION`, or `HUMAN-SIGN-OFF`, and verify the
     `"do not merge"` label is applied if open questions remain.
+
+## PR Review Comments & Thread Resolution
+* End every posted PR comment or review reply with an italicized disclosure
+  line:
+  * If the exact comment text was not shown to and approved by the user before
+    posting (including automatic PR AI disclosure comments):
+    `*This is an automatically generated agent comment.*`
+  * Only if the user was shown the exact comment text and explicitly approved
+    posting it:
+    `*This is an agent-generated comment reviewed and approved by the user.*`
+* After fixing an inline PR review thread, reply with the commit hash and
+  explanation (`addPullRequestReviewThreadReply`) and resolve the thread
+  (`resolveReviewThread`) via `gh api graphql`, batching at most 3-4 threads per
+  request to avoid `502 Bad Gateway` timeouts.

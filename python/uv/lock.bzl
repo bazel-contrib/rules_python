@@ -22,13 +22,14 @@ Differences with the legacy {obj}`compile_pip_requirements` rule:
 - Supports transitions out of the box.
 
 Note, this does not provide a test target like {obj}`compile_pip_requirements` does.
-The `uv pip compile` command is not hermetic and thus a test based on it would most likely be flaky:
+The `uv lock` and `uv pip compile` commands are not hermetic and thus a test
+based on them would most likely be flaky:
 - It may require auth injected into it, so most likely it requires a local tag added so that the bazel action runs without sandboxing.
 - It requires network access.
 
 Given those points, a test target should be an explicit and properly documented target and not a hidden implicit target.
 If, you would like to add a test target that always does the locking automatically to ensure that the
-`requirements.txt` file is up-to-date, add something similar to:
+lock file is up-to-date, add something similar to:
 
 ```starlark
 load("@bazel_skylib//rules:native_binary.bzl", "native_test")
@@ -37,6 +38,7 @@ load("@rules_python//python/uv:lock.bzl", "lock")
 lock(
     name = "requirements",
     srcs = ["pyproject.toml"],
+    out = "uv.lock",
 )
 
 native_test(
@@ -47,8 +49,8 @@ native_test(
 
 ### `[tool.uv]` settings support
 
-When a `pyproject.toml` file is included in {attr}`lock.srcs`, the
-`--project` flag is automatically passed to `uv pip compile` using the
+When a `pyproject.toml` file is included in {arg}`lock.srcs`, the
+`--project` flag is automatically passed to `uv` using the
 directory of the shortest-path `pyproject.toml`. This causes `uv` to
 read `[tool.uv]` settings such as `no-build-isolation`,
 `exclude-dependencies`, and `[tool.uv.workspace]` from that file.
@@ -63,11 +65,10 @@ lock(
         "pyproject.toml",
         "requirements.in",
     ],
+    out = "requirements_lock.txt",
     project = "subproject",
 )
 ```
-
-EXPERIMENTAL: This is experimental and may be changed without notice.
 """
 
 load("//python/uv/private:lock.bzl", _lock = "lock")

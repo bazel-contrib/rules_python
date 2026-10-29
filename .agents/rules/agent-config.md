@@ -1,7 +1,7 @@
 ---
 trigger: glob
 description: Prose style rules for agent configs, rules, and skills
-globs: ".agents/**/*.md,AGENTS.md,GEMINI.md"
+globs: ".agents/**/*.md,AGENTS.md,CLAUDE.md,GEMINI.md"
 ---
 
 # Agent Configuration Style

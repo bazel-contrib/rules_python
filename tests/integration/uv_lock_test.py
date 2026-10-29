@@ -198,10 +198,7 @@ class UvLockIntegrationTest(runner.TestCase):
     def test_run_reuses_cache_offline(self):
         for target, filename in (
             ("//:requirements.run", "requirements.txt"),
-            (
-                "//:project_lock.run",
-                "bazel-bin/project_lock.run.runfiles/_main/uv.lock",
-            ),
+            ("//:project_lock.run", "uv.lock"),
         ):
             with self.subTest(target=target):
                 self.bazel_env["UV_CACHE_DIR"] = str(
@@ -233,6 +230,48 @@ class UvLockIntegrationTest(runner.TestCase):
                     self.assertNotEqual(bypass_env.exit_code, 0, bypass_env.describe())
                 finally:
                     del self.bazel_env["UV_NO_CACHE"]
+
+    def test_project_lock_run_updates_existing_lock_in_workspace(self):
+        packages_dir = self.docroot / "packages"
+        wheel_data, _, wheel_name = _create_wheel_bytes("other-local-pkg", "1.0.0")
+        (packages_dir / wheel_name).write_bytes(wheel_data)
+
+        pyproject = self.repo_root / "pyproject.toml"
+        orig_pyproject = pyproject.read_text()
+        lock_file = self.repo_root / "uv.lock"
+        try:
+            pyproject.write_text(
+                '[project]\nname = "uv_lock_test"\nversion = "0.0.0"\n'
+                'dependencies = ["my-local-pkg", "other-local-pkg"]\n'
+            )
+            lock_file.unlink(missing_ok=True)
+
+            # Generate the initial lockfile in the workspace with 1.0.0 of both packages.
+            self._run_cached_lock("//:project_lock.run")
+            self.assertTrue(lock_file.exists(), "uv.lock was not written to workspace")
+            initial_lock = lock_file.read_text()
+            self.assertIn('name = "my-local-pkg"\nversion = "1.0.0"', initial_lock)
+            self.assertIn('name = "other-local-pkg"\nversion = "1.0.0"', initial_lock)
+
+            # Publish 2.0.0 of both packages to the index.
+            for name in ("my-local-pkg", "other-local-pkg"):
+                wheel_data, _, wheel_name = _create_wheel_bytes(name, "2.0.0")
+                (packages_dir / wheel_name).write_bytes(wheel_data)
+
+            # Upgrade only my-local-pkg; other-local-pkg must stay pinned at 1.0.0.
+            self._run_cached_lock(
+                "//:project_lock.run", "--upgrade-package", "my-local-pkg"
+            )
+            updated_lock = lock_file.read_text()
+            self.assertIn('name = "my-local-pkg"\nversion = "2.0.0"', updated_lock)
+            self.assertIn('name = "other-local-pkg"\nversion = "1.0.0"', updated_lock)
+        finally:
+            # All test methods share self.repo_root (BIT_WORKSPACE_DIR), and in
+            # local runs pyproject.toml is a runfiles symlink to the host source
+            # tree. Restore pyproject.toml and remove uv.lock so subsequent test
+            # methods and the host working tree are not left with test-only edits.
+            pyproject.write_text(orig_pyproject)
+            lock_file.unlink(missing_ok=True)
 
     def test_lock_update_with_custom_index(self):
         self._assert_server_requires_auth()

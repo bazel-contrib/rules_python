@@ -140,6 +140,14 @@ pytest_test(
     ],
 )
 
+py_test(
+    name = "cached_venv_replaces_dangling_package_symlink_test",
+    srcs = ["cached_venv_dangling_symlink_test.py"],
+    data = ["//python/private:python_bootstrap_template.txt"],
+    main = "cached_venv_dangling_symlink_test.py",
+    deps = ["//python/runfiles"],
+)
+
 py_reconfig_test(
     name = "sys_path_order_bootstrap_system_python_test",
     srcs = ["sys_path_order_test.py"],

@@ -299,7 +299,7 @@ def _fixup_stdlib_paths():
         norm = _norm_path(path_str)
         return norm == runfiles_norm or norm.startswith(runfiles_prefix)
 
-    target_root = _get_windows_path_with_unc_prefix(runtime_root)
+    target_root = runtime_root
     if _is_windows():
         target_root = target_root.replace("/", os.sep)
 

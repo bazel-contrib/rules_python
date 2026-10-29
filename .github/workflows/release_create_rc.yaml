@@ -59,7 +59,7 @@ jobs:
           bazel run \
             --//python/config_settings:py_pbs_distribution=install_only_stripped \
             //dev/release -- \
-            create-rc --issue "$ISSUE" --remote origin "${ARGS[@]}"
+            create-rc "--issue=$ISSUE" --remote origin "${ARGS[@]}"
 
   call_release:
     needs: tag_rc

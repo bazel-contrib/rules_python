@@ -18,7 +18,6 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//lib:shell.bzl", "shell")
 load("//python:py_binary.bzl", "py_binary")
-load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 load("//python/private:common_labels.bzl", "labels")
 load("//python/private:toolchain_types.bzl", "EXEC_TOOLS_TOOLCHAIN_TYPE")  # buildifier: disable=bzl-visibility
 load(":toolchain_types.bzl", "UV_TOOLCHAIN_TYPE")
@@ -37,6 +36,11 @@ The args passed to `uv` by default when running the runnable target.
 :type: dict[str, str]
 
 The env passed to the execution.
+""",
+        "project_lock": """
+:type: str
+
+The path to the `uv.lock` file in the project directory.
 """,
         # Preserve the wrapper's runtime files and symlink mappings together;
         # a regular depset cannot represent the full runfiles layout.
@@ -299,8 +303,9 @@ def _common_lock(ctx, locker):
         _RunLockInfo(
             args = args.run_info,
             env = ctx.attr.env,
+            project_lock = project_lock,
             runfiles = ctx.runfiles(
-                files = srcs + [uv],
+                files = srcs + ctx.files.existing_output + [uv],
                 transitive_files = python_files,
             ).merge(uv_default_info.default_runfiles),
             template = ctx.files._template[0],
@@ -381,7 +386,7 @@ modifications and the locking is not done from scratch.
     ),
     "project": attr.string(
         doc = """\
-Overrides the `--project` directory passed to `uv pip compile`.
+Overrides the `--project` directory passed to `uv`.
 If not set, the project directory is auto-detected: when
 `pyproject.toml` files are in {obj}`lock.srcs`, the one with the
 shortest directory path is selected. This makes `uv` read
@@ -504,16 +509,18 @@ def _run_impl(ctx):
         return shell.quote(arg)
 
     info = ctx.attr.lock[_RunLockInfo]
+    if ctx.label.package:
+        src_out = "{}/{}".format(ctx.label.package, ctx.attr.output)
+    else:
+        src_out = ctx.attr.output
 
     executable = ctx.actions.declare_file(ctx.label.name + ext)
     ctx.actions.expand_template(
         template = info.template,
         substitutions = {
             '"{{args}}"': " ".join([_maybe_path(arg) for arg in info.args]),
-            "{{src_out}}": "{}/{}".format(ctx.label.package, ctx.attr.output).replace(
-                "/",
-                path_sep,
-            ),
+            "{{project_lock}}": info.project_lock.replace("/", path_sep),
+            "{{src_out}}": src_out.replace("/", path_sep),
         },
         output = executable,
         is_executable = True,
@@ -621,12 +628,12 @@ def lock(
     """Pin the requirements based on the src files.
 
     This macro creates the following targets:
-    - `name`: the target that creates the requirements.txt file in a build
-      action. This target will have `no-cache` and `requires-network` added
-      to its tags.
+    - `name`: the target that creates the lock file (`uv.lock` or
+      `requirements.txt`) in a build action. This target will have `no-cache`
+      and `requires-network` added to its tags.
     - `name.run`: a runnable target that can be used to pass extra parameters
       to the same command that would be run in the `name` action. This will
-      update the source copy of the requirements file. You can customize the
+      update the source copy of the lock file. You can customize the
       args via the command line, but it requires being able to run `uv` (and
       possibly `python`) directly on your host. This target uses the `uv`
       cache and inherits its cache settings from the environment, including
@@ -634,28 +641,43 @@ def lock(
       data or `--no-cache` to disable caching. Build actions, including those
       used by `name.update`, disable the `uv` cache.
     - `name.update`: a target that can be run to update the source-tree version
-      of the requirements lock file. The output can be fed to the
-      {obj}`pip.parse` bzlmod extension tag class. Note, you can use
-      `native_test` to wrap this target to make a test. You can't customize the
-      args via command line, but you can use RBE to generate requirements
-      (offload execution and run for different platforms). Note, that for RBE
-      to be usable, one needs to ensure that the nodes running the action have
-      internet connectivity or the indexes are provided in a different way for
-      a fully offline operation.
+      of the lock file. The output can be fed to the {obj}`pip.parse` bzlmod
+      extension tag class (via {attr}`pip.parse.uv_lock` or
+      {attr}`pip.parse.requirements_lock`) or the {obj}`pip_parse` WORKSPACE
+      macro. Note, you can use `native_test` to wrap this target to make a test.
+      You can't customize the args via command line, but you can use RBE to
+      generate requirements (offload execution and run for different
+      platforms). Note, that for RBE to be usable, one needs to ensure that the
+      nodes running the action have internet connectivity or the indexes are
+      provided in a different way for a fully offline operation.
 
     :::{note}
     All of the targets have `manual` tags as locking results cannot be cached.
+    :::
+
+    :::{note}
+    A `uv` toolchain must be registered: under bzlmod via the {obj}`uv` module
+    extension, under WORKSPACE via {obj}`uv_register_toolchains`.
     :::
 
     :::{versionchanged} VERSION_NEXT_PATCH
     The `name.run` target uses the `uv` cache by default.
     :::
 
+    :::{versionchanged} VERSION_NEXT_FEATURE
+    WORKSPACE builds are supported; previously the targets were marked
+    incompatible unless bzlmod was enabled.
+    :::
+
     Args:
         name: {type}`str` The prefix of all targets created by this macro.
         srcs: {type}`list[Label]` The sources that will be used. Add all of the
-            files that would be passed as srcs to the `uv pip compile` command.
-        out: {type}`str` The output file relative to the package.
+            files that would be passed as srcs to `uv pip compile`, or the
+            `pyproject.toml` files when generating `uv.lock`.
+        out: {type}`str` The output file relative to the package. If the file
+            name ends with `.lock` (e.g. `uv.lock`), `uv lock` is used to
+            generate a `uv.lock` file; otherwise `uv pip compile` is used to
+            generate a `requirements.txt`-formatted file.
         args: {type}`list[str]` The list of args to pass to uv. Note, these are
             written into the runnable `name.run` target.
         env: {type}`dict[str, str]` the environment variables to set. Note, this
@@ -675,7 +697,7 @@ def lock(
             are compiling the requirements file for using it as a constraints
             file. Defaults to `False`.
         project: {type}`str | None` overrides the `--project` directory
-            passed to `uv pip compile`. By default the project directory
+            passed to `uv`. By default the project directory
             is auto-detected: when {obj}`lock.srcs` contains
             `pyproject.toml` files, the one with the shortest directory
             path is selected. This causes `uv` to read `[tool.uv]`
@@ -686,7 +708,8 @@ def lock(
             {versionadded} 2.1.0
         python_version: {type}`str | None` the python_version to transition to
             when locking the requirements. Defaults to the default python version
-            configured by the {obj}`python` module extension.
+            configured by the {obj}`python` module extension or, under
+            WORKSPACE, by the registered Python toolchains.
         **kwargs: common kwargs passed to rules.
     """
     update_target = "{}.update".format(name)
@@ -698,8 +721,6 @@ def lock(
     maybe_out = _maybe_file(out)
 
     tags = ["manual"] + kwargs.pop("tags", [])
-    if not BZLMOD_ENABLED:
-        kwargs["target_compatible_with"] = ["@platforms//:incompatible"]
 
     uv_kwargs = {
         "is_windows": select({

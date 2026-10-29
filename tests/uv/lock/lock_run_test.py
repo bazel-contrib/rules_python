@@ -9,6 +9,10 @@ from python import runfiles
 rfiles = runfiles.Create()
 assert rfiles is not None, "Failed to create runfiles"
 
+# The runfiles directory of the main repository: `_main` under bzlmod, the
+# `workspace(name = ...)` value under WORKSPACE. Always set by `bazel test`.
+_MAIN_REPO_DIR = os.environ["TEST_WORKSPACE"]
+
 
 def _relative_rpath(path: str) -> Path:
     """Find file in runfiles, handling Windows .bat/.exe wrappers."""
@@ -17,7 +21,9 @@ def _relative_rpath(path: str) -> Path:
     # (e.g. a Python source file instead of the .exe launcher).
     exts = (".exe", ".bat", "") if os.name == "nt" else ("", ".exe", ".bat")
     for ext in exts:
-        p = (Path("_main") / "tests" / "uv" / "lock" / (path + ext)).as_posix()
+        # Refer to the main repository by its apparent name so the lookup
+        # works under both bzlmod and WORKSPACE.
+        p = (Path("rules_python") / "tests" / "uv" / "lock" / (path + ext)).as_posix()
         rpath = rfiles.Rlocation(p)
         if rpath:
             rp = Path(rpath)
@@ -30,7 +36,7 @@ def _relative_rpath(path: str) -> Path:
     if runfiles_dir:
         exts = (".exe", ".bat", "") if os.name == "nt" else ("", ".bat", ".exe")
         for ext in exts:
-            rp = Path(runfiles_dir, "_main", "tests", "uv", "lock", path + ext)
+            rp = Path(runfiles_dir, _MAIN_REPO_DIR, "tests", "uv", "lock", path + ext)
             if rp.exists():
                 return rp
 

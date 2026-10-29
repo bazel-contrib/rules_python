@@ -87,6 +87,11 @@ build:macos --host_copt=-Wno-deprecated-declarations
 build:macos --host_copt=-Wno-stringop-overread
 build:macos --host_copt=-Wno-sign-compare
 
+# BuildBuddy's managed cloud pool only has Linux executors; disable remote
+# execution on macOS and Windows while keeping BES and remote caching enabled.
+common:macos --remote_executor=
+common:windows --remote_executor=
+
 import %workspace%/specialized_configs.bazelrc
 import %workspace%/buildbuddy.bazelrc
 

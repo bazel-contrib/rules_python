@@ -190,53 +190,57 @@ _tests.append(_test_simple)
 
 def _test_pip_parse_pyproject_toml(env):
     # pip.parse() reads the version from pyproject.toml's requires-python when
-    # python_version is not set explicitly.
-    pypi = _parse_modules(
-        env,
-        module_ctx = _pypi_mock_mctx(
-            _mod(
-                name = "rules_python",
-                parse = [
-                    _parse(
-                        hub_name = "pypi",
-                        pyproject_toml = "pyproject.toml",
-                        simpleapi_skip = ["simple"],
-                        requirements_lock = "requirements.txt",
+    # python_version is not set explicitly. Verify it works both when the
+    # toolchain was registered by full version (python_3_15_19_host) and when
+    # registered by minor version (python_3_15_host).
+    for available_interpreters in [
+        {"python_3_15_19_host": "unit_test_interpreter_target"},
+        {"python_3_15_host": "unit_test_interpreter_target"},
+    ]:
+        pypi = _parse_modules(
+            env,
+            module_ctx = _pypi_mock_mctx(
+                _mod(
+                    name = "rules_python",
+                    parse = [
+                        _parse(
+                            hub_name = "pypi",
+                            pyproject_toml = "pyproject.toml",
+                            simpleapi_skip = ["simple"],
+                            requirements_lock = "requirements.txt",
+                        ),
+                    ],
+                ),
+                os_name = "linux",
+                arch_name = "x86_64",
+                mock_files = {
+                    "pyproject.toml": "[project]\nrequires-python = \"==3.15.19\"\n",
+                },
+            ),
+            available_interpreters = available_interpreters,
+            minor_mapping = {"3.15": "3.15.19"},
+        )
+
+        # Resolves identically to passing python_version = "3.15.19" explicitly:
+        # the full version drives interpreter selection, hub naming uses major.minor.
+        pypi.exposed_packages().contains_exactly({"pypi": ["simple"]})
+        pypi.hub_whl_map().contains_exactly({"pypi": {
+            "simple": {
+                "pypi_315_simple": [
+                    whl_config_setting(
+                        version = "3.15",
                     ),
                 ],
-            ),
-            os_name = "linux",
-            arch_name = "x86_64",
-            mock_files = {
-                "pyproject.toml": "[project]\nrequires-python = \"==3.15.19\"\n",
             },
-        ),
-        available_interpreters = {
-            "python_3_15_19_host": "unit_test_interpreter_target",
-        },
-        minor_mapping = {"3.15": "3.15.19"},
-    )
-
-    # Resolves identically to passing python_version = "3.15.19" explicitly:
-    # the full version drives interpreter selection, hub naming uses major.minor.
-    pypi.exposed_packages().contains_exactly({"pypi": ["simple"]})
-    pypi.hub_whl_map().contains_exactly({"pypi": {
-        "simple": {
-            "pypi_315_simple": [
-                whl_config_setting(
-                    version = "3.15",
-                ),
-            ],
-        },
-    }})
-    pypi.whl_libraries().contains_exactly({
-        "pypi_315_simple": {
-            "config_load": "@pypi//:config.bzl",
-            "dep_template": "@pypi//{name}:{target}",
-            "python_interpreter_target": "unit_test_interpreter_target",
-            "requirement": "simple==0.0.1 --hash=sha256:deadbeef --hash=sha256:deadbaaf",
-        },
-    })
+        }})
+        pypi.whl_libraries().contains_exactly({
+            "pypi_315_simple": {
+                "config_load": "@pypi//:config.bzl",
+                "dep_template": "@pypi//{name}:{target}",
+                "python_interpreter_target": "unit_test_interpreter_target",
+                "requirement": "simple==0.0.1 --hash=sha256:deadbeef --hash=sha256:deadbaaf",
+            },
+        })
 
 _tests.append(_test_pip_parse_pyproject_toml)
 

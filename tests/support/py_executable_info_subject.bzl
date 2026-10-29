@@ -35,6 +35,7 @@ def _py_executable_info_subject_new(info, *, meta):
         interpreter_path = lambda *a, **k: _py_executable_info_subject_interpreter_path(self, *a, **k),
         main = lambda *a, **k: _py_executable_info_subject_main(self, *a, **k),
         runfiles_without_exe = lambda *a, **k: _py_executable_info_subject_runfiles_without_exe(self, *a, **k),
+        venv_runfiles = lambda *a, **k: _py_executable_info_subject_venv_runfiles(self, *a, **k),
         # go/keep-sorted end
     )
     self = struct(
@@ -62,6 +63,13 @@ def _py_executable_info_subject_runfiles_without_exe(self):
     return subjects.runfiles(
         self.actual.runfiles_without_exe,
         meta = self.meta.derive("runfiles_without_exe()"),
+    )
+
+def _py_executable_info_subject_venv_runfiles(self):
+    """Returns a subject for `PyExecutableInfo.venv_runfiles`."""
+    return subjects.runfiles(
+        self.actual.venv_runfiles,
+        meta = self.meta.derive("venv_runfiles()"),
     )
 
 # buildifier: disable=name-conventions

@@ -60,8 +60,10 @@ exports_files([
 
 exports_files(
     [
+        ".bazelrc",
         ".bazelversion",
         "MODULE.bazel",
+        "buildbuddy.bazelrc",
     ],
     visibility = ["//tests:__subpackages__"],
 )

@@ -72,9 +72,7 @@ jobs:
       - name: Download built artifacts
         uses: actions/download-artifact@v8
         with:
-          # Match platform triples (<cpu>-<vendor>-<os>), excluding
-          # release-artifacts-manifest.
-          pattern: release-artifacts-*-*
+          pattern: release-artifacts-*
           path: release-artifacts
           merge-multiple: true
 

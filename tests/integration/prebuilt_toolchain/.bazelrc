@@ -1,0 +1,3 @@
+common --lockfile_mode=off
+test --test_output=errors
+build --enable_runfiles

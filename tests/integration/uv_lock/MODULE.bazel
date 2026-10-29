@@ -11,8 +11,11 @@ local_path_override(
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.toolchain(python_version = "3.13")
 
-uv = use_extension("@rules_python//python/uv:uv.bzl", "uv")
-uv.configure(version = "0.13.1")
-use_repo(uv, "uv")
-
-register_toolchains("@uv//:all")
+# The minimal setup: `rules_python` registers `@uv//:all` itself, so the root
+# module only has to configure which version to download.
+uv = use_extension(
+    "@rules_python//python/uv:uv.bzl",
+    "uv",
+    dev_dependency = True,
+)
+uv.configure(version = "0.13.5")

@@ -40,6 +40,7 @@ cross_compiled_files(
             "//dev/platforms:i686-unknown-linux-musl",
             "//dev/platforms:powerpc64le-unknown-linux-musl",
             "//dev/platforms:riscv64gc-unknown-linux-musl",
+            "//dev/platforms:x86_64-unknown-linux-gnu",
         ],
         ":is_macos_aarch64": ["//dev/platforms:x86_64-apple-darwin"],
         ":is_windows_x86_64": ["//dev/platforms:i686-pc-windows-msvc"],

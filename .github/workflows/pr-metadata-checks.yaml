@@ -26,7 +26,8 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           echo "Checking PR description..."
-          if echo "$PR_BODY" | grep -Ei "DO NOT SUBMIT|DO NOT MERGE"; then
+          if printf '%s\n' "$PR_BODY" \
+              | grep --extended-regexp --ignore-case --quiet "DO NOT SUBMIT|DO NOT MERGE"; then
             echo "::error::This PR description contains" \
                  "'DO NOT SUBMIT' or 'DO NOT MERGE'" \
                  "and cannot be merged."
@@ -43,18 +44,23 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_REPO: ${{ github.repository }}
         run: |
           echo "Checking for blocked files..."
           # We use --repo to avoid needing actions/checkout.
           # This keeps the job lightweight and avoids "not a git repository" errors.
-          changed_files=$(gh pr diff "$PR_NUMBER" --name-only --repo "${{ github.repository }}")
-          blocked_files=$(echo "$changed_files" | grep -E '^.agents/(plans|scratch)(/|$)' || true)
+          changed_files=$(gh pr diff --name-only --repo "$GH_REPO" -- "$PR_NUMBER")
+          # grep exits 1 when no lines match, which is expected when no blocked files exist.
+          blocked_files=$(
+            printf '%s\n' "$changed_files" \
+              | grep --extended-regexp '^.agents/(plans|scratch)(/|$)' || true
+          )
           if [ -n "$blocked_files" ]; then
             echo "::error::Files in .agents/plans and" \
                  ".agents/scratch are permitted in PRs to" \
                  "facilitate discussion, but are not allowed" \
                  "to be merged. Please remove them before merging:"
-            echo "$blocked_files"
+            printf '%s\n' "$blocked_files"
             exit 1
           fi
           echo "No blocked files found."

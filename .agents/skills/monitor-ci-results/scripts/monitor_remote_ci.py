@@ -260,7 +260,9 @@ def main():
                                     f"⚠️ Remote CI Buildkite Job '{jname}' is blocked!\n\n"
                                     f"Build ID: {build_id} | Job ID: {jid}\n"
                                     f"Log URL: {log_url}\n\n"
-                                    f"Action required: Unblock the job using the buildkite-retry-job skill (`retry_buildkite_jobs.py {args.pr} --unblock`)."
+                                    "Action required: Unblock the job using the "
+                                    f"retry-ci-job skill (`retry_ci_jobs.py --pr {args.pr} "
+                                    "--unblock`)."
                                 )
                                 subprocess.run(
                                     [
@@ -324,26 +326,30 @@ def main():
             elif (
                 state.upper() in ["FAILURE", "FAIL", "CANCELLED", "TIMED_OUT"]
                 or bucket == "fail"
-            ) and name not in monitored:
-                print(f"🚨 Notifying failure for GitHub check '{name}'...")
-                job_id = link.split("/")[-1] if "/" in link else link
-                msg = (
-                    f"⚠️ Remote CI GitHub Check '{name}' completed with errors!\n\n"
-                    f"Link: {link}\n\n"
-                    f"Action required: Start a subagent to run the analyze-ci-failure skill for '{name}' with link '{link}' and job ID '{job_id}'."
-                )
-                subprocess.run(
-                    [
-                        "agentapi",
-                        "send-message",
-                        "--title=CI Check Failed",
-                        args.conv_id,
-                        msg,
-                    ]
-                )
-                monitored[name] = time.time()
-                with open(state_file, "w") as f:
-                    json.dump(monitored, f)
+            ):
+                job_id = link.split("/")[-1].split("?")[0] if "/" in link else link
+                gh_key = f"gh_{job_id}" if job_id else name
+                if gh_key not in monitored:
+                    print(f"🚨 Notifying failure for GitHub check '{name}'...")
+                    msg = (
+                        f"⚠️ Remote CI GitHub Check '{name}' completed with errors!\n\n"
+                        f"Link: {link}\n\n"
+                        f"Action required: Start a subagent to run the "
+                        f"analyze-ci-failure skill for '{name}' with link "
+                        f"'{link}' and job ID '{job_id}'."
+                    )
+                    subprocess.run(
+                        [
+                            "agentapi",
+                            "send-message",
+                            "--title=CI Check Failed",
+                            args.conv_id,
+                            msg,
+                        ]
+                    )
+                    monitored[gh_key] = time.time()
+                    with open(state_file, "w") as f:
+                        json.dump(monitored, f)
 
         time.sleep(args.interval)
 

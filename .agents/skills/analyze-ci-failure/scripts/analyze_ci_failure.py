@@ -39,19 +39,45 @@ def fetch_log(job_name, build_id, job_id, output_path):
         log_url = f"https://buildkite.com/organizations/bazel/pipelines/rules-python-python/builds/{build_id}/jobs/{job_id}/download.txt"
 
     # Check if this is a GitHub Actions job
-    gh_match = re.search(r"github\.com/.*/job/(\d+)", log_url)
+    gh_repo_match = re.search(
+        r"github\.com/([^/]+/[^/]+)/actions/runs/\d+/job/(\d+)", log_url
+    )
+    gh_match = gh_repo_match or re.search(r"github\.com/.*/job/(\d+)", log_url)
     if not gh_match and "github" in job_name.lower() and re.match(r"^\d+$", job_id):
         gh_match = re.match(r"^(\d+)$", job_id)
 
     if gh_match:
-        gh_job_id = gh_match.group(1)
+        if gh_repo_match:
+            gh_repo = gh_repo_match.group(1)
+            gh_job_id = gh_repo_match.group(2)
+        else:
+            gh_repo = "bazel-contrib/rules_python"
+            gh_job_id = gh_match.group(1)
         print(f"📥 Fetching GitHub Action log for job {gh_job_id} using gh CLI...")
-        cmd = ["gh", "run", "view", "--job", gh_job_id, "--log"]
+        api_cmd = ["gh", "api", f"repos/{gh_repo}/actions/jobs/{gh_job_id}/logs"]
+        try:
+            res = subprocess.run(api_cmd, capture_output=True, text=True, check=True)
+            if res.stdout.strip():
+                with open(output_path, "w") as f:
+                    f.write(res.stdout)
+                return True
+        except Exception as e:
+            print(
+                f"⚠️ Failed to fetch GitHub log via gh api for job {gh_job_id}: {e}",
+                file=sys.stderr,
+            )
+
+        cmd = ["gh", "run", "view", "--job", gh_job_id, "--repo", gh_repo, "--log"]
         try:
             res = subprocess.run(cmd, capture_output=True, text=True, check=True)
-            with open(output_path, "w") as f:
-                f.write(res.stdout)
-            return True
+            if (
+                res.stdout.strip()
+                and "is still in progress; logs will be available when it is complete"
+                not in res.stdout
+            ):
+                with open(output_path, "w") as f:
+                    f.write(res.stdout)
+                return True
         except Exception as e:
             print(
                 f"⚠️ Failed to fetch GitHub log via gh CLI for job {gh_job_id}: {e}",
@@ -118,6 +144,7 @@ def parse_log(log_path):
                 "connection reset by peer",
                 "input/output error",
                 "errno 5",
+                "unable to find bazelisk version",
             ]
         ):
             if clean_line:
@@ -168,6 +195,13 @@ def create_plan(job_name, log_path, errors):
     ):
         is_flake = True
         flake_reason = "Transient runner host disk / Darwin sandbox I/O error (OSError: [Errno 5] Input/output error). This is an infrastructure flake, not a codebase defect."
+    elif any("unable to find bazelisk version" in e.lower() for e in errors):
+        is_flake = True
+        flake_reason = (
+            "Transient network error fetching Bazelisk release metadata during "
+            "GitHub Actions `setup-bazel` step (`Unable to find Bazelisk version`). "
+            "This is an infrastructure network flake, not a codebase bug."
+        )
 
     classification = (
         "⚡ **Classification**: **Infrastructure / Flake Issue** (Not a codebase bug)"
@@ -175,7 +209,7 @@ def create_plan(job_name, log_path, errors):
         else "🔍 **Classification**: **Code / Configuration Issue**"
     )
     fix_advice = (
-        f"Retry the failed job (`buildkite-retry-job`). {flake_reason}"
+        f"Retry the failed job (`retry-ci-job`). {flake_reason}"
         if is_flake
         else "Resolve the root cause in the relevant source / build files."
     )
@@ -215,7 +249,8 @@ def main():
     os.makedirs(scratch_dir, exist_ok=True)
 
     safe_jname = re.sub(r"[^a-zA-Z0-9]", "_", args.job_name)
-    log_path = os.path.join(scratch_dir, f"ci_{safe_jname}_{args.job_id}.log")
+    safe_jid = re.sub(r"[^a-zA-Z0-9_-]", "_", args.job_id)
+    log_path = os.path.join(scratch_dir, f"ci_{safe_jname}_{safe_jid}.log")
 
     fetch_log(args.job_name, args.build_id, args.job_id, log_path)
 

@@ -18,5 +18,10 @@ in `git diff` against the project's documentation rules:
    APIs are included in `//docs:docs` or relevant docs build targets.
 8. Ensure docs describe user-visible behavior, not internal workarounds or
    implementation details.
+9. Flag tautological comments or headings that merely restate the code or
+   heading, and verify docstrings and associated docs are updated when behavior
+   changes.
+10. Guardrails: Do not enforce the 80-column wrap limit on Markdown tables, and
+    do not bikeshed clear prose wording.
 
 @.agents/skills/review-code/review-report-format.md

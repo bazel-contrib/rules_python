@@ -12,94 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# The following is experimental API and currently not intended for use outside this example.
 load("@rules_python//python/uv/private:lock.bzl", "lock")  # buildifier: disable=bzl-visibility
 
 licenses(["notice"])  # Apache 2.0
 
 lock(
-    name = "bzlmod_requirements_3_12",
+    name = "bzlmod_uv_lock",
     srcs = ["bzlmod/pyproject.toml"],
-    out = "bzlmod/requirements_lock_3_12.txt",
-    args = [
-        "--emit-index-url",
-        "--universal",
-        "--python-version=3.12",
-    ],
+    out = "bzlmod/uv.lock",
     directory = "examples/bzlmod",
-    python_version = "3.12",
+    python_version = "3.10",
     visibility = ["//:__subpackages__"],
 )
 
 lock(
-    name = "bzlmod_requirements_3_12_windows",
-    srcs = ["bzlmod/pyproject.toml"],
-    out = "bzlmod/requirements_windows_3_12.txt",
-    args = [
-        "--emit-index-url",
-        "--python-platform",
-        "windows",
-        "--python-version=3.12",
-    ],
-    directory = "examples/bzlmod",
-    python_version = "3.12",
-    visibility = ["//:__subpackages__"],
-)
-
-lock(
-    name = "bzlmod_requirements_3_13",
-    srcs = ["bzlmod/pyproject.toml"],
-    out = "bzlmod/requirements_lock_3_13.txt",
-    args = [
-        "--emit-index-url",
-        "--universal",
-        "--python-version=3.13",
-    ],
-    directory = "examples/bzlmod",
-    python_version = "3.13",
-    visibility = ["//:__subpackages__"],
-)
-
-lock(
-    name = "bzlmod_requirements_3_13_windows",
-    srcs = ["bzlmod/pyproject.toml"],
-    out = "bzlmod/requirements_windows_3_13.txt",
-    args = [
-        "--emit-index-url",
-        "--python-platform",
-        "windows",
-        "--python-version=3.13",
-    ],
-    directory = "examples/bzlmod",
-    python_version = "3.13",
-    visibility = ["//:__subpackages__"],
-)
-
-lock(
-    name = "bzlmod_requirements_3_14",
-    srcs = ["bzlmod/pyproject.toml"],
-    out = "bzlmod/requirements_lock_3_14.txt",
-    args = [
-        "--emit-index-url",
-        "--universal",
-        "--python-version=3.14",
-    ],
-    directory = "examples/bzlmod",
-    python_version = "3.14",
-    visibility = ["//:__subpackages__"],
-)
-
-lock(
-    name = "bzlmod_requirements_3_14_windows",
-    srcs = ["bzlmod/pyproject.toml"],
-    out = "bzlmod/requirements_windows_3_14.txt",
-    args = [
-        "--emit-index-url",
-        "--python-platform",
-        "windows",
-        "--python-version=3.14",
-    ],
-    directory = "examples/bzlmod",
-    python_version = "3.14",
+    name = "bzlmod_other_module_uv_lock",
+    srcs = ["bzlmod/other_module/pyproject.toml"],
+    out = "bzlmod/other_module/uv.lock",
+    directory = "examples/bzlmod/other_module",
+    python_version = "3.11",
     visibility = ["//:__subpackages__"],
 )

@@ -55,20 +55,11 @@ jobs:
             runner: macos-15-intel
           - triple: x86_64-pc-windows-msvc
             runner: windows-2022
-          - triple: x86_64-unknown-linux-gnu
-            runner: ubuntu-24.04
-          # Cross-compiled; see dev/platforms/BUILD.bazel.
-          - triple: aarch64-unknown-linux-musl
-            runner: ubuntu-24.04
-          - triple: armv7-unknown-linux-musleabihf
-            runner: ubuntu-24.04
+          # Cross-compiled; see dev/platforms/BUILD.bazel and
+          # dev/release_artifacts/BUILD.bazel.
           - triple: i686-pc-windows-msvc
             runner: windows-2022
-          - triple: i686-unknown-linux-musl
-            runner: ubuntu-24.04
-          - triple: powerpc64le-unknown-linux-musl
-            runner: ubuntu-24.04
-          - triple: riscv64gc-unknown-linux-musl
+          - triple: linux
             runner: ubuntu-24.04
     env:
       REF: ${{ inputs.ref || github.sha }}
@@ -137,9 +128,13 @@ jobs:
             || '' }}
 
       - name: Build runfiles wheel
+        env:
+          INPUT_REF: ${{ inputs.ref }}
+        # ${INPUT_REF:+...} expands to the --stamp and --embed_label flags only
+        # when INPUT_REF is non-empty (release builds, not pull_request builds).
         run: >-
           bazel build
-          ${{ inputs.ref && format('--stamp --embed_label={0}', inputs.ref) || '' }}
+          ${INPUT_REF:+--stamp "--embed_label=$INPUT_REF"}
           //python/runfiles:wheel.dist
           //python/runfiles:wheel.publish
           //tools/publish:twine
@@ -198,12 +193,14 @@ jobs:
         if: hashFiles('artifacts_manifest.json') != ''
         uses: actions/upload-artifact@v7
         with:
-          name: release-artifacts-manifest
+          name: release-manifest
           path: artifacts_manifest.json
           if-no-files-found: error
 
       - name: Create release archive and notes
-        run: .github/workflows/create_archive_and_notes.sh ${{ inputs.ref }}
+        env:
+          INPUT_REF: ${{ inputs.ref }}
+        run: .github/workflows/create_archive_and_notes.sh "$INPUT_REF"
 
       - name: Upload release archive and notes
         uses: actions/upload-artifact@v7

@@ -71,7 +71,7 @@ jobs:
           bazel run \
             --//python/config_settings:py_pbs_distribution=install_only_stripped \
             //dev/release -- process-backports \
-            --issue "$ISSUE" \
+            "--issue=$ISSUE" \
             --remote origin \
             --no-dry-run \
             "${ARGS[@]}"

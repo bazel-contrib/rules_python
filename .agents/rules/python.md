@@ -20,6 +20,24 @@ globs: "*.py,*.sh"
 * Factor non-trivial scripts (such as multi-line Python or shell logic) into
   standalone files (e.g. `.py` or `.sh` files) instead of inlining them via
   heredocs (`<< 'EOF'`) or `-c` flags (`python3 -c`, `bash -c`).
+* **Directly Executable Scripts**: Scripts executed directly (outside a
+  `py_binary` rule) must have `chmod +x` (mode `100755`) and a
+  `#!/usr/bin/env python3` shebang.
+* Do not repeat default values in CLI flag `help` strings when the parser
+  displays defaults automatically.
+* Include a `Usage:` example and input file format description in CLI module
+  docstrings.
+
+## API Minimalism & Module State
+* Pass dependencies explicitly; avoid implicit optionals that auto-load state or
+  magical global state. Do not return mutable internal state.
+* Assume the supported execution environment. Do not add `ImportError`
+  fallbacks or `sys.path` probing unless direct invocation outside Bazel is
+  required by an external caller constraint and justified in a comment or PR
+  description.
+* Prefix private module-level constants and tables with `_`.
+* Use direct attribute syntax (`obj.attr`) instead of `getattr`/`setattr` for
+  static attribute names.
 
 ## Interface & ABC Docstrings
 * In abstract base class / interface methods, always document `Args:`,
@@ -27,6 +45,27 @@ globs: "*.py,*.sh"
 
 ## Exception Handling
 * Inherit custom exceptions from `Exception`, not `RuntimeError`.
+* Let errors bubble up from utility functions instead of printing and returning
+  failure sentinels or catching and re-wrapping into caller-specific exception
+  classes.
+* Use `e.add_note(...)` to attach context to an exception and plain `raise` when
+  re-raising.
+* Do not place redundant `return` statements after `sys.exit(...)`.
+
+## Unit Testing
+* Use real temporary files (`tmp_path` or `tempfile`) instead of mocking file IO
+  or `pathlib.Path`.
+* Use `unittest.mock.patch` (and `mock.create_autospec(..., instance=True)` over
+  bare `Mock()`/`MagicMock()`) instead of manual state save/restore, and avoid
+  over-mocking the unit under test.
+* Call `main(args)` directly in tests instead of mutating `sys.argv`, and test
+  `sys.exit` with `pytest.raises(SystemExit)` / `assertRaises(SystemExit)`
+  instead of mocking `sys.exit`.
+* Do not prefix test method names with redundant target names (e.g., use
+  `test_success_directory` instead of `test_main_success_directory`).
+* Factor repeated assertion blocks into `_assert_*` helpers, and assert against
+  literal expected strings in formatting/transformation tests rather than
+  duplicating production logic.
 
 ## Subprocess
 * Demarcate captured stdout/stderr in exceptions with 20 `=` characters:
@@ -73,3 +112,7 @@ globs: "*.py,*.sh"
 ## Context Managers
 * Implement temporary state changes (e.g., `Git.checkout()`, `os.chdir()`) as
   context managers that restore prior state on exit.
+
+## Formatting
+* Do not line-break long string literals (such as URLs or hashes) to fit line
+  length limits; allow them to exceed the limit.

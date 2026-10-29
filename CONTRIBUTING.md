@@ -375,16 +375,32 @@ had written it entirely themselves. This means:
 
 *   **Understanding the code:** You must be able to explain what the code does
     and why it's implemented that way. This includes discussing its
-    implications, and any trade-offs made during its development, just as if you
-    had written it entirely yourself.
+    implications, and any trade-offs made during its development, just as if
+    you had written it entirely yourself.
 *   **Vetting the correctness and functionality:** You are responsible for
     thoroughly testing and verifying that the code is correct, functional, and
     meets all project requirements and standards.
+*   **Disclosing AI usage and comment handling in a PR comment:** Keep the PR
+    description clean for use as the merge commit message. After creating the
+    PR, post a comment so maintainers understand who or what they are
+    interacting with: disclose the level of human oversight (e.g., closely
+    human-directed/reviewed, semi-autonomous, or fully autonomous) and explain
+    how comments on the PR will be handled (e.g., whether an agent
+    automatically monitors and replies to comments, whether a human reviews and
+    approves agent responses before posting, or whether the human author
+    responds directly).
+*   **Avoiding bot comment spam:** Do not post comments for every CI run or
+    commit push, and do not narrate build IDs, commit SHAs, line counts, or
+    trivial diff details (such as noting a push is "comment-only"). Only post
+    a comment to ask or answer a substantive question, or reply `PTAL`
+    ("Please take another look") once CI is passing and the code is ready for
+    review again.
 
-If the human PR author cannot fulfill these responsibilities, the `rules_python`
-maintainers will not spend time reviewing or merging the PR. The goal is to
-ensure that all contributions, regardless of their origin, maintain the quality
-and integrity of the project and do not place an undue burden on maintainers.
+If the human PR author cannot fulfill these responsibilities, the
+`rules_python` maintainers will not spend time reviewing or merging the PR. The
+goal is to ensure that all contributions, regardless of their origin, maintain
+the quality and integrity of the project and do not place an undue burden on
+maintainers.
 
 ## FAQ
 

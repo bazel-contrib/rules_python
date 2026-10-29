@@ -1,28 +1,72 @@
 ---
 name: process-dependabot-prs
-description: Evaluate open Dependabot PRs against approval criteria, report
-  conclusions for user confirmation, fix trivial failures, and merge approved
-  PRs using the merge-pr skill
+description: Continuously monitor for open Dependabot PRs, evaluate them against
+  approval criteria, report conclusions for user confirmation, fix trivial
+  failures, and merge approved PRs using the merge-pr skill
 ---
 
 @.agents/rules/lockfiles.md
 
-When asked to process, review, or triage Dependabot pull requests:
+When asked to process, review, triage, or monitor Dependabot pull requests:
 
-## 1. Discover and Inspect Open Dependabot PRs
+## 1. Start Continuous Background Monitor
+
+1. Check Existing Monitor Process: Check if `monitor_dependabot_prs.py` is
+   already running using `pgrep -af "[m]onitor_dependabot_prs.py"` as a
+   standalone command (do NOT chain it with `|| ... monitor_dependabot_prs.py`
+   in a single shell invocation, as `pgrep -af` will match the parent `bash -c`
+   command string).
+2. Launch Monitor Daemon: If no monitor process is active, start it via
+   `run_command` with `IsDaemon: true` and `WaitMsBeforeAsync: 500` (do NOT
+   append a trailing `&`, which causes the shell to exit immediately and kills
+   the background process):
+   ```bash
+   ./.agents/skills/process-dependabot-prs/scripts/monitor_dependabot_prs.py \
+     "<your_conversation_id>"
+   ```
+3. Continuous Wakeup Loop:
+   - `monitor_dependabot_prs.py` polls GitHub once every 5 hours (`--interval`)
+     and tracks each open Dependabot PR's `(headRefOid, conflict_status)` in
+     `scratch/monitored_dependabot_prs.json` under the skill directory.
+   - When no new or updated open Dependabot PRs exist, the daemon sleeps without
+     waking the agent.
+   - Whenever a new Dependabot PR opens, an existing PR is rebased/recreated
+     with a new commit SHA (`headRefOid`), or an open PR becomes `CONFLICTING` /
+     `DIRTY` after another PR merges, the daemon sends a notification via
+     `agentapi send-message` to wake the conversation.
+   - Upon starting the daemon—and on every wakeup notification from the
+     daemon—execute Steps 2–5 below for any newly discovered or updated open
+     Dependabot PRs.
+4. Immediate Poll Trigger (`SIGUSR1`):
+   - Trigger an immediate poll cycle at any time (for example, right after a
+     `Merge PR Shepherd` finishes merging an approved Dependabot PR or after
+     refreshing credentials):
+     ```bash
+     pkill -USR1 -f "monitor_dependabot_prs.py"
+     ```
+5. Authentication Failures:
+   - When `gh` fails due to invalid or expired credentials, keep the background
+     monitor process running so it automatically resumes if credentials are
+     refreshed incidentally.
+   - Prompt the user via `ask_question` so a UI popup alerts them to
+     re-authenticate.
+   - After the user responds, trigger an immediate poll cycle via `pkill -USR1
+     -f "monitor_dependabot_prs.py"`.
+
+## 2. Discover and Inspect Open Dependabot PRs
 
 1. Query open Dependabot PRs:
    ```bash
    gh pr list --repo bazel-contrib/rules_python --author "app/dependabot" \
-     --state open --json number,title,url,headRefName,mergeable \
+     --state open --json number,title,url,headRefName,headRefOid,mergeable \
      --json mergeStateStatus,statusCheckRollup,files,labels,body,comments \
      --json reviews
    ```
-2. For each PR, inspect the diff (`gh pr diff <number> --repo
-   bazel-contrib/rules_python`) and check statuses (Buildkite, ReadTheDocs, and
-   GitHub Actions).
+2. For each new or updated open PR, inspect the diff (`gh pr diff <number>
+   --repo bazel-contrib/rules_python`) and check statuses (Buildkite,
+   ReadTheDocs, and GitHub Actions).
 
-## 2. Evaluate Against Criteria (OK vs. Problematic)
+## 3. Evaluate Against Criteria (OK vs. Problematic)
 
 Classify each PR as **OK**, **OK (with trivial fixes)**, or **Problematic**:
 
@@ -36,7 +80,7 @@ Classify each PR as **OK**, **OK (with trivial fixes)**, or **Problematic**:
   leaf tooling dependencies where release notes show no breaking changes to
   repository usage and CI passes.
 * **Trivial Synchronization Failures Only**: CI fails solely due to stale
-  derived files or hardcoded version assertions covered in Step 4.
+  derived files or hardcoded version assertions covered in Step 5.
 
 ### Problematic (Flag for User Attention)
 * **Duplicate or Superseded PRs**: Overlapping `pip` and `uv` group PRs
@@ -55,7 +99,7 @@ Classify each PR as **OK**, **OK (with trivial fixes)**, or **Problematic**:
 * **Suspicious Releases**: Upstream repository URL changes, yanked versions, or
   release notes indicating known regressions.
 
-## 3. Notify User and Request Confirmation
+## 4. Notify User and Request Confirmation
 
 1. **Create Per-PR Analysis Artifacts**: For each evaluated PR, create a
    markdown artifact `dependabot-pr-<number>.md` in the conversation artifact
@@ -78,17 +122,24 @@ Classify each PR as **OK**, **OK (with trivial fixes)**, or **Problematic**:
      - `Manually review`
 3. Wait for user confirmation before mutating any PR.
 
-## 4. Fix Trivial Failures and Merge Approved PRs
+## 5. Fix Trivial Failures and Merge Approved PRs
 
 Once the user confirms:
 
-1. **Handle Conflicts or Stale Branches**:
+1. **Close Duplicate or Superseded PRs**:
+   - When closing/skipping a duplicate or superseded PR, close it and post a
+     comment noting which PR supersedes it:
+     ```bash
+     gh pr close <pr_number> --repo bazel-contrib/rules_python \
+       --comment "Superseded by #<superseding_pr_number>."
+     ```
+2. **Handle Conflicts or Stale Branches**:
    - If a pure Dependabot PR has merge conflicts after another PR merges, run:
      ```bash
      gh pr comment <pr_number> --repo bazel-contrib/rules_python \
        --body "@dependabot recreate"
      ```
-2. **Fix Trivial Failures (When Needed)**:
+3. **Fix Trivial Failures (When Needed)**:
    - Fetch and check out the PR branch:
      ```bash
      git fetch upstream <headRefName>
@@ -115,12 +166,16 @@ Once the user confirms:
      ```bash
      git push upstream HEAD:<headRefName>
      ```
-3. **Approve the PR**:
+4. **Approve the PR**:
    ```bash
    gh pr review <pr_number> --repo bazel-contrib/rules_python --approve
    ```
-4. **Merge Using `merge-pr`**:
+5. **Merge Using `merge-pr`**:
    - Follow [merge-pr](../merge-pr/SKILL.md) to enqueue the PR (`gh pr merge
      <pr_number> --repo bazel-contrib/rules_python --auto --squash`) and launch
      a `Merge PR Shepherd` subagent to monitor CI, retry flakes, and track the
      merge queue to completion.
+   - When a `Merge PR Shepherd` reports that a Dependabot PR has merged, trigger
+     an immediate poll (`pkill -USR1 -f "monitor_dependabot_prs.py"`) so any
+     remaining open Dependabot PRs that became conflicting are detected and
+     recreated right away.

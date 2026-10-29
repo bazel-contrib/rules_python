@@ -39,8 +39,11 @@ def test_matrix_matches_dev_platforms():
     # e.g. because of a comment.
     calls = re.findall(r"^platform\(", build_file, re.MULTILINE)
     assert len(platforms) == len(calls), "Couldn't parse every platform's name"
+    expected = {
+        "linux" if "-linux-" in platform else platform for platform in platforms
+    }
     # Sets, so that failures list the triples that differ.
-    assert set(triples) == set(platforms), "Matrix (left) vs. dev/platforms (right)"
+    assert set(triples) == expected, "Matrix (left) vs. dev/platforms (right)"
     duplicates = sorted({triple for triple in triples if triples.count(triple) > 1})
     assert not duplicates, f"Triples with more than one job: {duplicates}"
 

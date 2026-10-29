@@ -5,9 +5,32 @@
 # `user.bazelrc` or passed by CI.
 build:_buildbuddy_base --bes_results_url=https://rules-python.buildbuddy.io/invocation/
 build:_buildbuddy_base --bes_backend=grpcs://rules-python.buildbuddy.io
+build:_buildbuddy_base --build_metadata=REPO_URL=https://github.com/bazel-contrib/rules_python
 common:_buildbuddy_base --remote_cache=grpcs://rules-python.buildbuddy.io
 common:_buildbuddy_base --remote_timeout=10m
 common:_buildbuddy_base --remote_executor=grpcs://rules-python.buildbuddy.io
+# Compress remote cache transfers with zstd to improve network throughput.
+common:_buildbuddy_base --remote_cache_compression
+# Chunk large blobs using FastCDC (SplitBlob/SpliceBlob) for efficient
+# deduplicated transfer.
+common:_buildbuddy_base --experimental_remote_cache_chunking
+# Automatically rewind and regenerate lost inputs when evicted from remote cache.
+common:_buildbuddy_base --rewind_lost_inputs
+
+# Diagnostic logs for troubleshooting cache misses and gRPC errors
+common:_buildbuddy_base --remote_grpc_log=bazel-remote-grpc.log
+common:_buildbuddy_base --execution_log_compact_file=bazel-execution-log.binpb.zst
+
+# Detailed timing profiles for the BuildBuddy Timing tab
+common:_buildbuddy_base --noslim_profile
+common:_buildbuddy_base --experimental_profile_include_target_label
+common:_buildbuddy_base --experimental_profile_include_primary_output
+# Re-apply `--enable_platform_specific_config` after setting `--remote_executor`
+# so `common:macos` and `common:windows` in `.bazelrc` inherit the priority of
+# `--config=buildbuddy_*` (e.g. when set in `~/.bazelrc` by `setup-bazel`,
+# which has higher priority than `.bazelrc`'s top-level
+# `--enable_platform_specific_config`).
+common:_buildbuddy_base --enable_platform_specific_config
 
 # For PR presubmit runs.
 # Requires a BuildBuddy CAS-only API key.

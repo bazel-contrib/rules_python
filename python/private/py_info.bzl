@@ -369,6 +369,7 @@ def _PyInfo_init(
         has_py3_only_sources = False,
         direct_pyc_files = depset(),
         transitive_pyc_files = depset(),
+        direct_implicit_pyc_files = depset(),
         transitive_implicit_pyc_files = depset(),
         transitive_implicit_pyc_source_files = depset(),
         direct_original_sources = depset(),
@@ -389,6 +390,7 @@ def _PyInfo_init(
     _check_arg_type("direct_pyc_files", "depset", direct_pyc_files)
     _check_arg_type("transitive_pyc_files", "depset", transitive_pyc_files)
 
+    _check_arg_type("direct_implicit_pyc_files", "depset", direct_implicit_pyc_files)
     _check_arg_type("transitive_implicit_pyc_files", "depset", transitive_pyc_files)
     _check_arg_type("transitive_implicit_pyc_source_files", "depset", transitive_pyc_files)
 
@@ -400,6 +402,7 @@ def _PyInfo_init(
     if type_checking_info != None:
         _check_arg_type("type_checking_info", "struct", type_checking_info)
     return {
+        "direct_implicit_pyc_files": direct_implicit_pyc_files,
         "direct_original_sources": direct_original_sources,
         "direct_pyc_files": direct_pyc_files,
         "direct_pyi_files": direct_pyi_files,
@@ -425,6 +428,15 @@ the {obj}`PyCommonApi` utilities.
 """,
     init = _PyInfo_init,
     fields = {
+        "direct_implicit_pyc_files": """
+:type: depset[File]
+
+The automatically generated pyc files that are directly provided by the target.
+The direct counterpart of {obj}`transitive_implicit_pyc_files`.
+
+::::{versionadded} VERSION_NEXT_FEATURE
+::::
+""",
         "direct_original_sources": """
 :type: depset[File]
 
@@ -602,6 +614,10 @@ def _PyInfoBuilder_typedef():
 
     To create an instance, use {obj}`py_common.get()` and call `PyInfoBuilder()`
 
+    :::{field} direct_implicit_pyc_files
+    :type: DepsetBuilder[File]
+    :::
+
     :::{field} direct_original_sources
     :type: DepsetBuilder[File]
     :::
@@ -666,6 +682,7 @@ def _new_raw_py_info_builder(type_checking_info = None):
         add_venv_symlink = lambda *a, **k: _PyInfoBuilder_add_venv_symlink(self, *a, **k),
         build = lambda *a, **k: _PyInfoBuilder_build(self, *a, **k),
         build_builtin_py_info = lambda *a, **k: _PyInfoBuilder_build_builtin_py_info(self, *a, **k),
+        direct_implicit_pyc_files = builders.DepsetBuilder(),
         direct_original_sources = builders.DepsetBuilder(),
         direct_pyc_files = builders.DepsetBuilder(),
         direct_pyi_files = builders.DepsetBuilder(),
@@ -854,6 +871,7 @@ def _merge_py_info_fields(self, transitive, *, direct = []):
         # BuiltinPyInfo doesn't have this field
         if hasattr(info, "direct_pyc_files"):
             self.direct_original_sources.add(info.direct_original_sources)
+            self.direct_implicit_pyc_files.add(info.direct_implicit_pyc_files)
             self.direct_pyc_files.add(info.direct_pyc_files)
             self.direct_pyi_files.add(info.direct_pyi_files)
 
@@ -993,6 +1011,7 @@ def _build_py_info_fields(self, type_checking_info = None):
         imports = self.imports.build(),
         transitive_sources = self.transitive_sources.build(),
         uses_shared_libraries = self._uses_shared_libraries[0],
+        direct_implicit_pyc_files = self.direct_implicit_pyc_files.build(),
         direct_original_sources = self.direct_original_sources.build(),
         direct_pyc_files = self.direct_pyc_files.build(),
         direct_pyi_files = self.direct_pyi_files.build(),

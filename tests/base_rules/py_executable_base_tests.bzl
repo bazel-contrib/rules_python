@@ -693,6 +693,29 @@ def _test_venv_output_prefix_with_path_separators_impl(env, targets):
 
 _tests.append(_test_venv_output_prefix_with_path_separators)
 
+def _test_venv_runfiles(name, config):
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject",
+        srcs = [name + "_main.py"],
+        main = name + "_main.py",
+    )
+    analysis_test(
+        name = name,
+        impl = _test_venv_runfiles_impl,
+        target = name + "_subject",
+    )
+
+def _test_venv_runfiles_impl(env, target):
+    venv_runfiles = env.expect.that_target(target).provider(
+        PyExecutableInfo,
+        factory = PyExecutableInfoSubject.new,
+    ).venv_runfiles()
+    venv_runfiles.contains_predicate(matching.str_matches("*_subject.venv/*site-packages/bazel.pth"))
+    venv_runfiles.not_contains_predicate(matching.str_endswith("_main.py"))
+
+_tests.append(_test_venv_runfiles)
+
 def _test_windows_target_with_path_separators(name, config):
     rt_util.helper_target(
         config.rule,

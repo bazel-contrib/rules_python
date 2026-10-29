@@ -1,10 +1,15 @@
 # uv_lock integration test workspace
 
 This directory is a self-contained Bazel workspace used by the
-`//tests/integration:uv_lock_test` integration test.
+`//tests/integration:uv_lock_test` (bzlmod) and
+`//tests/integration:uv_lock_workspace_test` (WORKSPACE) integration tests.
 
 It demonstrates how to use the `lock()` macro from `@rules_python//python/uv`
-to pin requirements with `uv pip compile`.
+to pin requirements with `uv pip compile`. `MODULE.bazel` configures the `uv`
+toolchains via the `uv` module extension; `WORKSPACE` does the same via
+`uv_toolchains_manifest()` and `uv_register_toolchains()`. The empty
+`WORKSPACE.bzlmod` keeps Bazel 7 from evaluating `WORKSPACE` when bzlmod is
+enabled.
 
 ## Targets
 
@@ -62,3 +67,8 @@ bazel test //tests/integration:uv_lock_test_bazel_self \
     --test_output=streamed \
     --test_filter=<test_name>
 ```
+
+The WORKSPACE variant runs the same Python test cases with
+`--noenable_bzlmod --enable_workspace`, e.g.
+`//tests/integration:uv_lock_workspace_test_bazel_8.5.1`. It only exists for
+Bazel 7.x and 8.x because Bazel 9 ignores `WORKSPACE` files.

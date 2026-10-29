@@ -1,0 +1,30 @@
+workspace(name = "uv_lock")
+
+local_repository(
+    name = "rules_python",
+    path = "../../..",
+)
+
+load(
+    "@rules_python//python:repositories.bzl",
+    "py_repositories",
+    "python_register_toolchains",
+)
+
+py_repositories()
+
+python_register_toolchains(
+    name = "python_3_13",
+    python_version = "3.13",
+)
+
+load("@rules_python//python/uv:repositories.bzl", "uv_toolchains_manifest")
+
+uv_toolchains_manifest(
+    name = "uv_manifest",
+    versions = ["0.13.5"],
+)
+
+load("@uv_manifest//:dist_manifest.bzl", "uv_register_toolchains")
+
+uv_register_toolchains(name = "uv")

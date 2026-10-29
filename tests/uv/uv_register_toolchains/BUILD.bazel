@@ -1,0 +1,3 @@
+load(":uv_register_toolchains_tests.bzl", "uv_register_toolchains_test_suite")
+
+uv_register_toolchains_test_suite(name = "uv_register_toolchains_tests")

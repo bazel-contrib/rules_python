@@ -437,7 +437,14 @@ print(site.getsitepackages(["{venv_src}"])[-1])
     for venv_rel_path, link_to_rf_path in RUNTIME_VENV_SYMLINKS.items():
         venv_abs_path = join(venv, venv_rel_path)
         link_to = normpath(join(runfiles_root, link_to_rf_path))
-        os.makedirs(dirname(venv_abs_path), exist_ok=True)
+        venv_parent = dirname(venv_abs_path)
+        # A cached venv can leave this parent as a dangling link to an old EXTRACT_ROOT.
+        if os.path.islink(venv_parent):
+            try:
+                os.stat(venv_parent)
+            except FileNotFoundError:
+                os.unlink(venv_parent)
+        os.makedirs(venv_parent, exist_ok=True)
         _symlink_exist_ok(from_=venv_abs_path, to=link_to)
 
     # Do this last to handle non-relative symlinks artifacts

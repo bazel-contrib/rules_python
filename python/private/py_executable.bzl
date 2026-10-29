@@ -55,6 +55,7 @@ load(
     "is_bool",
     "is_windows_platform",
     "maybe_create_repo_mapping",
+    "py_info_runfiles_files",
     "relative_path",
     "runfiles_root_path",
 )
@@ -364,11 +365,8 @@ def _create_executable(
             venv = venv,
             build_data_file = runfiles_details.build_data_file,
         )
-        extra_runfiles = ctx.runfiles(
-            [stage2_bootstrap] + (
-                venv.files_without_interpreter if venv else []
-            ),
-        ).merge(venv.lib_runfiles)
+        venv_runfiles = ctx.runfiles(venv.files_without_interpreter).merge(venv.lib_runfiles)
+        extra_runfiles = ctx.runfiles([stage2_bootstrap]).merge(venv_runfiles)
         zip_main = _create_zip_main(
             ctx,
             stage2_bootstrap = stage2_bootstrap,
@@ -377,6 +375,7 @@ def _create_executable(
         )
     else:
         stage2_bootstrap = None
+        venv_runfiles = None
         extra_runfiles = ctx.runfiles()
         zip_main = ctx.actions.declare_file(base_executable_name + ".temp", sibling = executable)
         _create_stage1_bootstrap(
@@ -495,9 +494,8 @@ WARNING: Target: {}
 
     app_runfiles = builders.RunfilesBuilder()
     app_runfiles.add(runfiles_details.app_runfiles)
-    if venv:
-        app_runfiles.add(venv.files_without_interpreter)
-        app_runfiles.add(venv.lib_runfiles)
+    if venv_runfiles:
+        app_runfiles.add(venv_runfiles)
 
     # The interpreter is added this late in the process so that it isn't
     # added to the zipped files.
@@ -524,6 +522,8 @@ WARNING: Target: {}
         venv_python_exe = venv.interpreter if venv else None,
         # runfiles|None; runfiles in the venv for the interpreter
         venv_interpreter_runfiles = venv.interpreter_runfiles if venv else None,
+        # runfiles|None; runfiles in the venv for the application
+        venv_runfiles = venv_runfiles,
         # depset[ExplicitSymlink]|None; symlinks that should be created
         venv_interpreter_symlinks = venv.interpreter_symlinks if venv else None,
     )
@@ -1317,6 +1317,7 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
         venv_interpreter_runfiles = exec_result.venv_interpreter_runfiles,
         venv_interpreter_symlinks = exec_result.venv_interpreter_symlinks,
         venv_python_exe = exec_result.venv_python_exe,
+        venv_runfiles = exec_result.venv_runfiles,
     )
     _add_provider_py_runtime_info(providers, runtime_details)
     _add_provider_py_cc_link_params_info(providers, cc_details.cc_info_for_propagating)
@@ -1444,19 +1445,7 @@ def _get_runtime_details(ctx):
         fail("'python_path' must be an absolute path or a name to be resolved from the system PATH (e.g., 'python', 'python3').")
 
     effective_runtime = _maybe_get_runtime_from_ctx(ctx)
-
-    direct = []  # List of files
-    transitive = []  # List of depsets
-    if effective_runtime.interpreter:
-        direct.append(effective_runtime.interpreter)
-        transitive.append(effective_runtime.files)
-
-    if ctx.configuration.coverage_enabled:
-        if effective_runtime.coverage_tool:
-            direct.append(effective_runtime.coverage_tool)
-        if effective_runtime.coverage_files:
-            transitive.append(effective_runtime.coverage_files)
-    runtime_files = depset(direct = direct, transitive = transitive)
+    runtime_files = get_runtime_files(ctx, effective_runtime)
 
     executable_interpreter_path = _get_interpreter_path(
         ctx,
@@ -1477,6 +1466,29 @@ def _get_runtime_details(ctx):
         # and any supporting files.
         runfiles = ctx.runfiles(transitive_files = runtime_files),
     )
+
+def get_runtime_files(ctx, runtime):
+    """Returns the runtime files an executable puts into its runfiles.
+
+    Args:
+        ctx: {type}`ctx` the rule or aspect ctx.
+        runtime: {type}`PyRuntimeInfo` the runtime of the executable.
+
+    Returns:
+        {type}`depset[File]`
+    """
+    direct = []  # List of files
+    transitive = []  # List of depsets
+    if runtime.interpreter:
+        direct.append(runtime.interpreter)
+        transitive.append(runtime.files)
+
+    if ctx.configuration.coverage_enabled:
+        if runtime.coverage_tool:
+            direct.append(runtime.coverage_tool)
+        if runtime.coverage_files:
+            transitive.append(runtime.coverage_files)
+    return depset(direct = direct, transitive = transitive)
 
 def _maybe_get_runtime_from_ctx(ctx):
     """Finds the PyRuntimeInfo from the toolchain or attribute, if available.
@@ -1556,17 +1568,7 @@ def _get_base_runfiles_for_binary(
         if not (PyInfo in dep or (BuiltinPyInfo != None and BuiltinPyInfo in dep)):
             continue
         info = dep[PyInfo] if PyInfo in dep else dep[BuiltinPyInfo]
-        app_runfiles.files.add(info.transitive_sources)
-
-        # Everything past this won't work with BuiltinPyInfo
-        if not hasattr(info, "transitive_pyc_files"):
-            continue
-
-        app_runfiles.files.add(info.transitive_pyc_files)
-        if pyc_collection_enabled:
-            app_runfiles.files.add(info.transitive_implicit_pyc_files)
-        else:
-            app_runfiles.files.add(info.transitive_implicit_pyc_source_files)
+        app_runfiles.files.add(py_info_runfiles_files(info, pyc_collection_enabled))
 
     app_runfiles.runfiles.append(collect_runfiles(ctx))
     if extra_deps:
@@ -2017,7 +2019,8 @@ def _add_provider_py_executable_info(
         venv_app_symlinks,
         venv_interpreter_runfiles,
         venv_interpreter_symlinks,
-        venv_python_exe):
+        venv_python_exe,
+        venv_runfiles):
     """Adds the PyExecutableInfo provider.
 
     Args:
@@ -2034,6 +2037,7 @@ def _add_provider_py_executable_info(
         venv_interpreter_runfiles: runfiles; runfiles specific to the interpreter for the venv.
         venv_interpreter_symlinks: depset[ExplicitSymlink]; interpreter-specific symlinks to create for the venv.
         venv_python_exe: File; the python executable in the venv.
+        venv_runfiles: runfiles; the venv's files for the application.
     """
     providers.append(PyExecutableInfo(
         app_runfiles = app_runfiles,
@@ -2047,6 +2051,7 @@ def _add_provider_py_executable_info(
         venv_interpreter_runfiles = venv_interpreter_runfiles,
         venv_interpreter_symlinks = venv_interpreter_symlinks,
         venv_python_exe = venv_python_exe,
+        venv_runfiles = venv_runfiles,
     ))
 
 def _add_provider_py_runtime_info(providers, runtime_details):

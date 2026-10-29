@@ -151,7 +151,7 @@ jobs:
       - call_promote
       - call_backport_prepare
       - call_backport_create_releases
-    if: always() && contains(needs.*.result, 'failure')
+    if: always() && needs.parse_comment.result == 'success' && contains(needs.*.result, 'failure')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

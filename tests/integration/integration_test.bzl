@@ -21,13 +21,14 @@ load(
 )
 load("//python:py_test.bzl", "py_test")
 
-def _test_runner(*, name, bazel_version, py_main, bzlmod, py_deps):
+def _test_runner(*, name, bazel_version, py_main, bzlmod, py_deps, py_data):
     if py_main:
         test_runner = "{}_bazel_{}_py_runner".format(name, bazel_version)
         py_test(
             name = test_runner,
             srcs = [py_main],
             main = py_main,
+            data = py_data,
             deps = [":runner_lib"] + py_deps,
             # Hide from ... patterns; should only be run as part
             # of the bazel integration test
@@ -47,7 +48,9 @@ def rules_python_integration_test(
         tags = None,
         py_main = None,
         py_deps = None,
+        py_data = None,
         bazel_versions = None,
+        env = None,
         **kwargs):
     """Runs a bazel-in-bazel integration test.
 
@@ -56,17 +59,31 @@ def rules_python_integration_test(
         workspace_path: The directory name. Defaults to `name` without the
             `_test` suffix.
         bzlmod: bool, default True. If true, run with bzlmod enabled, otherwise
-            disable bzlmod.
+            disable bzlmod. Python test runners (see `py_main`) are told the
+            mode via the `RULES_PYTHON_INTEGRATION_TEST_BZLMOD` environment
+            variable, which `runner.TestCase` turns into Bazel flags.
         tags: Test tags.
         py_main: Optional `.py` file to run tests using. When specified, a
             python based test runner is used, and this source file is the main
             entry point and responsible for executing tests.
         py_deps: Optional test runner deps to use for setup.
+        py_data: Optional test runner data files to use for setup.
         bazel_versions: `list[str] | None`, the bazel versions to test. I
             not specified, defaults to all configured bazel versions.
+        env: `dict[str, str] | None`, additional environment variables for
+            the test.
         **kwargs: Passed to the upstream `bazel_integration_tests` rule.
     """
     workspace_path = workspace_path or name.removesuffix("_test")
+    py_deps = py_deps or []
+    py_data = py_data or []
+    tags = tags or []
+    env = dict(env or {})
+    if py_main:
+        env.setdefault(
+            "RULES_PYTHON_INTEGRATION_TEST_BZLMOD",
+            "1" if bzlmod else "0",
+        )
 
     # Because glob expansion happens at loading time, the bazel-* symlinks
     # in the workspaces can recursively expand to tens-of-thousands of entries,
@@ -93,7 +110,8 @@ def rules_python_integration_test(
             name = name,
             bazel_version = bazel_version,
             py_main = py_main,
-            py_deps = py_deps or [],
+            py_deps = py_deps,
+            py_data = py_data,
             bzlmod = bzlmod,
         )
         bazel_integration_test(
@@ -102,8 +120,9 @@ def rules_python_integration_test(
             test_runner = test_runner,
             bazel_version = bazel_version,
             workspace_files = [name + "_workspace_files"],
+            env = env,
             # Override the tags so that the `manual` tag isn't applied.
-            tags = (tags or []) + [
+            tags = tags + [
                 # These tests are very heavy weight, so much so that only a couple
                 # can be run in parallel without harming their reliability,
                 # overall runtime, and the system's stability. Unfortunately,

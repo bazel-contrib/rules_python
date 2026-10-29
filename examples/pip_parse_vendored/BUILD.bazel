@@ -1,16 +1,17 @@
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
-load("@rules_python//python:pip.bzl", "compile_pip_requirements")
 load("@rules_python//python:py_test.bzl", "py_test")
+load("@rules_python//python/uv:lock.bzl", "lock")
 load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
 load("//:requirements.bzl", "all_data_requirements", "all_requirements", "all_whl_requirements", "requirement")
 
 # This rule adds a convenient way to update the requirements.txt
 # lockfile based on the pyproject.toml.
-compile_pip_requirements(
+lock(
     name = "requirements",
-    src = "pyproject.toml",
+    srcs = ["pyproject.toml"],
+    out = "requirements.txt",
 )
 
 # The requirements.bzl file is using the hub repo to access packages via the

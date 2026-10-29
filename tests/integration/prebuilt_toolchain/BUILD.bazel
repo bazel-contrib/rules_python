@@ -1,0 +1,15 @@
+load("@rules_python//python:py_binary.bzl", "py_binary")
+load("@rules_python//python/zipapp:py_zipapp_test.bzl", "py_zipapp_test")
+
+py_binary(
+    name = "main",
+    srcs = ["main.py"],
+    config_settings = {
+        "@rules_python//python/config_settings:bootstrap_impl": "script",
+    },
+)
+
+py_zipapp_test(
+    name = "zipapp_test",
+    binary = ":main",
+)

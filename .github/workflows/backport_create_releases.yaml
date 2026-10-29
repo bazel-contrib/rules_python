@@ -44,4 +44,4 @@ jobs:
           bazel run \
             --//python/config_settings:py_pbs_distribution=install_only_stripped \
             //dev/release -- \
-            backport-create-releases --issue=$ISSUE --no-dry-run
+            backport-create-releases "--issue=$ISSUE" --no-dry-run

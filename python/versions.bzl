@@ -27,7 +27,7 @@ load(
 load("//python/private:platform_info.bzl", "platform_info")
 
 ##load("@rules_python_internal//:manifest_tool_versions.bzl", "MANIFEST_ENTRIES")
-load("//python/private:runtimes_manifest_workspace.bzl", "MANIFEST_TEXT")
+load("//python/private:runtimes_manifest.bzl", "MANIFEST_TEXT")
 
 # Values present in the @platforms//os package
 MACOS_NAME = "osx"
@@ -52,12 +52,12 @@ DEFAULT_RELEASE_BASE_URLS = [
 # buildifier: disable=unsorted-dict-items
 MINOR_MAPPING = {
     "3.9": "3.9.25",
-    "3.10": "3.10.20",
-    "3.11": "3.11.15",
-    "3.12": "3.12.13",
-    "3.13": "3.13.13",
-    "3.14": "3.14.4",
-    "3.15": "3.15.0rc3",
+    "3.10": "3.10.22",
+    "3.11": "3.11.18",
+    "3.12": "3.12.16",
+    "3.13": "3.13.18",
+    "3.14": "3.14.10",
+    "3.15": "3.15.2",
 }
 
 def _generate_platforms():

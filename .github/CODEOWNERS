@@ -9,3 +9,9 @@
 # PyPI integration related code
 /python/private/pypi/ @rickeylev @aignas
 /tests/pypi/ @rickeylev @aignas
+
+# Agent configuration
+/.agents/ @rickeylev
+/AGENTS.md @rickeylev
+/CLAUDE.md @rickeylev
+/GEMINI.md @rickeylev

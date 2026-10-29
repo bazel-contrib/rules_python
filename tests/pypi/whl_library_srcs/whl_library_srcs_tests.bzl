@@ -67,6 +67,26 @@ def _test_filegroups(env):
 
 _tests.append(_test_filegroups)
 
+def _test_external_whl_file(env):
+    calls = []
+    whl_library_srcs(
+        name = "example-1.0-py3-none-any.whl",
+        whl_file = "@example_whl//:example-1.0-py3-none-any.whl",
+        native = struct(
+            filegroup = lambda **kwargs: calls.append(kwargs),
+            glob = lambda *args, **kwargs: [],
+        ),
+        rules = struct(),
+    )
+    wheel = [call for call in calls if call["name"] == "whl_file"][0]
+    env.expect.that_collection(wheel["srcs"]).contains_exactly([
+        "@example_whl//:example-1.0-py3-none-any.whl",
+    ])
+    extracted = [call for call in calls if call["name"] == "extracted_whl_files"][0]
+    env.expect.that_collection(extracted["srcs"]).contains_exactly([])
+
+_tests.append(_test_external_whl_file)
+
 def _test_copy(env):
     calls = []
 

@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-""" EXPERIMENTAL: This is experimental and may be removed without notice.
-
-The uv toolchain extension.
-"""
+"""The uv toolchain extension."""
 
 load("//python/uv/private:uv.bzl", _uv = "uv")
 

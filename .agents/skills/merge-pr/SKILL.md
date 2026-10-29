@@ -15,21 +15,24 @@ this PR", or monitor its merge):
      "merge immediately" once CI passes and only `REVIEW_REQUIRED` blocks).
      Never pass `--admin` while CI is pending or failing unless told to bypass
      CI.
+   - **No `--delete-branch` (`-d`)**: Never pass `-d` or `--delete-branch` to
+     `gh pr merge`; it fails when a merge queue is enabled on the repository.
 2. **Invoke a Background Shepherd**: Launch a background subagent with the role
    `Merge PR Shepherd` to continuously watch the PR until it merges.
 3. **Leverage Existing CI Skills**:
    - Have the subagent use the **`monitor-ci-results`** skill to watch for CI
      check failures and generate analysis reports.
-   - Have the subagent use the **`buildkite-retry-job`** skill
-     (`retry_buildkite_jobs.py <pr_number>`) to automatically retry any
+   - Have the subagent use the **`retry-ci-job`** skill
+     (`retry_ci_jobs.py --pr <pr_number>`) to automatically retry any
      transient network flakes (e.g., HTTP 504 gateway timeouts, downloader
-     errors) and unblock manual approval steps.
+     errors, `setup-bazel` `Unable to find Bazelisk version` errors) and
+     unblock manual approval steps.
    - **Blocked Builds (`.bazelci/presubmit.yml` Approval)**: When
      `.bazelci/presubmit.yml` is modified, Buildkite blocks the build until
      manually approved. Approve and unblock it immediately via
-     `./.agents/skills/buildkite-retry-job/scripts/retry_buildkite_jobs.py
-     <pr_number> --unblock` (or `bk job unblock <job_id> --no-input`) so CI does
-     not sit blocked indefinitely.
+     `./.agents/skills/retry-ci-job/scripts/retry_ci_jobs.py
+     --pr <pr_number> --unblock` (or `bk job unblock <job_id> --no-input`) so CI
+     does not sit blocked indefinitely.
    - **Soft-Failing Jobs**: Experimental Buildkite jobs (e.g. `*rolling*`
      Bazel) are non-blocking soft failures; do not treat them as merge blockers.
    - When the PR is queued, actively discover the merge queue branch via

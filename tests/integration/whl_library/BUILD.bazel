@@ -1,4 +1,37 @@
+load("@rules_python//python:py_binary.bzl", "py_binary")
 load("@rules_python//python:py_test.bzl", "py_test")
+
+exports_files([
+    "storage_pkg-1.0-py3-none-any.whl",
+    "wheel.sha256",
+    "modify_pkg.patch",
+    "uv.lock",
+])
+
+[
+    py_binary(
+        name = name,
+        srcs = ["main.py"],
+        legacy_create_init = 0,
+        main = "main.py",
+        deps = ["@{}//:pkg".format(name)],
+    )
+    for name in [
+        "plain",
+        "patched",
+        "nonmatching",
+        "provided",
+        "provided_patched",
+    ]
+]
+
+py_binary(
+    name = "uv_locked",
+    srcs = ["main.py"],
+    legacy_create_init = 0,
+    main = "main.py",
+    deps = ["@uv_pip//storage_pkg"],
+)
 
 [
     alias(

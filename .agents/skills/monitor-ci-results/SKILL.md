@@ -38,7 +38,7 @@ or when monitoring CI after PR updates:
    `bk job unblock <job_id> --no-input` so CI does not sit blocked. If
    automatic unblocking fails, it notifies the conversation via
    `agentapi send-message`; unblock Buildkite jobs using the
-   `buildkite-retry-job` skill (`retry_buildkite_jobs.py <pr_number>
+   `retry-ci-job` skill (`retry_ci_jobs.py --pr <pr_number>
    --unblock`).
 3. **Failure Reporting**: When any GitHub check or Buildkite job completes
    with errors, `monitor_remote_ci.py` dispatches a high-priority notification
@@ -50,10 +50,11 @@ or when monitoring CI after PR updates:
    `analyze-ci-failure` skill on the reported failure.
 5. **Autonomous Flake Retry**: If the CI Failure Analyzer subagent confirms
    that the failure is a transient infrastructure or network flake (e.g. disk
-   I/O error, 504 gateway, sandbox initialization failure), **immediately and
+   I/O error, 504 gateway, sandbox initialization failure, or `setup-bazel`
+   failing with `Unable to find Bazelisk version`), **immediately and
    autonomously** launch a separate subagent using `invoke_subagent` with the
    role "CI Job Retrier" and the prompt template in
    `.agents/skills/monitor-ci-results/retry-job-prompt.md` to run the
-   `buildkite-retry-job` skill for `<pr_number>`. Do not execute the script
+   `retry-ci-job` skill for `<pr_number>`. Do not execute the script
    directly; use the subagent and skill orchestration instead. Continue
    monitoring without pausing to ask the user.
