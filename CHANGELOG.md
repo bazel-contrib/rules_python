@@ -29,6 +29,19 @@ Unreleased changes are tracked as individual files in the [news/](./news)
 directory, or view the [latest generated
 changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 
+{#v2-4-6}
+## [2.4.6] - 2026-10-29
+
+[2.4.6]: https://github.com/bazel-contrib/rules_python/releases/tag/2.4.6
+
+{#v2-4-6-changed}
+### Changed
+* (toolchains) Updated default Python toolchains to `3.10.22`, `3.11.18`,
+  `3.12.16`, `3.13.18`, `3.14.10`, and `3.15.2`, and removed `3.15.0`
+  pre-release toolchains
+  ([#4358](https://github.com/bazel-contrib/rules_python/issues/4358)).
+
+
 {#v2-4-5}
 ## [2.4.5] - 2026-10-22
 
