@@ -17,6 +17,17 @@ workspace(name = "rules_python")
 # Everything below this line is used only for developing rules_python. Users
 # should not copy it to their WORKSPACE.
 
+# Loaded by Starlark files (e.g. purl.bzl) that the loads below pull in, so it
+# must be defined before them.
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "package_metadata",
+    sha256 = "755bd6c8a3751982e2555d96c913ec070954ca9d01f935563392255da4ebad72",
+    strip_prefix = "package_metadata-0.0.13/metadata",
+    url = "https://github.com/bazel-contrib/supply-chain/releases/download/package_metadata-0.0.13/package_metadata-0.0.13.tar.gz",
+)
+
 # Workaround for Bazel 9 duplicate name issue in Gazelle.
 load("//:workspace_bazel9.bzl", "bazel_9_workaround")
 
@@ -84,8 +95,6 @@ uv_toolchains_manifest(name = "uv_manifest")
 load("@uv_manifest//:dist_manifest.bzl", "uv_register_toolchains")
 
 uv_register_toolchains(name = "uv")
-
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 # Used for Bazel CI
 http_archive(
