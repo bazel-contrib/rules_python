@@ -78,6 +78,8 @@ def create_inits(*, srcs, ignored_dirnames = [], root = None, write_init = expan
         src = "{}/__init__.py".format(out)
         ret.append(src)
 
+        # With no substitutions, Bazel writes the initializer verbatim. Skylib's
+        # copy_file would require a shell and cp on the Unix execution platform.
         write_init(
             # For the target name, use a number instead of trying to convert an output
             # path into a valid label.
