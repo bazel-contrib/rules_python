@@ -1,5 +1,6 @@
 module(name = "unified_pypi")
 
+bazel_dep(name = "platforms", version = "0.0.11")
 bazel_dep(name = "rules_python", version = "0.0.0")
 local_path_override(
     module_name = "rules_python",
@@ -36,11 +37,19 @@ pip.parse(
 )
 use_repo(pip, "pypi_a")
 
-# pypi_b has colorama and six, and acts as designated fallback
+# `pypi_b` supplies `six` only on Linux and is the fallback hub.
 pip.parse(
     hub_name = "pypi_b",
     python_version = "3.11",
-    requirements_lock = "//:requirements_b.txt",
+    requirements_by_platform = {
+        "//:requirements_b.txt": "linux_*",
+        "//:requirements_b_without_six.txt": "osx_*,windows_*",
+    },
+    target_platforms = [
+        "{os}_{arch}",
+        "linux_x86_64",
+        "windows_x86_64",
+    ],
 )
 use_repo(pip, "pypi_b")
 
