@@ -123,12 +123,12 @@ else
       if [[ ! -L "$stub_filename" ]]; then
         break
       fi
-      stub_filename=$(readlink $stub_filename)
+      stub_filename=$(readlink "$stub_filename")
     done
     echo >&2 "Unable to find runfiles directory for $1"
     exit 1
   }
-  RUNFILES_DIR=$(find_runfiles_root $0)
+  RUNFILES_DIR=$(find_runfiles_root "$0")
 fi
 
 if [[ -n "$RULES_PYTHON_TESTING_TELL_RUNFILES_ROOT" ]]; then
@@ -150,7 +150,7 @@ function find_python_interpreter() {
   fi
 }
 
-python_exe=$(find_python_interpreter $RUNFILES_DIR $PYTHON_BINARY)
+python_exe=$(find_python_interpreter "$RUNFILES_DIR" "$PYTHON_BINARY")
 
 # Zip files have to re-create the venv bin/python3 symlink because they
 # don't contain it already.
@@ -159,7 +159,7 @@ if [[ "$IS_ZIPFILE" == "1" ]]; then
   use_exec=1
   # It should always be under runfiles, but double check this. We don't
   # want to accidentally create symlinks elsewhere.
-  if [[ "$python_exe" != $RUNFILES_DIR/* ]]; then
+  if [[ "$python_exe" != "$RUNFILES_DIR"/* ]]; then
     echo >&2 "ERROR: Program's venv binary not under runfiles: $python_exe"
     exit 1
   fi
@@ -179,15 +179,15 @@ if [[ "$IS_ZIPFILE" == "1" ]]; then
     fi
   fi
   # The bin/ directory may not exist if it is empty.
-  mkdir -p "$(dirname $python_exe)"
+  mkdir -p "$(dirname "$python_exe")"
   _symlink "$symlink_to" "$python_exe"
 elif [[ "$RECREATE_VENV_AT_RUNTIME" == "1" ]]; then
   if [[ -n "$RULES_PYTHON_EXTRACT_ROOT" ]]; then
     use_exec=1
     # Use our runfiles path as a unique, reusable, location for the
     # binary-specific venv being created.
-    venv="$RULES_PYTHON_EXTRACT_ROOT/$(dirname $(dirname $PYTHON_BINARY))"
-    mkdir -p $RULES_PYTHON_EXTRACT_ROOT
+    venv="$RULES_PYTHON_EXTRACT_ROOT/$(dirname "$(dirname "$PYTHON_BINARY")")"
+    mkdir -p "$RULES_PYTHON_EXTRACT_ROOT"
   else
     # Re-exec'ing can't be used because we have to clean up the temporary
     # venv directory that is created.
@@ -199,7 +199,7 @@ elif [[ "$RECREATE_VENV_AT_RUNTIME" == "1" ]]; then
   fi
 
   # Match the basename; some tools, e.g. pyvenv key off the executable name
-  python_exe="$venv/bin/$(basename $PYTHON_BINARY_ACTUAL)"
+  python_exe="$venv/bin/$(basename "$PYTHON_BINARY_ACTUAL")"
 
   if [[ ! -e "$python_exe" ]]; then
     if [[ "$PYTHON_BINARY_ACTUAL" == /* ]]; then
@@ -218,7 +218,7 @@ elif [[ "$RECREATE_VENV_AT_RUNTIME" == "1" ]]; then
       fi
     fi
 
-    runfiles_venv="$RUNFILES_DIR/$(dirname $(dirname $PYTHON_BINARY))"
+    runfiles_venv="$RUNFILES_DIR/$(dirname "$(dirname "$PYTHON_BINARY")")"
     # When RESOLVE_PYTHON_BINARY_AT_RUNTIME is true, it means the toolchain
     # has thrown two complications at us:
     # 1. The build-time assumption of the Python version may not match the
@@ -256,7 +256,7 @@ EOF
     _symlink "$python_exe_actual" "$python_exe"
 
     if [[ ! -e "$venv_site_packages" ]]; then
-      mkdir -p $(dirname $venv_site_packages)
+      mkdir -p "$(dirname "$venv_site_packages")"
       _symlink "$runfiles_venv_site_packages" "$venv_site_packages"
     fi
   fi
@@ -273,7 +273,7 @@ fi
 if [[ ! -x "$python_exe" ]]; then
   if [[ ! -e "$python_exe" ]]; then
     echo >&2 "ERROR: Python interpreter not found: $python_exe"
-    ls -l $python_exe >&2
+    ls -l "$python_exe" >&2
     exit 1
   elif [[ ! -x "$python_exe" ]]; then
     echo >&2 "ERROR: Python interpreter not executable: $python_exe"
