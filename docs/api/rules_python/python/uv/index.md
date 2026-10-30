@@ -9,6 +9,8 @@
 
 Exposes the resolved `uv` toolchain for the target/execution platform as an
 executable target and template variable provider (`$(UV)` and `$(UV_BIN)`).
+Shorter aliases for this target are also available at
+{obj}`//python/uv/bin:uv` and `@uv//:uv`.
 
 Can be run directly with `bazel run`:
 
