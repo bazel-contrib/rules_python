@@ -33,6 +33,8 @@ load(":simpleapi_download.bzl", "simpleapi_download")
 load(":unified_hub_repo.bzl", "unified_hub_repo")
 load(":whl_library.bzl", "whl_library")
 
+_DEFAULT_INDEX_URL = "https://pypi.org/simple"
+
 def _whl_mods_impl(whl_mods_dict):
     """Implementation of the pip.whl_mods tag class.
 
@@ -249,10 +251,14 @@ def build_config(
                 if platform and not (tag.arch_name or tag.config_settings or tag.env or tag.os_name or tag.whl_abi_tags or tag.whl_platform_tags or tag.marker):
                     defaults["platforms"].pop(platform)
 
+            if tag.index_url != _DEFAULT_INDEX_URL and (
+                mod.is_root or "index_url" not in defaults
+            ):
+                defaults["index_url"] = tag.index_url
+
             _configure(
                 defaults,
                 override = mod.is_root,
-                index_url = tag.index_url,
                 # extra values that we just add
                 auth_patterns = tag.auth_patterns,
                 netrc = tag.netrc,
@@ -264,7 +270,7 @@ def build_config(
     return struct(
         auth_patterns = defaults.get("auth_patterns", {}),
         default_hub = default_hub,
-        index_url = defaults.get("index_url", "https://pypi.org/simple").rstrip("/"),
+        index_url = defaults.get("index_url", _DEFAULT_INDEX_URL).rstrip("/"),
         netrc = defaults.get("netrc", None),
         python_version = defaults.get("python_version", None),
         platforms = {
@@ -687,6 +693,7 @@ Supported keys:
 """,
     ),
     "index_url": attr.string(
+        default = _DEFAULT_INDEX_URL,
         doc = """\
 The index URL to use as a default when downloading packages from PyPI. This is used if nothing is
 specified via `--index-url` or `--extra-index-url` parameters in the `requirements.txt` file or via
@@ -701,12 +708,20 @@ The indexes must support Simple API as described here:
 Index metadata will be used to get the hash digest values for packages even
 if the `--hash` values are not present in the requirements.txt lock file.
 
+Set to `""` to disable the Simple API downloader and fall back to using `pip`
+to download wheels.
+
 Defaults to `https://pypi.org/simple`.
 
 :::{versionadded} 2.0.0
 This has been added as a replacement for 
 {obj}`pip.parse.experimental_index_url` and 
 {obj}`pip.parse.experimental_extra_index_urls`.
+:::
+
+:::{versionchanged} VERSION_NEXT_PATCH
+Setting `index_url = ""` now disables the Simple API downloader instead of
+being ignored.
 :::
 """,
     ),

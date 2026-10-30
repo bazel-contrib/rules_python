@@ -46,7 +46,7 @@ def _default(
         config_settings = None,
         default_hub = "",
         env = None,
-        index_url = None,
+        index_url = "https://pypi.org/simple",
         marker = None,
         netrc = None,
         os_name = None,
@@ -61,7 +61,7 @@ def _default(
         config_settings = config_settings,
         default_hub = default_hub,
         env = env or {},
-        index_url = index_url or "",
+        index_url = index_url,
         marker = marker or "",
         netrc = netrc,
         os_name = os_name,
@@ -764,6 +764,57 @@ simple==0.0.1 \
         })
 
 _tests.append(_test_default_index_setting)
+
+def _test_default_index_url_empty_disables_simpleapi(env):
+    def fail_simpleapi_download(*_args, **_kwargs):
+        fail("simpleapi_download should not be called when index_url is empty")
+
+    for index_url, envsubst, want_whl_library in [
+        ("", [], {}),
+        (
+            "$RULES_PYTHON_PIP_INDEX_URL",
+            ["RULES_PYTHON_PIP_INDEX_URL"],
+            {"envsubst": ["RULES_PYTHON_PIP_INDEX_URL"]},
+        ),
+    ]:
+        pypi = _parse_modules(
+            env,
+            module_ctx = _pypi_mock_mctx(
+                _mod(
+                    name = "my_module",
+                    default = _default_tags_default + [
+                        _default(index_url = index_url),
+                        _default(default_hub = "pypi_a"),
+                    ],
+                    parse = [
+                        _parse(
+                            hub_name = "pypi_a",
+                            python_version = "3.15",
+                            envsubst = envsubst,
+                            requirements_lock = "requirements.txt",
+                        ),
+                    ],
+                ),
+                os_name = "linux",
+                arch_name = "x86_64",
+            ),
+            available_interpreters = {
+                "python_3_15_host": "unit_test_interpreter_target",
+            },
+            minor_mapping = {"3.15": "3.15.19"},
+            simpleapi_download = fail_simpleapi_download,
+        )
+
+        pypi.whl_libraries().contains_exactly({
+            "pypi_a_315_simple": {
+                "config_load": "@pypi_a//:config.bzl",
+                "dep_template": "@pypi_a//{name}:{target}",
+                "python_interpreter_target": "unit_test_interpreter_target",
+                "requirement": "simple==0.0.1 --hash=sha256:deadbeef --hash=sha256:deadbaaf",
+            } | want_whl_library,
+        })
+
+_tests.append(_test_default_index_url_empty_disables_simpleapi)
 
 def extension_test_suite(name):
     """Create the test suite.
