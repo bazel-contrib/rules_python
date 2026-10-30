@@ -19,15 +19,13 @@ load("//python/private:text_util.bzl", "render")
 _TEMPLATE = """\
 load("@rules_python//python/uv/private:toolchains_hub.bzl", "toolchains_hub")
 
-{}
-"""
-
-_BIN_BUILD_TEMPLATE = """\
 alias(
-    name = "bin",
+    name = "uv",
     actual = "@rules_python//python/uv:current_toolchain",
     visibility = ["//visibility:public"],
 )
+
+{}
 """
 
 def _non_empty(d):
@@ -53,7 +51,6 @@ def _toolchains_repo_impl(repository_ctx):
         ),
     )
     repository_ctx.file("BUILD.bazel", contents)
-    repository_ctx.file("bin/BUILD.bazel", _BIN_BUILD_TEMPLATE)
 
 uv_toolchains_repo = repository_rule(
     _toolchains_repo_impl,
