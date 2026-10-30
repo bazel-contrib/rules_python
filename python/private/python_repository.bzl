@@ -322,6 +322,7 @@ define_hermetic_runtime_toolchain_impl(
         "coverage_tool": rctx.attr.coverage_tool,
         "distutils": rctx.attr.distutils,
         "distutils_content": rctx.attr.distutils_content,
+        "libpython": rctx.attr.libpython,
         "name": rctx.attr.name,
         "netrc": rctx.attr.netrc,
         "patch_strip": rctx.attr.patch_strip,
