@@ -40,7 +40,8 @@ def construct_config_settings(
         versions,
         minor_mapping,
         compat_lowest_version = "3.8",
-        documented_flags):  # buildifier: disable=function-docstring
+        documented_flags,
+        python_version_scope = "universal"):  # buildifier: disable=function-docstring
     """Create a 'python_version' config flag and construct all config settings used in rules_python.
 
     This mainly includes the targets that are used in the toolchain and pip hub
@@ -55,21 +56,28 @@ def construct_config_settings(
             version for `is_python_3.X` flags.
         documented_flags: {type}`list[str]` The labels of the documented settings
             that affect build configuration.
+        python_version_scope: Scope of the Python version flag. Defaults to universal.
     """
     _ = name  # @unused
-    _python_version_flag(
-        name = _PYTHON_VERSION_FLAG.name,
-        build_setting_default = default_version,
-        # Propagate the flag into exec configurations so exec tools (e.g. the
-        # precompiler) use the target's Python version. Bazel 10 resets
-        # Starlark flags in exec configurations unless they have universal
-        # scope (https://github.com/bazelbuild/bazel/issues/26909). It's set
-        # here, not as an attr default, because Bazel ignores scope attr
-        # defaults for flags set on the command line
-        # (https://github.com/bazelbuild/bazel/issues/31806).
-        scope = "universal",
-        visibility = ["//visibility:public"],
-    )
+    if python_version_scope == "project":
+        # Bazel finds a scoped flag's project from the flag's package, so the
+        # project-scoped flag lives in the generated repository, which ships
+        # the PROJECT.scl that forwards to the root module's definition.
+        native.alias(
+            name = _PYTHON_VERSION_FLAG.name,
+            actual = "@rules_python_internal//:python_version",
+            visibility = ["//visibility:public"],
+        )
+    else:
+        python_version_flag(
+            name = _PYTHON_VERSION_FLAG.name,
+            build_setting_default = default_version,
+            # Universal scope preserves exec-tool version selection. Set scope
+            # here: Bazel ignores attr defaults for command-line flags
+            # (bazel#31806).
+            scope = python_version_scope,
+            visibility = ["//visibility:public"],
+        )
 
     _python_version_major_minor_flag(
         name = _PYTHON_VERSION_MAJOR_MINOR_FLAG.name,
@@ -211,7 +219,7 @@ def _python_version_flag_impl(ctx):
         config_common.FeatureFlagInfo(value = value),
     ]
 
-_python_version_flag = rule(
+python_version_flag = rule(
     implementation = _python_version_flag_impl,
     build_setting = config.string(flag = True),
     attrs = {
