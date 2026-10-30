@@ -102,8 +102,19 @@ def _module_new(name, *, is_root = False, **tags):
         is_root = is_root,
     )
 
+_RULES_PYTHON_REPO_NAME = Label("//:MODULE.bazel").repo_name
+
+def _fail_on_rules_python_file(x):
+    # Reading or taking the path of a file of @rules_python by Label makes
+    # --experimental_remote_repo_contents_cache materialize the whole repo.
+    # https://github.com/bazelbuild/bazel/pull/31493 avoids this for reads.
+    if (type(x) == "Label" and x.repo_name == _RULES_PYTHON_REPO_NAME and
+        (x.package + "/").startswith("python/")):
+        fail("module_ctx must not read files of @rules_python: " + str(x))
+
 def _mctx_read(self, x, watch = None):
     _ = watch  # @unused
+    _fail_on_rules_python_file(x)
     path_str = x._path if hasattr(x, "_path") else str(x)
     if path_str in self.mock_files:
         return self.mock_files[path_str]
@@ -113,6 +124,7 @@ def _mctx_read(self, x, watch = None):
     fail("File not found in mock_files: " + path_str)
 
 def _mctx_path(self, x):
+    _fail_on_rules_python_file(x)
     return _path_new(str(x), self.mock_files)
 
 def _get_download_file_name(url, output = ""):
