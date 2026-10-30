@@ -7,13 +7,6 @@ distribution_filegroup(
 )
 
 alias(
-    name = "bin",
-    actual = "//python/uv:current_toolchain",
-    tags = ["manual"],
-    visibility = ["//visibility:public"],
-)
-
-alias(
     name = "uv",
     actual = "//python/uv:current_toolchain",
     tags = ["manual"],

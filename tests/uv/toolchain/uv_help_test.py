@@ -29,7 +29,6 @@ class TestUV(unittest.TestCase):
         for env_var in (
             "UV_BIN",
             "UV_CURRENT_TOOLCHAIN",
-            "UV_RULES_PYTHON_BIN",
             "UV_RULES_PYTHON_UV",
         ):
             with self.subTest(env_var=env_var):

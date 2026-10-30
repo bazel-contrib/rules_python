@@ -13,7 +13,6 @@ py_test(
     data = [
         ":uv_help",
         "//python/uv:current_toolchain",
-        "//python/uv/bin",
         "//python/uv/bin:uv",
         "@uv",
     ],
@@ -21,7 +20,6 @@ py_test(
         "DATA": "$(rlocationpath :uv_help)",
         "UV_BIN": "$(rlocationpath @uv//:uv)",
         "UV_CURRENT_TOOLCHAIN": "$(rlocationpath //python/uv:current_toolchain)",
-        "UV_RULES_PYTHON_BIN": "$(rlocationpath //python/uv/bin:bin)",
         "UV_RULES_PYTHON_UV": "$(rlocationpath //python/uv/bin:uv)",
     },
     deps = ["//python/runfiles"],
