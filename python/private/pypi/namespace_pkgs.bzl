@@ -1,6 +1,6 @@
 """Utilities to get where we should write namespace pkg paths."""
 
-load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
+load("@bazel_skylib//rules:expand_template.bzl", "expand_template")
 
 _ext = struct(
     py = ".py",
@@ -59,7 +59,7 @@ def get_files(*, srcs, ignored_dirnames = [], root = None):
 
     return sorted([d for d in dirs if d not in ignored])
 
-def create_inits(*, srcs, ignored_dirnames = [], root = None, copy_file = copy_file, **kwargs):
+def create_inits(*, srcs, ignored_dirnames = [], root = None, write_init = expand_template, **kwargs):
     """Create init files and return the list to be included `py_library` srcs.
 
     Args:
@@ -67,8 +67,8 @@ def create_inits(*, srcs, ignored_dirnames = [], root = None, copy_file = copy_f
             as `srcs` and `data`. This is usually a result of a {obj}`glob`.
         ignored_dirnames: {type}`str` a list of patterns to ignore.
         root: {type}`str` the prefix to use as the root.
-        copy_file: the `copy_file` rule to copy files in build context.
-        **kwargs: passed to {obj}`copy_file`.
+        write_init: rule that generates an initializer from the namespace template.
+        **kwargs: passed to `write_init`.
 
     Returns:
         {type}`list[str]` to be included as part of `py_library`.
@@ -78,11 +78,12 @@ def create_inits(*, srcs, ignored_dirnames = [], root = None, copy_file = copy_f
         src = "{}/__init__.py".format(out)
         ret.append(src)
 
-        copy_file(
+        write_init(
             # For the target name, use a number instead of trying to convert an output
             # path into a valid label.
             name = "_cp_{}_namespace".format(i),
-            src = _TEMPLATE,
+            template = _TEMPLATE,
+            substitutions = {},
             out = src,
             **kwargs
         )

@@ -229,7 +229,7 @@ bzl_library(
 bzl_library(
     name = "namespace_pkgs",
     srcs = ["namespace_pkgs.bzl"],
-    deps = ["@bazel_skylib//rules:copy_file"],
+    deps = ["@bazel_skylib//rules:expand_template"],
 )
 
 bzl_library(
