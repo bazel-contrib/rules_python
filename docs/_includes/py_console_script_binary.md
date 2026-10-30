@@ -32,7 +32,7 @@ py_console_script_binary(
     deps = [
         # One can add extra dependencies to the entry point.
         # This specifically allows us to add plugins to pylint.
-        "@pip//pylint_print",
+        "@pip//pylint_per_file_ignores",
     ],
 )
 ```

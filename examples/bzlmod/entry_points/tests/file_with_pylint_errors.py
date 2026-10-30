@@ -1,6 +1,7 @@
-"""
-A file to demonstrate the pylint-print checker works.
-"""
+"""A file to demonstrate that the pylint-per-file-ignores plugin works."""
 
-if __name__ == "__main__":
-    print("Hello, World!")
+import os  # noqa: F401
+
+
+def dummy():
+    pass

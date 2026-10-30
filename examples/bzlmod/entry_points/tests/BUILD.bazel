@@ -24,7 +24,8 @@ run_binary(
     outs = ["pylint_report.txt"],
     args = [
         "--output-format=text:$(location pylint_report.txt)",
-        "--load-plugins=pylint_print",
+        "--load-plugins=pylint_per_file_ignores",
+        "--per-file-ignores=**/file_with_pylint_errors.py:unused-import",
         # The `exit-zero` ensures that `run_binary` is successful even though there are lint errors.
         # We check the generated report in the test below.
         "--exit-zero",

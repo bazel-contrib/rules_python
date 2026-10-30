@@ -19,7 +19,7 @@ py_console_script_binary(
     visibility = ["//entry_points:__subpackages__"],
     deps = [
         # One can add extra dependencies to the entry point.
-        "@pip//pylint_print",
+        "@pip//pylint_per_file_ignores",
     ],
 )
 
