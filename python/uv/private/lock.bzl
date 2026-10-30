@@ -131,7 +131,7 @@ def _up(x, directory, short_path = False):
     elif hasattr(x, "path"):
         x = x.path
 
-    if not directory:
+    if not directory or paths.is_absolute(x):
         return x
 
     prefix = "/".join([".."] * len(directory.split("/")))
