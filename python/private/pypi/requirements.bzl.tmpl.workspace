@@ -59,9 +59,7 @@ def install_deps(**whl_library_kwargs):
     whl_config = dict(_config)
     whl_config.update(whl_library_kwargs)
 
-    for entry in _packages:
-        name, requirement = entry[:2]
-        extra_whl_args = entry[2] if len(entry) > 2 else {}
+    for name, requirement in _packages:
         group_name = requirement_group_mapping.get(name.replace("%%NAME%%_", ""))
         group_deps = all_requirement_groups.get(group_name, [])
 
@@ -72,5 +70,5 @@ def install_deps(**whl_library_kwargs):
             group_deps = group_deps,
             annotation = _get_annotation(requirement),
             config_load = config_load,
-            **(whl_config | extra_whl_args)
+            **whl_config
         )

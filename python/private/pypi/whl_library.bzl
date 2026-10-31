@@ -59,12 +59,11 @@ def whl_library(name, repo = None, **kwargs):
     whl_file = kwargs.get("whl_file")
     urls = kwargs.get("urls", [])
     filename = kwargs.get("filename")
-    platform_whls = kwargs.get("platform_whls", {})
 
     # compatibility shim for cases for repo_prefix is still used by the called
     kwargs.setdefault("dep_template", "@{}{{name}}//:{{target}}".format(kwargs.pop("repo_prefix", "")))
 
-    if whl_file or platform_whls or (urls and filename and filename.endswith(".whl")):
+    if whl_file or (urls and filename and filename.endswith(".whl")):
         wheel_filename = filename or str(whl_file).split(":")[-1].split("/")[-1]
         patches = get_whl_patches(kwargs.get("whl_patches", {}), wheel_filename)
         if patches:

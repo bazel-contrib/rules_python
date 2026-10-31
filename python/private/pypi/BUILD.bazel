@@ -439,7 +439,6 @@ bzl_library(
     name = "uv_lock",
     srcs = ["uv_lock.bzl"],
     deps = [
-        ":multi_pip_parse",
         ":uv_lock_repo",
         "//python:versions",
         "@bazel_skylib//lib:types",
@@ -451,9 +450,18 @@ bzl_library(
     srcs = ["uv_lock_repo.bzl"],
     deps = [
         ":attrs",
+        ":parse_requirements",
+        ":pep508_env",
         ":pip_repository",
         ":pip_repository_attrs",
+        ":pypi_repo_utils",
+        ":render_pkg_aliases",
+        ":whl_repo_name",
+        "//python/private:full_version",
+        "//python/private:normalize_name",
         "//python/private:repo_utils",
+        "//python/private:text_util",
+        "@bazel_skylib//lib:sets",
         "@toml.bzl//:toml",
     ],
 )
