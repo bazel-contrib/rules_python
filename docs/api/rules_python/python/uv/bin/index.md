@@ -19,6 +19,6 @@ Alias for {obj}`//python/uv:current_toolchain` to directly run the configured
 bazel run @rules_python//python/uv/bin:uv -- --help
 ```
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.5.0
 :::
 ::::

@@ -214,7 +214,7 @@ toolchain(
 register_toolchains("//my_pkg:my_toolchain")
 ```
 
-:::{versionchanged} VERSION_NEXT_FEATURE
+:::{versionchanged} 2.5.0
 Provides `TemplateVariableInfo` and `ToolchainInfo.template_vars`.
 :::
 """,

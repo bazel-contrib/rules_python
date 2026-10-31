@@ -777,7 +777,7 @@ only list one hub's packages; load those from a concrete hub.
 
 Only the root module's value is used.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.5.0
 :::
 """,
     ),

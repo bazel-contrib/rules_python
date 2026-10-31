@@ -160,7 +160,7 @@ def uv_register_toolchains(
     targets in your own repository.
     :::
 
-    :::{versionadded} VERSION_NEXT_FEATURE
+    :::{versionadded} 2.5.0
     :::
 
     Args:

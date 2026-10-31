@@ -115,7 +115,7 @@ the root pycache directory:
 If `/dev/null` (`NUL` on Windows) is specified, or if a directory cannot be
 found or created, then pyc caching will be disabled.
 
-:::{versionchanged} VERSION_NEXT_PATCH
+:::{versionchanged} 2.5.0
 Temporary directories (`TMP`, `TEMP`, `/tmp` and `C:\Temp`) are no longer used.
 They get cleaned out while the fetched runtime persists, which left the
 `__pycache__` symlinks dangling.

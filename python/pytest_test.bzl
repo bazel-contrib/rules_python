@@ -9,7 +9,7 @@ In order to use this rule you'll have to have the following packages:
 * `pytest-randomly` - used to have consistent random number usage.
 * `pytest-shard` - optional, used only if tests need to be sharded.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.5.0
 :::
 """
 

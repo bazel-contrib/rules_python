@@ -29,6 +29,145 @@ Unreleased changes are tracked as individual files in the [news/](./news)
 directory, or view the [latest generated
 changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 
+{#v2-5-0}
+## [2.5.0] - 2026-10-31
+
+[2.5.0]: https://github.com/bazel-contrib/rules_python/releases/tag/2.5.0
+
+{#v2-5-0-changed}
+### Changed
+* (gazelle) Migrated the Python AST parser from `smacker/go-tree-sitter` to the
+  official `tree-sitter/go-tree-sitter` and `tree-sitter/tree-sitter-python`
+  packages, adding support for Python 3.14 PEP 758 unparenthesized exception
+  clauses ([#3416](https://github.com/bazel-contrib/rules_python/issues/3416)).
+* (pypi) Downloaded wheels are removed after extraction when their original
+  archive can be fetched independently. The existing `whl` and `whl_file` targets
+  fetch the archive from a separate repository on demand. Matching patches are
+  applied in the separate wheel-file repository, which also supplies the patched
+  archive for extraction. Wheels built from source retain their existing archive
+  behavior.
+* (rules) {obj}`py_console_script_binary` now creates the main script only for the `exec`
+  configuration.
+* (toolchains) Added `install_only_stripped` python-build-standalone runtime
+  archives for releases from `20240726` onward. They can be used by setting
+  {obj}`--@rules_python//python/config_settings:py_pbs_distribution` to
+  `install_only_stripped` to reduce runtime download size.
+  ([#4163](https://github.com/bazel-contrib/rules_python/issues/4163))
+* (toolchains) Downloaded runtimes cache pyc files under `$HOME/.cache`
+  (`LOCALAPPDATA` on Windows) instead of a temporary directory when
+  `XDG_CACHE_HOME` is unset
+  ([#4198](https://github.com/bazel-contrib/rules_python/issues/4198)).
+* (uv) The default `uv` version has been bumped from `0.11.2` to `0.13.1`. This
+  lets the {obj}`lock` rule use scoped `override-dependencies` from a
+  `pyproject.toml` in `[tool.uv]`, which require `uv` `0.11.25` or newer.
+  ([#2992](https://github.com/bazel-contrib/rules_python/issues/2992))
+
+{#v2-5-0-fixed}
+### Fixed
+* (`uv`) Support executable wrappers with multiple outputs and preserve their
+  runfiles in lock actions and runnable targets. Export downloaded `uv` binaries
+  so wrappers can declare them as dependencies.
+  ([#4181](https://github.com/bazel-contrib/rules_python/issues/4181))
+* (bzlmod) Fixed configuring and using Python patch versions newer than the
+  built-in `MINOR_MAPPING` in the {obj}`python` and {obj}`pip` extensions,
+  including `add_runtime_manifest_files` download URLs and host interpreter
+  resolution ([#4358](https://github.com/bazel-contrib/rules_python/issues/4358)).
+* (gazelle) Check in a default standard library module list (`stdlib_list/default.txt`)
+  alongside the Bazel-selected list (`stdlib_list/selected.txt`) so
+  `github.com/bazel-contrib/rules_python/gazelle/python` can be built and tested
+  directly with standard Go tooling (`go build`, `go test`, `go list`) outside
+  Bazel ([#3821](https://github.com/bazel-contrib/rules_python/issues/3821)).
+* (gazelle) Fixed Python targets with an `imports` attribute not being deleted
+  when their source files are removed
+  ([#4282](https://github.com/bazel-contrib/rules_python/issues/4282)).
+* (pypi) A {obj}`pip.parse` call for a Python version that has no interpreter for
+  the host platform is now skipped, like a version with no registered toolchain,
+  instead of failing the whole {obj}`pip` extension. A dependency that lists,
+  say, Python 3.9 no longer breaks every other hub on hosts that have no CPython
+  3.9 build, such as Windows on ARM64
+  ([#4184](https://github.com/bazel-contrib/rules_python/issues/4184)).
+* (pypi) Wheel namespace package initializers no longer require a shell or `cp` on the execution platform.
+* (pypi) `pip.parse(uv_lock = ...)` now builds packages with a git source with
+  `pip`, from a `name @ git+<url>@<commit>` direct reference pinned to the commit
+  `uv` resolved, instead of passing the uv.lock source string to the Bazel
+  downloader as a URL.
+  ([#4139](https://github.com/bazel-contrib/rules_python/issues/4139))
+* (rules) Fixed stage 1 bootstrap script failing when the executable path,
+  runfiles root, or `RULES_PYTHON_EXTRACT_ROOT` contains spaces
+  ([#4386](https://github.com/bazel-contrib/rules_python/pull/4386)).
+* (rules) Fixed {obj}`py_library.pyi_deps` being included in runtime output and
+  bloating output. Type-checking only information is now in
+  {obj}`PyInfo.type_checking_info`. Added the
+  {obj}`--//python/config_settings:pyi_deps_to_runfiles` flag to configure or
+  restore legacy runfile propagation if needed
+  ([#4178](https://github.com/bazel-contrib/rules_python/pull/4178)).
+* (sphinxdocs) Fixed `sphinx_docs` `.run` targets failing to locate the `sphinx`
+  binary when defined in the root package
+  ([#4201](https://github.com/bazel-contrib/rules_python/issues/4201)).
+* (toolchains) Evaluating the {obj}`python` module extension and `@pythons_hub`
+  repository no longer materializes the `@rules_python` repository when using
+  `--experimental_remote_repo_contents_cache`
+  ([#4294](https://github.com/bazel-contrib/rules_python/issues/4294)).
+* (toolchains) Fixed build tools, such as the precompiler, running with the
+  default Python version instead of the target's Python version under Bazel 10
+  ([#3566](https://github.com/bazel-contrib/rules_python/issues/3566)).
+* (toolchains) The `python` extension is re-evaluated when the host OS or CPU
+  changes, so an output base shared between hosts no longer fails to fetch the
+  `*_host` interpreter repo.
+* (toolchains) `__pycache__` symlinks in downloaded runtimes no longer end up in
+  runfiles, and a runtime no longer loads pyc files compiled from another
+  version's sources
+  ([#4198](https://github.com/bazel-contrib/rules_python/issues/4198)).
+* (uv) Fixed {obj}`lock`'s `.run` target for `uv.lock` outputs to read and write
+  the lock file in the workspace source tree instead of the runfiles tree
+  ([#4339](https://github.com/bazel-contrib/rules_python/issues/4339)).
+* (uv) The {obj}`lock` macro's `.run` target uses the `uv` cache and honors
+  `UV_CACHE_DIR` and `UV_NO_CACHE`. Pass `--refresh` to refresh cached data or
+  `--no-cache` to disable caching. Lock build actions, including those used by
+  `.update`, disable the `uv` cache.
+  ([#4179](https://github.com/bazel-contrib/rules_python/issues/4179))
+* (zipapp) Forwarded termination signals to the application, preserved inherited
+  ignored signals and exit status, and cleaned up temporary extraction directories.
+  ([#3809](https://github.com/bazel-contrib/rules_python/issues/3809))
+
+{#v2-5-0-added}
+### Added
+* (packaging) {obj}`py_wheel` now expands Python toolchain make variables by
+  default and in `platform` and `python_requires`. {obj}`py_runtime_pair` and
+  {obj}`current_py_toolchain` now provide version and wheel tag make variables.
+* (pypi) Added `pip.default(unified_hub_requirements_bzl = True)`, which makes the
+  unified `@pypi` hub generate a `requirements.bzl` with the per-package macros of
+  a concrete hub's (`requirement`, `whl_requirement`, `data_requirement` and
+  `dist_info_requirement`). A repo that renames its hub away from the reserved
+  `pypi` name keeps its `load("@pypi//:requirements.bzl", "requirement")` users
+  working, and the returned labels route through
+  {obj}`--@rules_python//python/config_settings:venv`. The `all_*` lists are not
+  provided, since they could only list one hub's packages; load them from a
+  concrete hub.
+* (rules) Added {obj}`PyInfo.direct_implicit_pyc_files` and
+  {obj}`PyExecutableInfo.venv_runfiles`.
+* (rules) Added {obj}`pytest_test`, which facilitates running of pytest tests.
+  It supports generating multiple test targets for more than one Python version
+  and uses `pytest-randomly` and `pytest-shard`.
+  ([#3594](https://github.com/bazel-contrib/rules_python/issues/3594))
+* (toolchains) Added the
+  {obj}`--@rules_python//python/config_settings:py_pbs_distribution`
+  flag to select which python-build-standalone archive the hermetic toolchains
+  use. Setting it to `install_only_stripped` uses runtimes without debug symbols,
+  which reduces runtime and zipapp size.
+  ([#4163](https://github.com/bazel-contrib/rules_python/issues/4163))
+* (uv) Added `@uv//:uv`, {obj}`//python/uv/bin:uv`, and public visibility on
+  {obj}`//python/uv:current_toolchain` (along with the `$(UV)` make variable) to
+  run the configured `uv` binary directly (e.g.
+  `bazel run @rules_python//python/uv/bin:uv -- --help` or
+  `bazel run @uv -- --help`)
+  ([#4371](https://github.com/bazel-contrib/rules_python/pull/4371)).
+* (uv) The {obj}`lock` macro now works in WORKSPACE builds; set up the `uv`
+  toolchains with the new {obj}`uv_toolchains_manifest` repository rule and
+  {obj}`uv_register_toolchains` macro.
+  ([#1975](https://github.com/bazel-contrib/rules_python/issues/1975))
+
+
 {#v2-4-6}
 ## [2.4.6] - 2026-10-29
 

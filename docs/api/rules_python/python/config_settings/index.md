@@ -254,7 +254,7 @@ Values:
 * `yes`: Propagate `pyi_deps` into runtime runfiles (legacy behavior).
 * `no`: Do not propagate `pyi_deps` into runtime runfiles.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.5.0
 :::
 ::::
 
@@ -333,7 +333,7 @@ If a Python version or platform has no archive of the selected kind, the
 See {ref}`Selecting the runtime archive <selecting-the-runtime-archive>` for
 details.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.5.0
 :::
 ::::
 

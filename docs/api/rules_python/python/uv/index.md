@@ -34,7 +34,7 @@ bazel_env(
 )
 ```
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.5.0
 :::
 ::::
 

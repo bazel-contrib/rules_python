@@ -46,7 +46,7 @@ bazel run @uv//:uv -- --help
 Since this is only for locking the requirements files, it should be always
 marked as a `dev_dependency`.
 
-:::{versionchanged} VERSION_NEXT_FEATURE
+:::{versionchanged} 2.5.0
 Added `@uv//:uv` and {obj}`//python/uv/bin:uv` (aliases for
 {obj}`//python/uv:current_toolchain`) to run the configured `uv` binary
 directly.
@@ -95,7 +95,7 @@ default = tag_class(
     doc = """
 Set the uv configuration defaults.
 
-:::{versionchanged} VERSION_NEXT_PATCH
+:::{versionchanged} 2.5.0
 `netrc` and `auth_patterns` now apply to the versions configured with
 {obj}`uv.configure`; previously they were accepted but ignored.
 :::

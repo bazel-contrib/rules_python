@@ -49,7 +49,7 @@ uv_toolchain = rule(
 The `uv` executable or a wrapper that forwards its arguments to `uv`.
 Runtime dependencies belong in the executable target's runfiles.
 
-:::{versionchanged} VERSION_NEXT_PATCH
+:::{versionchanged} 2.5.0
 Executable targets with multiple output files are supported. Lock actions
 and runnable targets include the executable target's runfiles.
 :::

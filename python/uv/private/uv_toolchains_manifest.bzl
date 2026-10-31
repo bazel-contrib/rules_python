@@ -121,7 +121,7 @@ archives, is decided by {obj}`uv_register_toolchains`. Versions released from
 different places can be fetched with one repository each and combined with the
 `manifests` argument of {obj}`uv_register_toolchains`.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.5.0
 :::
 """,
     attrs = {
