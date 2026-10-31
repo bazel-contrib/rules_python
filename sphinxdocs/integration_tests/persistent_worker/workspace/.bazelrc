@@ -6,3 +6,6 @@ common --http_timeout_scaling=10.0
 common --experimental_repository_downloader_retries=10
 common --experimental_downloader_config=downloader_config.cfg
 common --lockfile_mode=off
+
+# TODO: Delete before merging; see the root .bazelrc.
+common --registry=https://bazel-contrib.github.io/rules_runfiles_group --registry=https://bcr.bazel.build

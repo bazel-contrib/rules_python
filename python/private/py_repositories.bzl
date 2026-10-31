@@ -73,6 +73,12 @@ def py_repositories(transition_settings = []):
         urls = ["https://github.com/bazelbuild/rules_cc/releases/download/0.1.5/rules_cc-0.1.5.tar.gz"],
     )
     http_archive(
+        name = "rules_runfiles_group",
+        sha256 = "0c5a2998f970e8ec27daa9bc10c3cd0d4a7167371acd70974a75ab8aafb41c74",
+        strip_prefix = "rules_runfiles_group-d105dfab75fb550bcfc0d2cc033b27fad0dfc2e4",
+        url = "https://bazel-contrib.github.io/rules_runfiles_group/assets/rules_runfiles_group/99.0.0-dev.20261019.1.d105dfa/source.tar.gz",
+    )
+    http_archive(
         name = "toml.bzl",
         sha256 = "63633c762bdb4d836add5a9a81deeeae93c4b2edbd62ac032733020b5652b90a",
         strip_prefix = "toml.bzl-0.4.0",

@@ -6,3 +6,6 @@ common --experimental_isolated_extension_usages
 
 # https://docs.bazel.build/versions/main/best-practices.html#using-the-bazelrc-file
 try-import %workspace%/user.bazelrc
+
+# TODO: Delete before merging; see the root .bazelrc.
+common --registry=https://bazel-contrib.github.io/rules_runfiles_group --registry=https://bcr.bazel.build
