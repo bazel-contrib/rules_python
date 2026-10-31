@@ -46,6 +46,8 @@ def _repr_dict(*, value_repr = repr, **kwargs):
     return {k: value_repr(v) for k, v in kwargs.items() if v}
 
 def _repr_config_setting(alias):
+    if type(alias) == type(""):
+        return repr(alias)
     if alias.target_platforms:
         return render.call(
             "whl_config_setting",

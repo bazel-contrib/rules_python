@@ -114,7 +114,7 @@ def install_deps(**whl_library_kwargs):
     rctx.file("requirements.bzl", requirements_bzl)
     rctx.file("BUILD.bazel", "exports_files(['requirements.bzl'])")
 
-multi_pip_parse_hub_repo = repository_rule(
+_multi_pip_parse = repository_rule(
     _multi_pip_parse_impl,
     attrs = {
         "default_version": attr.string(),
@@ -158,7 +158,7 @@ def multi_pip_parse(name, default_version, python_versions, python_interpreter_t
         )
         pip_parses[python_version] = pip_parse_name
 
-    return multi_pip_parse_hub_repo(
+    return _multi_pip_parse(
         name = name,
         default_version = default_version,
         pip_parses = pip_parses,

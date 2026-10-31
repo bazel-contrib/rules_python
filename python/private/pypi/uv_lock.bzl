@@ -2,7 +2,6 @@
 
 load("@bazel_skylib//lib:types.bzl", "types")
 load("//python:versions.bzl", "MINOR_MAPPING")
-load(":multi_pip_parse.bzl", "multi_pip_parse_hub_repo")
 load(":uv_lock_repo.bzl", "uv_lock_repo")
 
 def uv_lock(
@@ -15,7 +14,9 @@ def uv_lock(
         **kwargs):
     """Accepts a resolved `uv.lock` file and installs the dependencies listed within.
 
-    Supports both single-version and multi-version Python setups in `WORKSPACE`.
+    Supports both single-version and multi-version Python setups in `WORKSPACE`
+    using a unified multi-platform hub repository backed by per-wheel `whl_library`
+    repositories.
 
     :::{versionadded} VERSION_NEXT_FEATURE
     :::
@@ -34,15 +35,10 @@ def uv_lock(
         minor_mapping: {type}`dict[str, str] | None` Optional mapping from `X.Y`
             to `X.Y.Z` Python versions for multi-version hub aliases. Defaults
             to `MINOR_MAPPING` from `//python:versions.bzl`.
-        **kwargs: Additional repository rule arguments forwarded to each
-            underlying PyPI repository (see {obj}`pip_parse` for supported
-            attributes).
+        **kwargs: Additional repository rule arguments forwarded to the
+            underlying `uv_lock_repo` repository rule.
     """
     _uv_lock_repo = kwargs.pop("_uv_lock_repo", uv_lock_repo)
-    _multi_pip_parse_hub_repo = kwargs.pop(
-        "_multi_pip_parse_hub_repo",
-        multi_pip_parse_hub_repo,
-    )
 
     if not types.is_dict(python_interpreter_target):
         if python_interpreter_target != None:
@@ -56,7 +52,6 @@ def uv_lock(
 
     python_versions = python_versions or sorted(python_interpreter_target.keys())
     minor_mapping = minor_mapping or MINOR_MAPPING
-    pip_parses = {}
     for python_version in python_versions:
         if python_version not in python_interpreter_target:
             fail(
@@ -66,18 +61,15 @@ def uv_lock(
                 ),
             )
 
-        spoke_name = name + "_" + python_version.replace(".", "_")
-        _uv_lock_repo(
-            name = spoke_name,
-            python_interpreter_target = python_interpreter_target[python_version],
-            uv_lock = uv_lock,
-            **kwargs
-        )
-        pip_parses[python_version] = spoke_name
-
-    _multi_pip_parse_hub_repo(
+    _uv_lock_repo(
         name = name,
-        default_version = default_version,
-        pip_parses = pip_parses,
+        uv_lock = uv_lock,
+        default_version = default_version or "",
+        python_versions = python_versions,
+        python_interpreter_targets = {
+            k: str(v)
+            for k, v in python_interpreter_target.items()
+        },
         minor_mapping = minor_mapping,
+        **kwargs
     )

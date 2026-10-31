@@ -14,17 +14,15 @@ def _whl_archive_impl(rctx):
     if rctx.attr.whl_file:
         rctx.watch(rctx.attr.whl_file)
         whl_path = rctx.path(rctx.attr.whl_file)
-    elif (rctx.attr.urls and rctx.attr.filename) or rctx.attr.platform_whls:
+    elif rctx.attr.urls and rctx.attr.filename:
         whl_path = download_whl(rctx, logger = logger)
     else:
-        fail("Either 'whl_file', 'platform_whls', or 'urls' and 'filename' needs to be specified")
+        fail("Either 'whl_file' or 'urls' and 'filename' needs to be specified")
 
     return patch_and_extract_whl(
         rctx,
         whl_path = whl_path,
-        whl_file = rctx.attr.whl_file or (
-            "@{}_whl//:{}".format(rctx.attr.name, whl_path.basename) if rctx.attr.platform_whls else rctx.attr.downloaded_whl
-        ),
+        whl_file = rctx.attr.whl_file or rctx.attr.downloaded_whl,
         logger = logger,
     )
 
@@ -54,9 +52,6 @@ The expected checksum of the downloaded whl in Subresource Integrity format
 :::{versionadded} 2.3.0
 :::
 """,
-    ),
-    "platform_whls": attr.string_dict(
-        doc = "Per-platform JSON-encoded wheel metadata (`filename`, `integrity`, `urls`).",
     ),
     "sha256": attr.string(
         doc = "The sha256 of the downloaded whl. Only used when the `urls` is passed.",
