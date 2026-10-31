@@ -1,0 +1,3 @@
+load(":uv_lock_tests.bzl", "uv_lock_test_suite")
+
+uv_lock_test_suite(name = "uv_lock_tests")

@@ -4,8 +4,7 @@
 # Lock
 
 :::{note}
-`rules_python` supports `requirements.txt` and `uv.lock` (bzlmod only)
-formats.
+`rules_python` supports `requirements.txt` and `uv.lock` formats.
 
 #{gh-issue}`2787` tracks `pylock.toml` support.
 :::
@@ -234,7 +233,7 @@ lock(
    `diff_test` from `bazel_skylib`.
 :::
 
-## uv.lock (bzlmod only)
+## uv.lock
 
 The {obj}`lock` rule also supports generating cross-platform `uv.lock` files
 using `uv lock` when {arg}`lock.out` ends with `.lock` (such as `uv.lock`).
@@ -254,7 +253,8 @@ lock(
 ```
 
 Run `bazel run //:uv_lock.update` to generate or update `uv.lock`, then pass it
-to {obj}`pip.parse` in `MODULE.bazel` via {attr}`pip.parse.uv_lock`:
+to {obj}`pip.parse` in `MODULE.bazel` via {attr}`pip.parse.uv_lock` (or to
+{obj}`uv_lock` in `WORKSPACE`):
 
 ```starlark
 pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")

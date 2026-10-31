@@ -100,6 +100,7 @@ foo==0.0.1 --hash=sha512:deadbeef
 foo[extra]==0.0.2 --hash=sha256:deadbeef
 bar==0.0.1 --hash=sha256:deadb00f
 """,
+        "uv_lock_edge_marker_reachability": """{"package":[{"dependencies":[{"name":"keyring"}],"name":"root-pkg","source":{"virtual":"."},"version":"0.0.0"},{"dependencies":[{"marker":"sys_platform == 'linux'","name":"secretstorage"}],"name":"keyring","source":{"registry":"https://pypi.org/simple"},"version":"25.7.0","wheels":[{"hash":"sha256:aaa","url":"https://files.pythonhosted.org/packages/keyring-25.7.0-py3-none-any.whl"}]},{"dependencies":[{"name":"cryptography"}],"name":"secretstorage","source":{"registry":"https://pypi.org/simple"},"version":"3.3.3","wheels":[{"hash":"sha256:bbb","url":"https://files.pythonhosted.org/packages/secretstorage-3.3.3-py3-none-any.whl"}]},{"name":"cryptography","sdist":{"hash":"sha256:ddd","url":"https://files.pythonhosted.org/packages/cryptography-50.0.2.tar.gz"},"source":{"registry":"https://pypi.org/simple"},"version":"50.0.2","wheels":[{"hash":"sha256:ccc","url":"https://files.pythonhosted.org/packages/cryptography-50.0.2-cp39-abi3-manylinux_2_17_x86_64.whl"}]}]}""",
         "uv_lock_empty": """{"package":[]}""",
         "uv_lock_foo": """{"package":[{"dependencies":[{"extra":"extra","name":"bar"}],"name":"foo","source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]}]}""",
         "uv_lock_foo_bar": """{"package":[{"name":"bar","version":"0.0.1","source":{"registry":"https://pypi.org/simple"},"sdist":{"hash":"sha256:deadb00f","url":"https://files.pythonhosted.org/packages/bar-0.0.1.tar.gz"}},{"name":"foo","version":"0.0.1","source":{"registry":"https://pypi.org/simple"},"wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]}]}""",
@@ -1744,6 +1745,94 @@ def _test_uv_lock_requires_dist_extras(env):
     ])
 
 _tests.append(_test_uv_lock_requires_dist_extras)
+
+def _test_uv_lock_edge_marker_reachability(env):
+    """Test that transitive deps behind platform-specific edge markers are restricted to reachable platforms."""
+    got = parse_requirements(
+        uv_lock = "uv_lock_edge_marker_reachability",
+        platforms = {
+            "linux_x86_64": struct(
+                env = pep508_env(python_version = "3.11.0", os = "linux", arch = "x86_64"),
+                whl_abi_tags = ["abi3", "none"],
+                whl_platform_tags = ["manylinux_2_17_x86_64", "any"],
+            ),
+            "osx_aarch64": struct(
+                env = pep508_env(python_version = "3.11.0", os = "osx", arch = "aarch64"),
+                whl_abi_tags = ["abi3", "none"],
+                whl_platform_tags = ["macosx_11_0_arm64", "any"],
+            ),
+            "windows_x86_64": struct(
+                env = pep508_env(python_version = "3.11.0", os = "windows", arch = "x86_64"),
+                whl_abi_tags = ["abi3", "none"],
+                whl_platform_tags = ["win_amd64", "any"],
+            ),
+        },
+    )
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "cryptography",
+            index_url = "https://pypi.org/simple/cryptography",
+            is_exposed = False,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "cryptography",
+                    extra_pip_args = [],
+                    requirement_line = "cryptography==50.0.2",
+                    target_platforms = ["linux_x86_64"],
+                    filename = "cryptography-50.0.2-cp39-abi3-manylinux_2_17_x86_64.whl",
+                    digest = "sha256:ccc",
+                    url = "https://files.pythonhosted.org/packages/cryptography-50.0.2-cp39-abi3-manylinux_2_17_x86_64.whl",
+                    yanked = None,
+                ),
+            ],
+        ),
+        struct(
+            name = "keyring",
+            index_url = "https://pypi.org/simple/keyring",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "keyring",
+                    extra_pip_args = [],
+                    requirement_line = "keyring==25.7.0",
+                    target_platforms = ["linux_x86_64", "osx_aarch64", "windows_x86_64"],
+                    filename = "keyring-25.7.0-py3-none-any.whl",
+                    digest = "sha256:aaa",
+                    url = "https://files.pythonhosted.org/packages/keyring-25.7.0-py3-none-any.whl",
+                    yanked = None,
+                ),
+            ],
+        ),
+        struct(
+            name = "root_pkg",
+            index_url = "",
+            is_exposed = False,
+            is_multiple_versions = False,
+            srcs = [],
+        ),
+        struct(
+            name = "secretstorage",
+            index_url = "https://pypi.org/simple/secretstorage",
+            is_exposed = False,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "secretstorage",
+                    extra_pip_args = [],
+                    requirement_line = "secretstorage==3.3.3",
+                    target_platforms = ["linux_x86_64"],
+                    filename = "secretstorage-3.3.3-py3-none-any.whl",
+                    digest = "sha256:bbb",
+                    url = "https://files.pythonhosted.org/packages/secretstorage-3.3.3-py3-none-any.whl",
+                    yanked = None,
+                ),
+            ],
+        ),
+    ])
+
+_tests.append(_test_uv_lock_edge_marker_reachability)
 
 def parse_requirements_test_suite(name):
     """Create the test suite.

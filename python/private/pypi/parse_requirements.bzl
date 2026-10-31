@@ -28,7 +28,6 @@ behavior.
 
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
-load("//python/uv/private:uv_lock_to_requirements.bzl", "uv_lock_extras_map")  # buildifier: disable=bzl-visibility
 load(":argparse.bzl", "argparse")
 load(":hash.bzl", "hash")
 load(":index_sources.bzl", "index_sources")
@@ -161,14 +160,16 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
     Returns:
         {type}`list[struct]` The same format as {func}`parse_requirements`.
     """
-    extras_map = uv_lock_extras_map(uv_lock)
+    extras_map = _uv_lock_extras_map(uv_lock)
 
     uv_packages = {}
 
     if not platforms:
         fail("BUG: platforms must be configured")
 
-    for pkg in uv_lock["package"]:
+    reachable = _uv_lock_reachable_platforms(uv_lock, all_platforms, platforms)
+
+    for idx, pkg in enumerate(uv_lock["package"]):
         name = pkg["name"]
         version = pkg["version"]
         norm_name = normalize_name(name)
@@ -189,16 +190,7 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
         pkg_extras = sorted(extras_map.get(name, []))
         extra_str = "[{}]".format(",".join(pkg_extras)) if pkg_extras else ""
 
-        markers = pkg.get("resolution-markers", [])
-        if markers:
-            marker_expr = " or ".join(markers)
-            pkg_platforms = [
-                p
-                for p in all_platforms
-                if evaluate(marker_expr, env = platforms[p].env)
-            ]
-        else:
-            pkg_platforms = list(all_platforms)
+        pkg_platforms = reachable[idx]
 
         # Prepare candidates
         candidates = []
@@ -299,16 +291,18 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
     ret = []
     for norm_name, info in sorted(uv_packages.items()):
         versions = sorted(info["versions"].keys())
+        resolved_platforms = {}
+        for src in info["resolved_srcs"]:
+            for p in src.target_platforms:
+                resolved_platforms[p] = None
         item = struct(
             name = norm_name,
-            # Only expose packages that resolved to at least one source. uv
-            # workspace/root members (e.g. `source = { virtual = "." }` or
-            # editable installs) resolve to no wheel/sdist, so exposing them
-            # would add a dangling entry to the hub's `all_requirements` /
-            # `all_whl_requirements` and create an alias to a subpackage that
-            # doesn't exist. This mirrors the requirements path, which also
-            # gates `is_exposed`.
-            is_exposed = bool(info["resolved_srcs"]),
+            # Only expose packages that resolved to a source on every target
+            # platform, matching `_parse_requirements_from_req_files`. Workspace
+            # root members and platform-conditional packages are omitted from
+            # `all_requirements` / `all_whl_requirements` so building those
+            # target lists succeeds on every platform.
+            is_exposed = len(resolved_platforms) == len(all_platforms),
             is_multiple_versions = len(versions) > 1,
             index_url = info["index_url"],
             srcs = info["resolved_srcs"],
@@ -317,6 +311,104 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
 
     logger.debug(lambda: "Parsed {} packages from uv.lock".format(len(ret)))
     return ret
+
+def _uv_lock_reachable_platforms(uv_lock, all_platforms, platforms):
+    """Compute reachable target platforms for each package index in `uv.lock`.
+
+    A package in `uv.lock` may have no `resolution-markers` of its own when only
+    a single version is locked, yet only be reachable via marker-guarded
+    dependency edges (for example, `keyring -> secretstorage` with
+    `marker = "sys_platform == 'linux'"` -> `cryptography` -> `cffi`).
+    Evaluating edge markers per platform from root packages ensures transitive
+    dependencies are restricted to platforms where they are actually reachable.
+
+    Args:
+        uv_lock: {type}`dict` Decoded `uv.lock` contents.
+        all_platforms: {type}`list[str]` Target platform names.
+        platforms: {type}`dict[str, struct]` Platform name to platform info.
+
+    Returns:
+        {type}`list[list[str]]` Parallel to `uv_lock["package"]`, listing the
+        subset of `all_platforms` on which each package entry is reachable.
+    """
+    packages = uv_lock.get("package", [])
+    num_pkgs = len(packages)
+    name_to_indices = {}
+    pkg_edges = []
+    has_incoming = {}
+
+    for idx, pkg in enumerate(packages):
+        norm_name = normalize_name(pkg["name"])
+        name_to_indices.setdefault(norm_name, []).append(idx)
+
+        edges = []
+        for dep in pkg.get("dependencies", []):
+            edges.append(dep)
+        for dep_list in pkg.get("optional-dependencies", {}).values():
+            for dep in dep_list:
+                edges.append(dep)
+        for dep_list in pkg.get("dev-dependencies", {}).values():
+            for dep in dep_list:
+                edges.append(dep)
+        pkg_edges.append(edges)
+
+        for dep in edges:
+            dep_norm = normalize_name(dep["name"])
+            if dep_norm != norm_name:
+                has_incoming[dep_norm] = True
+
+    roots = [
+        idx
+        for idx, pkg in enumerate(packages)
+        if normalize_name(pkg["name"]) not in has_incoming
+    ]
+    if not roots:
+        roots = list(range(num_pkgs))
+
+    reachable = [[] for _ in range(num_pkgs)]
+    for p in all_platforms:
+        platform = platforms.get(p)
+        if not platform:
+            continue
+        env = platform.env
+
+        active = []
+        for pkg in packages:
+            markers = pkg.get("resolution-markers", [])
+            if markers:
+                active.append(evaluate(" or ".join(markers), env = env))
+            else:
+                active.append(True)
+
+        visited = {}
+        queue = []
+        for root_idx in roots:
+            if active[root_idx] and root_idx not in visited:
+                visited[root_idx] = True
+                queue.append(root_idx)
+
+        for step in range(num_pkgs):
+            if step >= len(queue):
+                break
+            curr = queue[step]
+            for dep in pkg_edges[curr]:
+                dep_marker = dep.get("marker", "")
+                if dep_marker and not evaluate(dep_marker, env = env):
+                    continue
+                dep_norm = normalize_name(dep["name"])
+                dep_ver = dep.get("version", "")
+                for target_idx in name_to_indices.get(dep_norm, []):
+                    if not active[target_idx] or target_idx in visited:
+                        continue
+                    if dep_ver and packages[target_idx]["version"] != dep_ver:
+                        continue
+                    visited[target_idx] = True
+                    queue.append(target_idx)
+
+        for idx in visited:
+            reachable[idx].append(p)
+
+    return reachable
 
 def _uv_lock_git_requirement(git_source):
     """Turn a uv.lock git source into a pip direct reference.
@@ -375,6 +467,43 @@ def _parse_uv_lock_hash(hash_str):
     """
     algo, _, hex_digest = hash_str.partition(":")
     return hash.digest(algo, hex_digest)
+
+def _uv_lock_extras_map(uv_lock):
+    """Compute extras for each package from uv.lock data."""
+    extras_map = {}
+    for pkg in uv_lock.get("package", []):
+        pkg_name = pkg.get("name", "")
+
+        for extra in pkg.get("provides-extras", pkg.get("extras", [])):
+            _add_extras(extras_map, pkg_name, [extra])
+
+        opt_deps = pkg.get("optional-dependencies", {})
+        if opt_deps:
+            _add_extras(extras_map, pkg_name, sorted(opt_deps.keys()))
+
+        for dep in pkg.get("dependencies", []):
+            dep_name = dep.get("name", "")
+            dep_extras_raw = dep.get("extra", [])
+            dep_extras = [dep_extras_raw] if type(dep_extras_raw) == "string" else dep_extras_raw
+            if dep_extras and dep_name != pkg_name:
+                _add_extras(extras_map, dep_name, dep_extras)
+
+        metadata = pkg.get("metadata", {})
+        for rd in metadata.get("requires-dist", []):
+            rd_name = rd.get("name", "")
+            rd_extras_raw = rd.get("extras", [])
+            rd_extras = [rd_extras_raw] if type(rd_extras_raw) == "string" else rd_extras_raw
+            if rd_extras and rd_name != pkg_name:
+                _add_extras(extras_map, rd_name, rd_extras)
+
+    return extras_map
+
+def _add_extras(extras_map, pkg_name, extras):
+    existing = extras_map.get(pkg_name, [])
+    for extra in extras:
+        if extra not in existing:
+            existing.append(extra)
+    extras_map[pkg_name] = sorted(existing)
 
 def _parse_requirements_from_req_files(
         ctx,

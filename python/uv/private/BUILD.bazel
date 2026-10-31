@@ -146,16 +146,6 @@ bzl_library(
     deps = ["//python/private:text_util"],
 )
 
-# keep
-bzl_library(
-    name = "uv_lock_to_requirements",
-    srcs = ["uv_lock_to_requirements.bzl"],
-    visibility = [
-        "//python/private:__subpackages__",
-        "//python/uv:__subpackages__",
-    ],
-)
-
 bzl_library(
     name = "uv_toolchain_config",
     srcs = ["uv_toolchain_config.bzl"],

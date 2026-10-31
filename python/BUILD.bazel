@@ -229,6 +229,7 @@ bzl_library(
         "//python/private/pypi:package_annotation",
         "//python/private/pypi:pip_compile",
         "//python/private/pypi:pip_repository",
+        "//python/private/pypi:uv_lock",
         "//python/private/pypi:whl_library_alias",
         "//python/private/whl_filegroup",
     ],

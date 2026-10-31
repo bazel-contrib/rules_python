@@ -5,14 +5,16 @@
 
 This documentation page covers how to download PyPI dependencies in the legacy `WORKSPACE` setup.
 
-To add pip dependencies to your `WORKSPACE`, load the `pip_parse` function and
-call it to create the central external repo and individual wheel external repos.
+To add pip dependencies to your `WORKSPACE`, load the {obj}`pip_parse` or
+{obj}`uv_lock` function and call it to create the central external repo and
+individual wheel external repos.
 
 ```starlark
 load("@rules_python//python:pip.bzl", "pip_parse")
 
 # Create a central repo that knows about the dependencies needed from
-# requirements_lock.txt.
+# requirements_lock.txt (or use uv_lock(name = "my_deps", uv_lock = "//path/to:uv.lock")
+# for a uv.lock file).
 pip_parse(
    name = "my_deps",
    requirements_lock = "//path/to:requirements_lock.txt",
