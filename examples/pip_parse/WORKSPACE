@@ -22,9 +22,9 @@ load("@uv_manifest//:dist_manifest.bzl", "uv_register_toolchains")
 
 uv_register_toolchains(name = "uv")
 
-load("@rules_python//python:pip.bzl", "pip_parse")
+load("@rules_python//python:pip.bzl", "uv_lock")
 
-pip_parse(
+uv_lock(
     # (Optional) You can set an environment in the pip process to control its
     # behavior. Note that pip is run in "isolated" mode so no PIP_<VAR>_<NAME>
     # style env vars are read, but env vars that control requests and urllib3
@@ -63,11 +63,10 @@ pip_parse(
 
     # (Optional) You can set quiet to False if you want to see pip output.
     #quiet = False,
-    requirements_lock = "//:requirements_lock.txt",
-    requirements_windows = "//:requirements_windows.txt",
+    uv_lock = "//:uv.lock",
 )
 
 load("@pypi//:requirements.bzl", "install_deps")
 
-# Initialize repositories for all packages in requirements_lock.txt.
+# Initialize repositories for all packages in uv.lock.
 install_deps()

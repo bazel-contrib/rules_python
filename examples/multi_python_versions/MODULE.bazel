@@ -55,27 +55,27 @@ use_repo(pip, "pypi")
 pip.parse(
     hub_name = "pypi",
     python_version = "3.10",
-    requirements_lock = "//requirements:requirements_lock_3_10.txt",
+    uv_lock = "//requirements:uv.lock",
 )
 pip.parse(
     hub_name = "pypi",
     python_version = "3.11",
-    requirements_lock = "//requirements:requirements_lock_3_11.txt",
+    uv_lock = "//requirements:uv.lock",
 )
 pip.parse(
     hub_name = "pypi",
     python_version = "3.12",
-    requirements_lock = "//requirements:requirements_lock_3_12.txt",
+    uv_lock = "//requirements:uv.lock",
 )
 pip.parse(
     hub_name = "pypi",
     python_version = "3.13",
-    requirements_lock = "//requirements:requirements_lock_3_13.txt",
+    uv_lock = "//requirements:uv.lock",
 )
 pip.parse(
     hub_name = "pypi",
     python_version = "3.14",
-    requirements_lock = "//requirements:requirements_lock_3_14.txt",
+    uv_lock = "//requirements:uv.lock",
 )
 
 # example test dependencies

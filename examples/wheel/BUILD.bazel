@@ -64,7 +64,7 @@ py_wheel(
     # NOTE: twine_binary = "//tools/publish:twine" does not work on non-bzlmod
     # setups because the `//tools/publish:twine` produces multiple files and is
     # unsuitable as the `src` to the underlying native_binary rule.
-    twine = None if BZLMOD_ENABLED else "@rules_python_publish_deps_twine//:pkg",
+    twine = None if BZLMOD_ENABLED else "@rules_python_publish_deps//twine:pkg",
     version = "0.0.1",
     deps = [
         "//examples/wheel/lib:module_with_data",
@@ -476,7 +476,7 @@ py_test(
 lock(
     name = "requirements_server",
     srcs = ["pyproject.toml"],
-    out = "requirements_server.txt",
+    out = "uv.lock",
 )
 
 py_test(

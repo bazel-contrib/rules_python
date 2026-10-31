@@ -1,0 +1,23 @@
+version = 1
+revision = 5
+requires-python = ">=3.14"
+
+[[package]]
+name = "more-itertools"
+version = "9.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/2e/d0/bea165535891bd1dcb5152263603e902c0ec1f4c9a2e152cc4adff6b3a38/more-itertools-9.1.0.tar.gz", hash = "sha256:cabaa341ad0389ea83c17a94566a53ae4c9d07349861ecb14dc6d0345cf9ac5d", size = 107389, upload-time = "2023-02-27T14:43:11.571Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/85/01/e2678ee4e0d7eed4fd6be9e5b043fff9d22d245d06c8c91def8ced664189/more_itertools-9.1.0-py3-none-any.whl", hash = "sha256:d2bc7f02446e86a68911e58ded76d6561eea00cddfb2a91e7019bbb586c799f3", size = 54207, upload-time = "2023-02-27T14:43:09.651Z" },
+]
+
+[[package]]
+name = "multi-pypi-test-alpha"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "more-itertools" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "more-itertools", specifier = "==9.1.0" }]

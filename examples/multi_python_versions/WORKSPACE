@@ -32,9 +32,9 @@ load("@uv_manifest//:dist_manifest.bzl", "uv_register_toolchains")
 
 uv_register_toolchains(name = "uv")
 
-load("@python//:pip.bzl", "multi_pip_parse")
+load("@rules_python//python:pip.bzl", "uv_lock")
 
-multi_pip_parse(
+uv_lock(
     name = "pypi",
     default_version = default_python_version,
     python_interpreter_target = {
@@ -44,13 +44,7 @@ multi_pip_parse(
         "3.13": "@python_3_13_host//:python",
         "3.14": "@python_3_14_host//:python",
     },
-    requirements_lock = {
-        "3.10": "//requirements:requirements_lock_3_10.txt",
-        "3.11": "//requirements:requirements_lock_3_11.txt",
-        "3.12": "//requirements:requirements_lock_3_12.txt",
-        "3.13": "//requirements:requirements_lock_3_13.txt",
-        "3.14": "//requirements:requirements_lock_3_14.txt",
-    },
+    uv_lock = "//requirements:uv.lock",
 )
 
 load("@pypi//:requirements.bzl", "install_deps")

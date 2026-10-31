@@ -243,10 +243,10 @@ When modifying locked/resolved requirements files:
 
 When updating the minimum Python version for dev/docs tooling (e.g. following
 Dependabot alerts):
-  * Update `python_version` in both `lock(name = "requirements", ...)` and
-    `lock(name = "uv_lock", ...)` within `dev/BUILD.bazel`.
-  * Regenerate lockfiles by running:
-    `bazel run //dev:requirements.update && bazel run //dev:uv_lock.update`
+  * Update `python_version` in `lock(name = "uv_lock", ...)` within
+    `dev/BUILD.bazel`.
+  * Regenerate the lockfile by running:
+    `bazel run //dev:uv_lock.update`
   * Verify docs build via `bazel build //docs:docs`.
 
 ## rules_python idiosyncrasies
