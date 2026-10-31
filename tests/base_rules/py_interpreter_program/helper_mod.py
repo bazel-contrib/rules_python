@@ -1,0 +1,1 @@
+VALUE = "ok-from-sibling"

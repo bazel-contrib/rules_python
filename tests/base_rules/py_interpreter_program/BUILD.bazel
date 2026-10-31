@@ -1,0 +1,18 @@
+load("//python:py_test.bzl", "py_test")
+load(":py_interpreter_program_tests.bzl", "py_interpreter_program_test_suite", "run_interpreter_program")
+
+py_interpreter_program_test_suite(
+    name = "py_interpreter_program_tests",
+)
+
+run_interpreter_program(
+    name = "prog_output",
+    tags = ["manual"],
+)
+
+py_test(
+    name = "run_prog_test",
+    srcs = ["run_prog_test.py"],
+    data = [":prog_output"],
+    env = {"PROG_OUTPUT": "$(rootpath :prog_output)"},
+)

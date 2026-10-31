@@ -27,15 +27,52 @@ PyInterpreterProgramInfo = provider(
     },
 )
 
+def _stage_program_files(ctx):
+    if not ctx.files.srcs:
+        executable = ctx.actions.declare_file(
+            "{}_.{}".format(ctx.label.name, ctx.file.main.extension),
+        )
+        ctx.actions.symlink(output = executable, target_file = ctx.file.main)
+        return executable, [executable]
+
+    # When additional `srcs` are present, stage `main` and all `srcs` as
+    # siblings inside a private `<name>_/` directory so `Path(__file__).parent`
+    # locates sibling modules under remote execution and on Windows without
+    # symlinks, without resolving into the source tree.
+    seen_basenames = {ctx.file.main.basename: ctx.file.main.short_path}
+    executable = ctx.actions.declare_file(
+        "{}_/{}".format(ctx.label.name, ctx.file.main.basename),
+    )
+    ctx.actions.symlink(output = executable, target_file = ctx.file.main)
+    staged_srcs = []
+    for src in ctx.files.srcs:
+        if src.basename in seen_basenames:
+            fail(
+                "py_interpreter_program duplicate basename '{}' from '{}' and '{}'".format(
+                    src.basename,
+                    seen_basenames[src.basename],
+                    src.short_path,
+                ),
+            )
+        seen_basenames[src.basename] = src.short_path
+        staged_src = ctx.actions.declare_file(
+            "{}_/{}".format(ctx.label.name, src.basename),
+        )
+        ctx.actions.symlink(output = staged_src, target_file = src)
+        staged_srcs.append(staged_src)
+
+    return executable, [executable] + staged_srcs
+
 def _py_interpreter_program_impl(ctx):
     # Bazel requires the executable file to be an output created by this target.
-    # To avoid colliding with the source file (e.g. target=foo, main=foo.py),
-    # we append an underscore to the name, but keep the extension so that
-    # the original extension is preserved.
-    extension = ctx.file.main.extension
-    executable_name = "{}_.{}".format(ctx.label.name, extension)
-    executable = ctx.actions.declare_file(executable_name)
-    ctx.actions.symlink(output = executable, target_file = ctx.file.main)
+    executable, all_files = _stage_program_files(ctx)
+    env = dict(ctx.attr.env)
+    interpreter_args = list(ctx.attr.interpreter_args)
+    if ctx.files.srcs:
+        env = {"PYTHONDONTWRITEBYTECODE": "1"} | env
+        if "-B" not in interpreter_args:
+            interpreter_args = ["-B"] + interpreter_args
+
     execution_requirements = {}
     if BuildSettingInfo in ctx.attr.execution_requirements:
         execution_requirements.update([
@@ -47,14 +84,12 @@ def _py_interpreter_program_impl(ctx):
     return [
         DefaultInfo(
             executable = executable,
-            files = depset([executable]),
-            runfiles = ctx.runfiles(files = [
-                executable,
-            ]),
+            files = depset(all_files),
+            runfiles = ctx.runfiles(files = all_files),
         ),
         PyInterpreterProgramInfo(
-            env = ctx.attr.env,
-            interpreter_args = ctx.attr.interpreter_args,
+            env = env,
+            interpreter_args = interpreter_args,
             main = ctx.file.main,
         ),
         testing.ExecutionInfo(
@@ -102,6 +137,17 @@ ctx.actions.run(
         "main": attr.label(
             doc = "The entry point Python file.",
             allow_single_file = True,
+        ),
+        "srcs": attr.label_list(
+            doc = """
+Additional Python source files imported by `main`.
+
+When non-empty, `main` and `srcs` are staged flat as siblings inside a private
+`<name>_/` directory (basenames must be unique), and `-B` plus
+`PYTHONDONTWRITEBYTECODE=1` are enabled automatically so sibling imports do not
+write `__pycache__` into the staging directory.
+""",
+            allow_files = [".py"],
         ),
     },
     # This is set to False because this isn't a binary/executable in the usual

@@ -56,6 +56,11 @@ VenvSymlinkKind = struct(
 
 def _VenvSymlinkEntry_init(**kwargs):
     kwargs.setdefault("link_to_file", None)
+    link_to_subpaths = kwargs.get("link_to_subpaths")
+    if link_to_subpaths == None:
+        kwargs["link_to_subpaths"] = depset()
+        return kwargs
+    _check_arg_type("link_to_subpaths", "depset", link_to_subpaths)
     return kwargs
 
 # A provider is used for memory efficiency.
@@ -69,7 +74,9 @@ An entry in `PyInfo.venv_symlinks`
         "files": """
 :type: depset[File]
 
-Files under `link_to_path`.
+Files under `link_to_path` that are expected to exist in runfiles. May instead
+contain a directory artifact (`TreeArtifact`) that *contains* `link_to_path`;
+see {obj}`link_to_subpaths`.
 
 This is only used when multiple targets have overlapping `venv_path` paths. e.g.
 if one adds files to `venv_path=a/` and another adds files to `venv_path=a/b/`.
@@ -94,6 +101,18 @@ A file that `venv_path` should point to. The file to link to should also be in
 
 A runfiles-root relative path that `venv_path` will symlink to (if
 `link_to_file` is `None`). If `None`, it means to not create it in the venv.
+""",
+        "link_to_subpaths": """
+:type: depset[str]
+
+:::{include} /_includes/experimental_api.md
+:::
+
+Paths of the files inside the directory artifact in `files`, relative to
+`link_to_path`; used instead of `files` when merging conflicting venv entries.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
 """,
         "package": """
 :type: str | None
@@ -125,6 +144,13 @@ def _VenvSymlinkEntryBuilder_typedef():
     :type: DepsetBuilder[File]
     :::
 
+    :::{field} link_to_subpaths
+    :type: DepsetBuilder[str]
+
+    ::::{versionadded} VERSION_NEXT_FEATURE
+    ::::
+    :::
+
     :::{versionadded} 2.2.0
     :::
     """
@@ -141,6 +167,7 @@ def _VenvSymlinkEntryBuilder():
             "version": None,
         },
         files = builders.DepsetBuilder(),
+        link_to_subpaths = builders.DepsetBuilder(),
         get_kind = lambda: _VenvSymlinkEntryBuilder_get_kind(self),
         set_kind = lambda k: _VenvSymlinkEntryBuilder_set_kind(self, k),
         get_link_to_file = lambda: _VenvSymlinkEntryBuilder_get_link_to_file(self),
@@ -327,6 +354,7 @@ def _VenvSymlinkEntryBuilder_build(self):
         kind = self._state["kind"],
         link_to_file = self._state["link_to_file"],
         link_to_path = self._state["link_to_path"],
+        link_to_subpaths = self.link_to_subpaths.build(),
         package = self._state["package"],
         venv_path = self._state["venv_path"],
         version = self._state["version"],
