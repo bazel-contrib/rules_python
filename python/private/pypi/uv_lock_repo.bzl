@@ -193,7 +193,11 @@ def _build_version_entries(rctx):
             ))
         return entries, True
 
-    py_exec = pypi_repo_utils.resolve_python_interpreter(rctx)
+    py_exec = pypi_repo_utils.resolve_python_interpreter(
+        rctx,
+        python_interpreter = rctx.attr.python_interpreter,
+        python_interpreter_target = rctx.attr.python_interpreter_target,
+    )
     res = repo_utils.execute_checked(
         rctx,
         op = "GetPythonVersion",
