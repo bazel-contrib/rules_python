@@ -14,6 +14,11 @@ globs: "docs/**,RELEASING.md"
 * **API Docstrings vs. Narrative Docs**: Keep `.bzl` docstrings brief (purpose
   and arguments). Put setup guides and multi-scenario examples in `docs/`, and
   link to them with `{ref}` or `{obj}` instead of repeating rules.
+* **Bidirectional Alias Cross-References**: When documenting public `alias`
+  targets alongside a canonical target, cross-link in both directions:
+  reference the canonical target from each alias entry and list the aliases on
+  the canonical `{bzl:target}` entry (use `{obj}` for documented in-repo
+  targets and inline code for generated external-repo labels).
 * **How-to Guides (`docs/howto/`)**:
   * Prefer adding sections to an existing topical guide (e.g.
     `docs/howto/build-a-wheel.md`) over creating a separate granular file.

@@ -1,3 +1,8 @@
+---
+trigger: model_decision
+description: Windows MSVC linking, ABI tags, MAX_PATH, and .exe portability
+---
+
 # Windows MSVC Toolchains & Linking
 
 ## MSVC `#pragma comment(lib, ...)` Embedded References
@@ -47,3 +52,6 @@
 * **RECORD File Paths**: In `RECORD` files, append `.bat` only to the
   shebang-rewritten scripts. Leave all other script paths unchanged.
 
+## CLI Help & Binary Name Output in Tests
+* Allow optional `.exe` suffixes when matching binary names in CLI output
+  assertions (e.g., `r"Usage: tool(\.exe)?\b"`).

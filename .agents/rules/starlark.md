@@ -42,6 +42,17 @@ globs: "*.bzl,BUILD,BUILD.bazel,*.bazel"
   `allow_single_file = True`, when the attribute may accept `py_binary` (whose
   `DefaultInfo.files` has multiple files).
 
+## Forwarding Executables in `executable = True` Rules
+* When an `executable = True` rule forwards an underlying executable target
+  (from an attribute or resolved toolchain):
+  * Declare the output preserving `target_executable.extension` (e.g., `.exe`
+    on Windows) and materialize it with `ctx.actions.symlink(output = out,
+    target_file = target_executable, is_executable = True)`.
+  * Set `files = depset([out])`, and merge
+    `ctx.runfiles(files = [target_executable])` with the underlying target's
+    `default_runfiles` in `DefaultInfo(files = depset([out]), executable = out,
+    runfiles = ...)`.
+
 ## native.test_suite API
 * Don't forward target `tags` to `native.test_suite`; tags on test suites filter
   tests instead of setting target execution behavior.

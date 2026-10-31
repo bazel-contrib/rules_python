@@ -1,3 +1,8 @@
+---
+trigger: model_decision
+description: Bazel test execution, integration test flags, and lockfiles
+---
+
 # Testing & Validation Guardrails
 
 ## `--config=fast-tests` for Test Targets

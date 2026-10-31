@@ -19,6 +19,10 @@ this PR", or monitor its merge):
      `gh pr merge`; it fails when a merge queue is enabled on the repository.
 2. **Invoke a Background Shepherd**: Launch a background subagent with the role
    `Merge PR Shepherd` to continuously watch the PR until it merges.
+   - If a `monitor_remote_ci.py <pr_number>` background task is currently
+     running in the parent conversation, stop it via `manage_task` first so
+     `Merge PR Shepherd` can acquire `.monitored_pr_<pr_number>.lock` and
+     receive CI failure notifications directly.
 3. **Leverage Existing CI Skills**:
    - Have the subagent use the **`monitor-ci-results`** skill to watch for CI
      check failures and generate analysis reports.

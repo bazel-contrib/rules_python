@@ -44,10 +44,15 @@ or when monitoring CI after PR updates:
    with errors, `monitor_remote_ci.py` dispatches a high-priority notification
    message reporting the failed check back to your conversation.
    - Soft failures (e.g. `*rolling*` Bazel) are non-blocking warnings; ignore.
+   - If `blocks-do-not-merge` fails while the PR intentionally carries the
+     `"do not merge"` label, treat it as an expected merge gate rather than a
+     code failure.
 4. **Subagent Analysis**: Upon receiving a failure notification message from
    the monitoring script, immediately launch a separate subagent using the
    `invoke_subagent` tool with the role "CI Failure Analyzer" to run the
-   `analyze-ci-failure` skill on the reported failure.
+   `analyze-ci-failure` skill on the reported failure (instructing the
+   subagent to pass its own subagent conversation ID to
+   `analyze_ci_failure.py` so only its completion message wakes the parent).
 5. **Autonomous Flake Retry**: If the CI Failure Analyzer subagent confirms
    that the failure is a transient infrastructure or network flake (e.g. disk
    I/O error, 504 gateway, sandbox initialization failure, or `setup-bazel`
