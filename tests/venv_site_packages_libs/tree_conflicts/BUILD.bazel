@@ -1,0 +1,88 @@
+load("//python:py_library.bzl", "py_library")
+load("//tests/support:py_reconfig.bzl", "py_reconfig_test")
+load("//tests/support:support.bzl", "SUPPORTS_BZLMOD")
+
+_BOOTSTRAP_IMPL = select({
+    "@platforms//os:windows": "system_python",
+    "//conditions:default": "script",
+})
+
+py_library(
+    name = "fp",
+    srcs = glob(["fp/site-packages/**/*.py"]),
+    experimental_venvs_site_packages = "//python/config_settings:venvs_site_packages",
+    imports = ["fp/site-packages"],
+    precompile_source_retention = "keep_source",
+)
+
+py_library(
+    name = "fp2",
+    srcs = glob(["fp2/site-packages/**/*.py"]),
+    experimental_venvs_site_packages = "//python/config_settings:venvs_site_packages",
+    imports = ["fp2/site-packages"],
+    precompile_source_retention = "keep_source",
+)
+
+# Stored in constants so buildifier does not sort `deps` alphabetically,
+# preserving the dependency-order conflict precedence under test.
+_DEPS_AB = [
+    "@tree_conflict_a//:pkg",
+    "@tree_conflict_b//:pkg",
+    ":fp",
+    ":fp2",
+]
+
+_DEPS_BA = [
+    ":fp2",
+    ":fp",
+    "@tree_conflict_b//:pkg",
+    "@tree_conflict_a//:pkg",
+]
+
+py_reconfig_test(
+    name = "tree_conflicts_test_ab",
+    srcs = ["tree_conflicts_test.py"],
+    bootstrap_impl = _BOOTSTRAP_IMPL,
+    env = {"EXPECTED_ORDER": "ab"},
+    main = "tree_conflicts_test.py",
+    precompile_source_retention = "keep_source",
+    precompile_source_retention_flag = "keep_source",
+    target_compatible_with = SUPPORTS_BZLMOD,
+    venvs_site_packages = "yes",
+    deps = _DEPS_AB,
+)
+
+py_reconfig_test(
+    name = "tree_conflicts_test_ba",
+    srcs = ["tree_conflicts_test.py"],
+    bootstrap_impl = _BOOTSTRAP_IMPL,
+    env = {"EXPECTED_ORDER": "ba"},
+    main = "tree_conflicts_test.py",
+    precompile_source_retention = "keep_source",
+    precompile_source_retention_flag = "keep_source",
+    target_compatible_with = SUPPORTS_BZLMOD,
+    venvs_site_packages = "yes",
+    deps = _DEPS_BA,
+)
+
+py_reconfig_test(
+    name = "tree_conflicts_test_ab_precompile_enabled",
+    srcs = ["tree_conflicts_test.py"],
+    bootstrap_impl = _BOOTSTRAP_IMPL,
+    env = {
+        "EXPECTED_ORDER": "ab",
+        "EXPECTED_PRECOMPILE": "enabled",
+    },
+    main = "tree_conflicts_test.py",
+    precompile_flag = "enabled",
+    precompile_source_retention = "keep_source",
+    precompile_source_retention_flag = "keep_source",
+    target_compatible_with = SUPPORTS_BZLMOD,
+    venvs_site_packages = "yes",
+    deps = [
+        ":fp",
+        ":fp2",
+        "@tree_conflict_a//:pkg",
+        "@tree_conflict_b//:pkg",
+    ],
+)

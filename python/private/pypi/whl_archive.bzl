@@ -96,8 +96,18 @@ way to define whl_library and move whl patching to a separate place. INTERNAL US
         # legacy parameters that are global to the entire hub.
         "enable_implicit_namespace_pkgs",
         "envsubst",
+        "experimental_action_install",
         "pip_data_exclude",
+        "python_interpreter",
+        "python_interpreter_target",
     ]
+} | {
+    "_inspect_whl": attr.label(
+        default = Label("//python/private/pypi:inspect_whl.py"),
+    ),
+    "_wheel_layout": attr.label(
+        default = Label("//python/private/pypi:wheel_layout.py"),
+    ),
 } | AUTH_ATTRS
 
 whl_archive = repository_rule(
@@ -107,7 +117,7 @@ whl_archive = repository_rule(
     doc = """
 Download and extracts a single wheel based into a bazel repo based on the requirement string passed in.
 
-Does not depend on any python.
+Does not depend on any python unless `experimental_action_install` is enabled.
 """,
     implementation = _whl_archive_impl,
     environ = [

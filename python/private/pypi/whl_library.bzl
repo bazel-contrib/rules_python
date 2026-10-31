@@ -63,23 +63,30 @@ def whl_library(name, repo = None, **kwargs):
     # compatibility shim for cases for repo_prefix is still used by the called
     kwargs.setdefault("dep_template", "@{}{{name}}//:{{target}}".format(kwargs.pop("repo_prefix", "")))
 
-    if whl_file or (urls and filename and filename.endswith(".whl")):
-        wheel_filename = filename or str(whl_file).split(":")[-1].split("/")[-1]
-        patches = get_whl_patches(kwargs.get("whl_patches", {}), wheel_filename)
-        if patches:
-            # Caller-owned wheels are often already supplied by <name>_whl.
-            # Give their patched output a distinct repository name.
-            file_repo = name + ("_patched_whl" if whl_file else "_whl")
-            whl_file_repo(
-                name = file_repo,
-                patches = {patch: str(strip) for patch, strip in patches.items()},
-                **_filter(kwargs, whl_file_repo_attrs)
-            )
-            kwargs["whl_file"] = "@{}//:{}".format(file_repo, patched_whl_name(wheel_filename))
-            kwargs["whl_patches"] = {}
-        elif not whl_file:
-            whl_file_repo(name = name + "_whl", **_filter(kwargs, whl_file_repo_attrs))
-            kwargs["downloaded_whl"] = "@{}//:{}".format(name + "_whl", filename)
-        whl_archive(name = name, **_filter(kwargs, whl_archive_attrs))
-    else:
+    is_direct_whl = bool(whl_file or (urls and filename and filename.endswith(".whl")))
+    if not is_direct_whl:
         pip_archive(name = name, **_filter(kwargs, pip_archive_attrs))
+        return
+
+    wheel_filename = filename or str(whl_file).split(":")[-1].split("/")[-1]
+    patches = get_whl_patches(kwargs.get("whl_patches", {}), wheel_filename)
+    if patches:
+        # Caller-owned wheels are often already supplied by <name>_whl.
+        # Give their patched output a distinct repository name.
+        file_repo = name + ("_patched_whl" if whl_file else "_whl")
+        whl_file_repo(
+            name = file_repo,
+            patches = {patch: str(strip) for patch, strip in patches.items()},
+            **_filter(kwargs, whl_file_repo_attrs)
+        )
+        kwargs["whl_file"] = "@{}//:{}".format(file_repo, patched_whl_name(wheel_filename))
+        kwargs["whl_patches"] = {}
+    elif not whl_file:
+        whl_file_repo(name = name + "_whl", **_filter(kwargs, whl_file_repo_attrs))
+        kwargs["downloaded_whl"] = "@{}//:{}".format(name + "_whl", filename)
+
+    allowed_attrs = dict(whl_archive_attrs)
+    if not kwargs.get("experimental_action_install"):
+        allowed_attrs.pop("python_interpreter", None)
+        allowed_attrs.pop("python_interpreter_target", None)
+    whl_archive(name = name, **_filter(kwargs, allowed_attrs))

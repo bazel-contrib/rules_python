@@ -41,6 +41,10 @@ def whl_library_targets(
         copy_executables = {},
         srcs_exclude = [],
         data = [],
+        action_install = False,
+        extracted_files = [],
+        has_entry_points_txt = False,
+        shebang_scripts = [],
         visibility = ["//visibility:public"],
         **kwargs):
     """The macro to create whl targets from the METADATA.
@@ -69,6 +73,10 @@ def whl_library_targets(
         copy_executables: {type}`dict[str, str]` The mapping between src and dest locations for executables.
         srcs_exclude: {type}`list[str]` The globs for srcs attribute exclusion.
         data: {type}`list[str]` A list of labels to include as part of the `data` attribute.
+        action_install: {type}`bool` Whether to install the wheel in a build action.
+        extracted_files: {type}`list[str]` Relative paths under the installed wheel directory.
+        has_entry_points_txt: {type}`bool` Whether a fetch-time `entry_points.txt` file exists in the package.
+        shebang_scripts: {type}`list[str]` Top-level script names in `.data/scripts/` with `#!python` shebangs.
         visibility: {type}`list[str]` The visibility of the targets.
         **kwargs: Extra args passed to the {obj}`whl_library_deps_targets` and {obj}`whl_library_srcs`.
     """
@@ -86,6 +94,10 @@ def whl_library_targets(
         copy_executables = copy_executables,
         enable_implicit_namespace_pkgs = enable_implicit_namespace_pkgs,
         namespace_package_files = namespace_package_files,
+        action_install = action_install,
+        extracted_files = extracted_files,
+        has_entry_points_txt = has_entry_points_txt,
+        shebang_scripts = shebang_scripts,
         **kwargs
     )
 

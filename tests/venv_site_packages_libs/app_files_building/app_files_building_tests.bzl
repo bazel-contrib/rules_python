@@ -595,6 +595,8 @@ def _test_optimized_grouping_pkgutil_whls(name):
         impl = _test_optimized_grouping_pkgutil_whls_impl,
         target = name + "_lib",
         config_settings = {
+            labels.PRECOMPILE: "disabled",
+            labels.PRECOMPILE_SOURCE_RETENTION: "keep_source",
             labels.VENVS_SITE_PACKAGES: "yes",
         },
         attr_values = dict(
@@ -609,6 +611,39 @@ def _test_optimized_grouping_pkgutil_whls_impl(env, target):
     actual_raw_entries = target[PyInfo].venv_symlinks.to_list()
 
     actual = _venv_symlinks_from_entries(actual_raw_entries)
+    is_action_install = False
+    for entry in actual_raw_entries:
+        for f in entry.files.to_list():
+            if f.is_directory:
+                is_action_install = True
+                break
+        if is_action_install:
+            break
+    sp_prefix = "srcs/site-packages" if is_action_install else "site-packages"
+    if is_action_install:
+        ns1_init_files = ["../+internal_dev_deps+pkgutil_nspkg1/srcs"]
+        ns1_one_files = ns1_init_files
+        ns1_dist_files = ns1_init_files
+        ns2_init_files = ["../+internal_dev_deps+pkgutil_nspkg2/srcs"]
+        ns2_two_files = ns2_init_files
+        ns2_dist_files = ns2_init_files
+    else:
+        ns1_init_files = ["../+internal_dev_deps+pkgutil_nspkg1/site-packages/nspkg/__init__.py"]
+        ns1_one_files = ["../+internal_dev_deps+pkgutil_nspkg1/site-packages/nspkg/one/a.txt"]
+        ns1_dist_files = [
+            "../+internal_dev_deps+pkgutil_nspkg1/site-packages/pkgutil_nspkg1-1.0.dist-info/INSTALLER",
+            "../+internal_dev_deps+pkgutil_nspkg1/site-packages/pkgutil_nspkg1-1.0.dist-info/METADATA",
+            "../+internal_dev_deps+pkgutil_nspkg1/site-packages/pkgutil_nspkg1-1.0.dist-info/RECORD",
+            "../+internal_dev_deps+pkgutil_nspkg1/site-packages/pkgutil_nspkg1-1.0.dist-info/WHEEL",
+        ]
+        ns2_init_files = ["../+internal_dev_deps+pkgutil_nspkg2/site-packages/nspkg/__init__.py"]
+        ns2_two_files = ["../+internal_dev_deps+pkgutil_nspkg2/site-packages/nspkg/two/b.txt"]
+        ns2_dist_files = [
+            "../+internal_dev_deps+pkgutil_nspkg2/site-packages/pkgutil_nspkg2-1.0.dist-info/INSTALLER",
+            "../+internal_dev_deps+pkgutil_nspkg2/site-packages/pkgutil_nspkg2-1.0.dist-info/METADATA",
+            "../+internal_dev_deps+pkgutil_nspkg2/site-packages/pkgutil_nspkg2-1.0.dist-info/RECORD",
+            "../+internal_dev_deps+pkgutil_nspkg2/site-packages/pkgutil_nspkg2-1.0.dist-info/WHEEL",
+        ]
 
     # The important condition is that the top-level 'nspkg' directory
     # is NOT linked because it's a pkgutil namespace package.
@@ -616,52 +651,34 @@ def _test_optimized_grouping_pkgutil_whls_impl(env, target):
         # Entries from pkgutil_ns1
         _venv_symlink(
             "nspkg/__init__.py",
-            link_to_path = "+internal_dev_deps+pkgutil_nspkg1/site-packages/nspkg/__init__.py",
-            files = [
-                "../+internal_dev_deps+pkgutil_nspkg1/site-packages/nspkg/__init__.py",
-            ],
+            link_to_path = "+internal_dev_deps+pkgutil_nspkg1/" + sp_prefix + "/nspkg/__init__.py",
+            files = ns1_init_files,
         ),
         _venv_symlink(
             "nspkg/one",
-            link_to_path = "+internal_dev_deps+pkgutil_nspkg1/site-packages/nspkg/one",
-            files = [
-                "../+internal_dev_deps+pkgutil_nspkg1/site-packages/nspkg/one/a.txt",
-            ],
+            link_to_path = "+internal_dev_deps+pkgutil_nspkg1/" + sp_prefix + "/nspkg/one",
+            files = ns1_one_files,
         ),
         _venv_symlink(
             "pkgutil_nspkg1-1.0.dist-info",
-            link_to_path = "+internal_dev_deps+pkgutil_nspkg1/site-packages/pkgutil_nspkg1-1.0.dist-info",
-            files = [
-                "../+internal_dev_deps+pkgutil_nspkg1/site-packages/pkgutil_nspkg1-1.0.dist-info/INSTALLER",
-                "../+internal_dev_deps+pkgutil_nspkg1/site-packages/pkgutil_nspkg1-1.0.dist-info/METADATA",
-                "../+internal_dev_deps+pkgutil_nspkg1/site-packages/pkgutil_nspkg1-1.0.dist-info/RECORD",
-                "../+internal_dev_deps+pkgutil_nspkg1/site-packages/pkgutil_nspkg1-1.0.dist-info/WHEEL",
-            ],
+            link_to_path = "+internal_dev_deps+pkgutil_nspkg1/" + sp_prefix + "/pkgutil_nspkg1-1.0.dist-info",
+            files = ns1_dist_files,
         ),
         # Entries from pkgutil_ns2
         _venv_symlink(
             "nspkg/__init__.py",
-            link_to_path = "+internal_dev_deps+pkgutil_nspkg2/site-packages/nspkg/__init__.py",
-            files = [
-                "../+internal_dev_deps+pkgutil_nspkg2/site-packages/nspkg/__init__.py",
-            ],
+            link_to_path = "+internal_dev_deps+pkgutil_nspkg2/" + sp_prefix + "/nspkg/__init__.py",
+            files = ns2_init_files,
         ),
         _venv_symlink(
             "nspkg/two",
-            link_to_path = "+internal_dev_deps+pkgutil_nspkg2/site-packages/nspkg/two",
-            files = [
-                "../+internal_dev_deps+pkgutil_nspkg2/site-packages/nspkg/two/b.txt",
-            ],
+            link_to_path = "+internal_dev_deps+pkgutil_nspkg2/" + sp_prefix + "/nspkg/two",
+            files = ns2_two_files,
         ),
         _venv_symlink(
             "pkgutil_nspkg2-1.0.dist-info",
-            link_to_path = "+internal_dev_deps+pkgutil_nspkg2/site-packages/pkgutil_nspkg2-1.0.dist-info",
-            files = [
-                "../+internal_dev_deps+pkgutil_nspkg2/site-packages/pkgutil_nspkg2-1.0.dist-info/INSTALLER",
-                "../+internal_dev_deps+pkgutil_nspkg2/site-packages/pkgutil_nspkg2-1.0.dist-info/METADATA",
-                "../+internal_dev_deps+pkgutil_nspkg2/site-packages/pkgutil_nspkg2-1.0.dist-info/RECORD",
-                "../+internal_dev_deps+pkgutil_nspkg2/site-packages/pkgutil_nspkg2-1.0.dist-info/WHEEL",
-            ],
+            link_to_path = "+internal_dev_deps+pkgutil_nspkg2/" + sp_prefix + "/pkgutil_nspkg2-1.0.dist-info",
+            files = ns2_dist_files,
         ),
     ])
 
@@ -671,20 +688,26 @@ def _test_optimized_grouping_pkgutil_whls_impl(env, target):
     env.expect.that_collection(_venv_symlinks_from_entries(conflicts[0])).contains_exactly([
         _venv_symlink(
             "nspkg/__init__.py",
-            link_to_path = "+internal_dev_deps+pkgutil_nspkg1/site-packages/nspkg/__init__.py",
-            files = [
-                "../+internal_dev_deps+pkgutil_nspkg1/site-packages/nspkg/__init__.py",
-            ],
+            link_to_path = "+internal_dev_deps+pkgutil_nspkg1/" + sp_prefix + "/nspkg/__init__.py",
+            files = ns1_init_files,
         ),
         _venv_symlink(
             "nspkg/__init__.py",
-            link_to_path = "+internal_dev_deps+pkgutil_nspkg2/site-packages/nspkg/__init__.py",
-            files = [
-                "../+internal_dev_deps+pkgutil_nspkg2/site-packages/nspkg/__init__.py",
-            ],
+            link_to_path = "+internal_dev_deps+pkgutil_nspkg2/" + sp_prefix + "/nspkg/__init__.py",
+            files = ns2_init_files,
         ),
     ])
     env.expect.that_collection(conflicts).has_size(1)
+    if is_action_install:
+        by_venv_path = {
+            e.venv_path: e.link_to_subpaths.to_list()
+            for e in actual_raw_entries
+            if e.venv_path in ("nspkg/one", "nspkg/two")
+        }
+        env.expect.that_dict(by_venv_path).contains_exactly({
+            "nspkg/one": ["a.txt"],
+            "nspkg/two": ["b.txt"],
+        })
 
 def _test_package_version_filtering(name):
     analysis_test(

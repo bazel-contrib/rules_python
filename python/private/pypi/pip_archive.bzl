@@ -353,8 +353,6 @@ pip_archive_attrs = {
         "environment",
         "extra_pip_args",
         "isolated",
-        "python_interpreter",
-        "python_interpreter_target",
         "quiet",
         "timeout",
     ]

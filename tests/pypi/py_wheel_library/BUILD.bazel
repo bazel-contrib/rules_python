@@ -1,0 +1,12 @@
+load("//python:py_test.bzl", "py_test")
+load(":py_wheel_library_bzl_tests.bzl", "py_wheel_library_bzl_test_suite")
+
+py_test(
+    name = "wheel_layout_and_installer_test",
+    srcs = ["wheel_layout_and_installer_test.py"],
+    deps = ["//python/private/pypi:wheel_installer_lib"],
+)
+
+py_wheel_library_bzl_test_suite(
+    name = "py_wheel_library_bzl_tests",
+)

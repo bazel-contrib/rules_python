@@ -14,12 +14,23 @@
 """Module extension for internal dev_dependency=True setup."""
 
 load("@bazel_ci_rules//:rbe_repo.bzl", "rbe_preconfig")
+load("@pythons_hub//:interpreters.bzl", "INTERPRETER_LABELS")
+load("@pythons_hub//:versions.bzl", "DEFAULT_PYTHON_VERSION")
+load("//python/private/pypi:attrs.bzl", "use_action_install")
 load("//python/private/pypi:whl_library.bzl", "whl_library")
 load("//tests/support/whl_from_dir:whl_from_dir_repo.bzl", "whl_from_dir_repo")
 load(":runtime_env_repo.bzl", "runtime_env_repo")
 
 def _internal_dev_deps_impl(mctx):
-    _ = mctx  # @unused
+    whl_library_kwargs = {}
+    if use_action_install(mctx, struct(experimental_action_install = False)):
+        host_key = "python_{}_host".format(
+            DEFAULT_PYTHON_VERSION.replace(".", "_"),
+        )
+        whl_library_kwargs = {
+            "experimental_action_install": True,
+            "python_interpreter_target": INTERPRETER_LABELS[host_key],
+        }
 
     # Creates a default toolchain config for RBE.
     # Use this as is if you are using the rbe_ubuntu16_04 container,
@@ -40,6 +51,7 @@ def _internal_dev_deps_impl(mctx):
         name = "somepkg_with_build_files",
         whl_file = "@whl_with_build_files//:somepkg-1.0-any-none-any.whl",
         requirement = "somepkg",
+        **whl_library_kwargs
     )
 
     # Setup for //tests/implicit_namespace_packages
@@ -53,6 +65,7 @@ def _internal_dev_deps_impl(mctx):
         whl_file = "@implicit_namespace_ns_sub1_whl//:ns_sub1-1.0-any-none-any.whl",
         requirement = "ns-sub1",
         enable_implicit_namespace_pkgs = False,
+        **whl_library_kwargs
     )
 
     whl_from_dir_repo(
@@ -65,6 +78,7 @@ def _internal_dev_deps_impl(mctx):
         whl_file = "@implicit_namespace_ns_sub2_whl//:ns_sub2-1.0-any-none-any.whl",
         requirement = "ns-sub2",
         enable_implicit_namespace_pkgs = False,
+        **whl_library_kwargs
     )
 
     whl_from_dir_repo(
@@ -77,6 +91,7 @@ def _internal_dev_deps_impl(mctx):
         whl_file = "@pkgutil_nspkg1_whl//:pkgutil_nspkg1-1.0-any-none-any.whl",
         requirement = "pkgutil_nspkg1",
         enable_implicit_namespace_pkgs = False,
+        **whl_library_kwargs
     )
 
     whl_from_dir_repo(
@@ -89,6 +104,7 @@ def _internal_dev_deps_impl(mctx):
         whl_file = "@pkgutil_nspkg2_whl//:pkgutil_nspkg2-1.0-any-none-any.whl",
         requirement = "pkgutil_nspkg2",
         enable_implicit_namespace_pkgs = False,
+        **whl_library_kwargs
     )
 
     whl_from_dir_repo(
@@ -100,6 +116,7 @@ def _internal_dev_deps_impl(mctx):
         name = "whl_with_data1",
         whl_file = "@whl_with_data1_whl//:whl_with_data1-1.0-any-none-any.whl",
         requirement = "whl-with-data1",
+        **whl_library_kwargs
     )
 
     whl_from_dir_repo(
@@ -111,6 +128,7 @@ def _internal_dev_deps_impl(mctx):
         name = "whl_with_data2",
         whl_file = "@whl_with_data2_whl//:whl_with_data2-1.0-any-none-any.whl",
         requirement = "whl-with-data2",
+        **whl_library_kwargs
     )
 
     _whl_library_from_dir(
@@ -121,6 +139,7 @@ def _internal_dev_deps_impl(mctx):
         # The following is necessary to enable pipstar and make tests faster
         config_load = "@rules_python//tests/pypi/whl_library/testdata:packages.bzl",
         dep_template = "@whl_library_extras_{name}//:{target}",
+        **whl_library_kwargs
     )
     _whl_library_from_dir(
         name = "whl_library_extras_optional_dep",
@@ -129,6 +148,7 @@ def _internal_dev_deps_impl(mctx):
         requirement = "optional_dep",
         # The following is necessary to enable pipstar and make tests faster
         config_load = "@rules_python//tests/pypi/whl_library/testdata:packages.bzl",
+        **whl_library_kwargs
     )
 
     # Setup for //tests/pypi/patch_whl/patch_whl_patch_test.py
@@ -147,7 +167,28 @@ def _internal_dev_deps_impl(mctx):
                 "whls": ["pkg-1.0-any-none-any.whl"],
             }),
         },
+        **whl_library_kwargs
     )
+
+    # Setup for //tests/venv_site_packages_libs/tree_conflicts
+    for suffix in ("a", "b"):
+        whl_from_dir_repo(
+            name = "tree_conflict_{}_whl".format(suffix),
+            root = "//tests/venv_site_packages_libs/tree_conflicts:testdata/w{}/BUILD.bazel".format(
+                suffix,
+            ),
+            output = "tree_conflict_{}-1.0-py3-none-any.whl".format(suffix),
+        )
+        whl_library(
+            name = "tree_conflict_{}".format(suffix),
+            whl_file = "@tree_conflict_{}_whl//:tree_conflict_{}-1.0-py3-none-any.whl".format(
+                suffix,
+                suffix,
+            ),
+            requirement = "tree-conflict-{}".format(suffix),
+            enable_implicit_namespace_pkgs = False,
+            **whl_library_kwargs
+        )
 
 def _whl_library_from_dir(*, name, output, root, **kwargs):
     whl_from_dir_repo(

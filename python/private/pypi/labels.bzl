@@ -24,3 +24,8 @@ PY_SRCS_LABEL = "srcs"
 DATA_LABEL = "data"
 DIST_INFO_LABEL = "dist_info"
 NODEPS_LABEL = "no_deps"
+
+DEFAULT_DATA_EXCLUDE = [
+    "**/*.pyc",
+    "**/*.pyc.*",  # During pyc creation, temp files named *.pyc.NNNN are created
+]

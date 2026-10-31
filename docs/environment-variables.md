@@ -52,6 +52,22 @@ When `1`, `rules_python` will warn users about deprecated functionality that wil
 be removed in a subsequent major `rules_python` version. Defaults to `0` if unset.
 :::
 
+::::{envvar} RULES_PYTHON_EXPERIMENTAL_ACTION_INSTALL
+
+When set to `1` or `true` (case-insensitive), wheel extraction and installation
+in `pip.parse` (and WORKSPACE `pip_parse`) are deferred to a Bazel build action
+(`py_wheel_library`) producing a directory artifact (`TreeArtifact`) rather than
+extracting wheel contents during the repository phase. Setting it to `0`,
+`false`, or `""` disables action-based wheel installation, overriding
+`experimental_action_install = True` on `pip.parse`. Any other value is an
+error.
+
+See {bzl:attr}`pip.parse.experimental_action_install` for details and caveats.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+::::
+
 ::::{envvar} RULES_PYTHON_EXTRACT_ROOT
 
 Directory to use as the root for creating files necessary for bootstrapping so

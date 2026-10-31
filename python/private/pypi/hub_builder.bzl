@@ -7,7 +7,7 @@ load("//python/private:repo_utils.bzl", "repo_utils")
 load("//python/private:text_util.bzl", "render")
 load("//python/private:version.bzl", "version")
 load("//python/private:version_label.bzl", "version_label")
-load(":attrs.bzl", "use_isolated")
+load(":attrs.bzl", "use_action_install", "use_isolated")
 load(":hash.bzl", "hash")
 load(":parse_requirements.bzl", "parse_requirements")
 load(":pep508_env.bzl", "env")
@@ -643,6 +643,10 @@ def _common_args(self, module_ctx, *, pip_attr):
         enable_implicit_namespace_pkgs = pip_attr.enable_implicit_namespace_pkgs,
         environment = pip_attr.environment,
         envsubst = pip_attr.envsubst,
+        experimental_action_install = use_action_install(
+            module_ctx,
+            pip_attr,
+        ),
         pip_data_exclude = pip_attr.pip_data_exclude,
     )
 
@@ -707,7 +711,11 @@ def _whl_repo(
         # need to pass the extra args there, so only pop this for whls
         args["extra_pip_args"] = src.extra_pip_args
 
-    if not (enable_pipstar_extract and is_whl):
+    needs_interpreter = (
+        args.get("experimental_action_install") or
+        not (enable_pipstar_extract and is_whl)
+    )
+    if needs_interpreter:
         if interpreter.path:
             args["python_interpreter"] = interpreter.path
         if interpreter.target:

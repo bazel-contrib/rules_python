@@ -1232,7 +1232,10 @@ See {ref}`Configuring the Exposed Packages <pip-configure>` for examples.
 )
 
 pypi = module_extension(
-    environ = ["RULES_PYTHON_PYPI_HUB_RESERVED"],
+    environ = [
+        "RULES_PYTHON_EXPERIMENTAL_ACTION_INSTALL",
+        "RULES_PYTHON_PYPI_HUB_RESERVED",
+    ],
     doc = """\
 This extension is used to make dependencies from pip available.
 

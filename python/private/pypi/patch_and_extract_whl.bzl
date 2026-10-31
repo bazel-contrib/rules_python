@@ -3,11 +3,12 @@
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
 load(":generate_whl_library_build_bazel.bzl", "generate_whl_library_build_bazel")
+load(":labels.bzl", "DEFAULT_DATA_EXCLUDE")
 load(":patch_whl.bzl", "get_whl_patches", "patch_whl")
 load(":pep508_requirement.bzl", "requirement")
 load(":pypi_repo_utils.bzl", "pypi_repo_utils")
 load(":whl_extract.bzl", "whl_extract")
-load(":whl_metadata.bzl", "parse_entry_points", "whl_metadata")
+load(":whl_metadata.bzl", "parse_entry_points", "parse_whl_metadata", "whl_metadata")
 
 def _get_entry_points(rctx, install_dir_path, metadata):
     dist_info_dir = "{}-{}.dist-info".format(
@@ -73,6 +74,107 @@ def _remove_files(rctx, *basenames):
         elif path.is_dir:
             paths.extend(path.readdir())
 
+def _resolve_inspect_python(rctx, logger):
+    if not (rctx.attr.python_interpreter or rctx.attr.python_interpreter_target):
+        logger.fail(
+            "experimental_action_install requires 'python_interpreter' or " +
+            "'python_interpreter_target' to be set on '{}'".format(rctx.attr.name),
+        )
+        return None
+    return pypi_repo_utils.resolve_python_interpreter(
+        rctx,
+        python_interpreter = rctx.attr.python_interpreter,
+        python_interpreter_target = rctx.attr.python_interpreter_target,
+    )
+
+def _maybe_patch_whl(rctx, whl_path, whl_file):
+    if not rctx.attr.whl_patches:
+        return whl_path, whl_file, False
+    patches = get_whl_patches(rctx.attr.whl_patches, whl_path.basename)
+    if not patches:
+        return whl_path, whl_file, False
+
+    # patch_whl deletes its input before repacking. Never delete an
+    # archive owned by another repository.
+    if whl_path.dirname != rctx.path("."):
+        rctx.symlink(whl_path, whl_path.basename)
+        whl_path = rctx.path(whl_path.basename)
+    whl_path = patch_whl(
+        rctx,
+        whl_path = whl_path,
+        patches = patches,
+    )
+    return whl_path, None, True
+
+def _inspect_whl_for_action_install(
+        rctx,
+        *,
+        whl_path,
+        patched,
+        sdist_filename,
+        annotation,
+        logger):
+    if patched:
+        for entry in rctx.path(".").readdir():
+            if entry.basename != whl_path.basename:
+                rctx.delete(entry)
+
+    data_exclude = (
+        DEFAULT_DATA_EXCLUDE +
+        (["**/*.dist-info/RECORD"] if sdist_filename else []) +
+        rctx.attr.pip_data_exclude
+    )
+    inspect_args = [
+        "-I",
+        "-B",
+        str(rctx.path(rctx.attr._inspect_whl)),
+        "--wheel",
+        str(whl_path),
+    ]
+    if annotation:
+        for pattern in annotation.srcs_exclude_glob:
+            inspect_args.extend(["--srcs-exclude-glob", pattern])
+    for pattern in data_exclude + (annotation.data_exclude_glob if annotation else []):
+        inspect_args.extend(["--data-exclude-glob", pattern])
+
+    inspect_python = _resolve_inspect_python(rctx, logger)
+    if not inspect_python:
+        return None
+
+    inspection = json.decode(pypi_repo_utils.execute_checked_stdout(
+        rctx,
+        python = inspect_python,
+        srcs = [
+            rctx.attr._inspect_whl,
+            rctx.attr._wheel_layout,
+        ],
+        op = "InspectWhl({})".format(whl_path.basename),
+        arguments = inspect_args,
+        logger = logger,
+    ))
+
+    metadata = parse_whl_metadata(inspection["metadata_content"])
+    if not (metadata.name and metadata.version):
+        logger.fail("Failed to parse the wheel METADATA file in '{}'".format(whl_path.basename))
+        return None
+
+    extra_kwargs = {
+        "action_install": True,
+        "extracted_files": inspection["extracted_files"],
+        "shebang_scripts": inspection["shebang_scripts"],
+    }
+    if inspection["has_entry_points_txt"]:
+        rctx.file("entry_points.txt", inspection["entry_points_content"])
+        extra_kwargs["has_entry_points_txt"] = True
+
+    return struct(
+        metadata = metadata,
+        entry_points = parse_entry_points(inspection["entry_points_content"]),
+        namespace_package_files = inspection["namespace_package_files"],
+        data_exclude = data_exclude,
+        extra_kwargs = extra_kwargs,
+    )
+
 def patch_and_extract_whl(rctx, *, whl_path, logger, sdist_filename = None, whl_file = None):
     """Extract the wheel, apply patches and generate BUILD.bazel files.
 
@@ -88,40 +190,48 @@ def patch_and_extract_whl(rctx, *, whl_path, logger, sdist_filename = None, whl_
     Returns:
         The repository metadata if the extraction is reproducible
     """
-    if rctx.attr.whl_patches:
-        patches = get_whl_patches(rctx.attr.whl_patches, whl_path.basename)
+    whl_path, whl_file, patched = _maybe_patch_whl(rctx, whl_path, whl_file)
+    annotation = None if not rctx.attr.annotation else struct(**json.decode(rctx.read(rctx.attr.annotation)))
 
-        if patches:
-            # patch_whl deletes its input before repacking. Never delete an
-            # archive owned by another repository.
-            if whl_path.dirname != rctx.path("."):
-                rctx.symlink(whl_path, whl_path.basename)
-                whl_path = rctx.path(whl_path.basename)
-            whl_path = patch_whl(
-                rctx,
-                whl_path = whl_path,
-                patches = patches,
-            )
-            whl_file = None
+    if rctx.attr.experimental_action_install:
+        inspected = _inspect_whl_for_action_install(
+            rctx,
+            whl_path = whl_path,
+            patched = patched,
+            sdist_filename = sdist_filename,
+            annotation = annotation,
+            logger = logger,
+        )
+        if inspected == None:
+            return None
+        metadata = inspected.metadata
+        entry_points = inspected.entry_points
+        namespace_package_files = inspected.namespace_package_files
+        data_exclude = inspected.data_exclude
+        extra_kwargs = inspected.extra_kwargs
+    else:
+        whl_extract(rctx, whl_path = whl_path, logger = logger)
+        install_dir_path = rctx.path("site-packages")
+        metadata = whl_metadata(
+            install_dir = install_dir_path,
+            read_fn = rctx.read,
+            logger = logger,
+        )
+        namespace_package_files = pypi_repo_utils.find_namespace_package_files(rctx, install_dir_path)
+        entry_points = _get_entry_points(rctx, install_dir_path, metadata)
+        _move_scripts_needing_shebang_rewrite(rctx, entry_points)
+        data_exclude = rctx.attr.pip_data_exclude
+        extra_kwargs = {}
 
-    whl_extract(rctx, whl_path = whl_path, logger = logger)
+    if whl_file:
+        extra_kwargs["whl_file"] = str(whl_file)
 
-    install_dir_path = rctx.path("site-packages")
-    metadata = whl_metadata(
-        install_dir = install_dir_path,
-        read_fn = rctx.read,
-        logger = logger,
-    )
     rctx.file("metadata.json", json.encode_indent({
         "name": metadata.name,
         "provides_extra": metadata.provides_extra,
         "requires_dist": metadata.requires_dist,
         "version": metadata.version,
     }))
-    namespace_package_files = pypi_repo_utils.find_namespace_package_files(rctx, install_dir_path)
-
-    entry_points = _get_entry_points(rctx, install_dir_path, metadata)
-    _move_scripts_needing_shebang_rewrite(rctx, entry_points)
 
     build_file_contents = generate_whl_library_build_bazel(
         name = whl_path.basename,
@@ -134,8 +244,8 @@ def patch_and_extract_whl(rctx, *, whl_path, logger, sdist_filename = None, whl_
         # TODO @aignas 2025-05-17: maybe have a build flag for this instead
         enable_implicit_namespace_pkgs = rctx.attr.enable_implicit_namespace_pkgs,
         # TODO @aignas 2025-04-14: load through the hub:
-        annotation = None if not rctx.attr.annotation else struct(**json.decode(rctx.read(rctx.attr.annotation))),
-        data_exclude = rctx.attr.pip_data_exclude,
+        annotation = annotation,
+        data_exclude = data_exclude,
         group_deps = rctx.attr.group_deps,
         group_name = rctx.attr.group_name,
         namespace_package_files = namespace_package_files,
@@ -146,7 +256,8 @@ def patch_and_extract_whl(rctx, *, whl_path, logger, sdist_filename = None, whl_
             metadata = metadata,
             filename = sdist_filename or whl_path.basename,
         ),
-        **({"whl_file": str(whl_file)} if whl_file else {})
+        logger = logger,
+        **extra_kwargs
     )
 
     # The generated wheel target can obtain the original archive independently.

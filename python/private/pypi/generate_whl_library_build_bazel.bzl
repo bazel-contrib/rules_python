@@ -22,11 +22,13 @@ _RENDER = {
     "data": render.list,
     "data_exclude": render.list,
     "entry_points": render.dict_dict,
+    "extracted_files": render.list,
     "extras": render.list,
     "group_deps": render.list,
     "include": str,
     "repo": lambda maybe_label: repr(str(maybe_label)),
     "requires_dist": render.list,
+    "shebang_scripts": render.list,
     "srcs_exclude": render.list,
     "tags": render.list,
 }
@@ -50,6 +52,14 @@ whl_package_metadata(
 )
 """
 
+def _check_additive_build_content_for_glob(content):
+    """Return True if `content` contains a `glob(` call outside comments."""
+    for raw_line in content.splitlines():
+        line = raw_line.split("#", 1)[0]
+        if "glob(" in line or "glob (" in line:
+            return True
+    return False
+
 def generate_whl_library_build_bazel(
         *,
         metadata_version,
@@ -57,6 +67,7 @@ def generate_whl_library_build_bazel(
         config_load,
         purl = None,
         requires_dist = [],
+        logger = None,
         **kwargs):
     """Generate a BUILD file for an unzipped Wheel
 
@@ -67,6 +78,7 @@ def generate_whl_library_build_bazel(
         purl: {type}`dict[str, str] | None` The fields of the PyPI PURL passed
             to {obj}`whl_package_metadata`.
         requires_dist: {type}`list[str]` The list of dependencies from the METADATA file.
+        logger: Optional repository logger used to emit warnings.
         **kwargs: Extra args serialized to be passed to the
             {obj}`whl_library_targets`.
 
@@ -111,6 +123,19 @@ def generate_whl_library_build_bazel(
         kwargs["data_exclude"] = kwargs.get("data_exclude", []) + annotation.data_exclude_glob
         kwargs["srcs_exclude"] = annotation.srcs_exclude_glob
         if annotation.additive_build_content:
+            should_warn_glob = (
+                kwargs.get("action_install") and
+                logger != None and
+                _check_additive_build_content_for_glob(annotation.additive_build_content)
+            )
+            if should_warn_glob:
+                logger.warn(
+                    (
+                        "In '{}', annotation 'additive_build_content' may glob wheel contents; " +
+                        "globs match nothing under experimental_action_install because wheel " +
+                        "contents are extracted into the ':srcs' TreeArtifact during the build phase."
+                    ).format(kwargs.get("name", kwargs.get("metadata_name", ""))),
+                )
             additional_content.append(annotation.additive_build_content)
 
     contents = "\n".join(

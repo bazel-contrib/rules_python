@@ -381,7 +381,10 @@ def create_py_info(
         implicit_pyc_files,
         implicit_pyc_source_files,
         imports,
-        venv_symlinks = []):
+        venv_symlinks = [],
+        pyi_files = None,
+        srcs_version = None,
+        pyi_deps = None):
     """Create PyInfo provider.
 
     Args:
@@ -401,26 +404,32 @@ def create_py_info(
         imports: depset of strings; the import path values to propagate.
         venv_symlinks: {type}`list[VenvSymlinkEntry]` instances for
             symlinks to create in the consuming binary's venv.
+        pyi_files: `list[File] | None`; override for `ctx.files.pyi_srcs`.
+        srcs_version: `str | None`; override for `ctx.attr.srcs_version`.
+        pyi_deps: `list[Target] | None`; override for `ctx.attr.pyi_deps`.
 
     Returns:
         A tuple of the PyInfo instance and a depset of the
         transitive sources collected from dependencies (the latter is only
         necessary for deprecated extra actions support).
     """
+    pyi_srcs = ctx.files.pyi_srcs if pyi_files == None else pyi_files
+    srcs_version = ctx.attr.srcs_version if srcs_version == None else srcs_version
+    pyi_deps = ctx.attr.pyi_deps if pyi_deps == None else pyi_deps
     py_info = PyInfoBuilder.new()
     py_info.venv_symlinks.add(venv_symlinks)
     py_info.direct_original_sources.add(original_sources)
     py_info.direct_pyc_files.add(required_pyc_files)
-    py_info.direct_pyi_files.add(ctx.files.pyi_srcs)
+    py_info.direct_pyi_files.add(pyi_srcs)
     py_info.transitive_original_sources.add(original_sources)
     py_info.transitive_pyc_files.add(required_pyc_files)
-    py_info.transitive_pyi_files.add(ctx.files.pyi_srcs)
+    py_info.transitive_pyi_files.add(pyi_srcs)
     py_info.direct_implicit_pyc_files.add(implicit_pyc_files)
     py_info.transitive_implicit_pyc_files.add(implicit_pyc_files)
     py_info.transitive_implicit_pyc_source_files.add(implicit_pyc_source_files)
     py_info.imports.add(imports)
-    py_info.merge_has_py2_only_sources(ctx.attr.srcs_version in ("PY2", "PY2ONLY"))
-    py_info.merge_has_py3_only_sources(ctx.attr.srcs_version in ("PY3", "PY3ONLY"))
+    py_info.merge_has_py2_only_sources(srcs_version in ("PY2", "PY2ONLY"))
+    py_info.merge_has_py3_only_sources(srcs_version in ("PY3", "PY3ONLY"))
 
     for target in ctx.attr.deps:
         # PyInfo may not be present e.g. cc_library rules.
@@ -438,7 +447,7 @@ def create_py_info(
         hasattr(ctx.attr, "_pyi_deps_to_runfiles_flag") and
         PyiDepsToRunfilesFlag.is_enabled(ctx)
     )
-    for target in ctx.attr.pyi_deps:
+    for target in pyi_deps:
         # PyInfo may not be present e.g. cc_library rules.
         if PyInfo in target or (BuiltinPyInfo != None and BuiltinPyInfo in target):
             target_py_info = _get_py_info(target)
@@ -473,10 +482,10 @@ def create_py_info(
 def _get_py_info(target):
     return target[PyInfo] if PyInfo in target or BuiltinPyInfo == None else target[BuiltinPyInfo]
 
-def create_instrumented_files_info(ctx):
+def create_instrumented_files_info(ctx, source_attributes = ["srcs"]):
     return _coverage_common.instrumented_files_info(
         ctx,
-        source_attributes = ["srcs"],
+        source_attributes = source_attributes,
         dependency_attributes = ["deps", "data"],
         extensions = _PYTHON_SOURCE_EXTENSIONS,
     )
