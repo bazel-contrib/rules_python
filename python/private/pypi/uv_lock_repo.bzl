@@ -124,7 +124,7 @@ def _parse_major_minor(version_str):
 
 def _platforms_for_python_version(python_version):
     major, minor = _parse_major_minor(python_version)
-    abi_tags = ["abi3", "cp{}{}".format(major, minor)]
+    abi_tags = ["none", "abi3", "cp{}{}".format(major, minor)]
     return {
         plat_name: struct(
             env = env(
@@ -133,7 +133,7 @@ def _platforms_for_python_version(python_version):
                 python_version = python_version,
             ),
             whl_abi_tags = abi_tags,
-            whl_platform_tags = meta.whl_platform_tags,
+            whl_platform_tags = ["any"] + meta.whl_platform_tags,
         )
         for plat_name, meta in _DEFAULT_PLATFORMS.items()
     }
