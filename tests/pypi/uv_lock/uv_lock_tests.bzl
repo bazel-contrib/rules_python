@@ -245,9 +245,9 @@ def _test_build_uv_lock_hub_packages_multi_version(env):
     )
 
     env.expect.that_dict(built.aliases["requests"]).contains_exactly({
-        "//_config:is_cp310_linux_x86_64": "pypi_cp310_requests_py3_none_any_035c1e85",
-        "//_config:is_cp311_linux_x86_64": "pypi_cp311_requests_py3_none_any_035c1e85",
-        "//_config:is_linux_x86_64": "pypi_cp310_requests_py3_none_any_035c1e85",
+        "//_config:is_cp310_linux_x86_64": "pypi_310_requests_py3_none_any_035c1e85",
+        "//_config:is_cp311_linux_x86_64": "pypi_311_requests_py3_none_any_035c1e85",
+        "//_config:is_linux_x86_64": "pypi_310_requests_py3_none_any_035c1e85",
     })
 
 _tests.append(_test_build_uv_lock_hub_packages_multi_version)
