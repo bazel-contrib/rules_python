@@ -43,7 +43,12 @@ or when monitoring CI after PR updates:
 3. **Failure Reporting**: When any GitHub check or Buildkite job completes
    with errors, `monitor_remote_ci.py` dispatches a high-priority notification
    message reporting the failed check back to your conversation.
-   - Soft failures (e.g. `*rolling*` Bazel) are non-blocking warnings; ignore.
+   - Soft failures (e.g. `*rolling*` Bazel) don't block merging, but the
+     monitor counts them as passed. Before reporting that everything
+     passed, list them with `bk build view <build_number> --pipeline
+     bazel/rules-python-python --json | jq '.jobs[] | select(.soft_failed)
+     | {id, name}'` and compare their failing tests with the latest `main`
+     build's.
    - If `blocks-do-not-merge` fails while the PR intentionally carries the
      `"do not merge"` label, treat it as an expected merge gate rather than a
      code failure.
