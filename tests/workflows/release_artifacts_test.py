@@ -22,7 +22,7 @@ def test_generate_artifacts_manifest(tmp_path: Path):
     artifacts_dir.mkdir(parents=True)
     manifest_file = tmp_path / "artifacts_manifest.bzl"
 
-    linux_bin = artifacts_dir / "exe_zip_maker-x86_64-unknown-linux-gnu"
+    linux_bin = artifacts_dir / "exe_zip_maker-x86_64-unknown-linux-musl"
     linux_bin.write_bytes(b"linux-binary-contents")
     linux_sha = hashlib.sha256(b"linux-binary-contents").hexdigest()
 
@@ -76,9 +76,9 @@ def test_generate_artifacts_manifest(tmp_path: Path):
                         "@platforms//cpu:x86_64",
                         "@platforms//os:linux",
                     ],
-                    "name": "exe_zip_maker_x86_64_unknown_linux_gnu",
+                    "name": "exe_zip_maker_x86_64_unknown_linux_musl",
                     "sha256": linux_sha,
-                    "urls": [f"{base_url}/exe_zip_maker-x86_64-unknown-linux-gnu"],
+                    "urls": [f"{base_url}/exe_zip_maker-x86_64-unknown-linux-musl"],
                 },
             ]
         }

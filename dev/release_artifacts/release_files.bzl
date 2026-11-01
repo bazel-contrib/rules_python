@@ -123,7 +123,7 @@ def release_files(name, srcs, **kwargs):
     machine's, without extra runtime libraries.
 
     The paths, one per line, are relative to the execroot, e.g.
-    `bazel-out/k8-opt/bin/dev/release_artifacts/foo-x86_64-unknown-linux-gnu`.
+    `bazel-out/k8-opt/bin/dev/release_artifacts/foo-x86_64-unknown-linux-musl`.
     Paths of generated files also resolve from the workspace root through the
     `bazel-out` convenience symlink. This lets scripts find the files without
     running `bazel cquery`, which re-analyzes the build.

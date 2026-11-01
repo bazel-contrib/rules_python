@@ -160,9 +160,9 @@ bazel_dep(name = "rules_multirun", version = "0.9.0", dev_dependency = True)
 bazel_dep(name = "bazel_ci_rules", version = "1.0.0", dev_dependency = True)
 bazel_dep(name = "rules_pkg", version = "1.2.0", dev_dependency = True)
 
-# Rust toolchains to cross-compile the release artifacts for other Linux CPUs
-# from Linux x86_64; see dev/release_artifacts. They target musl, which Rust can
-# link statically with its bundled rust-lld, so no C cross toolchain is needed.
+# Rust toolchains to build the release artifacts for Linux from Linux x86_64;
+# see dev/release_artifacts. They target musl, which Rust can link statically
+# with its bundled rust-lld, so no C cross toolchain is needed.
 rust = use_extension(
     "@rules_rust//rust:extensions.bzl",
     "rust",
@@ -227,6 +227,15 @@ rust.repository_set(
     ],
     target_triple = "riscv64gc-unknown-linux-musl",
 )
+rust.repository_set(
+    name = "rust_release_linux",
+    target_compatible_with = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+        "//dev/platforms:musl",
+    ],
+    target_triple = "x86_64-unknown-linux-musl",
+)
 use_repo(
     rust,
     "rust_release_linux__aarch64-unknown-linux-musl__stable",
@@ -234,6 +243,7 @@ use_repo(
     "rust_release_linux__i686-unknown-linux-musl__stable",
     "rust_release_linux__powerpc64le-unknown-linux-musl__stable",
     "rust_release_linux__riscv64gc-unknown-linux-musl__stable",
+    "rust_release_linux__x86_64-unknown-linux-musl__stable",
 )
 
 # Registered here so that they take precedence over rules_rust's default
@@ -245,6 +255,7 @@ register_toolchains(
     "@rust_release_linux__i686-unknown-linux-musl__stable//:toolchain",
     "@rust_release_linux__powerpc64le-unknown-linux-musl__stable//:toolchain",
     "@rust_release_linux__riscv64gc-unknown-linux-musl__stable//:toolchain",
+    "@rust_release_linux__x86_64-unknown-linux-musl__stable//:toolchain",
     dev_dependency = True,
 )
 
