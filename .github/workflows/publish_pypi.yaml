@@ -8,17 +8,24 @@ on:
         required: true
         type: string
   workflow_dispatch:
-    inputs:
-      tag_name:
-        description: "release tag: tag that will be released"
-        required: true
-        type: string
+
+permissions:
+  contents: read
 
 jobs:
   publish_pypi:
     name: Publish runfiles to PyPI
     runs-on: ubuntu-latest
     steps:
+      - name: Validate release tag
+        shell: bash
+        env:
+          TAG_NAME: ${{ inputs.tag_name || github.ref_name }}
+        run: |
+          if [[ ! "$TAG_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?$ ]]; then
+            echo "::error::Publishing to PyPI requires a valid release tag, got: '$TAG_NAME'"
+            exit 1
+          fi
       - name: Checkout
         uses: actions/checkout@v7
         with:

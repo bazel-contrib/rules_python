@@ -45,6 +45,8 @@ on:
         type: boolean
         default: true
 
+permissions: {}
+
 jobs:
   build_artifacts:
     # Builds the release archive, release notes, runfiles wheel, and platform
@@ -57,12 +59,16 @@ jobs:
     uses: ./.github/workflows/release_build_artifacts.yaml
     with:
       ref: ${{ inputs.tag_name || github.ref_name }}
+    permissions:
+      contents: read
     secrets: inherit
 
   release:
     name: Release
     needs: build_artifacts
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Download release archive and notes
         uses: actions/download-artifact@v8
@@ -102,6 +108,8 @@ jobs:
     uses: ./.github/workflows/publish.yml
     with:
       tag_name: ${{ inputs.tag_name || github.ref_name }}
+    permissions:
+      contents: write
     secrets:
       publish_token: ${{ secrets.publish_token || secrets.BCR_PUBLISH_TOKEN }}
 
@@ -112,4 +120,6 @@ jobs:
     uses: ./.github/workflows/publish_pypi.yaml
     with:
       tag_name: ${{ inputs.tag_name || github.ref_name }}
+    permissions:
+      contents: read
     secrets: inherit

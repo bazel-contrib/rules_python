@@ -19,6 +19,9 @@ on:
         description: git tag being released
         required: true
         type: string
+
+permissions: {}
+
 jobs:
   publish:
     uses: bazel-contrib/publish-to-bcr/.github/workflows/publish.yaml@v1.5.1

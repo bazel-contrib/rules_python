@@ -10,6 +10,8 @@ on:
       - unlabeled
       - edited
 
+permissions: {}
+
 jobs:
   blocks-do-not-merge:
     runs-on: ubuntu-latest

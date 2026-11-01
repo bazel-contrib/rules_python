@@ -5,6 +5,7 @@ import os
 import re
 import subprocess
 import sys
+import urllib.parse
 import urllib.request
 
 
@@ -84,7 +85,11 @@ def fetch_log(job_name, build_id, job_id, output_path):
                 file=sys.stderr,
             )
 
-    if not log_url.endswith("/download.txt") and "buildkite.com" in log_url:
+    parsed_url = urllib.parse.urlsplit(log_url)
+    if not log_url.endswith("/download.txt") and parsed_url.netloc in (
+        "buildkite.com",
+        "www.buildkite.com",
+    ):
         log_url = re.sub(r"/log$", "/download.txt", log_url)
 
     print(f"📥 Downloading CI failure log from {log_url}...")

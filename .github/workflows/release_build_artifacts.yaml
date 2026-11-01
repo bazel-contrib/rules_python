@@ -18,12 +18,6 @@ on:
         description: "The git ref (e.g. release tag) to build. Defaults to the selected ref."
         required: false
         type: string
-  workflow_dispatch:
-    inputs:
-      ref:
-        description: "The git ref (e.g. release tag) to build. Defaults to the selected ref."
-        required: false
-        type: string
 
 permissions:
   contents: read
