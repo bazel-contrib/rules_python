@@ -252,11 +252,6 @@ py_library(
 )
 
 bzl_library(
-    name = "artifacts_manifest",
-    srcs = ["artifacts_manifest.bzl"],
-)
-
-bzl_library(
     name = "attr_builders",
     srcs = ["attr_builders.bzl"],
     deps = [
@@ -943,6 +938,11 @@ bzl_library(
     name = "sentinel_impl",
     srcs = ["sentinel_impl.bzl"],
     deps = [":py_info"],
+)
+
+bzl_library(
+    name = "artifacts_manifest",
+    srcs = ["artifacts_manifest.bzl"],
 )
 
 bzl_library(
