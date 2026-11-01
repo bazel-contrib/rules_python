@@ -13,9 +13,9 @@ import yaml
 from python.runfiles import runfiles
 
 
-def _load_workflow() -> dict:
+def _load_workflow(filename: str = "release_build_artifacts.yaml") -> dict:
     root = runfiles.CreateOrRaise().root() / "rules_python"
-    workflow_path = root / ".github/workflows/release_build_artifacts.yaml"
+    workflow_path = root / ".github/workflows" / filename
     return yaml.safe_load(workflow_path.read_text(encoding="utf-8"))
 
 
@@ -89,6 +89,50 @@ def test_build_jobs_use_buildbuddy_rbe():
         api_key = setup_steps[0]["with"]["buildbuddy_api_key"]
         assert "secrets.BUILDBUDDY_CAS_ONLY_KEY" in api_key
         assert "secrets.BUILDBUDDY_READ_WRITE_KEY" in api_key
+
+
+def test_artifacts_manifest_json_built_and_published():
+    """Verifies artifacts_manifest.json is generated, uploaded, and published."""
+    build_workflow = _load_workflow()
+    package_steps = build_workflow["jobs"]["package"]["steps"]
+
+    generate_steps = [
+        s for s in package_steps if s.get("name") == "Generate artifacts manifest"
+    ]
+    assert len(generate_steps) == 1
+    generate_cmd = generate_steps[0]["run"]
+    assert "--bzl-output=artifacts_manifest.bzl" in generate_cmd
+    assert "--json-output=artifacts_manifest.json" in generate_cmd
+
+    upload_steps = [
+        s for s in package_steps if s.get("name") == "Upload artifacts manifest"
+    ]
+    assert len(upload_steps) == 1
+    assert upload_steps[0]["with"]["name"] == "release-manifest"
+    assert "artifacts_manifest.json" in upload_steps[0]["with"]["path"]
+
+    publish_workflow = _load_workflow("release_publish.yaml")
+    release_steps = publish_workflow["jobs"]["release"]["steps"]
+    download_manifest_steps = [
+        s
+        for s in release_steps
+        if s.get("uses", "").startswith("actions/download-artifact")
+        and s.get("with", {}).get("name") == "release-manifest"
+    ]
+    assert len(download_manifest_steps) == 1
+
+    gh_release_steps = [
+        s
+        for s in release_steps
+        if s.get("uses", "").startswith("softprops/action-gh-release")
+    ]
+    assert len(gh_release_steps) == 1
+    release_files = [
+        line.strip()
+        for line in gh_release_steps[0]["with"]["files"].splitlines()
+        if line.strip()
+    ]
+    assert "artifacts_manifest.json" in release_files
 
 
 def test_create_archive_and_notes_fetches_and_expands_tag(tmp_path: Path):

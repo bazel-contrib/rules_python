@@ -20,7 +20,8 @@ def test_generate_artifacts_manifest(tmp_path: Path):
 
     artifacts_dir = tmp_path / "release-artifacts"
     artifacts_dir.mkdir(parents=True)
-    manifest_file = tmp_path / "artifacts_manifest.bzl"
+    manifest_json_file = tmp_path / "artifacts_manifest.json"
+    manifest_bzl_file = tmp_path / "artifacts_manifest.bzl"
 
     linux_bin = artifacts_dir / "exe_zip_maker-x86_64-unknown-linux-gnu"
     linux_bin.write_bytes(b"linux-binary-contents")
@@ -37,20 +38,23 @@ def test_generate_artifacts_manifest(tmp_path: Path):
     subprocess.run(
         [
             str(generate_script),
+            f"--bzl-output={manifest_bzl_file}",
+            f"--json-output={manifest_json_file}",
+            "--",
             "2.4.0",
             str(artifacts_dir),
-            str(manifest_file),
             "bazel-contrib/rules_python",
         ],
         check=True,
     )
 
-    manifest_bzl = manifest_file.read_text(encoding="utf-8")
+    json_manifest = json.loads(manifest_json_file.read_text(encoding="utf-8"))
+    manifest_bzl = manifest_bzl_file.read_text(encoding="utf-8")
     _, marker, manifest_json = manifest_bzl.partition('ARTIFACTS_MANIFEST_JSON = """')
     assert marker
-    manifest = json.loads(manifest_json.removesuffix('"""\n'))
+    bzl_manifest = json.loads(manifest_json.removesuffix('"""\n'))
     base_url = "https://github.com/bazel-contrib/rules_python/releases/download/2.4.0"
-    assert manifest == {
+    expected_manifest = {
         "artifacts": {
             "exe_zip_maker": [
                 {
@@ -83,6 +87,8 @@ def test_generate_artifacts_manifest(tmp_path: Path):
             ]
         }
     }
+    assert json_manifest == expected_manifest
+    assert bzl_manifest == expected_manifest
 
 
 def test_create_archive_and_notes_with_manifest(tmp_path: Path):
