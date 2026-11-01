@@ -42,8 +42,7 @@ pytest_test(
     name = "release_build_artifacts_test",
     srcs = ["release_build_artifacts_test.py"],
     data = [
-        "//.github/workflows:create_archive_and_notes.sh",
-        "//.github/workflows:release_build_artifacts.yaml",
+        "//.github/workflows:all_files",
         "//dev/platforms:BUILD.bazel",
     ],
     target_compatible_with = ["@platforms//os:linux"],

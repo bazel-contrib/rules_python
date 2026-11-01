@@ -69,6 +69,11 @@ jobs:
         with:
           name: release-archive
 
+      - name: Download artifacts manifest
+        uses: actions/download-artifact@v8
+        with:
+          name: release-manifest
+
       - name: Download built artifacts
         uses: actions/download-artifact@v8
         with:
@@ -88,6 +93,7 @@ jobs:
           files: |
             rules_python-*.tar.gz
             release-artifacts/*
+            artifacts_manifest.json
             SHA256SUMS
           tag_name: ${{ inputs.tag_name || github.ref_name }}
 
