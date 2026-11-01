@@ -99,6 +99,18 @@ globs: "*.py,*.sh"
   `Iterator`, `Callable`, `Mapping`) and builtin generics (`list`, `dict`,
   `tuple`, `set`) instead of `typing.XXX` collection types.
 
+## Security & Sensitive Data
+* **URL Domain Validation (`py/incomplete-url-substring-sanitization`)**: Never
+  use substring checks (`"example.com" in url`, `url.endswith(...)`) to
+  validate domains. Parse with `urllib.parse.urlsplit(url)` and verify
+  `parsed.netloc in {"example.com", "www.example.com"}` or check exact hostname
+  equality.
+* **Credential Logging & Mock Names (`py/clear-text-logging-sensitive-data`)**:
+  Never log plaintext secrets, tokens, or passwords. In test fixtures or mock
+  servers that print mock tokens, avoid sensitive variable names (`password`,
+  `secret`, `token`); use `mock_token` and annotate intentional log lines with
+  `# codeql[py/clear-text-logging-sensitive-data]`.
+
 ## Runfiles
 * **Fail-fast creation**: Prefer `runfiles.CreateOrRaise()` over
   `runfiles.Create()` + `assert`.

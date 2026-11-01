@@ -37,6 +37,12 @@ project's workflow rules and conventions:
    `.github/actions/setup-bazel/action.yaml` if new defaults or inputs are
    needed).
 10. Audit for injection and security vulnerabilities:
+    - Require explicit top-level `permissions:` (`{}` or minimal scopes) in all
+      workflows, and explicit job-level permissions for reusable workflow calls
+      or write jobs (`actions/missing-workflow-permissions`).
+    - Flag caching actions (`setup-bazel`, `actions/cache`) combined with
+      untrusted ref checkouts (`inputs.ref` in `workflow_dispatch`) as cache
+      poisoning risks (`actions/cache-poisoning/poisonable-step`).
     - Flag any `${{ ... }}` expression interpolated directly inside a `run:`
       shell block or `actions/github-script` `script:` body; require binding to
       `env:` and referencing via `"$VAR"` or `process.env.VAR`.

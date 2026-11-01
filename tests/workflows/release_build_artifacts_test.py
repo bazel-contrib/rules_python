@@ -56,7 +56,7 @@ def test_workflow_is_safe_for_presubmit():
 
     # PyYAML parses unquoted `on:` as boolean True in YAML 1.1.
     triggers = workflow.get("on") or workflow.get(True, {})
-    assert set(triggers.keys()) == {"workflow_call", "workflow_dispatch"}
+    assert set(triggers.keys()) == {"workflow_call"}
     assert not triggers["workflow_call"]["inputs"]["ref"].get("required", False)
 
     ci_workflow = _load_workflow("ci.yaml")

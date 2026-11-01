@@ -56,6 +56,19 @@ globs: ".github/workflows/**,.github/actions/**,.github/dependabot.yml"
   manifest) so `<cfg>/...` subdirectories are not preserved in the artifact.
 
 ## Security review
+* **Explicit Workflow Permissions**
+  (`actions/missing-workflow-permissions`):
+  Declare explicit top-level `permissions:` in every workflow (`{}` or minimal
+  scopes like `contents: read`). Never rely on default `GITHUB_TOKEN`
+  permissions. Declare job-level `permissions:` when jobs need elevated access
+  (e.g., `contents: write`) or invoke reusable workflows.
+* **No Untrusted Refs in Caching Workflows**
+  (`actions/cache-poisoning/poisonable-step`):
+  Never check out unvalidated user refs (such as `inputs.ref` in
+  `workflow_dispatch`) in workflows that use caching actions (`setup-bazel`,
+  `actions/cache`). Restrict caching workflows to trusted callers
+  (`workflow_call`), validate input refs against trusted tags or SHAs, or
+  remove unvalidated `workflow_dispatch` inputs.
 * **No `${{ ... }}` in `run:` or `script:` Blocks**: Never interpolate
   `${{ ... }}` expressions (including `${{ secrets.* }}`) directly into `run:`
   shell scripts or `actions/github-script` `script:` bodies, even inside

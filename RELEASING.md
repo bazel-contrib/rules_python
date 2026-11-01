@@ -84,7 +84,7 @@ publishing workflow can be triggered manually using the GitHub CLI (`gh`) or
 via the [GitHub Actions UI](https://github.com/bazel-contrib/rules_python/actions/workflows/publish_pypi.yaml):
 
 ```shell
-gh workflow run publish_pypi.yaml --ref <TAG> -f tag_name=<TAG>
+gh workflow run publish_pypi.yaml --ref <TAG>
 ```
 
 ### Determining Semantic Version
