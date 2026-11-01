@@ -229,7 +229,10 @@ py_libary(
 (directive-python-manifest-file-name)=
 ## `python_manifest_file_name`
 
-Sets the manifest used to resolve third-party imports in this directory and its subdirectories (default: `gazelle_python.yaml`). Paths are relative to the `BUILD` file containing the directive. For example, in `a/BUILD.bazel`, select a manifest at the repository root with:
+Sets the manifest used to resolve third-party imports in this directory and its
+subdirectories (default: `gazelle_python.yaml`). Paths are relative to the `BUILD`
+file containing the directive. For example, in `a/BUILD.bazel`, select a manifest
+at the repository root with:
 
 ```starlark
 # gazelle:python_manifest_file_name ../gazelle_python_a.yaml
