@@ -12,12 +12,11 @@
 name: "Release: Build Artifacts"
 
 on:
-  pull_request:
   workflow_call:
     inputs:
       ref:
-        description: "The git ref (e.g. release tag) to build"
-        required: true
+        description: "The git ref (e.g. release tag) to build. Defaults to the selected ref."
+        required: false
         type: string
   workflow_dispatch:
     inputs:
@@ -132,7 +131,7 @@ jobs:
         env:
           INPUT_REF: ${{ inputs.ref }}
         # ${INPUT_REF:+...} expands to the --stamp and --embed_label flags only
-        # when INPUT_REF is non-empty (release builds, not pull_request builds).
+        # when INPUT_REF is non-empty (release builds, not CI builds).
         run: >-
           bazel build
           ${INPUT_REF:+--stamp "--embed_label=$INPUT_REF"}

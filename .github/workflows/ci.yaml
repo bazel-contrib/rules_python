@@ -30,3 +30,8 @@ jobs:
         with:
           version: 0.15.14
           args: format --check --exclude testdata
+
+  build_release_artifacts:
+    name: Build release artifacts
+    uses: ./.github/workflows/release_build_artifacts.yaml
+    secrets: inherit

@@ -49,12 +49,23 @@ def test_matrix_matches_dev_platforms():
 
 
 def test_workflow_is_safe_for_presubmit():
-    """Verifies that release_build_artifacts.yaml is read-only and never publishes."""
+    """Verifies that release_build_artifacts.yaml is read-only, never publishes,
+    and is called by ci.yaml.
+    """
     workflow = _load_workflow()
 
     # PyYAML parses unquoted `on:` as boolean True in YAML 1.1.
     triggers = workflow.get("on") or workflow.get(True, {})
-    assert "pull_request" in triggers
+    assert set(triggers.keys()) == {"workflow_call", "workflow_dispatch"}
+    assert not triggers["workflow_call"]["inputs"]["ref"].get("required", False)
+
+    ci_workflow = _load_workflow("ci.yaml")
+    ci_triggers = ci_workflow.get("on") or ci_workflow.get(True, {})
+    assert "pull_request" in ci_triggers
+    assert "push" in ci_triggers
+    ci_job = ci_workflow["jobs"]["build_release_artifacts"]
+    assert ci_job["uses"] == "./.github/workflows/release_build_artifacts.yaml"
+    assert ci_job.get("secrets") == "inherit"
 
     assert workflow.get("permissions") == {"contents": "read"}
 
