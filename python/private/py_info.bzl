@@ -119,6 +119,11 @@ directory artifacts (`File.is_directory`) and `link_to_path` is a directory.
 When non-empty, conflict merging uses these paths instead of `files` (and
 `files` then only supplies runfiles).
 
+This is for entries whose target isn't a single `File`, so it's mutually
+exclusive with `link_to_file`: `link_to_file` is only used when an entry
+doesn't conflict, whereas `link_to_subpaths` is only used during conflict
+merging.
+
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
 """,
