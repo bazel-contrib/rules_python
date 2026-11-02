@@ -40,5 +40,7 @@ project's Python conventions:
       names (`mock_token`) and explicit CodeQL annotations
       (`# codeql[py/clear-text-logging-sensitive-data]`) for intentional mock
       outputs.
+11. Data Classes: Verify `@dataclasses.dataclass` definitions include comments
+    above each field describing its value.
 
 @.agents/skills/review-code/review-report-format.md

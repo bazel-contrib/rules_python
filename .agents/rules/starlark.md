@@ -141,6 +141,8 @@ globs: "*.bzl,BUILD,BUILD.bazel,*.bazel"
 * **Concise API Docstrings**: Keep docstrings brief: state purpose and
   arguments, link to shared symbols (`{obj}`) or guides (`{ref}`) instead of
   repeating rules, and put extended examples in `docs/`.
+* When returning a `struct(...)` of fields, add a comment above each field
+  describing its value.
 * **Workaround Comments**: Comment non-obvious workarounds with the intent, why
   the direct approach fails, and why the workaround works.
 * **No Bazel Copyright Headers**: Do not add Bazel copyright headers to new or

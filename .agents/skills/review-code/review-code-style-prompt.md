@@ -17,5 +17,7 @@ code style, control flow, refactoring, and CLI conventions:
 5. Rule-Exception Justifications: If the author provides a justification for an
    environment fallback, suppression, or style exception, ensure the
    `Justification & Exception Auditor` evaluates it for human sign-off.
+6. Relative Paths: When an object, field, or return value holds relative paths,
+   verify comments or docstrings document what those paths are relative to.
 
 @.agents/skills/review-code/review-report-format.md
