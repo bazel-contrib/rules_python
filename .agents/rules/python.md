@@ -72,7 +72,9 @@ globs: "*.py,*.sh"
   `==================== STDOUT BEGIN ====================` /
   `==================== STDOUT END ====================` (same for STDERR).
 
-## TypedDict
+## Data Classes & TypedDict
+* In dataclasses (`@dataclasses.dataclass`), add a comment above each field
+  describing its value.
 * **External Objects**: When defining a `TypedDict` for an external object,
   link to its definition in the docstring.
 

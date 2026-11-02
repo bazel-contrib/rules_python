@@ -34,6 +34,8 @@ Order definitions within a file as:
 * Avoid long or complex inline expressions (e.g. multi-condition ternaries,
   compound boolean chains, or dense one-liners). Break them into named
   intermediate variables, prior preparation steps, or explicit statements.
+* When an object, field, or return value contains relative paths, document what
+  each path is relative to.
 
 ## CLI & Flags
 * Comment non-obvious flags (`--force`), non-default schemes, subtle arguments

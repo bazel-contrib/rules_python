@@ -29,7 +29,8 @@ in `git diff` against the project's Starlark coding rules and conventions:
 12. Inspect the full `BUILD` file (not just the diff hunk) to flag overlapping
     or redundant `filegroup`, `exports_files`, or `glob(...)` definitions.
 13. Check macro and rule hygiene: forward unused wrapper arguments via
-    `**kwargs`, silence unused variables with `_ = a, b  # @unused`, prefer
+    `**kwargs`, silence unused variables with `_ = a, b  # @unused`, require
+    comments above each field when returning a `struct(...)` of fields, prefer
     analysis-time validation over loading-time checks, prefer
     `ctx.actions.write` over subprocesses for small static strings, use
     `$(execpath ...)` / `$(execpaths ...)` instead of `$(location)` /
