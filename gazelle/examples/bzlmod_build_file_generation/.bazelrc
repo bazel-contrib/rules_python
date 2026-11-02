@@ -14,3 +14,6 @@ common:bazel7.x --incompatible_python_disallow_native_rules
 # rules_python code. In the BCR presubmits, this override is removed
 # and the bazel_dep version of rules_python is used.
 common --override_module=rules_python=../../../
+
+# TODO: Delete before merging; see the root .bazelrc.
+common --registry=https://bazel-contrib.github.io/rules_runfiles_group --registry=https://bcr.bazel.build

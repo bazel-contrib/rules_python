@@ -1,0 +1,208 @@
+load("@rules_runfiles_group//runfiles_group:runfiles_group_analysis_test.bzl", "runfiles_group_analysis_test")
+load("//python:py_binary.bzl", "py_binary")
+load("//python:py_library.bzl", "py_library")
+load("//python:py_test.bzl", "py_test")
+load("//tests/support:py_reconfig.bzl", "py_reconfig_binary")
+load(":runfiles_groups_tests.bzl", "WALKS_TOOLCHAINS", "runfiles_groups_test_suite")
+load(":test_rules.bzl", "outputs_and_runfiles", "outputs_only")
+
+outputs_only(name = "outputs_only")
+
+outputs_and_runfiles(name = "outputs_and_runfiles")
+
+genrule(
+    name = "generated",
+    outs = ["generated.txt"],
+    cmd = "touch $@",
+)
+
+genrule(
+    name = "generated_file",
+    outs = ["generated_file.txt"],
+    cmd = "touch $@",
+)
+
+filegroup(
+    name = "files",
+    srcs = ["fg.txt"],
+)
+
+py_library(
+    name = "lib_a",
+    srcs = ["liba.py"],
+    data = [
+        "data.txt",
+        "generated_file.txt",
+        ":outputs_only",
+    ],
+)
+
+filegroup(
+    name = "srcs_with_runfiles",
+    srcs = ["libc.py"],
+    data = ["srcs_data.txt"],
+)
+
+py_library(
+    name = "lib_b",
+    srcs = [
+        "libb.py",
+        ":srcs_with_runfiles",
+    ],
+    data = [":outputs_and_runfiles"],
+    deps = [":lib_a"],
+)
+
+# A console script, listed in the wheel's data both on its own and in a
+# filegroup, like whl_library does.
+genrule(
+    name = "foo_console_script",
+    outs = ["scripts/foo"],
+    cmd = "touch $@",
+)
+
+filegroup(
+    name = "foo_bin",
+    srcs = [":foo_console_script"],
+)
+
+# Looks like a library from a wheel: grouped by package name.
+py_library(
+    name = "foo_pkg",
+    srcs = ["site-packages/foo_pkg.py"],
+    data = [
+        "site-packages/_foo_native.so",
+        "site-packages/foo_pkg-1.0.dist-info/METADATA",
+        ":foo_bin",
+        ":foo_console_script",
+    ],
+    experimental_venvs_site_packages = "//python/config_settings:venvs_site_packages",
+    imports = ["site-packages"],
+)
+
+# Wraps foo_pkg like whl_library's :pkg wraps its :srcs; adds no group.
+py_library(
+    name = "foo_pkg_wrapper",
+    srcs = [":foo_pkg"],
+    precompile = "disabled",
+    deps = [":foo_pkg"],
+)
+
+_DATA = [
+    ":files",
+    ":generated",
+    ":outputs_and_runfiles",
+    ":outputs_only",
+    "bin.txt",
+]
+
+py_binary(
+    name = "bin",
+    srcs = ["main.py"],
+    data = _DATA,
+    main = "main.py",
+    deps = [
+        ":foo_pkg_wrapper",
+        ":lib_b",
+    ],
+)
+
+py_test(
+    name = "test",
+    srcs = ["main.py"],
+    data = _DATA,
+    main = "main.py",
+    tags = ["manual"],
+    deps = [":lib_b"],
+)
+
+py_binary(
+    name = "bin_in_data",
+    srcs = ["outer.py"],
+    data = [":bin"],
+    main = "outer.py",
+    deps = [":lib_a"],
+)
+
+# Libraries describe their implicit pyc files.
+py_reconfig_binary(
+    name = "bin_precompiled",
+    srcs = ["main.py"],
+    config_settings = {
+        "//python/config_settings:precompile": "enabled",
+    },
+    main = "main.py",
+    deps = [":lib_b"],
+)
+
+# The venv's links to foo_pkg's files go into foo_pkg's group.
+py_binary(
+    name = "bin_venv",
+    srcs = ["main.py"],
+    config_settings = {
+        "//python/config_settings:venvs_site_packages": "yes",
+    } | select({
+        "@platforms//os:windows": {},
+        "//conditions:default": {
+            "//python/config_settings:bootstrap_impl": "script",
+        },
+    }),
+    main = "main.py",
+    deps = [":foo_pkg_wrapper"],
+)
+
+# Falls back to one group for itself and its deps, because its pyc selection
+# differs from what its deps describe.
+py_binary(
+    name = "bin_pyc_collection",
+    srcs = ["main.py"],
+    main = "main.py",
+    pyc_collection = "include_pyc",
+    deps = [":lib_b"],
+)
+
+# Falls back to one group for itself and its deps, because the generated
+# __init__.py files only exist in its own runfiles.
+py_binary(
+    name = "bin_legacy_init",
+    srcs = ["main.py"],
+    legacy_create_init = 1,
+    main = "main.py",
+    deps = [":lib_b"],
+)
+
+runfiles_group_analysis_test(
+    name = "runfiles_group_test",
+    binaries = [
+        ":bin",
+        ":bin_in_data",
+        ":bin_legacy_init",
+        ":bin_precompiled",
+        ":bin_pyc_collection",
+        ":bin_venv",
+        ":test",
+    ],
+    overlapping_group_behavior = "error",
+    target_compatible_with = WALKS_TOOLCHAINS,
+)
+
+runfiles_group_analysis_test(
+    name = "bin_groups_test",
+    binaries = [":bin"],
+    expected_executable_group = "@@//tests/runfiles_groups:bin",
+    expected_group_names = [
+        "rules_python#runtime",
+        "rules_python#pypi/foo_pkg",
+        "@@//tests/runfiles_groups:files",
+        "@@//tests/runfiles_groups:generated",
+        "@@//tests/runfiles_groups:lib_a",
+        "@@//tests/runfiles_groups:lib_b",
+        "@@//tests/runfiles_groups:outputs_and_runfiles",
+        "@@//tests/runfiles_groups:outputs_only",
+        "@@//tests/runfiles_groups:srcs_with_runfiles",
+        "@@//tests/runfiles_groups:bin",
+    ],
+    target_compatible_with = WALKS_TOOLCHAINS,
+)
+
+runfiles_groups_test_suite(name = "runfiles_groups_tests")

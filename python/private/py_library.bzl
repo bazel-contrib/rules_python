@@ -116,6 +116,11 @@ This allows optimizing the generation of symlinks to be cheaper at analysis time
         "_add_srcs_to_runfiles_flag": lambda: attrb.Label(
             default = labels.ADD_SRCS_TO_RUNFILES,
         ),
+        # Read by rules_runfiles_group's packaging aspects; see runfiles_groups.bzl.
+        "_aspect_rule_hints": lambda: attrb.LabelList(
+            default = ["//python/private:py_library_runfiles_group_describer"],
+        ),
+        "_runfiles_group_attrs": lambda: attrb.StringList(default = ["data", "deps", "srcs"]),
     },
 )
 

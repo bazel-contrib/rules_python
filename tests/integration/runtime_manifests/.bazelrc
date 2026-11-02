@@ -2,3 +2,6 @@
 common:fast-tests --build_tests_only=true
 common:fast-tests --build_tag_filters=-large,-enormous,-integration-test
 common:fast-tests --test_tag_filters=-large,-enormous,-integration-test
+
+# TODO: Delete before merging; see the root .bazelrc.
+common --registry=https://bazel-contrib.github.io/rules_runfiles_group --registry=https://bcr.bazel.build

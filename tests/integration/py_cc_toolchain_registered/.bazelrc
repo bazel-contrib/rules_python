@@ -1,3 +1,6 @@
 # This aids debugging on failure
 build --toolchain_resolution_debug=python
 common:bazel7.x --incompatible_python_disallow_native_rules
+
+# TODO: Delete before merging; see the root .bazelrc.
+common --registry=https://bazel-contrib.github.io/rules_runfiles_group --registry=https://bcr.bazel.build

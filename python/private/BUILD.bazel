@@ -20,6 +20,12 @@ load(":bazel_config_mode.bzl", "bazel_config_mode")
 load(":distribution_filegroup.bzl", "distribution_filegroup")
 load(":py_exec_tools_toolchain.bzl", "current_interpreter_executable")
 load(":py_interpreter_program.bzl", "py_interpreter_program")
+load(
+    ":runfiles_groups.bzl",
+    "py_executable_runfiles_group_describer",
+    "py_library_runfiles_group_describer",
+    "py_runtime_pair_runfiles_group_describer",
+)
 load(":sentinel_impl.bzl", "sentinel")
 load(":stamp_impl.bzl", "stamp_build_setting")
 load(":uncachable_version_file.bzl", "define_uncachable_version_file")
@@ -855,6 +861,23 @@ bzl_library(
 )
 
 bzl_library(
+    name = "runfiles_groups",
+    srcs = ["runfiles_groups.bzl"],
+    deps = [
+        ":attributes",
+        ":common",
+        ":flags",
+        ":py_executable",
+        ":py_executable_info",
+        ":py_info",
+        ":py_internal",
+        ":py_library",
+        ":reexports",
+        "@rules_runfiles_group//runfiles_group:describe",
+    ],
+)
+
+bzl_library(
     name = "runtime_env_repo",
     srcs = ["runtime_env_repo.bzl"],
     deps = [":repo_utils"],
@@ -1048,4 +1071,22 @@ bzl_library(
 bzl_library(
     name = "visibility",
     srcs = ["visibility.bzl"],
+)
+
+# Runfiles group describers of the Python rules (see runfiles_groups.bzl), held
+# by their _aspect_rule_hints attributes. Not actually public; only public
+# because they're implicit dependencies of rules built via the rule builders.
+py_library_runfiles_group_describer(
+    name = "py_library_runfiles_group_describer",
+    visibility = ["//visibility:public"],
+)
+
+py_executable_runfiles_group_describer(
+    name = "py_executable_runfiles_group_describer",
+    visibility = ["//visibility:public"],
+)
+
+py_runtime_pair_runfiles_group_describer(
+    name = "py_runtime_pair_runfiles_group_describer",
+    visibility = ["//visibility:public"],
 )
