@@ -138,10 +138,11 @@ def build_link_map(ctx, entries, return_conflicts = False):
             to be resolved and merged.
 
     Returns:
-        {type}`dict[str, dict[str, File | str]]` Mappings of venv paths to their
-        backing files. The first key is a `VenvSymlinkKind` value.
-        The inner dict keys are venv paths relative to the kind's directory. The
-        inner dict values are `File`s or `rf_root_path` strings to link to.
+        {type}`dict[str kind, dict[str venv_path, File | str rf_root_path]]`
+        Mappings of venv paths to their backing files. The first key is a
+        `VenvSymlinkKind` value. The inner dict keys are venv paths relative to
+        the kind's directory. The inner dict values are `File`s or
+        runfiles-root-relative path strings to link to.
     """
 
     version_by_pkg = {}  # dict[str pkg, str version]
@@ -235,8 +236,9 @@ def _merge_venv_path_group(ctx, group, keep_map):
         ctx: {type}`ctx` current ctx.
         group: {type}`list[VenvSymlinkEntry]` a group of entries with overlapping
             `venv_path` prefixes, ordered from shortest to longest path.
-        keep_map: {type}`dict[str, File | str]` (`dict[str venv_path, File | str rf_root_path]`)
-            files kept after merging are populated into this map.
+        keep_map: {type}`dict[str venv_path, File | str rf_root_path]` files
+            kept after merging are populated into this map. Values are `File`s,
+            or runfiles-root-relative path strings to link to.
     """
 
     # TODO: Compute the minimum number of entries to create. This can't avoid
