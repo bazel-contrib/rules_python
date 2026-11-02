@@ -938,7 +938,8 @@ def _test_default_mode_directory_merge_impl(env, _):
 
     # Direct-link case: a directory File that is itself the top-level venv entry
     # must remain the File object (not a path string) after conflict merging so
-    # default mode materializes a runfiles root_symlink rather than UnresolvedSymlink.
+    # default mode materializes a runfiles root_symlink rather than
+    # ctx.actions.declare_symlink().
     direct_dir = _file("pkg/site-packages/foo", is_directory = True)
     direct_entries = get_venv_symlinks(
         test_ctx,
@@ -1005,11 +1006,9 @@ tree_venv_lib = rule(
     },
 )
 
-_tree_venv_lib = tree_venv_lib
-
 def _test_tree_artifact_rule_merging(name):
     rt_util.helper_target(
-        _tree_venv_lib,
+        tree_venv_lib,
         name = name + "_tree_a",
         package = "tree_a",
         paths = [
@@ -1024,7 +1023,7 @@ def _test_tree_artifact_rule_merging(name):
         namespace_package_files = ["site-packages/pkgutil_ns/__init__.py"],
     )
     rt_util.helper_target(
-        _tree_venv_lib,
+        tree_venv_lib,
         name = name + "_tree_b",
         package = "tree_b",
         paths = [
@@ -1053,7 +1052,10 @@ _tests.append(_test_tree_artifact_rule_merging)
 
 def _test_tree_artifact_rule_merging_impl(env, target):
     entries = target[PyInfo].venv_symlinks.to_list()
-    all_dirs = [f.is_directory for e in entries for f in e.files.to_list()]
+    all_dirs = []
+    for e in entries:
+        for f in e.files.to_list():
+            all_dirs.append(f.is_directory)
     env.expect.that_bool(all(all_dirs) and len(all_dirs) > 0).equals(True)
 
     test_ctx = _ctx(workspace_name = env.ctx.workspace_name)

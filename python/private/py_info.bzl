@@ -74,12 +74,18 @@ An entry in `PyInfo.venv_symlinks`
         "files": """
 :type: depset[File]
 
-Files under `link_to_path` that are expected to exist in runfiles. May instead
-contain a directory artifact (`TreeArtifact`) that *contains* `link_to_path`;
-see {obj}`link_to_subpaths`.
+Files backing this entry in runfiles. Entries may be regular `File` objects or
+directory artifacts (`File.is_directory`).
 
-This is only used when multiple targets have overlapping `venv_path` paths. e.g.
-if one adds files to `venv_path=a/` and another adds files to `venv_path=a/b/`.
+If any entries are directory artifacts, {obj}`link_to_subpaths` must list every
+file under `link_to_path`, relative to it (left empty when `link_to_path`
+points to a single file), because a directory artifact's contents aren't known
+at analysis time. When {obj}`link_to_subpaths` is non-empty, conflict merging
+uses it instead of `files`, and `files` then only supplies runfiles.
+
+Conflict merging occurs when multiple targets have overlapping `venv_path`
+paths, e.g. if one adds files to `venv_path=a/` and another adds files to
+`venv_path=a/b/`.
 """,
         "kind": """
 :type: str
@@ -108,8 +114,10 @@ A runfiles-root relative path that `venv_path` will symlink to (if
 :::{include} /_includes/experimental_api.md
 :::
 
-Paths of the files inside the directory artifact in `files`, relative to
-`link_to_path`; used instead of `files` when merging conflicting venv entries.
+Relative paths of every file under `link_to_path` when `files` contains
+directory artifacts (`File.is_directory`) and `link_to_path` is a directory.
+When non-empty, conflict merging uses these paths instead of `files` (and
+`files` then only supplies runfiles).
 
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
@@ -144,12 +152,12 @@ def _VenvSymlinkEntryBuilder_typedef():
     :type: DepsetBuilder[File]
     :::
 
-    :::{field} link_to_subpaths
+    ::::{field} link_to_subpaths
     :type: DepsetBuilder[str]
 
-    ::::{versionadded} VERSION_NEXT_FEATURE
-    ::::
+    :::{versionadded} VERSION_NEXT_FEATURE
     :::
+    ::::
 
     :::{versionadded} 2.2.0
     :::
