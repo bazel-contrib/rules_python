@@ -61,9 +61,16 @@ buildifier:
   test_flags:
     ? "--noenable_bzlmod"
     ? "--test_tag_filters=-integration-test"
+  coverage_flags:
+    ? "--noenable_bzlmod"
+    ? "--test_tag_filters=-integration-test"
 .common_workspace_flags: &common_workspace_flags
   skip_in_bazel_downstream_pipeline: "Bazel 9 doesn't support workspace"
   test_flags:
+    ? "--noenable_bzlmod"
+    ? "--enable_workspace"
+    ? "--test_tag_filters=-integration-test"
+  coverage_flags:
     ? "--noenable_bzlmod"
     ? "--enable_workspace"
     ? "--test_tag_filters=-integration-test"
