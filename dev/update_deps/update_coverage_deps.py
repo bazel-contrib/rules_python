@@ -41,12 +41,14 @@ _supported_platforms = {
     "macosx_11_0_arm64": "aarch64-apple-darwin",
     "macosx_10_9_x86_64": "x86_64-apple-darwin",
     "macosx_10_13_x86_64": "x86_64-apple-darwin",
+    "macosx_10_15_x86_64": "x86_64-apple-darwin",
     ("t", "manylinux1_x86_64"): "x86_64-unknown-linux-gnu-freethreaded",
     ("t", "manylinux2014_x86_64"): "x86_64-unknown-linux-gnu-freethreaded",
     ("t", "manylinux2014_aarch64"): "aarch64-unknown-linux-gnu-freethreaded",
     ("t", "macosx_11_0_arm64"): "aarch64-apple-darwin-freethreaded",
     ("t", "macosx_10_9_x86_64"): "x86_64-apple-darwin-freethreaded",
     ("t", "macosx_10_13_x86_64"): "x86_64-apple-darwin-freethreaded",
+    ("t", "macosx_10_15_x86_64"): "x86_64-apple-darwin-freethreaded",
 }
 
 
@@ -144,7 +146,7 @@ def _parse_args() -> argparse.Namespace:
         "--py",
         nargs="+",
         type=str,
-        default=["cp39", "cp310", "cp311", "cp312", "cp313", "cp314"],
+        default=["cp39", "cp310", "cp311", "cp312", "cp313", "cp314", "cp315"],
         help="Supported python versions",
     )
     parser.add_argument(
