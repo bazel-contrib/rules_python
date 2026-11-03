@@ -7,7 +7,7 @@
 
 load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
 load("//python/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")
-load("//python/private/zipapp:py_exe_zip_maker_toolchain.bzl", "py_exe_zip_maker_toolchain")
+load("//python/private/toolchains:rupyru_box_toolchain.bzl", "rupyru_box_toolchain")
 
 package(default_visibility = ["//:__subpackages__"])
 
@@ -17,9 +17,10 @@ distribution_filegroup(
     name = "distribution",
 )
 
-# Use the Rust implementation of exe_zip_maker instead of the Python one.
-py_exe_zip_maker_toolchain(
-    name = "exe_zip_maker",
-    exe_zip_maker = "//crates/exe_zip_maker",
+# Use the unified Rust `rupyru-box` binary instead of the Python/script
+# tool implementations.
+rupyru_box_toolchain(
+    name = "rupyru_box",
+    rupyru_box = "//crates/rupyru-box",
     visibility = NOT_ACTUALLY_PUBLIC,
 )

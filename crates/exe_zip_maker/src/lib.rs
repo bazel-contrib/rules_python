@@ -41,7 +41,7 @@ pub fn compute_file_sha256_hex(path: &Path) -> io::Result<String> {
         hasher.update(&buffer[..n]);
     }
     let digest = hasher.finalize();
-    Ok(format!("{:x}", digest))
+    Ok(digest.iter().map(|b| format!("{b:02x}")).collect())
 }
 
 /// Creates a self-executable zip archive by prepending a preamble to a zip archive

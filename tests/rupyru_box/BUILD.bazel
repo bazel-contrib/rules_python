@@ -1,0 +1,20 @@
+load("@rules_rust//rust:defs.bzl", "rust_test")
+
+package(default_visibility = ["//:__subpackages__"])
+
+licenses(["notice"])
+
+rust_test(
+    name = "rupyru_box_test",
+    size = "small",
+    srcs = ["rupyru_box_test.rs"],
+    data = [
+        "//crates/rupyru-box",
+    ],
+    env = {
+        "RUPYRU_BOX_BIN": "$(rootpath //crates/rupyru-box)",
+    },
+    deps = [
+        "//crates/rupyru-box:rupyru_box_lib",
+    ],
+)

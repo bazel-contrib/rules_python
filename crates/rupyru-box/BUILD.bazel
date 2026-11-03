@@ -1,0 +1,27 @@
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library")
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")  # buildifier: disable=bzl-visibility
+
+package(default_visibility = ["//:__subpackages__"])
+
+licenses(["notice"])
+
+rust_library(
+    name = "rupyru_box_lib",
+    srcs = ["src/lib.rs"],
+    edition = "2021",
+    deps = [
+        "//crates/exe_zip_maker:exe_zip_maker_lib",
+    ],
+)
+
+rust_binary(
+    name = "rupyru-box",
+    srcs = ["src/main.rs"],
+    edition = "2021",
+    visibility = ["//visibility:public"],
+    deps = [":rupyru_box_lib"],
+)
+
+distribution_filegroup(
+    name = "distribution",
+)

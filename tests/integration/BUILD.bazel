@@ -117,7 +117,7 @@ rules_python_integration_test(
 
 rules_python_integration_test(
     name = "prebuilt_toolchain_test",
-    py_data = ["//crates/exe_zip_maker"],
+    py_data = ["//crates/rupyru-box"],
     py_deps = ["//python/runfiles"],
     py_main = "prebuilt_toolchain_test.py",
     target_compatible_with = SUPPORTS_BZLMOD + NOT_WINDOWS,

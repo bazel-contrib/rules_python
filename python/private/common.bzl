@@ -646,7 +646,8 @@ def actions_run(
             provides `testing.ExecutionInfo`, the requirements will be added to
             the execution requirements.
         toolchain: The toolchain type to use. Must be None or
-            `//python:exec_tools_toolchain_type`.
+            `//python:exec_tools_toolchain_type` when `executable` provides
+            `PyInterpreterProgramInfo`.
         **kwargs: Additional arguments to pass to `ctx.actions.run()`.
             `mnemonic` and `progress_message` are required.
     """

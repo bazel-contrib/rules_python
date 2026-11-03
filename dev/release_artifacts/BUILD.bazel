@@ -13,7 +13,9 @@ package(default_visibility = ["//:__subpackages__"])
 # see build.sh.
 release_files(
     name = "artifacts_for_release",
-    srcs = ["//crates/exe_zip_maker"],
+    srcs = [
+        "//crates/rupyru-box",
+    ],
     # Under WORKSPACE, rules_rust is a stub without the rustc flags setting
     # that release_files sets, so building this would fail.
     tags = [] if BZLMOD_ENABLED else ["manual"],

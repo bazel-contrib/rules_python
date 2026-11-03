@@ -1,9 +1,7 @@
 use std::env;
 use std::fs;
 
-use exe_zip_maker_lib::{
-    compute_file_sha256_hex, create_exe_zip, replace_bytes, PLACEHOLDER,
-};
+use exe_zip_maker_lib::{compute_file_sha256_hex, create_exe_zip, replace_bytes, PLACEHOLDER};
 
 #[test]
 fn test_replace_bytes_none() {

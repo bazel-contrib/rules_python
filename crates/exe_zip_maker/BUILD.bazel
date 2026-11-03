@@ -1,4 +1,5 @@
-load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library")
+load("@rules_rust//rust:defs.bzl", "rust_library")
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")  # buildifier: disable=bzl-visibility
 
 package(default_visibility = ["//:__subpackages__"])
 
@@ -11,15 +12,6 @@ rust_library(
     deps = ["@crates//:sha2"],
 )
 
-rust_binary(
-    name = "exe_zip_maker",
-    srcs = ["src/main.rs"],
-    edition = "2021",
-    visibility = ["//visibility:public"],
-    deps = [":exe_zip_maker_lib"],
-)
-
-filegroup(
+distribution_filegroup(
     name = "distribution",
-    srcs = glob(["**"]),
 )

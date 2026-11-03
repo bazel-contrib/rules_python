@@ -23,15 +23,15 @@ def test_generate_artifacts_manifest(tmp_path: Path):
     manifest_json_file = tmp_path / "artifacts_manifest.json"
     manifest_bzl_file = tmp_path / "artifacts_manifest.bzl"
 
-    linux_bin = artifacts_dir / "exe_zip_maker-x86_64-unknown-linux-musl"
+    linux_bin = artifacts_dir / "rupyru-box-x86_64-unknown-linux-musl"
     linux_bin.write_bytes(b"linux-binary-contents")
     linux_sha = hashlib.sha256(b"linux-binary-contents").hexdigest()
 
-    win_bin = artifacts_dir / "exe_zip_maker-x86_64-pc-windows-msvc.exe"
+    win_bin = artifacts_dir / "rupyru-box-x86_64-pc-windows-msvc.exe"
     win_bin.write_bytes(b"windows-binary-contents")
     win_sha = hashlib.sha256(b"windows-binary-contents").hexdigest()
 
-    mac_bin = artifacts_dir / "exe_zip_maker-aarch64-apple-darwin"
+    mac_bin = artifacts_dir / "rupyru-box-aarch64-apple-darwin"
     mac_bin.write_bytes(b"mac-binary-contents")
     mac_sha = hashlib.sha256(b"mac-binary-contents").hexdigest()
 
@@ -56,33 +56,33 @@ def test_generate_artifacts_manifest(tmp_path: Path):
     base_url = "https://github.com/bazel-contrib/rules_python/releases/download/2.4.0"
     expected_manifest = {
         "artifacts": {
-            "exe_zip_maker": [
+            "rupyru-box": [
                 {
                     "exec_compatible_with": [
                         "@platforms//cpu:aarch64",
                         "@platforms//os:macos",
                     ],
-                    "name": "exe_zip_maker_aarch64_apple_darwin",
+                    "name": "rupyru_box_aarch64_apple_darwin",
                     "sha256": mac_sha,
-                    "urls": [f"{base_url}/exe_zip_maker-aarch64-apple-darwin"],
+                    "urls": [f"{base_url}/rupyru-box-aarch64-apple-darwin"],
                 },
                 {
                     "exec_compatible_with": [
                         "@platforms//cpu:x86_64",
                         "@platforms//os:windows",
                     ],
-                    "name": "exe_zip_maker_x86_64_pc_windows_msvc",
+                    "name": "rupyru_box_x86_64_pc_windows_msvc",
                     "sha256": win_sha,
-                    "urls": [f"{base_url}/exe_zip_maker-x86_64-pc-windows-msvc.exe"],
+                    "urls": [f"{base_url}/rupyru-box-x86_64-pc-windows-msvc.exe"],
                 },
                 {
                     "exec_compatible_with": [
                         "@platforms//cpu:x86_64",
                         "@platforms//os:linux",
                     ],
-                    "name": "exe_zip_maker_x86_64_unknown_linux_musl",
+                    "name": "rupyru_box_x86_64_unknown_linux_musl",
                     "sha256": linux_sha,
-                    "urls": [f"{base_url}/exe_zip_maker-x86_64-unknown-linux-musl"],
+                    "urls": [f"{base_url}/rupyru-box-x86_64-unknown-linux-musl"],
                 },
             ]
         }

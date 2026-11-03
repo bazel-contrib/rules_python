@@ -13,16 +13,17 @@ distribution_filegroup(
     name = "distribution",
 )
 
-# Whether to use the Rust implementation of exe_zip_maker.
+# Whether to use the unified Rust implementation (`rupyru-box`) for
+# build tools.
 # * `yes`: use it.
-# * `no`: use the built-in Python implementation.
+# * `no`: use the built-in Python or script implementations.
 # * `auto`: let rules_python decide. Currently `yes` when developing
 #   rules_python (TOOL_DEPS_DEV_ONLY = False), and `no` in releases.
 #
-# Enable with `--//python/private/toolchains:use_rust_exe_zip_maker=yes` or
-# disable with `--//python/private/toolchains:use_rust_exe_zip_maker=no`.
+# Enable with `--//python/private/toolchains:use_rust_tools=yes` or
+# disable with `--//python/private/toolchains:use_rust_tools=no`.
 string_flag(
-    name = "use_rust_exe_zip_maker",
+    name = "use_rust_tools",
     build_setting_default = "auto",
     values = [
         "auto",
@@ -33,23 +34,23 @@ string_flag(
 )
 
 config_setting(
-    name = "is_rust_exe_zip_maker_auto",
-    flag_values = {":use_rust_exe_zip_maker": "auto"},
+    name = "is_rust_tools_auto",
+    flag_values = {":use_rust_tools": "auto"},
     visibility = ["//visibility:private"],
 )
 
 config_setting(
-    name = "is_rust_exe_zip_maker_yes",
-    flag_values = {":use_rust_exe_zip_maker": "yes"},
+    name = "is_rust_tools_yes",
+    flag_values = {":use_rust_tools": "yes"},
     visibility = ["//visibility:private"],
 )
 
 selects.config_setting_group(
-    name = "is_rust_exe_zip_maker_enabled",
+    name = "is_rust_tools_enabled",
     match_any = [
-        ":is_rust_exe_zip_maker_yes",
+        ":is_rust_tools_yes",
     ] + ([
-        ":is_rust_exe_zip_maker_auto",
+        ":is_rust_tools_auto",
     ] if not config.tool_deps_dev_only else []),
     visibility = NOT_ACTUALLY_PUBLIC,
 )
@@ -61,6 +62,16 @@ bzl_library(
         "//python/private:artifacts_manifest",
         "//python/private:bazel_tools",
         "//python/private:text_util",
+        "//python/private:toolchain_types",
+    ],
+)
+
+bzl_library(
+    name = "rupyru_box_toolchain",
+    srcs = ["rupyru_box_toolchain.bzl"],
+    deps = [
+        "//python/private:py_interpreter_program",
+        "//python/private:sentinel_impl",
         "//python/private:toolchain_types",
     ],
 )

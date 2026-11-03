@@ -12,13 +12,13 @@ _ReleaseFilesInfo = provider(
 
 def _release_transition_impl(settings, attr):
     features = []
-    rustc_flags = []
+    rustc_flags = ["-Cstrip=symbols"]
     if attr.target_os == "linux":
         # Rust links glibc dynamically, so the files would require at least
         # the build machine's glibc version. Link it statically so they run on
         # older distros too. Rust links musl statically for most CPUs, but not
         # all, e.g. riscv64.
-        rustc_flags = ["-Ctarget-feature=+crt-static"]
+        rustc_flags.append("-Ctarget-feature=+crt-static")
         if attr.target_libc != "musl":
             # The gold linker can't link static glibc, so use bfd.
             rustc_flags.append("-Clink-arg=-fuse-ld=bfd")
@@ -26,7 +26,7 @@ def _release_transition_impl(settings, attr):
         # Statically link the C runtime so that the VC++ redistributable isn't
         # required.
         features = ["static_link_msvcrt"]
-        rustc_flags = ["-Ctarget-feature=+crt-static"]
+        rustc_flags.append("-Ctarget-feature=+crt-static")
     return {
         "//command_line_option:compilation_mode": "opt",
         # Only affects macOS. Without it, the minimum OS version is the build

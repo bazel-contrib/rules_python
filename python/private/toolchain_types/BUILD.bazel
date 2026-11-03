@@ -14,10 +14,10 @@ distribution_filegroup(
     name = "distribution",
 )
 
-# Toolchain providing the tool that creates self-executable zip files
-# (`<preamble> <zip> <output>`). It is optional: when no toolchain is
-# registered, rules fall back to the Python `//tools/zipapp:exe_zip_maker`.
+# Toolchain providing the unified Rust `rupyru-box` binary
+# (`rupyru-box <subcommand> ...`). It is optional: when no toolchain is
+# registered, rules fall back to their Python or script implementations.
 toolchain_type(
-    name = "exe_zip_maker",
+    name = "rupyru_box",
     visibility = NOT_ACTUALLY_PUBLIC,
 )

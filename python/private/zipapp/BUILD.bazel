@@ -33,7 +33,6 @@ bzl_library(
     name = "py_zipapp_rule",
     srcs = ["py_zipapp_rule.bzl"],
     deps = [
-        ":py_exe_zip_maker_toolchain",
         "//python/private:attributes",
         "//python/private:builders",
         "//python/private:common",
@@ -43,17 +42,8 @@ bzl_library(
         "//python/private:py_runtime_info",
         "//python/private:toolchain_types",
         "//python/private:transition_labels",
+        "//python/private/toolchains:rupyru_box_toolchain",
         "@bazel_skylib//lib:paths",
         "@rules_python_internal//:rules_python_config",
-    ],
-)
-
-bzl_library(
-    name = "py_exe_zip_maker_toolchain",
-    srcs = ["py_exe_zip_maker_toolchain.bzl"],
-    deps = [
-        "//python/private:py_interpreter_program",
-        "//python/private:sentinel_impl",
-        "//python/private:toolchain_types",
     ],
 )
