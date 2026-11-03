@@ -145,7 +145,7 @@ def _test_pypi_cache_writes_to_facts(env):
     cache.expect_facts().contains_exactly({
         "fact_version": "v3",  # Facts version
         "pkg@https://{PYPI_INDEX_URL}": {
-            "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "|sha256:sha_whl|Security issue",
+            "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "sha256:sha_whl||Security issue",
             "https://pypi.org/files/pkg-1.0.0.tar.gz": "sha256:sha_sdist",
         },
     })
@@ -164,7 +164,7 @@ def _test_pypi_cache_writes_to_facts(env):
     cache.expect_facts().contains_exactly({
         "fact_version": "v3",  # Facts version
         "pkg@https://{PYPI_INDEX_URL}": {
-            "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "|sha256:sha_whl|Security issue",
+            "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "sha256:sha_whl||Security issue",
             "https://pypi.org/files/pkg-1.0.0.tar.gz": "sha256:sha_sdist",
             "https://pypi.org/files/pkg-1.1.0-py3-none-any.whl": "sha256:sha_whl_2",
         },
@@ -177,7 +177,7 @@ def _test_pypi_cache_reads_from_facts(env):
     mock_ctx = mocks.mctx(facts = {
         "fact_version": "v3",  # Facts version
         "pkg@https://{PYPI_INDEX_URL}": {
-            "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "|sha256:sha_whl|Security issue",
+            "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "sha256:sha_whl||Security issue",
             "https://pypi.org/files/pkg-1.0.0.tar.gz": "sha256:sha_sdist",
         },
     })
@@ -262,7 +262,7 @@ def _test_pypi_cache_facts_different_filename(env):
     cache.expect_facts().contains_exactly({
         "fact_version": "v3",
         "pkg@https://{PYPI_INDEX_URL}": {
-            "https://pypi.org/files/pkg-1.0.0.tar.gz": "custom-pkg-1.0.0.tar.gz|sha256:sha_custom",
+            "https://pypi.org/files/pkg-1.0.0.tar.gz": "sha256:sha_custom|custom-pkg-1.0.0.tar.gz",
         },
     })
 
@@ -452,10 +452,10 @@ def _test_pypi_cache_facts_round_trip_all_entry_shapes(env):
     cache.expect_facts().contains_exactly({
         "fact_version": "v3",
         "pkg@https://{PYPI_INDEX_URL}": {
-            "https://pypi.org/files/download/custom-yanked.whl": "custom_yanked_pkg-1.0.0-py3-none-any.whl|sha256:custom_yanked_whl|Yanked for testing",
-            "https://pypi.org/files/download/custom.whl": "custom_pkg-1.0.0-py3-none-any.whl|sha256:custom_whl",
+            "https://pypi.org/files/download/custom-yanked.whl": "sha256:custom_yanked_whl|custom_yanked_pkg-1.0.0-py3-none-any.whl|Yanked for testing",
+            "https://pypi.org/files/download/custom.whl": "sha256:custom_whl|custom_pkg-1.0.0-py3-none-any.whl",
             "https://pypi.org/files/pkg-1.0.0.tar.gz": "sha256:default_sdist",
-            "https://pypi.org/files/pkg-1.0.0.zip": "|sha256:yanked_sdist|Security issue | use 2.0.0",
+            "https://pypi.org/files/pkg-1.0.0.zip": "sha256:yanked_sdist||Security issue | use 2.0.0",
         },
     })
 

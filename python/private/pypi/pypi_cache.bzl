@@ -20,8 +20,7 @@ load(":version_from_filename.bzl", "version_from_filename")
 #      `<package>#<index_url>` and distribution facts are keyed by
 #      `<distribution>@<root_url>`. Each distribution URL maps to a single
 #      string with only the information that cannot be derived from the URL:
-#      `<digest>`, `<filename>|<digest>`, `|<digest>|<yanked>` or
-#      `<filename>|<digest>|<yanked>`.
+#      `<digest>[|<filename>[|<yanked>]]`.
 _FACT_VERSION = "v3"
 
 def pypi_cache(mctx = None, store = None):
@@ -353,17 +352,18 @@ def _dist_fact_key(index_url):
 def _encode_dist_entry(digest, dist):
     """Encode a distribution into a compact string.
 
-    Only the digest is stored if the filename can be derived from the URL and
-    the distribution is not yanked. Otherwise the extra fields are appended in
-    a fixed order so that reading the value back is unambiguous:
+    The format is `<digest>[|<filename>[|<yanked>]]`. Only the digest is
+    stored if the filename can be derived from the URL and the distribution
+    is not yanked, which is the common case. Otherwise the optional fields are
+    appended in a fixed order so that reading the value back is unambiguous:
 
     * `<digest>` - the filename is the URL basename and it is not yanked.
-    * `<filename>|<digest>` - the filename differs from the URL basename.
-    * `|<digest>|<yanked>` - the filename is the URL basename and it is yanked.
-    * `<filename>|<digest>|<yanked>` - both differ.
+    * `<digest>|<filename>` - the filename differs from the URL basename.
+    * `<digest>||<yanked>` - the filename is the URL basename and it is yanked.
+    * `<digest>|<filename>|<yanked>` - both differ.
 
-    The empty filename field in the yanked case keeps the fields in a fixed
-    order and means that the yank reason may itself contain `|`.
+    The yank reason is the last field, so it may itself contain `|`. An empty
+    yank reason is still distinct from not being yanked.
 
     Args:
         digest: {type}`str` The canonical `<algo>:<digest>` value.
@@ -376,18 +376,12 @@ def _encode_dist_entry(digest, dist):
     has_diff = dist.filename != default_filename
     is_yanked = dist.yanked != None
 
-    parts = []
-    if has_diff:
-        parts.append(dist.filename)
-    elif is_yanked:
-        parts.append("")
-
-    parts.append(digest)
-
     if is_yanked:
-        parts.append(dist.yanked)
-
-    return "|".join(parts)
+        return "|".join([digest, dist.filename if has_diff else "", dist.yanked])
+    elif has_diff:
+        return digest + "|" + dist.filename
+    else:
+        return digest
 
 def _decode_dist_entry(entry, url):
     """Decode a distribution from its compact string representation.
@@ -401,14 +395,12 @@ def _decode_dist_entry(entry, url):
     Returns:
         A tuple of `(filename, digest, yanked)`.
     """
-    _, _, default_filename = url.rpartition("/")
     parts = entry.split("|", 2)
+    digest = parts[0]
+    filename = parts[1] if len(parts) > 1 else ""
+    yanked = parts[2] if len(parts) > 2 else None
 
-    if len(parts) == 1:
-        return default_filename, parts[0], None
+    if not filename:
+        _, _, filename = url.rpartition("/")
 
-    filename = parts[0] or default_filename
-    if len(parts) == 2:
-        return filename, parts[1], None
-
-    return filename, parts[1], parts[2]
+    return filename, digest, yanked
