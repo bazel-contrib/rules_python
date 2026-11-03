@@ -17,7 +17,7 @@ load(":version_from_filename.bzl", "version_from_filename")
 # v2: the `dist_hashes` values and the `dist_yanked` keys are canonical
 #      `<algo>:<digest>` strings instead of bare sha256 hex digests.
 # v3: facts are shallow and compact. Index URL facts are keyed by
-#      `<package>#<index_url>` and distribution facts are keyed by
+#      `<pkg_normalized>@<index_url>` and distribution facts are keyed by
 #      `<distribution>@<root_url>`. Each distribution URL maps to a single
 #      string with only the information that cannot be derived from the URL:
 #      `<digest>[|<filename>[|<yanked>]]`.
@@ -217,7 +217,7 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
     if type(requested_versions) == "dict":
         result = {}
         for pkg in requested_versions.keys():
-            url = known_facts.get(pkg + "#" + index_url)
+            url = known_facts.get(_index_fact_key(pkg, index_url))
             if url == None:
                 # If the results are incomplete, return None, so that we can
                 # fetch sources from the internet again.
@@ -310,10 +310,10 @@ def _store_facts(facts, fact_version, index_url, value):
     facts: {
       "fact_version": "<_FACT_VERSION>",
 
-      # From the index page, e.g. https://pypi.org/simple/
-      "<pkg_normalized>#<index_url>": "<package page URL>",
+      # From the index page, e.g. `foo@https://pypi.org/simple/`
+      "<pkg_normalized>@<index_url>": "<package page URL>",
 
-      # From the package page, e.g. https://pypi.org/simple/foo/
+      # From the package page, e.g. `foo@https://pypi.org/simple`
       "<distribution>@<root_url>": {
         "<dist url>": "<encoded entry>",  # see `_encode_dist_entry`
       },
@@ -329,7 +329,7 @@ def _store_facts(facts, fact_version, index_url, value):
 
     if type(value) == "dict":
         for pkg, url in value.items():
-            facts[pkg + "#" + index_url] = url
+            facts[_index_fact_key(pkg, index_url)] = url
         return value
 
     fact_key = _dist_fact_key(index_url)
@@ -343,12 +343,32 @@ def _store_facts(facts, fact_version, index_url, value):
 
     return value
 
+def _index_fact_key(pkg, index_url):
+    """Return the fact key for a package found on an index page.
+
+    The key is `<pkg_normalized>@<index_url>`, so that the lockfile entries
+    are grouped by the package name.
+
+    The `index_url` always ends with `/` (see `simpleapi_download`), whereas
+    the `root_url` in {obj}`_dist_fact_key` never does. This is what keeps
+    the two kinds of keys from colliding for the same package and index.
+
+    Args:
+        pkg: {type}`str` The normalized package name.
+        index_url: {type}`str` The URL of the index page, e.g.
+            `https://pypi.org/simple/`.
+
+    Returns:
+        {type}`str` The fact key, e.g. `foo@https://pypi.org/simple/`.
+    """
+    return pkg + "@" + index_url
+
 def _dist_fact_key(index_url):
     """Return the fact key for the distributions of a package index page.
 
     The key is `<distribution>@<root_url>`, so that the lockfile entries are
-    grouped by the package name, similar to `<package>#<index_url>` keys. The
-    `@` separator keeps the two kinds of keys from colliding.
+    grouped by the package name. The `root_url` never ends with `/`, which
+    keeps it distinct from the {obj}`_index_fact_key` for the same package.
 
     Args:
         index_url: {type}`str` The URL of the package page in the index, e.g.

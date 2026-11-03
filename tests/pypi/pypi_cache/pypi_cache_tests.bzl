@@ -695,7 +695,7 @@ def _test_pypi_cache_writes_index_urls_to_facts(env):
 
     cache.expect_facts().contains_exactly({
         "fact_version": "v3",
-        "pkg-a#https://pypi.org/simple/": "https://pypi.org/simple/pkg-a/",
+        "pkg-a@https://pypi.org/simple/": "https://pypi.org/simple/pkg-a/",
     })
 
     key = ("https://pypi.org/simple/", "https://pypi.org/simple/", {"pkg-b": None})
@@ -703,18 +703,56 @@ def _test_pypi_cache_writes_index_urls_to_facts(env):
 
     cache.expect_facts().contains_exactly({
         "fact_version": "v3",
-        "pkg-a#https://pypi.org/simple/": "https://pypi.org/simple/pkg-a/",
-        "pkg-b#https://pypi.org/simple/": "https://pypi.org/simple/pkg-b/",
+        "pkg-a@https://pypi.org/simple/": "https://pypi.org/simple/pkg-a/",
+        "pkg-b@https://pypi.org/simple/": "https://pypi.org/simple/pkg-b/",
     })
 
 _tests.append(_test_pypi_cache_writes_index_urls_to_facts)
+
+def _test_pypi_cache_index_and_dist_facts_do_not_collide(env):
+    """Verifies that index page and package page facts for the same package coexist."""
+    mock_ctx = mocks.mctx(facts = {})
+    cache = _cache(env, mctx = mock_ctx)
+
+    index_key = ("https://pypi.org/simple/", "https://pypi.org/simple/", {"pkg": None})
+    cache.setdefault(index_key, {"pkg": "https://pypi.org/simple/pkg/"})
+
+    dist = struct(
+        digest = "sha256:whl",
+        version = "1.0.0",
+        filename = "pkg-1.0.0-py3-none-any.whl",
+        metadata_url = "",
+        metadata_sha256 = "",
+        url = "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl",
+        yanked = None,
+    )
+    dist_key = ("https://pypi.org/simple/pkg/", "https://pypi.org/simple/pkg/", ["1.0.0"])
+    cache.setdefault(dist_key, struct(
+        sdists = {},
+        whls = {"sha256:whl": dist},
+        hashes_by_version = {"1.0.0": ["sha256:whl"]},
+    ))
+
+    cache.expect_facts().contains_exactly({
+        "fact_version": "v3",
+        "pkg@https://pypi.org/simple": {
+            "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "sha256:whl",
+        },
+        "pkg@https://pypi.org/simple/": "https://pypi.org/simple/pkg/",
+    })
+
+    cache2 = _cache(env, mctx = mocks.mctx(facts = cache.raw_facts()))
+    cache2.get(index_key).contains_exactly({"pkg": "https://pypi.org/simple/pkg/"})
+    cache2.get(dist_key).whls().contains_exactly({"sha256:whl": dist})
+
+_tests.append(_test_pypi_cache_index_and_dist_facts_do_not_collide)
 
 def _test_pypi_cache_reads_index_urls_from_facts(env):
     """Verifies that reading index_urls from facts works correctly."""
     mock_ctx = mocks.mctx(facts = {
         "fact_version": "v3",
-        "pkg-a#https://pypi.org/simple/": "https://pypi.org/simple/pkg-a/",
-        "pkg-b#https://pypi.org/simple/": "https://pypi.org/simple/pkg-b/",
+        "pkg-a@https://pypi.org/simple/": "https://pypi.org/simple/pkg-a/",
+        "pkg-b@https://pypi.org/simple/": "https://pypi.org/simple/pkg-b/",
     })
     cache = _cache(env, mctx = mock_ctx)
 
@@ -740,7 +778,7 @@ def _test_pypi_cache_reads_index_urls_from_facts_incomplete(env):
     """Verifies that incomplete index_urls facts returns None (forces fresh download)."""
     mock_ctx = mocks.mctx(facts = {
         "fact_version": "v3",
-        "pkg-a#https://pypi.org/simple/": "https://pypi.org/simple/pkg-a/",
+        "pkg-a@https://pypi.org/simple/": "https://pypi.org/simple/pkg-a/",
     })
     cache = _cache(env, mctx = mock_ctx)
 
@@ -759,9 +797,9 @@ def _test_pypi_cache_reads_index_urls_from_facts_drops_unaccessed(env):
     """
     mock_ctx = mocks.mctx(facts = {
         "fact_version": "v3",
-        "pkg-a#https://pypi.org/simple/": "https://pypi.org/simple/pkg-a/",
-        "pkg-b#https://pypi.org/simple/": "https://pypi.org/simple/pkg-b/",
-        "pkg-c#https://pypi.org/simple/": "https://pypi.org/simple/pkg-c/",
+        "pkg-a@https://pypi.org/simple/": "https://pypi.org/simple/pkg-a/",
+        "pkg-b@https://pypi.org/simple/": "https://pypi.org/simple/pkg-b/",
+        "pkg-c@https://pypi.org/simple/": "https://pypi.org/simple/pkg-c/",
     })
     cache = _cache(env, mctx = mock_ctx)
 
@@ -776,8 +814,8 @@ def _test_pypi_cache_reads_index_urls_from_facts_drops_unaccessed(env):
     # get_facts() must only return the requested (accessed) subset; pkg-c is dropped
     cache.expect_facts().contains_exactly({
         "fact_version": "v3",
-        "pkg-a#https://pypi.org/simple/": "https://pypi.org/simple/pkg-a/",
-        "pkg-b#https://pypi.org/simple/": "https://pypi.org/simple/pkg-b/",
+        "pkg-a@https://pypi.org/simple/": "https://pypi.org/simple/pkg-a/",
+        "pkg-b@https://pypi.org/simple/": "https://pypi.org/simple/pkg-b/",
     })
 
 _tests.append(_test_pypi_cache_reads_index_urls_from_facts_drops_unaccessed)
