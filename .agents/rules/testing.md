@@ -29,7 +29,7 @@ description: Bazel test execution, integration test flags, and lockfiles
   modified or bumped by Dependabot, update the integration lockfile by running
   `bazel mod deps --lockfile_mode=update` in `tests/integration/bzlmod_lockfile`
   and verify with
-  `bazel test //tests/integration:bzlmod_lockfile_test_bazel_9.1.0`.
+  `bazel test //tests/integration:bzlmod_lockfile_test_bazel_9.3.1`.
 
 ## Documentation Flake Handling
 * When building `//docs:docs` fails with exit code 2, treat it as a known
