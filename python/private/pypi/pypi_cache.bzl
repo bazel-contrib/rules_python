@@ -297,6 +297,25 @@ def _store_facts(facts, fact_version, index_url, value):
     storing what we would need to fetch from the internet. Any derivative
     information we can get from this that can be achieved using pure Starlark
     functions should be done in Starlark.
+
+    All keys are top-level so that Bazel's lockfile merge driver can merge
+    concurrent changes to different packages cleanly. The schema is:
+
+    ```
+    facts: {
+      "fact_version": "<_FACT_VERSION>",
+
+      # From the index page, e.g. https://pypi.org/simple/
+      "<pkg_normalized>#<index_url>": "<package page URL>",
+
+      # From the package page, e.g. https://pypi.org/simple/foo/
+      "<distribution>@<root_url>": {
+        "<dist url>": "<encoded entry>",  # see `_encode_dist_entry`
+      },
+    }
+    ```
+
+    Adding a new field to the encoded entry requires bumping `_FACT_VERSION`.
     """
     if not value:
         return value
