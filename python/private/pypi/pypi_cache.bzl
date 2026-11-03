@@ -333,8 +333,13 @@ def _store_facts(facts, fact_version, index_url, value):
         return value
 
     fact_key = _dist_fact_key(index_url)
-    for digest, d in (value.sdists | value.whls).items():
-        facts.setdefault(fact_key, {})[d.url] = _encode_dist_entry(digest, d)
+    entries = facts.setdefault(fact_key, {})
+
+    # NOTE: iterate separately instead of `sdists | whls`, because both are
+    # keyed by digest and hashless sdists and wheels would collide on `""`.
+    for dists in (value.sdists, value.whls):
+        for digest, d in dists.items():
+            entries[d.url] = _encode_dist_entry(digest, d)
 
     return value
 
