@@ -505,6 +505,85 @@ def _test_pypi_cache_facts_round_trip_all_entry_shapes(env):
 
 _tests.append(_test_pypi_cache_facts_round_trip_all_entry_shapes)
 
+def _test_pypi_cache_facts_round_trip_edge_cases(env):
+    """Verifies the facts round trip for empty digests, empty yank reasons and URL quirks."""
+    mock_ctx = mocks.mctx(facts = {})
+    cache = _cache(env, mctx = mock_ctx)
+
+    sdists = {
+        # Hashless and yanked.
+        "": struct(
+            digest = "",
+            version = "2.0.0",
+            filename = "pkg-2.0.0.tar.gz",
+            metadata_url = "",
+            metadata_sha256 = "",
+            url = "https://pypi.org/files/pkg-2.0.0.tar.gz",
+            yanked = "Broken",
+        ),
+        # Yanked without a reason must stay distinct from not yanked.
+        "sha256:empty_reason": struct(
+            digest = "sha256:empty_reason",
+            version = "1.0.0",
+            filename = "pkg-1.0.0.tar.gz",
+            metadata_url = "",
+            metadata_sha256 = "",
+            url = "https://pypi.org/files/pkg-1.0.0.tar.gz",
+            yanked = "",
+        ),
+    }
+    whls = {
+        # Hashless and the filename differs from the URL basename.
+        "": struct(
+            digest = "",
+            version = "2.0.0",
+            filename = "pkg-2.0.0-py3-none-any.whl",
+            metadata_url = "",
+            metadata_sha256 = "",
+            url = "https://pypi.org/files/download/renamed.whl",
+            yanked = None,
+        ),
+        # The query string makes the URL basename differ from the filename.
+        "sha256:query": struct(
+            digest = "sha256:query",
+            version = "1.0.0",
+            filename = "pkg-1.0.0-py3-none-any.whl",
+            metadata_url = "",
+            metadata_sha256 = "",
+            url = "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl?token=abc",
+            yanked = None,
+        ),
+    }
+    fake_result = struct(
+        sdists = sdists,
+        whls = whls,
+        hashes_by_version = {
+            "1.0.0": ["sha256:empty_reason", "sha256:query"],
+            "2.0.0": ["", ""],
+        },
+    )
+
+    key = ("https://{PYPI_INDEX_URL}/pkg/", "https://pypi.org/simple/pkg/", ["1.0.0", "2.0.0"])
+    cache.setdefault(key, fake_result)
+
+    cache.expect_facts().contains_exactly({
+        "fact_version": "v3",
+        "pkg@https://{PYPI_INDEX_URL}": {
+            "https://pypi.org/files/download/renamed.whl": "|pkg-2.0.0-py3-none-any.whl",
+            "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl?token=abc": "sha256:query|pkg-1.0.0-py3-none-any.whl",
+            "https://pypi.org/files/pkg-1.0.0.tar.gz": "sha256:empty_reason||",
+            "https://pypi.org/files/pkg-2.0.0.tar.gz": "||Broken",
+        },
+    })
+
+    cache2 = _cache(env, mctx = mocks.mctx(facts = cache.raw_facts()))
+    got = cache2.get(key)
+    got.sdists().contains_exactly(sdists)
+    got.whls().contains_exactly(whls)
+    got.hashes_by_version().contains_exactly(fake_result.hashes_by_version)
+
+_tests.append(_test_pypi_cache_facts_round_trip_edge_cases)
+
 def _test_pypi_cache_facts_no_digest_round_trip(env):
     """Verifies that distributions without a digest are kept in the facts."""
     mock_ctx = mocks.mctx(facts = {})
