@@ -230,10 +230,12 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
         # computed facts so they get cleaned up from the lockfile.
         return _store_facts(facts, facts_version, index_url, result)
 
+    fact_key = _dist_fact_key(index_url)
     known_sources = {}
     retrieved_versions = {}
+    used_entries = {}
 
-    for url, entry in known_facts.get(_dist_fact_key(index_url), {}).items():
+    for url, entry in known_facts.get(fact_key, {}).items():
         if type(entry) != "string":
             # Defensive: `fact_version` guards against older schemas, but the
             # facts come from a user-editable lockfile (e.g. a botched merge),
@@ -247,6 +249,7 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
             continue
 
         retrieved_versions[version] = True
+        used_entries[url] = entry
 
         if filename.endswith(".whl"):
             dists = known_sources.setdefault("whls", {})
@@ -277,7 +280,13 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
         # internet again.
         return None
 
-    output = struct(
+    # Persist these facts for the next run because we have used them. The raw
+    # entries are copied as-is instead of re-encoding the decoded structs, so
+    # that a no-op run leaves the lockfile unchanged.
+    facts["fact_version"] = facts_version
+    facts.setdefault(fact_key, {}).update(used_entries)
+
+    return struct(
         whls = known_sources.get("whls", {}),
         sdists = known_sources.get("sdists", {}),
         hashes_by_version = {
@@ -285,9 +294,6 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
             for k, v in known_sources.get("hashes_by_version", {}).items()
         },
     )
-
-    # Persist these facts for the next run because we have used them.
-    return _store_facts(facts, facts_version, index_url, output)
 
 def _store_facts(facts, fact_version, index_url, value):
     """Store values as facts in the lock file.
