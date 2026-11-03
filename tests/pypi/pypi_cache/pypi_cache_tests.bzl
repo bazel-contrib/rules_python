@@ -144,7 +144,7 @@ def _test_pypi_cache_writes_to_facts(env):
     # Then when we get facts at the end
     cache.get_facts().contains_exactly({
         "fact_version": "v3",  # Facts version
-        "https://{PYPI_INDEX_URL} pkg": {
+        "pkg@https://{PYPI_INDEX_URL}": {
             "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "|sha256:sha_whl|Security issue",
             "https://pypi.org/files/pkg-1.0.0.tar.gz": "sha256:sha_sdist",
         },
@@ -163,7 +163,7 @@ def _test_pypi_cache_writes_to_facts(env):
     # Then when we get facts at the end
     cache.get_facts().contains_exactly({
         "fact_version": "v3",  # Facts version
-        "https://{PYPI_INDEX_URL} pkg": {
+        "pkg@https://{PYPI_INDEX_URL}": {
             "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "|sha256:sha_whl|Security issue",
             "https://pypi.org/files/pkg-1.0.0.tar.gz": "sha256:sha_sdist",
             "https://pypi.org/files/pkg-1.1.0-py3-none-any.whl": "sha256:sha_whl_2",
@@ -176,7 +176,7 @@ def _test_pypi_cache_reads_from_facts(env):
     """Verifies that setting a value in the cache also populates the facts store."""
     mock_ctx = mocks.mctx(facts = {
         "fact_version": "v3",  # Facts version
-        "https://{PYPI_INDEX_URL} pkg": {
+        "pkg@https://{PYPI_INDEX_URL}": {
             "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "|sha256:sha_whl|Security issue",
             "https://pypi.org/files/pkg-1.0.0.tar.gz": "sha256:sha_sdist",
         },
@@ -261,7 +261,7 @@ def _test_pypi_cache_facts_different_filename(env):
     # Verify facts store includes the custom filename separated by pipe
     cache.get_facts().contains_exactly({
         "fact_version": "v3",
-        "https://{PYPI_INDEX_URL} pkg": {
+        "pkg@https://{PYPI_INDEX_URL}": {
             "https://pypi.org/files/pkg-1.0.0.tar.gz": "custom-pkg-1.0.0.tar.gz|sha256:sha_custom",
         },
     })
@@ -287,7 +287,7 @@ def _test_pypi_cache_reads_from_facts_drops_unaccessed_dists(env):
     """Verifies that dists for unaccessed versions are dropped from computed facts."""
     mock_ctx = mocks.mctx(facts = {
         "fact_version": "v3",
-        "https://{PYPI_INDEX_URL} pkg": {
+        "pkg@https://{PYPI_INDEX_URL}": {
             "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "sha256:sha_whl_1.0.0",
             "https://pypi.org/files/pkg-1.0.0.tar.gz": "sha256:sha_sdist_1.0.0",
             "https://pypi.org/files/pkg-1.1.0-py3-none-any.whl": "sha256:sha_whl_1.1.0",
@@ -334,7 +334,7 @@ def _test_pypi_cache_reads_from_facts_drops_unaccessed_dists(env):
     # get_facts() must only contain version 1.0.0 data; 1.1.0 is dropped
     cache.get_facts().contains_exactly({
         "fact_version": "v3",
-        "https://{PYPI_INDEX_URL} pkg": {
+        "pkg@https://{PYPI_INDEX_URL}": {
             "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "sha256:sha_whl_1.0.0",
             "https://pypi.org/files/pkg-1.0.0.tar.gz": "sha256:sha_sdist_1.0.0",
         },
@@ -369,7 +369,7 @@ def _test_pypi_cache_facts_non_sha256_round_trip(env):
     # The hash algorithm is stored in the facts
     cache.get_facts().contains_exactly({
         "fact_version": "v3",  # Facts version
-        "https://{PYPI_INDEX_URL} pkg": {
+        "pkg@https://{PYPI_INDEX_URL}": {
             "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "sha512:whl_digest",
         },
     })
@@ -377,7 +377,7 @@ def _test_pypi_cache_facts_non_sha256_round_trip(env):
     # And a cache that only has the facts reconstructs the digests
     cache = _cache(env, mctx = mocks.mctx(facts = {
         "fact_version": "v3",  # Facts version
-        "https://{PYPI_INDEX_URL} pkg": {
+        "pkg@https://{PYPI_INDEX_URL}": {
             "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "sha512:whl_digest",
         },
     }))
@@ -451,7 +451,7 @@ def _test_pypi_cache_facts_round_trip_all_entry_shapes(env):
 
     cache.get_facts().contains_exactly({
         "fact_version": "v3",
-        "https://{PYPI_INDEX_URL} pkg": {
+        "pkg@https://{PYPI_INDEX_URL}": {
             "https://pypi.org/files/download/custom-yanked.whl": "custom_yanked_pkg-1.0.0-py3-none-any.whl|sha256:custom_yanked_whl|Yanked for testing",
             "https://pypi.org/files/download/custom.whl": "custom_pkg-1.0.0-py3-none-any.whl|sha256:custom_whl",
             "https://pypi.org/files/pkg-1.0.0.tar.gz": "sha256:default_sdist",
@@ -531,7 +531,7 @@ def _test_pypi_cache_facts_no_digest_round_trip(env):
 
     cache.get_facts().contains_exactly({
         "fact_version": "v3",
-        "https://{PYPI_INDEX_URL} pkg": {
+        "pkg@https://{PYPI_INDEX_URL}": {
             "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "",
         },
     })

@@ -18,7 +18,7 @@ load(":version_from_filename.bzl", "version_from_filename")
 #      `<algo>:<digest>` strings instead of bare sha256 hex digests.
 # v3: facts are shallow and compact. Index URL facts are keyed by
 #      `<package>#<index_url>` and distribution facts are keyed by
-#      `<root_url> <distribution>`. Each distribution URL maps to a single
+#      `<distribution>@<root_url>`. Each distribution URL maps to a single
 #      string with only the information that cannot be derived from the URL:
 #      `<digest>`, `<filename>|<digest>`, `|<digest>|<yanked>` or
 #      `<filename>|<digest>|<yanked>`.
@@ -232,15 +232,9 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
         return _store_facts(facts, facts_version, index_url, result)
 
     known_sources = {}
-
-    root_url, _, distribution = index_url.rstrip("/").rpartition("/")
-    distribution = distribution.rstrip("/")
-    root_url = root_url.rstrip("/")
-
-    fact_key = root_url + " " + distribution
     retrieved_versions = {}
 
-    for url, entry in known_facts.get(fact_key, {}).items():
+    for url, entry in known_facts.get(_dist_fact_key(index_url), {}).items():
         if type(entry) != "string":
             # Defensive: `fact_version` guards against older schemas, but the
             # facts come from a user-editable lockfile (e.g. a botched merge),
@@ -314,16 +308,28 @@ def _store_facts(facts, fact_version, index_url, value):
             facts[pkg + "#" + index_url] = url
         return value
 
-    root_url, _, distribution = index_url.rstrip("/").rpartition("/")
-    distribution = distribution.rstrip("/")
-    root_url = root_url.rstrip("/")
-
-    fact_key = root_url + " " + distribution
-
+    fact_key = _dist_fact_key(index_url)
     for digest, d in (value.sdists | value.whls).items():
         facts.setdefault(fact_key, {})[d.url] = _encode_dist_entry(digest, d)
 
     return value
+
+def _dist_fact_key(index_url):
+    """Return the fact key for the distributions of a package index page.
+
+    The key is `<distribution>@<root_url>`, so that the lockfile entries are
+    grouped by the package name, similar to `<package>#<index_url>` keys. The
+    `@` separator keeps the two kinds of keys from colliding.
+
+    Args:
+        index_url: {type}`str` The URL of the package page in the index, e.g.
+            `https://pypi.org/simple/foo/`.
+
+    Returns:
+        {type}`str` The fact key, e.g. `foo@https://pypi.org/simple`.
+    """
+    root_url, _, distribution = index_url.rstrip("/").rpartition("/")
+    return distribution + "@" + root_url.rstrip("/")
 
 def _encode_dist_entry(digest, dist):
     """Encode a distribution into a compact string.
