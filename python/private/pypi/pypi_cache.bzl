@@ -250,6 +250,9 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
 
     for url, entry in known_facts.get(fact_key, {}).items():
         if type(entry) != "string":
+            # Defensive: `fact_version` guards against older schemas, but the
+            # facts come from a user-editable lockfile (e.g. a botched merge),
+            # so skip anything that is not an encoded entry instead of failing.
             continue
 
         filename, digest, yanked = _decode_dist_entry(entry, url)
