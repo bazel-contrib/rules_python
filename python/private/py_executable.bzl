@@ -1227,6 +1227,7 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
 
     # Sourceless precompiled builds omit the main py file from outputs, so
     # main has to be pointed to the precompiled main instead.
+    # NOTE: main_py is None when main_module is used
     if (main_py != None and
         main_py not in precompile_result.keep_srcs and
         PycCollectionAttr.is_pyc_collection_enabled(ctx)):
