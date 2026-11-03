@@ -216,28 +216,20 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
         return None
 
     if type(requested_versions) == "dict":
-        raw_index_urls = {}
+        result = {}
         for pkg in requested_versions.keys():
-            fact_key = pkg + "#" + index_url
-            if fact_key in known_facts:
-                raw_index_urls[pkg] = known_facts[fact_key]
-
-        result = _filter_packages(
-            dists = raw_index_urls,
-            requested_versions = requested_versions,
-        )
-        if result:
-            if len(result) != len(requested_versions):
+            url = known_facts.get(pkg + "#" + index_url)
+            if url == None:
                 # If the results are incomplete, return None, so that we can
                 # fetch sources from the internet again.
                 return None
+            result[pkg] = url
 
-            # Only persist the accessed (requested) packages. Packages that
-            # exist in known_facts but are not in requested_versions (e.g.
-            # removed from all requirements files) are dropped from the
-            # computed facts so they get cleaned up from the lockfile.
-            _store_facts(facts, facts_version, index_url, result)
-        return result
+        # Only persist the accessed (requested) packages. Packages that
+        # exist in known_facts but are not in requested_versions (e.g.
+        # removed from all requirements files) are dropped from the
+        # computed facts so they get cleaned up from the lockfile.
+        return _store_facts(facts, facts_version, index_url, result)
 
     known_sources = {}
 
