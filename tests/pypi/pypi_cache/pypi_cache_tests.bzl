@@ -35,8 +35,8 @@ def _cache(env, **kwargs):
         get = lambda *args, **kwargs: _expect(
             cache.get(*args, **kwargs),
         ),
-        facts = lambda: cache.get_facts(),
-        get_facts = lambda: env.expect.that_dict(cache.get_facts()),
+        raw_facts = lambda: cache.get_facts(),
+        expect_facts = lambda: env.expect.that_dict(cache.get_facts()),
     )
 
 def _test_memory_cache_hit(env):
@@ -142,7 +142,7 @@ def _test_pypi_cache_writes_to_facts(env):
     })
 
     # Then when we get facts at the end
-    cache.get_facts().contains_exactly({
+    cache.expect_facts().contains_exactly({
         "fact_version": "v3",  # Facts version
         "pkg@https://{PYPI_INDEX_URL}": {
             "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "|sha256:sha_whl|Security issue",
@@ -161,7 +161,7 @@ def _test_pypi_cache_writes_to_facts(env):
     })
 
     # Then when we get facts at the end
-    cache.get_facts().contains_exactly({
+    cache.expect_facts().contains_exactly({
         "fact_version": "v3",  # Facts version
         "pkg@https://{PYPI_INDEX_URL}": {
             "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "|sha256:sha_whl|Security issue",
@@ -187,7 +187,7 @@ def _test_pypi_cache_reads_from_facts(env):
 
     # Then we would get empty facts because we haven't accessed any of the known facts.
     # This simulates the dropping of the facts of requirements that are no longer needed.
-    cache.get_facts().contains_exactly({})
+    cache.expect_facts().contains_exactly({})
 
     # When we get the
     got = cache.get(key)
@@ -225,7 +225,7 @@ def _test_pypi_cache_reads_from_facts(env):
     got.hashes_by_version().contains_exactly(expected_result.hashes_by_version)
 
     # Then when we store the same facts back again, because we accessed the cached keys.
-    cache.get_facts().contains_exactly(mock_ctx.facts)
+    cache.expect_facts().contains_exactly(mock_ctx.facts)
 
     # When we request more than what we have, we will return nothing
     key = ("https://{PYPI_INDEX_URL}/pkg/", "https://pypi.org/simple/pkg/", ["1.0.0", "1.1.0"])
@@ -259,7 +259,7 @@ def _test_pypi_cache_facts_different_filename(env):
     cache.setdefault(key, fake_result)
 
     # Verify facts store includes the custom filename separated by pipe
-    cache.get_facts().contains_exactly({
+    cache.expect_facts().contains_exactly({
         "fact_version": "v3",
         "pkg@https://{PYPI_INDEX_URL}": {
             "https://pypi.org/files/pkg-1.0.0.tar.gz": "custom-pkg-1.0.0.tar.gz|sha256:sha_custom",
@@ -267,7 +267,7 @@ def _test_pypi_cache_facts_different_filename(env):
     })
 
     # Verify reading back from facts reconstructs the correct filename
-    cache2 = _cache(env, mctx = mocks.mctx(facts = cache.facts()))
+    cache2 = _cache(env, mctx = mocks.mctx(facts = cache.raw_facts()))
     got = cache2.get(key)
     got.sdists().contains_exactly({
         "sha256:sha_custom": struct(
@@ -332,7 +332,7 @@ def _test_pypi_cache_reads_from_facts_drops_unaccessed_dists(env):
     got.hashes_by_version().contains_exactly(expected.hashes_by_version)
 
     # get_facts() must only contain version 1.0.0 data; 1.1.0 is dropped
-    cache.get_facts().contains_exactly({
+    cache.expect_facts().contains_exactly({
         "fact_version": "v3",
         "pkg@https://{PYPI_INDEX_URL}": {
             "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "sha256:sha_whl_1.0.0",
@@ -367,7 +367,7 @@ def _test_pypi_cache_facts_non_sha256_round_trip(env):
     cache.setdefault(key, fake_result)
 
     # The hash algorithm is stored in the facts
-    cache.get_facts().contains_exactly({
+    cache.expect_facts().contains_exactly({
         "fact_version": "v3",  # Facts version
         "pkg@https://{PYPI_INDEX_URL}": {
             "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "sha512:whl_digest",
@@ -449,7 +449,7 @@ def _test_pypi_cache_facts_round_trip_all_entry_shapes(env):
     key = ("https://{PYPI_INDEX_URL}/pkg/", "https://pypi.org/simple/pkg/", ["1.0.0"])
     cache.setdefault(key, fake_result)
 
-    cache.get_facts().contains_exactly({
+    cache.expect_facts().contains_exactly({
         "fact_version": "v3",
         "pkg@https://{PYPI_INDEX_URL}": {
             "https://pypi.org/files/download/custom-yanked.whl": "custom_yanked_pkg-1.0.0-py3-none-any.whl|sha256:custom_yanked_whl|Yanked for testing",
@@ -459,7 +459,7 @@ def _test_pypi_cache_facts_round_trip_all_entry_shapes(env):
         },
     })
 
-    cache2 = _cache(env, mctx = mocks.mctx(facts = cache.facts()))
+    cache2 = _cache(env, mctx = mocks.mctx(facts = cache.raw_facts()))
     got = cache2.get(key)
     got.sdists().contains_exactly({
         "sha256:default_sdist": struct(
@@ -529,14 +529,14 @@ def _test_pypi_cache_facts_no_digest_round_trip(env):
     key = ("https://{PYPI_INDEX_URL}/pkg/", "https://pypi.org/simple/pkg/", ["1.0.0"])
     cache.setdefault(key, fake_result)
 
-    cache.get_facts().contains_exactly({
+    cache.expect_facts().contains_exactly({
         "fact_version": "v3",
         "pkg@https://{PYPI_INDEX_URL}": {
             "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "",
         },
     })
 
-    cache2 = _cache(env, mctx = mocks.mctx(facts = cache.facts()))
+    cache2 = _cache(env, mctx = mocks.mctx(facts = cache.raw_facts()))
     got = cache2.get(key)
     got.whls().contains_exactly({
         "": struct(
@@ -570,7 +570,7 @@ def _test_pypi_cache_ignores_old_facts_version(env):
 
     key = ("https://{PYPI_INDEX_URL}/pkg/", "https://pypi.org/simple/pkg/", ["1.0.0"])
     cache.get(key).equals(None)
-    cache.get_facts().contains_exactly({})
+    cache.expect_facts().contains_exactly({})
 
 _tests.append(_test_pypi_cache_ignores_old_facts_version)
 
@@ -614,7 +614,7 @@ def _test_pypi_cache_writes_index_urls_to_facts(env):
 
     cache.setdefault(key, fake_result)
 
-    cache.get_facts().contains_exactly({
+    cache.expect_facts().contains_exactly({
         "fact_version": "v3",
         "pkg-a#https://pypi.org/simple/": "https://pypi.org/simple/pkg-a/",
     })
@@ -622,7 +622,7 @@ def _test_pypi_cache_writes_index_urls_to_facts(env):
     key = ("https://pypi.org/simple/", "https://pypi.org/simple/", {"pkg-b": None})
     cache.setdefault(key, fake_result)
 
-    cache.get_facts().contains_exactly({
+    cache.expect_facts().contains_exactly({
         "fact_version": "v3",
         "pkg-a#https://pypi.org/simple/": "https://pypi.org/simple/pkg-a/",
         "pkg-b#https://pypi.org/simple/": "https://pypi.org/simple/pkg-b/",
@@ -653,7 +653,7 @@ def _test_pypi_cache_reads_index_urls_from_facts(env):
     key = ("https://pypi.org/simple/", "https://pypi.org/simple/", {"pkg-c": None})
     cache.get(key).equals(None)
 
-    cache.get_facts().contains_exactly(mock_ctx.facts)
+    cache.expect_facts().contains_exactly(mock_ctx.facts)
 
 _tests.append(_test_pypi_cache_reads_index_urls_from_facts)
 
@@ -695,7 +695,7 @@ def _test_pypi_cache_reads_index_urls_from_facts_drops_unaccessed(env):
     })
 
     # get_facts() must only return the requested (accessed) subset; pkg-c is dropped
-    cache.get_facts().contains_exactly({
+    cache.expect_facts().contains_exactly({
         "fact_version": "v3",
         "pkg-a#https://pypi.org/simple/": "https://pypi.org/simple/pkg-a/",
         "pkg-b#https://pypi.org/simple/": "https://pypi.org/simple/pkg-b/",
