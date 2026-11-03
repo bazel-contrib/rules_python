@@ -192,6 +192,17 @@ py_reconfig_test(
     target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
 )
 
+py_reconfig_test(
+    name = "main_module_precompiled_test",
+    srcs = ["main_module.py"],
+    bootstrap_impl = "script",
+    imports = ["."],
+    main_module = "tests.bootstrap_impls.main_module",
+    precompile = "enabled",
+    pyc_collection = "include_pyc",
+    target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
+)
+
 sh_py_run_test(
     name = "inherit_pythonsafepath_env_test",
     bootstrap_impl = "script",
