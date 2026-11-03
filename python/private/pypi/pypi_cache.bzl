@@ -265,8 +265,10 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
         else:
             dists = known_sources.setdefault("sdists", {})
 
-        if digest:
-            known_sources.setdefault("hashes_by_version", {}).setdefault(version, []).append(digest)
+        # NOTE: an empty digest is kept so that the result matches the
+        # output of `parse_simpleapi_html` for indexes that do not advertise
+        # any hashes.
+        known_sources.setdefault("hashes_by_version", {}).setdefault(version, []).append(digest)
 
         dists.setdefault(digest, struct(
             digest = digest,

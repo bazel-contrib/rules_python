@@ -550,7 +550,7 @@ def _test_pypi_cache_facts_no_digest_round_trip(env):
         ),
     })
     got.sdists().contains_exactly({})
-    got.hashes_by_version().contains_exactly({})
+    got.hashes_by_version().contains_exactly({"1.0.0": [""]})
 
 _tests.append(_test_pypi_cache_facts_no_digest_round_trip)
 
