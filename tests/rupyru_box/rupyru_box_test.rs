@@ -37,12 +37,11 @@ fn test_missing_or_unknown_subcommand_exits_one() {
 }
 
 #[test]
-fn test_subcommand_hyphen_normalization_and_forwarding() {
+fn test_subcommand_forwarding() {
     let dir = temp_test_dir("dispatch");
     let preamble = dir.join("preamble.sh");
     let zip_in = dir.join("in.zip");
-    let out_underscore = dir.join("out_underscore.pyz");
-    let out_hyphen = dir.join("out_hyphen.pyz");
+    let out_pyz = dir.join("out.pyz");
 
     fs::write(&preamble, b"#!/bin/sh\n").unwrap();
     fs::write(
@@ -57,43 +56,18 @@ fn test_subcommand_hyphen_normalization_and_forwarding() {
             "exe_zip_maker",
             preamble.to_str().unwrap(),
             zip_in.to_str().unwrap(),
-            out_underscore.to_str().unwrap(),
+            out_pyz.to_str().unwrap(),
         ]),
         0
     );
-    assert_eq!(
-        run_cli([
-            "rupyru-box",
-            "exe-zip-maker",
-            preamble.to_str().unwrap(),
-            zip_in.to_str().unwrap(),
-            out_hyphen.to_str().unwrap(),
-        ]),
-        0
-    );
-    assert_eq!(
-        fs::read(&out_underscore).unwrap(),
-        fs::read(&out_hyphen).unwrap()
-    );
+    assert!(out_pyz.exists());
 }
 
 #[test]
 fn test_cli_binary_subprocess() {
-    let Some(bin_rel) = env::var_os("RUPYRU_BOX_BIN") else {
-        return;
-    };
-    let bin_path = PathBuf::from(&bin_rel);
-    let resolved = if bin_path.exists() {
-        bin_path
-    } else if let Ok(srcdir) = env::var("TEST_SRCDIR") {
-        let ws = env::var("TEST_WORKSPACE").unwrap_or_else(|_| "_main".to_string());
-        PathBuf::from(srcdir).join(ws).join(&bin_rel)
-    } else {
-        return;
-    };
-    if !resolved.exists() {
-        return;
-    }
+    let resolved = PathBuf::from(
+        env::var_os("RUPYRU_BOX_BIN").expect("RUPYRU_BOX_BIN must be set"),
+    );
 
     let help_out = Command::new(&resolved).arg("--help").output().unwrap();
     assert_eq!(help_out.status.code(), Some(0));

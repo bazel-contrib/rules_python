@@ -70,7 +70,6 @@ bzl_library(
     name = "rupyru_box_toolchain",
     srcs = ["rupyru_box_toolchain.bzl"],
     deps = [
-        "//python/private:py_interpreter_program",
         "//python/private:sentinel_impl",
         "//python/private:toolchain_types",
     ],
