@@ -20,10 +20,10 @@ distribution_filegroup(
 # * `auto`: let rules_python decide. Currently `yes` when developing
 #   rules_python (TOOL_DEPS_DEV_ONLY = False), and `no` in releases.
 #
-# Enable with `--//python/private/toolchains:use_rust_tools=yes` or
-# disable with `--//python/private/toolchains:use_rust_tools=no`.
+# Enable with `--//python/private/toolchains:need_shrubbery=yes` or
+# disable with `--//python/private/toolchains:need_shrubbery=no`.
 string_flag(
-    name = "use_rust_tools",
+    name = "need_shrubbery",
     build_setting_default = "auto",
     values = [
         "auto",
@@ -34,23 +34,23 @@ string_flag(
 )
 
 config_setting(
-    name = "is_rust_tools_auto",
-    flag_values = {":use_rust_tools": "auto"},
+    name = "is_need_shrubbery_auto",
+    flag_values = {":need_shrubbery": "auto"},
     visibility = ["//visibility:private"],
 )
 
 config_setting(
-    name = "is_rust_tools_yes",
-    flag_values = {":use_rust_tools": "yes"},
+    name = "is_need_shrubbery_yes",
+    flag_values = {":need_shrubbery": "yes"},
     visibility = ["//visibility:private"],
 )
 
 selects.config_setting_group(
-    name = "is_rust_tools_enabled",
+    name = "is_need_shrubbery_enabled",
     match_any = [
-        ":is_rust_tools_yes",
+        ":is_need_shrubbery_yes",
     ] + ([
-        ":is_rust_tools_auto",
+        ":is_need_shrubbery_auto",
     ] if not config.tool_deps_dev_only else []),
     visibility = NOT_ACTUALLY_PUBLIC,
 )

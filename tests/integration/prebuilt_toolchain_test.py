@@ -8,7 +8,7 @@ import unittest
 from python.runfiles import runfiles
 from tests.integration import runner
 
-_USE_RUST_FLAG = "--@rules_python//python/private/toolchains:use_rust_tools=yes"
+_NEED_SHRUBBERY_FLAG = "--@rules_python//python/private/toolchains:need_shrubbery=yes"
 
 
 class PrebuiltToolchainTest(runner.TestCase):
@@ -76,14 +76,14 @@ class PrebuiltToolchainTest(runner.TestCase):
         self.run_bazel(
             "test",
             override_flag,
-            _USE_RUST_FLAG,
+            _NEED_SHRUBBERY_FLAG,
             "//:zipapp_test",
         )
 
         aquery_res = self.run_bazel(
             "aquery",
             override_flag,
-            _USE_RUST_FLAG,
+            _NEED_SHRUBBERY_FLAG,
             "mnemonic(PyZipAppCreateExecutableZip, //:zipapp_test)",
         )
         self.assert_result_matches(

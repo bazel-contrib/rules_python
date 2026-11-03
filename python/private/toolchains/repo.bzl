@@ -10,8 +10,8 @@ load("//python/private:artifacts_manifest.bzl", "ARTIFACTS_MANIFEST_JSON")
 load("//python/private:text_util.bzl", "render")
 load("//python/private:toolchain_types.bzl", "SHRUBBERY_TOOLCHAIN_TYPE")
 
-_IS_RUST_TOOLS_ENABLED = (
-    "@rules_python//python/private/toolchains:is_rust_tools_enabled"
+_IS_NEED_SHRUBBERY_ENABLED = (
+    "@rules_python//python/private/toolchains:is_need_shrubbery_enabled"
 )
 _FROM_SOURCE_SHRUBBERY = (
     "@rules_python//python/private/toolchains/from_source:shrubbery"
@@ -69,7 +69,7 @@ def _tools_toolchains_repo_impl(rctx):
             render.toolchain(
                 name = toolchain_name,
                 exec_compatible_with = exec_compatible_with,
-                target_settings = [_IS_RUST_TOOLS_ENABLED],
+                target_settings = [_IS_NEED_SHRUBBERY_ENABLED],
                 toolchain = toolchain_impl,
                 toolchain_type = str(SHRUBBERY_TOOLCHAIN_TYPE),
             ),
