@@ -7,7 +7,7 @@
 
 load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
 load("//python/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")
-load("//python/private/toolchains:rupyru_box_toolchain.bzl", "rupyru_box_toolchain")
+load("//python/private/toolchains:shrubbery_toolchain.bzl", "shrubbery_toolchain")
 
 package(default_visibility = ["//:__subpackages__"])
 
@@ -17,10 +17,10 @@ distribution_filegroup(
     name = "distribution",
 )
 
-# Use the unified Rust `rupyru-box` binary instead of the Python/script
+# Use the unified Rust `shrubbery` binary instead of the Python/script
 # tool implementations.
-rupyru_box_toolchain(
-    name = "rupyru_box",
-    rupyru_box = "//crates/rupyru-box",
+shrubbery_toolchain(
+    name = "shrubbery",
+    shrubbery = "//crates/shrubbery",
     visibility = NOT_ACTUALLY_PUBLIC,
 )

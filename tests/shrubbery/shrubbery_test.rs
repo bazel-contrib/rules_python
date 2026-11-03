@@ -3,13 +3,13 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
-use rupyru_box_lib::{run_cli, SUBCOMMANDS};
+use shrubbery_lib::{run_cli, SUBCOMMANDS};
 
 fn temp_test_dir(prefix: &str) -> PathBuf {
     let base = env::var_os("TEST_TMPDIR")
         .map(PathBuf::from)
         .unwrap_or_else(env::temp_dir);
-    let dir = base.join(format!("rupyru_box_{}_{}", prefix, std::process::id()));
+    let dir = base.join(format!("shrubbery_{}_{}", prefix, std::process::id()));
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).unwrap();
     dir
@@ -25,15 +25,15 @@ fn test_subcommands_registry_sorted_and_complete() {
 
 #[test]
 fn test_help_flags_exit_zero() {
-    assert_eq!(run_cli(["rupyru-box", "--help"]), 0);
-    assert_eq!(run_cli(["rupyru-box", "-h"]), 0);
-    assert_eq!(run_cli(["rupyru-box", "help"]), 0);
+    assert_eq!(run_cli(["shrubbery", "--help"]), 0);
+    assert_eq!(run_cli(["shrubbery", "-h"]), 0);
+    assert_eq!(run_cli(["shrubbery", "help"]), 0);
 }
 
 #[test]
 fn test_missing_or_unknown_subcommand_exits_one() {
-    assert_eq!(run_cli(["rupyru-box"]), 1);
-    assert_eq!(run_cli(["rupyru-box", "does_not_exist"]), 1);
+    assert_eq!(run_cli(["shrubbery"]), 1);
+    assert_eq!(run_cli(["shrubbery", "does_not_exist"]), 1);
 }
 
 #[test]
@@ -52,7 +52,7 @@ fn test_subcommand_forwarding() {
 
     assert_eq!(
         run_cli([
-            "rupyru-box",
+            "shrubbery",
             "exe_zip_maker",
             preamble.to_str().unwrap(),
             zip_in.to_str().unwrap(),
@@ -66,7 +66,7 @@ fn test_subcommand_forwarding() {
 #[test]
 fn test_cli_binary_subprocess() {
     let resolved = PathBuf::from(
-        env::var_os("RUPYRU_BOX_BIN").expect("RUPYRU_BOX_BIN must be set"),
+        env::var_os("SHRUBBERY_BIN").expect("SHRUBBERY_BIN must be set"),
     );
 
     let help_out = Command::new(&resolved).arg("--help").output().unwrap();

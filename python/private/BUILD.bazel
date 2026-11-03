@@ -563,7 +563,7 @@ bzl_library(
         ":toolchain_types",
         ":transition_labels",
         ":venv_runfiles",
-        "//python/private/toolchains:rupyru_box_toolchain",
+        "//python/private/toolchains:shrubbery_toolchain",
         "@bazel_skylib//lib:dicts",
         "@bazel_skylib//lib:paths",
         "@bazel_skylib//lib:structs",

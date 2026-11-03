@@ -1,9 +1,9 @@
-//! Unified `rupyru-box` ("rules python rust box") subcommand dispatcher for `@rules_python`
-//! Rust build tools.
+//! Unified `shrubbery` ("Shell replacements for Bazel build tools in Rust") subcommand
+//! dispatcher for `@rules_python` Rust build tools.
 
 use std::ffi::OsString;
 
-/// Canonical subcommand names supported by `rupyru-box`.
+/// Canonical subcommand names supported by `shrubbery`.
 pub const SUBCOMMANDS: &[&str] = &[
     // keep-sorted start
     "exe_zip_maker",
@@ -12,7 +12,7 @@ pub const SUBCOMMANDS: &[&str] = &[
 
 fn print_usage(prog_name: &str, to_stderr: bool) {
     let msg = format!(
-        "Usage: {} <subcommand> [args...]\n\nAvailable subcommands:\n  {}",
+        "shrubbery — A nice, two-level effect with a little path running down the middle.\n\nUsage: {} <subcommand> [args...]\n\nAvailable subcommands:\n  {}",
         prog_name,
         SUBCOMMANDS.join("\n  ")
     );
@@ -34,7 +34,7 @@ where
     let prog_name = iter
         .next()
         .map(|s| s.to_string_lossy().into_owned())
-        .unwrap_or_else(|| "rupyru-box".to_string());
+        .unwrap_or_else(|| "shrubbery".to_string());
 
     let Some(sub_os) = iter.next() else {
         print_usage(&prog_name, true);
@@ -49,7 +49,7 @@ where
     match sub_raw.as_ref() {
         "exe_zip_maker" => exe_zip_maker_lib::run_cli(iter),
         _ => {
-            eprintln!("rupyru-box: error: unknown subcommand '{}'", sub_raw);
+            eprintln!("shrubbery: error: unknown subcommand '{}'", sub_raw);
             print_usage(&prog_name, true);
             1
         }

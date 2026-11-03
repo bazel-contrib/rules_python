@@ -14,7 +14,7 @@ package(default_visibility = ["//:__subpackages__"])
 release_files(
     name = "artifacts_for_release",
     srcs = [
-        "//crates/rupyru-box",
+        "//crates/shrubbery",
     ],
     # Under WORKSPACE, rules_rust is a stub without the rustc flags setting
     # that release_files sets, so building this would fail.

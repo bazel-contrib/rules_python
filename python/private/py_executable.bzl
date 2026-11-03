@@ -19,7 +19,7 @@ load("@bazel_skylib//lib:structs.bzl", "structs")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
-load("//python/private/toolchains:rupyru_box_toolchain.bzl", "get_rupyru_box_tool")
+load("//python/private/toolchains:shrubbery_toolchain.bzl", "get_shrubbery_tool")
 load(":attr_builders.bzl", "attrb")
 load(
     ":attributes.bzl",
@@ -74,7 +74,7 @@ load(
     "CC_TOOLCHAIN_TYPE",
     "EXEC_TOOLS_TOOLCHAIN_TYPE",
     "LAUNCHER_MAKER_TOOLCHAIN_TYPE",
-    "RUPYRU_BOX_TOOLCHAIN_TYPE",
+    "SHRUBBERY_TOOLCHAIN_TYPE",
     TOOLCHAIN_TYPE = "TARGET_TOOLCHAIN_TYPE",
 )
 load(":transition_labels.bzl", "TRANSITION_LABELS")
@@ -1128,7 +1128,7 @@ def _create_executable_zip_file(
     args.add(prelude)
     args.add(zip_file)
     args.add(output)
-    exe_zip_maker = get_rupyru_box_tool(
+    exe_zip_maker = get_shrubbery_tool(
         ctx,
         "exe_zip_maker",
         ctx.attr._exe_zip_maker,
@@ -2244,7 +2244,7 @@ def create_executable_rule_builder(implementation, **kwargs):
             ruleb.ToolchainType(TOOLCHAIN_TYPE),
             ruleb.ToolchainType(EXEC_TOOLS_TOOLCHAIN_TYPE, mandatory = False),
             ruleb.ToolchainType(CC_TOOLCHAIN_TYPE, mandatory = False),
-            ruleb.ToolchainType(RUPYRU_BOX_TOOLCHAIN_TYPE, mandatory = False),
+            ruleb.ToolchainType(SHRUBBERY_TOOLCHAIN_TYPE, mandatory = False),
         ] + ([ruleb.ToolchainType(LAUNCHER_MAKER_TOOLCHAIN_TYPE)] if rp_config.bazel_9_or_later else []),
         cfg = dict(
             implementation = _transition_executable_impl,

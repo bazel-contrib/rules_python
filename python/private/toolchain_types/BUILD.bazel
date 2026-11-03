@@ -14,10 +14,10 @@ distribution_filegroup(
     name = "distribution",
 )
 
-# Toolchain providing the unified Rust `rupyru-box` binary
-# (`rupyru-box <subcommand> ...`). It is optional: when no toolchain is
+# Toolchain providing the unified Rust `shrubbery` binary
+# (`shrubbery <subcommand> ...`). It is optional: when no toolchain is
 # registered, rules fall back to their Python or script implementations.
 toolchain_type(
-    name = "rupyru_box",
+    name = "shrubbery",
     visibility = NOT_ACTUALLY_PUBLIC,
 )

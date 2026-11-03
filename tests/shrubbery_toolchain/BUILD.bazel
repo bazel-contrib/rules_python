@@ -1,0 +1,5 @@
+load(":shrubbery_toolchain_tests.bzl", "shrubbery_toolchain_test_suite")
+
+shrubbery_toolchain_test_suite(
+    name = "shrubbery_toolchain_tests",
+)

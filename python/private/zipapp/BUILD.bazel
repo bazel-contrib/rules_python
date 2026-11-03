@@ -42,7 +42,7 @@ bzl_library(
         "//python/private:py_runtime_info",
         "//python/private:toolchain_types",
         "//python/private:transition_labels",
-        "//python/private/toolchains:rupyru_box_toolchain",
+        "//python/private/toolchains:shrubbery_toolchain",
         "@bazel_skylib//lib:paths",
         "@rules_python_internal//:rules_python_config",
     ],

@@ -13,7 +13,7 @@ distribution_filegroup(
     name = "distribution",
 )
 
-# Whether to use the unified Rust implementation (`rupyru-box`) for
+# Whether to use the unified Rust implementation (`shrubbery`) for
 # build tools.
 # * `yes`: use it.
 # * `no`: use the built-in Python or script implementations.
@@ -67,8 +67,8 @@ bzl_library(
 )
 
 bzl_library(
-    name = "rupyru_box_toolchain",
-    srcs = ["rupyru_box_toolchain.bzl"],
+    name = "shrubbery_toolchain",
+    srcs = ["shrubbery_toolchain.bzl"],
     deps = [
         "//python/private:sentinel_impl",
         "//python/private:toolchain_types",

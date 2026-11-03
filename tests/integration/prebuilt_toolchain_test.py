@@ -15,12 +15,12 @@ class PrebuiltToolchainTest(runner.TestCase):
     def setUp(self):
         super().setUp()
         rf = runfiles.CreateOrRaise()
-        rupyru_box = (rf.root() / "rules_python/crates/rupyru-box/rupyru-box").resolve()
+        shrubbery = (rf.root() / "rules_python/crates/shrubbery/shrubbery").resolve()
         self.assertTrue(
-            rupyru_box.is_file(),
-            f"Expected rupyru-box binary at {rupyru_box}",
+            shrubbery.is_file(),
+            f"Expected shrubbery binary at {shrubbery}",
         )
-        sha256 = hashlib.sha256(rupyru_box.read_bytes()).hexdigest()
+        sha256 = hashlib.sha256(shrubbery.read_bytes()).hexdigest()
 
         orig_rules_python = self.repo_root.parent.parent.parent
         self.rules_python_dir = self.test_tmp_dir / "rules_python"
@@ -46,20 +46,20 @@ class PrebuiltToolchainTest(runner.TestCase):
 
         manifest = {
             "artifacts": {
-                "rupyru-box": [
+                "shrubbery": [
                     {
                         "exec_compatible_with": [
                             "@platforms//os:windows",
                         ],
-                        "name": "rupyru_box_unmatched",
+                        "name": "shrubbery_unmatched",
                         "sha256": "0" * 64,
                         "urls": ["https://invalid.example.com/should-not-be-fetched"],
                     },
                     {
                         "exec_compatible_with": [],
-                        "name": "rupyru_box_prebuilt",
+                        "name": "shrubbery_prebuilt",
                         "sha256": sha256,
-                        "urls": [rupyru_box.as_uri()],
+                        "urls": [shrubbery.as_uri()],
                     },
                 ],
             },
@@ -70,7 +70,7 @@ class PrebuiltToolchainTest(runner.TestCase):
             encoding="utf-8",
         )
 
-    def test_prebuilt_rupyru_box_toolchain(self):
+    def test_prebuilt_shrubbery_toolchain(self):
         override_flag = f"--override_module=rules_python={self.rules_python_dir}"
 
         self.run_bazel(
@@ -88,7 +88,7 @@ class PrebuiltToolchainTest(runner.TestCase):
         )
         self.assert_result_matches(
             aquery_res,
-            r"rules_python_rupyru_box_prebuilt_file/file/downloaded",
+            r"rules_python_shrubbery_prebuilt_file/file/downloaded",
         )
 
 

@@ -5,16 +5,16 @@ package(default_visibility = ["//:__subpackages__"])
 licenses(["notice"])
 
 rust_test(
-    name = "rupyru_box_test",
+    name = "shrubbery_test",
     size = "small",
-    srcs = ["rupyru_box_test.rs"],
+    srcs = ["shrubbery_test.rs"],
     data = [
-        "//crates/rupyru-box",
+        "//crates/shrubbery",
     ],
     env = {
-        "RUPYRU_BOX_BIN": "$(rootpath //crates/rupyru-box)",
+        "SHRUBBERY_BIN": "$(rootpath //crates/shrubbery)",
     },
     deps = [
-        "//crates/rupyru-box:rupyru_box_lib",
+        "//crates/shrubbery:shrubbery_lib",
     ],
 )

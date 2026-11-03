@@ -6,7 +6,7 @@ package(default_visibility = ["//:__subpackages__"])
 licenses(["notice"])
 
 rust_library(
-    name = "rupyru_box_lib",
+    name = "shrubbery_lib",
     srcs = ["src/lib.rs"],
     edition = "2021",
     deps = [
@@ -15,11 +15,11 @@ rust_library(
 )
 
 rust_binary(
-    name = "rupyru-box",
+    name = "shrubbery",
     srcs = ["src/main.rs"],
     edition = "2021",
     visibility = ["//visibility:public"],
-    deps = [":rupyru_box_lib"],
+    deps = [":shrubbery_lib"],
 )
 
 distribution_filegroup(

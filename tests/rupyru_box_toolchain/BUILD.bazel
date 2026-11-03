@@ -1,5 +1,0 @@
-load(":rupyru_box_toolchain_tests.bzl", "rupyru_box_toolchain_test_suite")
-
-rupyru_box_toolchain_test_suite(
-    name = "rupyru_box_toolchain_tests",
-)
