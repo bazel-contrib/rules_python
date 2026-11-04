@@ -820,6 +820,76 @@ def _test_pypi_cache_reads_index_urls_from_facts_drops_unaccessed(env):
 
 _tests.append(_test_pypi_cache_reads_index_urls_from_facts_drops_unaccessed)
 
+def _test_pypi_cache_index_urls_facts_store_missing_packages(env):
+    """Verifies that packages missing from an index are stored, so the facts are complete."""
+    cache = _cache(env, mctx = mocks.mctx(facts = {}))
+    key = ("https://pypi.org/simple/", "https://pypi.org/simple/", {"pkg-a": None, "pkg-c": None})
+    cache.setdefault(key, {
+        "pkg-a": "https://pypi.org/simple/pkg-a/",
+        "pkg-b": "https://pypi.org/simple/pkg-b/",
+    })
+    cache.expect_facts().contains_exactly({
+        "fact_version": "v3",
+        "pkg-a@https://pypi.org/simple/": "https://pypi.org/simple/pkg-a/",
+        "pkg-c@https://pypi.org/simple/": "",
+    })
+
+    # A new evaluation can answer from the facts without calling the index.
+    cache2 = _cache(env, mctx = mocks.mctx(facts = cache.raw_facts()))
+    cache2.get(key).contains_exactly({
+        "pkg-a": "https://pypi.org/simple/pkg-a/",
+        "pkg-c": "",
+    })
+    cache2.expect_facts().contains_exactly(cache.raw_facts())
+
+    # An index that has none of the requested packages is also complete.
+    key = ("https://pypi.org/simple/", "https://pypi.org/simple/", {"pkg-c": None})
+    cache2.get(key).contains_exactly({"pkg-c": ""})
+
+_tests.append(_test_pypi_cache_index_urls_facts_store_missing_packages)
+
+def _test_pypi_cache_dist_facts_store_missing_versions(env):
+    """Verifies that versions missing from a package page are stored, so the facts are complete."""
+    whl = struct(
+        digest = "sha256:sha_whl",
+        version = "1.0.0",
+        filename = "pkg-1.0.0-py3-none-any.whl",
+        url = "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl",
+        metadata_url = "",
+        metadata_sha256 = "",
+        yanked = None,
+    )
+    cache = _cache(env, mctx = mocks.mctx(facts = {}))
+    key = ("https://{PYPI_INDEX_URL}/pkg/", "https://pypi.org/simple/pkg/", ["1.0.0", "2.0.0"])
+    cache.setdefault(key, struct(
+        sdists = {},
+        whls = {"sha256:sha_whl": whl},
+        hashes_by_version = {"1.0.0": ["sha256:sha_whl"]},
+    ))
+    cache.expect_facts().contains_exactly({
+        "fact_version": "v3",
+        "pkg@https://{PYPI_INDEX_URL}": {
+            "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "sha256:sha_whl",
+        },
+        "pkg@https://{PYPI_INDEX_URL}#missing": ["2.0.0"],
+    })
+
+    # A new evaluation can answer from the facts without calling the index.
+    cache2 = _cache(env, mctx = mocks.mctx(facts = cache.raw_facts()))
+    got = cache2.get(key)
+    got.whls().contains_exactly({"sha256:sha_whl": whl})
+    got.sdists().contains_exactly({})
+    got.hashes_by_version().contains_exactly({"1.0.0": ["sha256:sha_whl"]})
+    cache2.expect_facts().contains_exactly(cache.raw_facts())
+
+    # A package page that has none of the requested versions is also complete.
+    key = ("https://{PYPI_INDEX_URL}/pkg/", "https://pypi.org/simple/pkg/", ["2.0.0"])
+    got = cache2.get(key)
+    got.whls().contains_exactly({})
+    got.sdists().contains_exactly({})
+
+_tests.append(_test_pypi_cache_dist_facts_store_missing_versions)
+
 def pypi_cache_test_suite(name):
     test_suite(
         name = name,
