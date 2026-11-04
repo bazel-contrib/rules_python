@@ -95,6 +95,7 @@ def _config_impl(module_ctx):
         transition_settings = transition_settings,
         explicit_init_py_modules = explicit_init_py_modules,
         tool_deps_dev_only = tool_deps_dev_only,
+        toolchain_type_in_rules_python = bazel_features.rules._toolchain_type_in_rules_python,
     )
 
     pypi_deps()
