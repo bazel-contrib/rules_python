@@ -1,0 +1,20 @@
+load("@rules_rust//rust:defs.bzl", "rust_test")
+
+package(default_visibility = ["//:__subpackages__"])
+
+licenses(["notice"])
+
+rust_test(
+    name = "shrubbery_test",
+    size = "small",
+    srcs = ["shrubbery_test.rs"],
+    data = [
+        "//crates/shrubbery",
+    ],
+    env = {
+        "SHRUBBERY_BIN": "$(rootpath //crates/shrubbery)",
+    },
+    deps = [
+        "//crates/shrubbery:shrubbery_lib",
+    ],
+)

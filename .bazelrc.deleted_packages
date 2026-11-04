@@ -13,6 +13,7 @@ common --deleted_packages=examples/bzlmod/runfiles
 common --deleted_packages=examples/bzlmod/tests
 common --deleted_packages=examples/bzlmod/tests/other_module
 common --deleted_packages=examples/bzlmod/whl_mods
+common --deleted_packages=examples/multi_python_versions
 common --deleted_packages=examples/multi_python_versions/libs/my_lib
 common --deleted_packages=examples/multi_python_versions/requirements
 common --deleted_packages=examples/multi_python_versions/tests

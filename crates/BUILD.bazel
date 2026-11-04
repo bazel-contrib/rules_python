@@ -1,10 +1,9 @@
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")  # buildifier: disable=bzl-visibility
+
 package(default_visibility = ["//:__subpackages__"])
 
 licenses(["notice"])
 
-filegroup(
+distribution_filegroup(
     name = "distribution",
-    srcs = glob(["**"]) + [
-        "//crates/exe_zip_maker:distribution",
-    ],
 )

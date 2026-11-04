@@ -1,5 +1,6 @@
 //! Library supporting creating self-executable zip files.
 
+use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::path::Path;
@@ -41,7 +42,7 @@ pub fn compute_file_sha256_hex(path: &Path) -> io::Result<String> {
         hasher.update(&buffer[..n]);
     }
     let digest = hasher.finalize();
-    Ok(format!("{:x}", digest))
+    Ok(digest.iter().map(|b| format!("{b:02x}")).collect())
 }
 
 /// Creates a self-executable zip archive by prepending a preamble to a zip archive
@@ -76,4 +77,26 @@ pub fn create_exe_zip(preamble_path: &Path, zip_path: &Path, output_path: &Path)
     }
 
     Ok(())
+}
+
+/// Parses subcommand arguments (`<preamble> <zip> <output>`) and creates a self-executable zip
+/// archive, returning the process exit code.
+pub fn run_cli<I, T>(args: I) -> i32
+where
+    I: IntoIterator<Item = T>,
+    T: Into<OsString>,
+{
+    let os_args: Vec<OsString> = args.into_iter().map(Into::into).collect();
+    if os_args.len() != 3 {
+        eprintln!("Usage: exe_zip_maker <preamble> <zip> <output>");
+        return 1;
+    }
+    let preamble_path = Path::new(&os_args[0]);
+    let zip_path = Path::new(&os_args[1]);
+    let output_path = Path::new(&os_args[2]);
+    if let Err(e) = create_exe_zip(preamble_path, zip_path, output_path) {
+        eprintln!("exe_zip_maker: error: {}", e);
+        return 1;
+    }
+    0
 }
