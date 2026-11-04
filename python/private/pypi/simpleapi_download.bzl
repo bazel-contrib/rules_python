@@ -170,7 +170,11 @@ def _get_dist_urls(ctx, *, default_index, index_urls, index_url_overrides, sourc
         results[index_url] = download.wait()
 
     found_on_index = {}
-    for index_url, result in results.items():
+
+    # Walk the indexes in the declared order. The `results` dict has cache hits
+    # inserted before downloads, so its order depends on what is cached.
+    for index_url in index_urls:
+        result = results[index_url]
         for pkg in sources:
             if pkg in found_on_index:
                 # We have already found the package, skip searching for it in
