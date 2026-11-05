@@ -84,11 +84,11 @@ file from `.agents/skills/review-code/`:
     - Prompt file:
       `.agents/skills/review-code/review-code-style-prompt.md`
     - Focus: Audits cross-language code style across all code files (`*.py`,
-      `*.sh`, `*.cc`, `*.h`, `*.go`, `*.bzl`, `*.bazel`): file definition order,
-      guard clauses, fail-closed `else`, single input form, no unrequested
-      knobs/aliases, no speculative validation or defensive `None` checks, no
-      nested comprehensions, naming precision, simplification, `keep-sorted`
-      markers, and CLI safety annotations.
+      `*.rs`, `*.sh`, `*.cc`, `*.h`, `*.go`, `*.bzl`, `*.bazel`): file
+      definition order, guard clauses, fail-closed `else`, single input form,
+      no unrequested knobs/aliases, no speculative validation or defensive
+      `None` checks, no nested comprehensions, naming precision,
+      simplification, `keep-sorted` markers, and CLI safety annotations.
 
 11. Shell Script Sub-Agent (`Role: "Shell Script Auditor"`):
     - Prompt file:
@@ -109,6 +109,15 @@ file from `.agents/skills/review-code/`:
       does not apply), rejecting missing, circular, or inaccurate excuses as
       `SHOULD-FIX` and flagging plausible technical constraints as
       `HUMAN-SIGN-OFF`.
+
+13. Rust Sub-Agent (`Role: "Rust Code Auditor"`):
+    - Prompt file:
+      `.agents/skills/review-code/review-rust-prompt.md`
+    - Focus: Audits Rust code (`*.rs`, `crates/**`) and crate dependencies in
+      `MODULE.bazel` / `Cargo.*` against `.agents/rules/rust.md` (standard
+      ecosystem crates over custom subsystems such as regex or ZIP handling,
+      crate legitimacy and latest `crates.io` versions, feature pruning for
+      cross-compilation, library crate structure, and `rustfmt`).
 
 ### Action Instructions
 - Immediately create a user-facing review artifact named
@@ -211,8 +220,8 @@ posting comments, filter out noise:
    `*requirements*.txt`, `gazelle_python_manifest.yaml`, or patches). Only flag
    build breakages or license issues.
 3. Formatter-Handled Output: Never ask to revert a formatter's output (such as
-   `buildifier` or `ruff` quote/comma/order changes, trailing newlines, or
-   markdown hard-break backslashes).
+   `buildifier`, `ruff`, or `rustfmt` quote/comma/order changes, trailing
+   newlines, or markdown hard-break backslashes).
 4. `TODO` Syntax: Do not complain about `TODO(...)` formatting or demand a
    username or issue number. Drop `TODO` syntax nits entirely.
 5. Rule Over-Application:
