@@ -7,6 +7,7 @@ use std::ffi::OsString;
 pub const SUBCOMMANDS: &[&str] = &[
     // keep-sorted start
     "exe_zip_maker",
+    "zipper",
     // keep-sorted end
 ];
 
@@ -47,7 +48,10 @@ where
     }
 
     match sub_raw.as_ref() {
+        // keep-sorted start
         "exe_zip_maker" => exe_zip_maker_lib::run_cli(iter),
+        "zipper" => zipper_lib::run_cli(iter),
+        // keep-sorted end
         _ => {
             eprintln!("shrubbery: error: unknown subcommand '{}'", sub_raw);
             print_usage(&prog_name, true);

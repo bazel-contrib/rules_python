@@ -17,7 +17,7 @@ fn temp_test_dir(prefix: &str) -> PathBuf {
 
 #[test]
 fn test_subcommands_registry_sorted_and_complete() {
-    assert_eq!(SUBCOMMANDS.len(), 1);
+    assert_eq!(SUBCOMMANDS.len(), 2);
     let mut sorted = SUBCOMMANDS.to_vec();
     sorted.sort_unstable();
     assert_eq!(SUBCOMMANDS, sorted.as_slice());
@@ -65,9 +65,7 @@ fn test_subcommand_forwarding() {
 
 #[test]
 fn test_cli_binary_subprocess() {
-    let resolved = PathBuf::from(
-        env::var_os("SHRUBBERY_BIN").expect("SHRUBBERY_BIN must be set"),
-    );
+    let resolved = PathBuf::from(env::var_os("SHRUBBERY_BIN").expect("SHRUBBERY_BIN must be set"));
 
     let help_out = Command::new(&resolved).arg("--help").output().unwrap();
     assert_eq!(help_out.status.code(), Some(0));

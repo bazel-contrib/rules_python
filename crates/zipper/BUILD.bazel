@@ -1,0 +1,20 @@
+load("@rules_rust//rust:defs.bzl", "rust_library")
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")  # buildifier: disable=bzl-visibility
+
+package(default_visibility = ["//:__subpackages__"])
+
+licenses(["notice"])
+
+rust_library(
+    name = "zipper_lib",
+    srcs = ["src/lib.rs"],
+    edition = "2021",
+    deps = [
+        "@crates//:lexopt",
+        "@crates//:zip",
+    ],
+)
+
+distribution_filegroup(
+    name = "distribution",
+)

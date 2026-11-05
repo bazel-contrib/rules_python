@@ -177,10 +177,12 @@ def _create_zip(ctx, py_runtime, py_executable, stage2_bootstrap):
     is_windows = is_windows_platform(ctx)
     zipper_args.add("\\" if is_windows else "/", format = "--target-platform-pathsep=%s")
 
+    zipper = get_shrubbery_tool(ctx, "zipper", ctx.attr._zipper)
     actions_run(
         ctx,
-        executable = ctx.attr._zipper,
-        arguments = [manifest, zipper_args],
+        executable = zipper.executable,
+        toolchain = zipper.toolchain,
+        arguments = zipper.prefix_args + [manifest, zipper_args],
         inputs = inputs.build(),
         outputs = [output],
         mnemonic = "PyZipAppCreateZip",

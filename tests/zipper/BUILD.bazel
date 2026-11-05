@@ -1,0 +1,15 @@
+load("@rules_rust//rust:defs.bzl", "rust_test")
+
+package(default_visibility = ["//:__subpackages__"])
+
+licenses(["notice"])
+
+rust_test(
+    name = "zipper_test",
+    size = "small",
+    srcs = ["zipper_test.rs"],
+    deps = [
+        "//crates/zipper:zipper_lib",
+        "@crates//:zip",
+    ],
+)
