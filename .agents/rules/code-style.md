@@ -1,7 +1,7 @@
 ---
 trigger: glob
 description: Cross-language code style, control flow, and CLI conventions
-globs: "*.py,*.sh,*.cc,*.h,*.go,*.bzl,*.bazel,*.yaml,*.yml"
+globs: "*.py,*.rs,*.sh,*.cc,*.h,*.go,*.bzl,*.bazel,*.yaml,*.yml"
 ---
 
 # Code Style Rules
