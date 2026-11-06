@@ -1,0 +1,6 @@
+---
+expect:
+  exit_code: 1
+  stderr: >-
+    gazelle: ERROR: conflicting values for the
+    "include_pytest_conftest" annotation across Python source files

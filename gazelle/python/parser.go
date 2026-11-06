@@ -92,6 +92,8 @@ func (p *python3Parser) parse(pyFilenames *treeset.Set) (*treeset.Set, map[strin
 	mainModules := make(map[string]*treeset.Set, len(chRes))
 	allAnnotations := new(annotations)
 	allAnnotations.ignore = make(map[string]struct{})
+	var includesPytestConftest bool
+	var excludesPytestConftest bool
 	for res := range chRes {
 		if res.HasMain {
 			mainModules[res.FileName] = treeset.NewWith(moduleComparator)
@@ -125,9 +127,24 @@ func (p *python3Parser) parse(pyFilenames *treeset.Set) (*treeset.Set, map[strin
 			allAnnotations.ignore[k] = v
 		}
 		allAnnotations.includeDeps = append(allAnnotations.includeDeps, annotations.includeDeps...)
-		allAnnotations.includePytestConftest = annotations.includePytestConftest
+		if annotations.includePytestConftest != nil {
+			if *annotations.includePytestConftest {
+				includesPytestConftest = true
+			} else {
+				excludesPytestConftest = true
+			}
+		}
 	}
 
+	if includesPytestConftest && excludesPytestConftest {
+		return nil, nil, nil, fmt.Errorf(
+			"conflicting values for the %q annotation across Python source files",
+			annotationKindIncludePytestConftest,
+		)
+	}
+	if includesPytestConftest || excludesPytestConftest {
+		allAnnotations.includePytestConftest = &includesPytestConftest
+	}
 	allAnnotations.includeDeps = removeDupesFromStringTreeSetSlice(allAnnotations.includeDeps)
 
 	return modules, mainModules, allAnnotations, nil

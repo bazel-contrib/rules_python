@@ -198,3 +198,13 @@ py_test(
 ```
 
 See {gh-issue}`3076` for more information.
+
+When a {bzl:obj}`py_test` has multiple source files, the annotation may be
+omitted from some files. If multiple source files set the annotation, they must
+all set it to the same value; Gazelle reports an error if the values conflict.
+
+:::{versionchanged} VERSION_NEXT_PATCH
+For multi-source {bzl:obj}`py_test` targets, annotations in different source
+files must agree. An annotation in one source file is no longer overwritten by
+an unset value in another source file.
+:::
