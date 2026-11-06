@@ -10,6 +10,10 @@ use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, DateTime, ZipWriter, ZIP64_BYTES_THR};
 
 /// `BufWriter` capacity for the output zip.
+///
+/// 256 KiB matches the other zipapp tools (`exe_zip_maker`, `zip_main_maker.py`). It is large
+/// enough that the many small entries of a typical zipapp coalesce into few `write` syscalls,
+/// while staying well below sizes where a bigger buffer stops paying off.
 const BLOCK_SIZE: usize = 256 * 1024;
 
 /// Usage text for `--help`. `lexopt` does not generate help, so this is maintained by hand.
@@ -54,6 +58,12 @@ fn get_zip_runfiles_path(
     unix_join(&[runfiles_dir, workspace_name, path])
 }
 
+/// Splits `path` into its components, dropping empty components and `.`, and resolving `..`
+/// against the preceding component where possible (a leading run of `..` is kept, since there
+/// is nothing to cancel it against).
+///
+/// Both `/` and `\` are treated as separators so the result is the same on every host.
+/// For example, `a/./b\c/../d` becomes `["a", "b", "d"]`, and `../x` becomes `["..", "x"]`.
 fn normalize_components(path: &str) -> Vec<&str> {
     let mut out = Vec::new();
     for part in path.split(['/', '\\']) {
@@ -171,6 +181,8 @@ fn parse_entry(
         return Ok(None);
     }
 
+    // Closures (not values): `file(...)` builds a `File` entry and `rf_path(...)` computes a
+    // runfiles zip path. They capture the function arguments so the match arms stay short.
     let file = |content_path: &str, is_symlink: &str| -> io::Result<EntryKind> {
         Ok(EntryKind::File {
             content_path: PathBuf::from(content_path),
@@ -440,6 +452,15 @@ pub fn create_zip(options: &ZipOptions) -> io::Result<()> {
     inner.flush()
 }
 
+/// Parses a `0`/`1` flag value, naming `flag` in the error.
+fn parse_bool_flag(flag: &str, value: &str) -> Result<bool, lexopt::Error> {
+    match value {
+        "0" => Ok(false),
+        "1" => Ok(true),
+        _ => Err(format!("invalid {flag} value (expected 0 or 1): {value}").into()),
+    }
+}
+
 /// Parses command-line arguments (excluding `argv[0]`).
 pub fn parse_args<I, T>(args: I) -> Result<Cli, lexopt::Error>
 where
@@ -472,17 +493,8 @@ where
                 workspace_name = parser.value()?.string()?;
             }
             Long("legacy-external-runfiles") => {
-                let val = parser.value()?.string()?;
-                legacy_external_runfiles = match val.as_str() {
-                    "0" => false,
-                    "1" => true,
-                    _ => {
-                        return Err(format!(
-                            "invalid --legacy-external-runfiles value (expected 0 or 1): {val}"
-                        )
-                        .into())
-                    }
-                };
+                legacy_external_runfiles =
+                    parse_bool_flag("--legacy-external-runfiles", &parser.value()?.string()?)?;
             }
             Long("runfiles-dir") => {
                 runfiles_dir = parser.value()?.string()?;
