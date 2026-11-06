@@ -238,6 +238,9 @@ lock(
 
 The {obj}`lock` rule also supports generating cross-platform `uv.lock` files
 using `uv lock` when {arg}`lock.out` ends with `.lock` (such as `uv.lock`).
+Because `uv.lock` already records distribution URLs and hashes across
+platforms, {obj}`pip.parse` does not need to query the PyPI Simple API or store
+distribution hashes in `MODULE.bazel.lock`.
 
 ### Example usage
 

@@ -35,9 +35,11 @@ page for information on our development workflow.
   don't support directly. Any additional information that we need will be
   retrieved from the SimpleAPI during the `bzlmod` extension evaluation phase.
   Then it will be written to the `MODULE.bazel.lock` file for future reuse. We
-  have plans to support `uv.lock` file directly. `uv` is recommended for
-  generating a fully locked `requirements.txt` file and we do provide a rule for
-  it.
+  also support `uv.lock` files directly under `bzlmod`, which already contain
+  cross-platform distribution URLs and hashes and do not require SimpleAPI
+  queries or storing distribution hashes in `MODULE.bazel.lock`. `uv` is
+  recommended for generating `uv.lock` or a fully locked `requirements.txt`
+  file, and we provide a rule for it.
 * The `py_binary`, `py_test` rules should scale to large monorepos and we work
   hard to minimize the work done during analysis and build phase. What is more,
   the space requirements for should be minimal, so we strive to use symlinks
