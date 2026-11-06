@@ -93,21 +93,21 @@ where
     while let Some(arg) = parser.next().map_err(|e| format!("{e}\n{USAGE}"))? {
         match arg {
             Short('h') | Long("help") => return Err(USAGE.to_string()),
-            Value(val) if positional.len() < 3 => {
+            Value(val) => {
                 positional.push(PathBuf::from(val));
             }
             _ => return Err(format!("{}\n{USAGE}", arg.unexpected())),
         }
     }
 
-    let Ok([preamble_path, zip_path, output_path]) = <[PathBuf; 3]>::try_from(positional) else {
+    if positional.len() != 3 {
         return Err(USAGE.to_string());
-    };
+    }
 
     Ok(Options {
-        preamble_path,
-        zip_path,
-        output_path,
+        preamble_path: positional.remove(0),
+        zip_path: positional.remove(0),
+        output_path: positional.remove(0),
     })
 }
 
