@@ -111,10 +111,17 @@ rust_crates = use_extension(
     "crate",
     dev_dependency = TOOL_DEPS_DEV_ONLY,
 )
+
+# keep-sorted start block=yes
+rust_crates.spec(
+    package = "lexopt",
+    version = "0.3.2",
+)
 rust_crates.spec(
     package = "sha2",
     version = "0.10.8",
 )
+# keep-sorted end
 
 # The crates must build for every platform in dev/platforms. Conditional
 # dependencies are resolved for these triples; rules_rust matches them by CPU
@@ -140,7 +147,7 @@ rust_crates.from_specs(
 # rules_rust has no @rules_rust//rust/platform config_setting for Linux ppc64le,
 # so don't mark the crates as incompatible with platforms that don't match one
 # of the triples above. Such platforms get only the unconditional dependencies,
-# which suffice for sha2.
+# which suffice for lexopt and sha2.
 rust_crates.render_config(
     generate_target_compatible_with = False,
 )

@@ -1,7 +1,11 @@
 use std::env;
 use std::fs;
+use std::path::PathBuf;
 
-use exe_zip_maker_lib::{compute_file_sha256_hex, create_exe_zip, replace_bytes, PLACEHOLDER};
+use exe_zip_maker_lib::{
+    compute_file_sha256_hex, create_exe_zip, parse_args, replace_bytes, run_cli, Options,
+    PLACEHOLDER,
+};
 
 #[test]
 fn test_replace_bytes_none() {
@@ -148,6 +152,43 @@ fn test_create_exe_zip_missing_files() {
     let missing_zip = temp_dir.join("nonexistent_data.zip");
 
     assert!(create_exe_zip(&preamble_path, &missing_zip, &output_path).is_err());
+
+    let _ = fs::remove_dir_all(&temp_dir);
+}
+
+#[test]
+fn test_parse_args_and_run_cli() {
+    assert_eq!(
+        parse_args(["a.sh", "b.zip", "c.pyz"]),
+        Ok(Options {
+            preamble_path: PathBuf::from("a.sh"),
+            zip_path: PathBuf::from("b.zip"),
+            output_path: PathBuf::from("c.pyz"),
+        })
+    );
+    assert!(parse_args(["only_one"]).is_err());
+    assert!(parse_args(["a", "b", "c", "d"]).is_err());
+    assert!(parse_args(["--help", "b", "c"]).is_err());
+    assert!(parse_args(["--unknown", "b", "c"]).is_err());
+
+    let temp_dir = env::temp_dir().join(format!("exe_zip_cli_{}", std::process::id()));
+    fs::create_dir_all(&temp_dir).unwrap();
+    let preamble_path = temp_dir.join("preamble.sh");
+    let zip_path = temp_dir.join("data.zip");
+    let output_path = temp_dir.join("output.exe");
+    fs::write(&preamble_path, b"#!/bin/sh\n# %ZIP_HASH%\n").unwrap();
+    fs::write(&zip_path, b"PK\x03\x04dummy").unwrap();
+
+    assert_eq!(run_cli(["missing_args"]), 1);
+    assert_eq!(
+        run_cli([
+            preamble_path.as_os_str(),
+            zip_path.as_os_str(),
+            output_path.as_os_str(),
+        ]),
+        0
+    );
+    assert!(output_path.exists());
 
     let _ = fs::remove_dir_all(&temp_dir);
 }

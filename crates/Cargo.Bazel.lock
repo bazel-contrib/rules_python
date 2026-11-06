@@ -1,5 +1,5 @@
 {
-  "checksum": "c47fbc0efe861336e9b62c6afdb15fda13bccd0cfb7557f9395de7d407fb3318",
+  "checksum": "30f93d6303d71ee7044f0ee40523812209c2025ff5210bb2c7008ee2eee9782a",
   "crates": {
     "block-buffer 0.10.4": {
       "name": "block-buffer",
@@ -303,6 +303,10 @@
         "deps": {
           "common": [
             {
+              "id": "lexopt 0.3.2",
+              "target": "lexopt"
+            },
+            {
               "id": "sha2 0.10.9",
               "target": "sha2"
             }
@@ -400,6 +404,44 @@
           ],
           "selects": {}
         }
+      },
+      "license": "MIT",
+      "license_ids": [
+        "MIT"
+      ],
+      "license_file": "LICENSE"
+    },
+    "lexopt 0.3.2": {
+      "name": "lexopt",
+      "version": "0.3.2",
+      "package_url": "https://github.com/blyxxyz/lexopt",
+      "repository": {
+        "Http": {
+          "url": "https://static.crates.io/crates/lexopt/0.3.2/download",
+          "sha256": "803ec87c9cfb29b9d2633f20cba1f488db3fd53f2158b1024cbefb47ba05d413"
+        }
+      },
+      "targets": [
+        {
+          "Library": {
+            "crate_name": "lexopt",
+            "crate_root": "src/lib.rs",
+            "srcs": {
+              "allow_empty": true,
+              "include": [
+                "**/*.rs"
+              ]
+            }
+          }
+        }
+      ],
+      "library_target_name": "lexopt",
+      "common_attrs": {
+        "compile_data_glob": [
+          "**"
+        ],
+        "edition": "2018",
+        "version": "0.3.2"
       },
       "license": "MIT",
       "license_ids": [
@@ -675,6 +717,7 @@
     ]
   },
   "direct_deps": [
+    "lexopt 0.3.2",
     "sha2 0.10.9"
   ],
   "direct_dev_deps": [],
