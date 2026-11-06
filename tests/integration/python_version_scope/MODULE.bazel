@@ -1,0 +1,10 @@
+module(name = "python_version_scope_test")
+
+bazel_dep(name = "rules_python", version = "0.0.0")
+local_path_override(
+    module_name = "rules_python",
+    path = "../../..",
+)
+
+config = use_extension("@rules_python//python/extensions:config.bzl", "config")
+config.python_version_scope(scope = "project")

@@ -97,6 +97,7 @@ self
 getting-started
 pypi/index
 Toolchains <toolchains>
+Python version project scoping <python-version-project-scope>
 coverage
 precompiling
 gazelle/docs/index
