@@ -46,6 +46,9 @@ When adding or updating a Rust crate dependency:
   (`bool`, enums, validated `PathBuf`, pre-compiled `Regex`) in `parse_args`
   rather than storing stringly-typed `String` fields or deferring validation to
   execution.
+* **Positional argument counts**: Validate fixed positional argument counts with
+  an explicit length check (e.g., `if positional.len() != 3`) rather than
+  collection-length match guards or fixed-size array `try_from` conversions.
 * **`OsString` & `ExitCode`**: Keep CLI arguments and file paths as `OsString`
   and `PathBuf`; never round-trip `OsString -> String -> PathBuf` via
   `to_string_lossy()`. Return `std::process::ExitCode` from `main()` and
