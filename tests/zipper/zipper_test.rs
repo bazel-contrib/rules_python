@@ -672,7 +672,41 @@ fn test_invalid_manifest_line_returns_error() {
     fs::write(&manifest_path, "unknown_type|foo|bar\n").unwrap();
 
     let opts = default_options(&manifest_path, &output_zip);
-    assert!(create_zip(&opts).is_err());
+    let err = create_zip(&opts).unwrap_err().to_string();
+    assert!(err.contains("line 1: unknown entry type"), "{err}");
+}
+
+#[test]
+fn test_invalid_is_symlink_value_returns_error() {
+    let tmp = TempDir::new("invalid_is_symlink");
+    let manifest_path = tmp.path().join("manifest.txt");
+    let output_zip = tmp.path().join("output.zip");
+
+    let file1_path = tmp.path().join("file1.txt");
+    fs::write(&file1_path, b"content1").unwrap();
+    fs::write(
+        &manifest_path,
+        format!("rf-file|5|foo|{}\n", file1_path.display()),
+    )
+    .unwrap();
+
+    let opts = default_options(&manifest_path, &output_zip);
+    let err = create_zip(&opts).unwrap_err().to_string();
+    assert!(err.contains("line 1: invalid is_symlink value"), "{err}");
+}
+
+#[test]
+fn test_compress_level_out_of_range_returns_error() {
+    let tmp = TempDir::new("compress_level_range");
+    let manifest_path = tmp.path().join("manifest.txt");
+    let output_zip = tmp.path().join("output.zip");
+    fs::write(&manifest_path, "rf-empty|empty\n").unwrap();
+
+    let mut opts = default_options(&manifest_path, &output_zip);
+    opts.compress_level = 10;
+    let err = create_zip(&opts).unwrap_err().to_string();
+    assert!(err.contains("expected 0-9"), "{err}");
+    assert!(!output_zip.exists());
 }
 
 struct TempDir {

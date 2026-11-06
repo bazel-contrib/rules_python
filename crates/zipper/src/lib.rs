@@ -20,7 +20,7 @@ Create a zip file from a manifest.
 
 Arguments:
   <manifest>  Path to the manifest file. Line formats are documented on
-              `EntryType` in crates/zipper/src/lib.rs.
+              `parse_entry` in crates/zipper/src/lib.rs.
   <output>    Path to the output zip file
 
 Options:
@@ -124,7 +124,42 @@ fn normalize_zip_path(path: &str) -> String {
     path.replace('\\', "/")
 }
 
+/// Parses the `is_symlink` field of a manifest line.
+fn parse_symlink_mode(value: &str) -> io::Result<SymlinkMode> {
+    match value {
+        "0" => Ok(SymlinkMode::Regular),
+        "1" => Ok(SymlinkMode::Symlink),
+        "-1" => Ok(SymlinkMode::Infer),
+        _ => Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("invalid is_symlink value (expected 0, 1, or -1): {value}"),
+        )),
+    }
+}
+
 /// Parses a single line of a manifest file. Returns `None` for blank lines.
+///
+/// Lines have one of the following `|`-separated formats:
+///
+/// * `regular|is_symlink|zip_path|content_path`: Stores `zip_path` at the exact
+///   zip-root-relative path given, reading its content (or symlink target) from `content_path`.
+/// * `rf-empty|runfile_path`: A `runfiles.empty_filenames` entry (such as an implicit
+///   `__init__.py`) stored as an empty file under `<runfiles_dir>/<runfiles_root_rel_path>`.
+/// * `rf-file|is_symlink|runfile_path|content_path`: A `runfiles.files` entry whose destination
+///   zip path is computed under `<runfiles_dir>` from `runfile_path` (accounting for
+///   `workspace_name` and `legacy_external_runfiles`), reading content from `content_path`.
+/// * `rf-symlink|is_symlink|runfile_symlink_path|content_path`: A `runfiles.symlinks` entry
+///   stored under `<runfiles_dir>/<workspace_name>/<runfile_symlink_path>`, reading content
+///   from `content_path`.
+/// * `rf-root-symlink|is_symlink|runfile_root_path|content_path`: A `runfiles.root_symlinks`
+///   entry stored under `<runfiles_dir>/<runfile_root_path>`, reading content from
+///   `content_path`.
+/// * `symlink|runfile_root_path|link_to_rf_path`: An explicit symlink entry stored at
+///   `<runfiles_dir>/<runfile_root_path>` whose symlink target is computed as the relative path
+///   from its parent directory to `<runfiles_dir>/<link_to_rf_path>`. Takes precedence over
+///   non-symlink entries at the same `zip_path`.
+///
+/// See [`SymlinkMode`] for the valid `is_symlink` values.
 fn parse_entry(
     line: &str,
     workspace_name: &str,
@@ -136,47 +171,42 @@ fn parse_entry(
         return Ok(None);
     }
 
+    let file = |content_path: &str, is_symlink: &str| -> io::Result<EntryKind> {
+        Ok(EntryKind::File {
+            content_path: PathBuf::from(content_path),
+            symlink_mode: parse_symlink_mode(is_symlink)?,
+        })
+    };
+    let rf_path = |runfile_path: &str| {
+        get_zip_runfiles_path(
+            runfile_path,
+            workspace_name,
+            legacy_external_runfiles,
+            runfiles_dir,
+        )
+    };
+
     let parts: Vec<&str> = line.split('|').collect();
     let entry = match parts.as_slice() {
-        ["regular", is_symlink_str, zip_path, content_path] => ManifestEntry {
-            entry_type: EntryType::Regular,
-            is_symlink_str: is_symlink_str.to_string(),
+        ["regular", is_symlink, zip_path, content_path] => ManifestEntry {
             zip_path: zip_path.to_string(),
-            content_path: Some(content_path.to_string()),
+            kind: file(content_path, is_symlink)?,
         },
         ["rf-empty", runfile_path] => ManifestEntry {
-            entry_type: EntryType::RfEmpty,
-            is_symlink_str: "0".to_string(),
-            zip_path: get_zip_runfiles_path(
-                runfile_path,
-                workspace_name,
-                legacy_external_runfiles,
-                runfiles_dir,
-            ),
-            content_path: None,
+            zip_path: rf_path(runfile_path),
+            kind: EntryKind::Empty,
         },
-        ["rf-file", is_symlink_str, runfile_path, content_path] => ManifestEntry {
-            entry_type: EntryType::RfFile,
-            is_symlink_str: is_symlink_str.to_string(),
-            zip_path: get_zip_runfiles_path(
-                runfile_path,
-                workspace_name,
-                legacy_external_runfiles,
-                runfiles_dir,
-            ),
-            content_path: Some(content_path.to_string()),
+        ["rf-file", is_symlink, runfile_path, content_path] => ManifestEntry {
+            zip_path: rf_path(runfile_path),
+            kind: file(content_path, is_symlink)?,
         },
-        ["rf-symlink", is_symlink_str, runfile_path, content_path] => ManifestEntry {
-            entry_type: EntryType::RfSymlink,
-            is_symlink_str: is_symlink_str.to_string(),
+        ["rf-symlink", is_symlink, runfile_path, content_path] => ManifestEntry {
             zip_path: unix_join(&[runfiles_dir, workspace_name, runfile_path]),
-            content_path: Some(content_path.to_string()),
+            kind: file(content_path, is_symlink)?,
         },
-        ["rf-root-symlink", is_symlink_str, runfile_path, content_path] => ManifestEntry {
-            entry_type: EntryType::RfRootSymlink,
-            is_symlink_str: is_symlink_str.to_string(),
+        ["rf-root-symlink", is_symlink, runfile_path, content_path] => ManifestEntry {
             zip_path: unix_join(&[runfiles_dir, runfile_path]),
-            content_path: Some(content_path.to_string()),
+            kind: file(content_path, is_symlink)?,
         },
         ["symlink", runfile_path, link_to_rf_path] => {
             let zip_path = unix_join(&[runfiles_dir, runfile_path]);
@@ -184,10 +214,8 @@ fn parse_entry(
             let parent = zip_path.rsplit_once('/').map_or("", |(dir, _)| dir);
             let target = relative_path(&link_to, parent);
             ManifestEntry {
-                entry_type: EntryType::Symlink,
-                is_symlink_str: "2".to_string(),
                 zip_path,
-                content_path: Some(target),
+                kind: EntryKind::Symlink { target },
             }
         }
         _ => {
@@ -203,7 +231,10 @@ fn parse_entry(
 
 fn sort_key(entry: &ManifestEntry) -> (&str, bool) {
     // Sort by zip path, then symlink entries first so they have precedence.
-    (&entry.zip_path, entry.entry_type != EntryType::Symlink)
+    (
+        &entry.zip_path,
+        !matches!(entry.kind, EntryKind::Symlink { .. }),
+    )
 }
 
 /// Reads and sorts all entries from the manifest file at `manifest_path`.
@@ -249,11 +280,19 @@ fn read_link_string(path: &Path) -> io::Result<String> {
 
 /// Determines whether `content_path` should be stored as a symlink and returns its target
 /// (relative to the symlink's parent directory).
-fn source_symlink_target(content_path: &Path, is_symlink_str: &str) -> io::Result<Option<String>> {
-    if is_symlink_str == "1" {
+fn source_symlink_target(
+    content_path: &Path,
+    symlink_mode: SymlinkMode,
+) -> io::Result<Option<String>> {
+    let symlink_mode = match symlink_mode {
+        SymlinkMode::Infer if fs::metadata(content_path).is_err() => SymlinkMode::Symlink,
+        SymlinkMode::Infer => SymlinkMode::Regular,
+        mode => mode,
+    };
+    if symlink_mode == SymlinkMode::Symlink {
         return Ok(Some(read_link_string(content_path)?));
     }
-    if is_symlink_str != "0" || !is_symlink_path(content_path) {
+    if !is_symlink_path(content_path) {
         return Ok(None);
     }
 
@@ -336,37 +375,24 @@ fn write_entry<W: Write + Seek>(
         return Ok(());
     }
 
-    if entry.entry_type == EntryType::RfEmpty {
-        // Create empty file
-        zf.start_file(&zip_path, file_options(options.compress_level, 0o644))?;
-        return Ok(());
-    }
-
-    let content_path_str = entry.content_path.as_deref().ok_or_else(|| {
-        io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!("missing content_path for entry {zip_path}"),
-        )
-    })?;
-
-    if entry.entry_type == EntryType::Symlink {
-        let target = convert_symlink_target(content_path_str, &options.platform_pathsep);
-        zf.add_symlink(&zip_path, target, symlink_options())?;
-        return Ok(());
-    }
-
-    let content_path = Path::new(content_path_str);
-    let effective_is_symlink = if entry.is_symlink_str == "-1" {
-        if fs::metadata(content_path).is_err() {
-            "1"
-        } else {
-            "0"
+    let (content_path, symlink_mode) = match &entry.kind {
+        EntryKind::Empty => {
+            // Create empty file
+            zf.start_file(&zip_path, file_options(options.compress_level, 0o644))?;
+            return Ok(());
         }
-    } else {
-        entry.is_symlink_str.as_str()
+        EntryKind::Symlink { target } => {
+            let target = convert_symlink_target(target, &options.platform_pathsep);
+            zf.add_symlink(&zip_path, target, symlink_options())?;
+            return Ok(());
+        }
+        EntryKind::File {
+            content_path,
+            symlink_mode,
+        } => (content_path, *symlink_mode),
     };
 
-    if let Some(symlink_target) = source_symlink_target(content_path, effective_is_symlink)? {
+    if let Some(symlink_target) = source_symlink_target(content_path, symlink_mode)? {
         let target = convert_symlink_target(&symlink_target, &options.platform_pathsep);
         zf.add_symlink(&zip_path, target, symlink_options())?;
         return Ok(());
@@ -384,6 +410,15 @@ fn write_entry<W: Write + Seek>(
 
 /// Creates a zip file from a manifest according to `options`.
 pub fn create_zip(options: &ZipOptions) -> io::Result<()> {
+    if options.compress_level > 9 {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!(
+                "invalid compress_level (expected 0-9): {}",
+                options.compress_level
+            ),
+        ));
+    }
     let entries = read_manifest(options)?;
 
     if let Some(parent) = options.output_zip.parent() {
@@ -518,54 +553,42 @@ pub enum Cli {
     Run(ZipOptions),
 }
 
-/// Entry types supported in a zipper manifest.
+/// How a `File` entry's `content_path` should be stored with respect to symlinks. Parsed from
+/// the `is_symlink` manifest field.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum EntryType {
-    /// `regular|is_symlink|zip_path|content_path`: Stores `zip_path` at the exact
-    /// zip-root-relative path given, reading its content (or symlink target) from `content_path`.
+enum SymlinkMode {
+    /// `"0"`: Store as a regular file read from `content_path` (unless `content_path` itself or
+    /// its sandbox target is a relative source symlink).
     Regular,
-    /// `rf-empty|runfile_path`: A `runfiles.empty_filenames` entry (such as an implicit
-    /// `__init__.py`) stored as an empty file under `<runfiles_dir>/<runfiles_root_rel_path>`.
-    RfEmpty,
-    /// `rf-file|is_symlink|runfile_path|content_path`: A `runfiles.files` entry whose destination
-    /// zip path is computed under `<runfiles_dir>` from `runfile_path` (accounting for
-    /// `workspace_name` and `legacy_external_runfiles`), reading content from `content_path`.
-    RfFile,
-    /// `rf-symlink|is_symlink|runfile_symlink_path|content_path`: A `runfiles.symlinks` entry
-    /// stored under `<runfiles_dir>/<workspace_name>/<runfile_symlink_path>`, reading content
-    /// from `content_path`.
-    RfSymlink,
-    /// `rf-root-symlink|is_symlink|runfile_root_path|content_path`: A `runfiles.root_symlinks`
-    /// entry stored under `<runfiles_dir>/<runfile_root_path>`, reading content from
-    /// `content_path`.
-    RfRootSymlink,
-    /// `symlink|runfile_root_path|link_to_rf_path`: An explicit symlink entry stored at
-    /// `<runfiles_dir>/<runfile_root_path>` whose symlink target is computed as the relative path
-    /// from its parent directory to `<runfiles_dir>/<link_to_rf_path>`. Takes precedence over
-    /// non-symlink entries at the same `zip_path`.
+    /// `"1"`: Store as a symlink whose target is read via `read_link(content_path)`.
     Symlink,
+    /// `"-1"`: Unknown at analysis time (Bazel 7 lacks `File.is_symlink`); treated as `Symlink`
+    /// when `content_path` is a dangling symlink (`fs::metadata` fails) and `Regular` otherwise.
+    Infer,
+}
+
+/// What a manifest entry stores. See [`parse_entry`] for the manifest line formats.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum EntryKind {
+    /// An empty regular file (`rf-empty`).
+    Empty,
+    /// A symlink whose `target` is relative to the parent directory of `zip_path` inside the
+    /// zip archive (`symlink`). Takes precedence over other kinds at the same `zip_path`.
+    Symlink { target: String },
+    /// Content read from `content_path` on disk (relative to the current working directory or
+    /// absolute), stored as a file or symlink according to `symlink_mode`.
+    File {
+        content_path: PathBuf,
+        symlink_mode: SymlinkMode,
+    },
 }
 
 /// A parsed line from a zipper manifest.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct ManifestEntry {
-    /// The manifest entry kind determining how `zip_path` and `content_path` are interpreted.
-    entry_type: EntryType,
-    /// Indicates how `content_path` should be stored with respect to symlinks. Valid values:
-    /// * `"0"`: Store as a regular file read from `content_path` (unless `content_path` itself or
-    ///   its sandbox target is a relative source symlink).
-    /// * `"1"`: Store as a symlink whose target is read via `read_link(content_path)`.
-    /// * `"-1"`: Unknown at analysis time (Bazel 7 lacks `File.is_symlink`); infer `"1"` when
-    ///   `content_path` is a dangling symlink (`fs::metadata` fails) and `"0"` otherwise.
-    /// * `"2"`: Synthetic marker set on `EntryType::Symlink` entries where `content_path` is
-    ///   already the computed relative symlink target string rather than a filesystem path.
-    is_symlink_str: String,
     /// Destination path inside the zip archive, relative to the zip root.
     zip_path: String,
-    /// Source file path on disk (relative to the current working directory or absolute), or
-    /// symlink target path (relative to the parent directory of `zip_path` inside the zip archive)
-    /// when `entry_type` is `EntryType::Symlink`. `None` for `EntryType::RfEmpty`.
-    content_path: Option<String>,
+    kind: EntryKind,
 }
 
 /// Configuration options for creating a zip archive.
