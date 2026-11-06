@@ -138,10 +138,10 @@ def build_link_map(ctx, entries, return_conflicts = False):
             to be resolved and merged.
 
     Returns:
-        {type}`dict[str, dict[str, str|File]]` Mappings of venv paths to their
-        backing files. The first key is a `VenvSymlinkKind` value.
-        The inner dict keys are venv paths relative to the kind's directory. The
-        inner dict values are strings or Files to link to.
+        {type}`dict[str, dict[str, File | str]]` Mappings of venv paths to their
+        backing files, keyed by `VenvSymlinkKind` value, then by venv path
+        relative to the kind's directory. Values are `File`s or
+        runfiles-root-relative path strings to link to.
     """
 
     version_by_pkg = {}  # dict[str pkg, str version]
@@ -164,10 +164,10 @@ def build_link_map(ctx, entries, return_conflicts = False):
         # else: ignore it; not the selected version
 
     # final paths to keep, grouped by kind
-    keep_link_map = {}  # dict[str kind, dict[path, str|File]]
+    keep_link_map = {}  # dict[str kind, dict[str venv_path, File | str rf_root_path]]
     conflicts = [] if return_conflicts else None
     for kind, entries in entries_by_kind.items():
-        # dict[str kind-relative path, str|File link_to]
+        # dict[str venv_path, File | str rf_root_path]
         keep_kind_link_map = {}
 
         groups = _group_venv_path_entries(entries)
@@ -235,8 +235,9 @@ def _merge_venv_path_group(ctx, group, keep_map):
         ctx: {type}`ctx` current ctx.
         group: {type}`list[VenvSymlinkEntry]` a group of entries with overlapping
             `venv_path` prefixes, ordered from shortest to longest path.
-        keep_map: {type}`dict[str, str|File]` files kept after merging are
-            populated into this map.
+        keep_map: {type}`dict[str, File | str]` files kept after merging are
+            populated into this map, keyed by venv path. Values are `File`s or
+            runfiles-root-relative path strings to link to.
     """
 
     # TODO: Compute the minimum number of entries to create. This can't avoid
@@ -247,6 +248,16 @@ def _merge_venv_path_group(ctx, group, keep_map):
     # dynamic linker symlink resolution semantics on Linux.
     for entry in group:
         root_venv_path = entry.venv_path
+        link_to_subpaths = entry.link_to_subpaths.to_list()
+        if link_to_subpaths:
+            # subpath is relative to both entry.link_to_path (runfiles side) and
+            # entry.venv_path (venv side); the two trees mirror each other below them.
+            for subpath in link_to_subpaths:
+                venv_path = paths.join(root_venv_path, subpath)
+                if venv_path not in keep_map:
+                    keep_map[venv_path] = paths.join(entry.link_to_path, subpath)
+            continue
+
         anchored_link_to_path = entry.link_to_path + "/"
         for file in entry.files.to_list():
             rf_root_path = runfiles_root_path(ctx, file.short_path)
@@ -263,52 +274,105 @@ def _merge_venv_path_group(ctx, group, keep_map):
                 # preconditions and can't link anyways), or not under
                 # the prefix (violates preconditions).
                 break
-            else:
-                # Compute the file-specific venv path. i.e. the relative
-                # path of the file under entry.venv_path, joined with
-                # entry.venv_path
-                head, match, rel_venv_path = rf_root_path.partition(anchored_link_to_path)
-                if not match or head:
-                    # If link_to_path didn't match, then obviously skip.
-                    # If head is non-empty, it means link_to_path wasn't
-                    # found at the start
-                    # This shouldn't occur in practice, but guard against it
-                    # just in case
-                    continue
 
-                venv_path = paths.join(root_venv_path, rel_venv_path)
-
+            # A directory artifact that contains link_to_path, e.g. the
+            # installed wheel tree backing a single-file entry. There's no
+            # File for the target itself, so link to its runfiles path.
+            if file.is_directory and entry.link_to_path.startswith(rf_root_path + "/"):
                 # For lack of a better option, first added wins.
-                if venv_path not in keep_map:
-                    keep_map[venv_path] = file
+                if entry.venv_path not in keep_map:
+                    keep_map[entry.venv_path] = entry.link_to_path
+                break
 
-def _get_file_venv_path(ctx, f, site_packages_root):
-    """Computes a file's venv_path if it's under the site_packages_root.
+            # Compute the file-specific venv path. i.e. the relative
+            # path of the file under entry.venv_path, joined with
+            # entry.venv_path
+            head, match, rel_venv_path = rf_root_path.partition(anchored_link_to_path)
+            if not match or head:
+                # If link_to_path didn't match, then obviously skip.
+                # If head is non-empty, it means link_to_path wasn't
+                # found at the start
+                # This shouldn't occur in practice, but guard against it
+                # just in case
+                continue
+
+            venv_path = paths.join(root_venv_path, rel_venv_path)
+
+            # For lack of a better option, first added wins.
+            if venv_path not in keep_map:
+                keep_map[venv_path] = file
+
+def _repo_rel_path_to_venv_path(repo_rel_path, site_packages_root):
+    """Computes a file's venv_path from its repo-relative (or tree-relative) path.
 
     Args:
-        ctx: The current ctx.
-        f: The file to compute the venv_path for.
-        site_packages_root: The site packages root path; repo-relative
-            path.
+        repo_rel_path: {type}`str` Repo-relative (or tree-relative) path.
+        site_packages_root: {type}`str` Trailing-slash-terminated site-packages
+            prefix (e.g. `"site-packages/"`).
 
     Returns:
-        A tuple `(venv_path, rf_root_path)` if the file is under
-        `site_packages_root` or data/, bin/, include/ otherwise `(None, None)`.
+        {type}`str | None` The `venv_path` if `repo_rel_path` is under `data/`,
+        `bin/`, `include/`, or `site_packages_root`; otherwise `None`.
     """
-    rf_root_path = runfiles_root_path(ctx, f.short_path)
-    _, _, repo_rel_path = rf_root_path.partition("/")
 
     # Check for wheel data/bin/include folders first
     for prefix in ["data/", "bin/", "include/"]:
         if repo_rel_path.startswith(prefix):
-            return (repo_rel_path, rf_root_path)
+            return repo_rel_path
 
     head, found_sp_root, venv_path = repo_rel_path.partition(site_packages_root)
     if head or not found_sp_root:
         # If head is set, then the path didn't start with site_packages_root
         # if found_sp_root is empty, then it means it wasn't found at all.
-        return (None, None)
-    return (venv_path, rf_root_path)
+        return None
+    return venv_path
+
+def _venv_candidates(ctx, files, site_packages_root, tree_artifact):
+    """Normalizes input Files or tree-relative path strings into sorted candidates.
+
+    Args:
+        ctx: {type}`ctx` The current ctx.
+        files: {type}`list[File] | list[str]` Regular `File` objects, or
+            `tree_artifact`-relative path strings (`tree_rel_path`) when
+            `tree_artifact` is given.
+        site_packages_root: {type}`str` Trailing-slash-terminated site-packages
+            prefix (e.g. `"site-packages/"`).
+        tree_artifact: {type}`File | None` Optional directory artifact backing
+            the relative path strings in `files`.
+
+    Returns:
+        {type}`list[struct]` Sorted list of `struct(venv_path, rf_root_path, file)`
+        for entries mapped into the venv, where `file` is {type}`File | None`
+        (`None` when backed by `tree_artifact`).
+    """
+    if not files:
+        return []
+
+    candidates = []
+    if tree_artifact != None:
+        tree_rf_root = runfiles_root_path(ctx, tree_artifact.short_path)
+        for tree_rel_path in sorted(files):
+            venv_path = _repo_rel_path_to_venv_path(tree_rel_path, site_packages_root)
+            if venv_path == None:
+                continue
+            candidates.append(struct(
+                venv_path = venv_path,
+                rf_root_path = "{}/{}".format(tree_rf_root, tree_rel_path),
+                file = None,
+            ))
+    else:
+        for file in sorted(files, key = lambda f: f.short_path):
+            rf_root_path = runfiles_root_path(ctx, file.short_path)
+            _, _, repo_rel_path = rf_root_path.partition("/")
+            venv_path = _repo_rel_path_to_venv_path(repo_rel_path, site_packages_root)
+            if venv_path == None:
+                continue
+            candidates.append(struct(
+                venv_path = venv_path,
+                rf_root_path = rf_root_path,
+                file = file,
+            ))
+    return candidates
 
 def get_venv_symlinks(
         ctx,
@@ -316,21 +380,26 @@ def get_venv_symlinks(
         package,
         version_str,
         site_packages_root,
-        namespace_package_files = []):
+        namespace_package_files = [],
+        tree_artifact = None):
     """Compute the VenvSymlinkEntry objects for a library.
 
     Args:
         ctx: {type}`ctx` the current ctx.
-        files: {type}`list[File]` the underlying files that are under
-            `site_packages_root` and intended to be part of the venv
-            contents.
+        files: {type}`list[File] | list[str]` the underlying files (or
+            `tree_artifact`-relative path strings when `tree_artifact` is given)
+            that are under `site_packages_root` and intended to be part of the
+            venv contents.
         package: {type}`str` the Python distribution name.
         version_str: {type}`str` the distribution's version.
         site_packages_root: {type}`str` prefix under which files are
             considered to be part of the installed files.
-        namespace_package_files: {type}`list[File]` a list of files
-            that are pkgutil-style namespace packages and cannot be
+        namespace_package_files: {type}`list[File] | list[str]` a list of files
+            (or `tree_artifact`-relative path strings when `tree_artifact` is
+            given) that are pkgutil-style namespace packages and cannot be
             directly linked.
+        tree_artifact: {type}`File | None` optional directory artifact backing
+            the relative path strings in `files`.
 
     Returns:
         {type}`list[VenvSymlinkEntry]` the entries that describe how
@@ -346,7 +415,11 @@ def get_venv_symlinks(
     # Append slash to prevent incorrect prefix-string matches
     site_packages_root += "/"
 
-    all_files = sorted(files, key = lambda f: f.short_path)
+    candidates = _venv_candidates(ctx, files, site_packages_root, tree_artifact)
+    tree_rf_root = (
+        runfiles_root_path(ctx, tree_artifact.short_path) if tree_artifact != None else None
+    )
+    tree_files_depset = depset([tree_artifact]) if tree_artifact != None else None
 
     cannot_be_linked_directly = {}
     for dirname in [
@@ -378,11 +451,13 @@ def get_venv_symlinks(
         dirname: True
         for dirname in namespace_package_dirs.keys()
     })
-    for f in namespace_package_files:
-        venv_path, _ = _get_file_venv_path(ctx, f, site_packages_root)
-        if venv_path == None:
-            continue
-        ns_dir = paths.dirname(venv_path)
+    for ns_candidate in _venv_candidates(
+        ctx,
+        namespace_package_files,
+        site_packages_root,
+        tree_artifact,
+    ):
+        ns_dir = paths.dirname(ns_candidate.venv_path)
         namespace_package_dirs[ns_dir] = True
         cannot_be_linked_directly[ns_dir] = True
 
@@ -390,8 +465,8 @@ def get_venv_symlinks(
     # Where path is the venv path (i.e. relative to site_packages_prefix)
     venv_symlinks = {}
 
-    # List of (File, str venv_path) tuples
-    files_left_to_link = []
+    # List of candidate structs; see _venv_candidates.
+    candidates_left_to_link = []
 
     # We want to minimize the number of files symlinked. Ideally, only the
     # top-level directories are symlinked. Unfortunately, shared libraries
@@ -401,20 +476,20 @@ def get_venv_symlinks(
     # To fix, we have to directly link shared libraries. This then means that
     # all the parent directories of the shared library can't be linked
     # directly.
-    for src in all_files:
-        venv_path, rf_root_path = _get_file_venv_path(ctx, src, site_packages_root)
-        if venv_path == None:
-            continue
-
+    for candidate in candidates:
+        venv_path = candidate.venv_path
         filename = paths.basename(venv_path)
         if _is_linker_loaded_library(filename):
+            # Tree-backed single-file entries set link_to_file = None because
+            # ctx.runfiles(root_symlinks=...) requires individual File objects,
+            # so consuming binaries materialize them via ctx.actions.declare_symlink().
             venv_symlinks[venv_path] = VenvSymlinkEntry(
                 kind = VenvSymlinkKind.LIB,
-                link_to_path = rf_root_path,
-                link_to_file = src,
+                link_to_path = candidate.rf_root_path,
+                link_to_file = candidate.file,
                 package = package,
                 version = version_str,
-                files = depset([src]),
+                files = tree_files_depset if tree_artifact != None else depset([candidate.file]),
                 venv_path = venv_path,
             )
             parent = paths.dirname(venv_path)
@@ -427,7 +502,7 @@ def get_venv_symlinks(
                 cannot_be_linked_directly[parent] = True
                 parent = paths.dirname(parent)
         else:
-            files_left_to_link.append((src, venv_path))
+            candidates_left_to_link.append(candidate)
 
         top_level_dirname, _, tail = venv_path.partition("/")
         if (
@@ -460,22 +535,23 @@ def get_venv_symlinks(
     # directly linked. Next, we loop over the remaining files and group
     # them into the highest level directory that can be linked.
 
-    # dict[str venv_path, list[File]]
+    # dict[str venv_path, list[candidate struct]]
     optimized_groups = {}
 
-    for src, venv_path in files_left_to_link:
+    for candidate in candidates_left_to_link:
+        venv_path = candidate.venv_path
         parent = paths.dirname(venv_path)
         if not parent:
             # File in root, must be linked directly
             optimized_groups.setdefault(venv_path, [])
-            optimized_groups[venv_path].append(src)
+            optimized_groups[venv_path].append(candidate)
             continue
 
         if parent in cannot_be_linked_directly:
             # File in a directory that cannot be directly linked,
             # so link the file directly
             optimized_groups.setdefault(venv_path, [])
-            optimized_groups[venv_path].append(src)
+            optimized_groups[venv_path].append(candidate)
         else:
             # This path can be grouped. Find the highest-level directory to link.
             venv_path = parent
@@ -491,10 +567,10 @@ def get_venv_symlinks(
                     break
 
             optimized_groups.setdefault(venv_path, [])
-            optimized_groups[venv_path].append(src)
+            optimized_groups[venv_path].append(candidate)
 
     # Finally, for each group, we create the VenvSymlinkEntry objects
-    for venv_path, files in optimized_groups.items():
+    for venv_path, members in optimized_groups.items():
         if venv_path.startswith("data/"):
             out_venv_path = venv_path[len("data/"):]
             kind = VenvSymlinkKind.DATA
@@ -512,20 +588,38 @@ def get_venv_symlinks(
             kind = VenvSymlinkKind.LIB
             prefix = site_packages_root
 
-        link_to_path = (
-            _get_label_runfiles_repo(ctx, files[0].owner) +
-            "/" +
-            prefix +
-            venv_path
-        )
+        if tree_artifact != None:
+            link_to_path = tree_rf_root + "/" + prefix + venv_path
+            link_to_file = None
+            entry_files = tree_files_depset
+
+            # A group keyed by its member's own path links that single file
+            # directly, so it has no subpaths.
+            is_file_link = members[0].venv_path == venv_path
+            link_to_subpaths = depset([] if is_file_link else [
+                m.venv_path[len(venv_path) + 1:]
+                for m in members
+            ])
+        else:
+            link_to_path = (
+                _get_label_runfiles_repo(ctx, members[0].file.owner) +
+                "/" +
+                prefix +
+                venv_path
+            )
+            link_to_file = members[0].file if kind == VenvSymlinkKind.BIN and len(members) == 1 else None
+            entry_files = depset([m.file for m in members])
+            link_to_subpaths = None
+
         venv_symlinks[venv_path] = VenvSymlinkEntry(
             kind = kind,
             link_to_path = link_to_path,
-            link_to_file = files[0] if kind == VenvSymlinkKind.BIN and len(files) == 1 else None,
+            link_to_file = link_to_file,
             package = package,
             version = version_str,
             venv_path = out_venv_path,
-            files = depset(files),
+            files = entry_files,
+            link_to_subpaths = link_to_subpaths,
         )
 
     return venv_symlinks.values()

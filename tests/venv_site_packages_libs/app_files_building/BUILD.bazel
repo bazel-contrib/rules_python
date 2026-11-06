@@ -1,5 +1,57 @@
-load(":app_files_building_tests.bzl", "app_files_building_test_suite")
+load("//python:py_binary.bzl", "py_binary")
+load("//tests/support:py_reconfig.bzl", "py_reconfig_test")
+load(":app_files_building_tests.bzl", "app_files_building_test_suite", "tree_venv_lib")
+
+py_binary(
+    name = "populate_tree",
+    srcs = ["populate_tree.py"],
+    main = "populate_tree.py",
+)
 
 app_files_building_test_suite(
     name = "app_files_building_tests",
+)
+
+_PKGUTIL_INIT = "__path__ = __import__('pkgutil').extend_path(__path__, __name__)\n"
+
+tree_venv_lib(
+    name = "tree_venv_runtime_a",
+    contents = {
+        "site-packages/foo/__init__.py": "ORIGIN = 'tree_a'\n",
+        "site-packages/foo/a.py": "VALUE = 'from_a'\n",
+        "site-packages/foo/plugins/__init__.py": "",
+        "site-packages/foo/plugins/shared.py": "WINNER = 'tree_a'\n",
+        "site-packages/pkgutil_ns/__init__.py": _PKGUTIL_INIT,
+        "site-packages/pkgutil_ns/one.py": "VALUE = 1\n",
+    },
+    namespace_package_files = ["site-packages/pkgutil_ns/__init__.py"],
+    package = "tree-a",
+)
+
+tree_venv_lib(
+    name = "tree_venv_runtime_b",
+    contents = {
+        "site-packages/foo/plugins/__init__.py": "",
+        "site-packages/foo/plugins/b.py": "VALUE = 'from_b'\n",
+        "site-packages/foo/plugins/shared.py": "WINNER = 'tree_b'\n",
+        "site-packages/pkgutil_ns/__init__.py": _PKGUTIL_INIT,
+        "site-packages/pkgutil_ns/two.py": "VALUE = 2\n",
+    },
+    namespace_package_files = ["site-packages/pkgutil_ns/__init__.py"],
+    package = "tree-b",
+)
+
+py_reconfig_test(
+    name = "tree_venv_merge_test",
+    srcs = ["tree_venv_merge_test.py"],
+    bootstrap_impl = select({
+        "@platforms//os:windows": "system_python",
+        "//conditions:default": "script",
+    }),
+    main = "tree_venv_merge_test.py",
+    venvs_site_packages = "yes",
+    deps = [
+        ":tree_venv_runtime_a",
+        ":tree_venv_runtime_b",
+    ],
 )
