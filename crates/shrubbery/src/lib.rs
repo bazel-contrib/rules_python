@@ -1,12 +1,16 @@
 //! Unified `shrubbery` ("Shell replacements for Bazel build tools in Rust") subcommand
 //! dispatcher for `@rules_python` Rust build tools.
 
+// Errors must be returned, not panicked; see the `rust-lint` config in .bazelrc.
+#![deny(clippy::expect_used, clippy::unwrap_used)]
+
 use std::ffi::OsString;
 
 /// Canonical subcommand names supported by `shrubbery`.
 pub const SUBCOMMANDS: &[&str] = &[
     // keep-sorted start
     "exe_zip_maker",
+    "zipper",
     // keep-sorted end
 ];
 
@@ -47,7 +51,10 @@ where
     }
 
     match sub_raw.as_ref() {
+        // keep-sorted start
         "exe_zip_maker" => exe_zip_maker_lib::run_cli(iter),
+        "zipper" => zipper_lib::run_cli(iter),
+        // keep-sorted end
         _ => {
             eprintln!("shrubbery: error: unknown subcommand '{}'", sub_raw);
             print_usage(&prog_name, true);

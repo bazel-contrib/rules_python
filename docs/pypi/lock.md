@@ -5,9 +5,9 @@
 
 :::{note}
 `rules_python` supports `requirements.txt` and `uv.lock` formats. Generating
-`uv.lock` with {obj}`lock` is supported under both `bzlmod` and `WORKSPACE`,
-while consuming `uv.lock` to install packages via {attr}`pip.parse.uv_lock` is
-supported under `bzlmod` only.
+`uv.lock` with {obj}`lock` and consuming it to install packages via
+{attr}`pip.parse.uv_lock` or {attr}`pip_parse.uv_lock` is supported under
+both `bzlmod` and `WORKSPACE`.
 
 #{gh-issue}`2787` tracks `pylock.toml` support.
 :::
@@ -239,11 +239,9 @@ lock(
 The {obj}`lock` rule also supports generating cross-platform `uv.lock` files
 using `uv lock` when {arg}`lock.out` ends with `.lock` (such as `uv.lock`),
 under both `bzlmod` and `WORKSPACE` (see the `uv` toolchain setup in the
-`uv pip compile` section above). Consuming `uv.lock` to install dependencies via
-{attr}`pip.parse.uv_lock` is supported under `bzlmod` only. Because `uv.lock`
-already records distribution URLs and hashes across platforms, {obj}`pip.parse`
-does not need to query the PyPI Simple API or store distribution hashes in
-`MODULE.bazel.lock`.
+`uv pip compile` section above). Because `uv.lock` already records distribution
+URLs and hashes across platforms, {obj}`pip.parse` does not need to query the
+PyPI Simple API or store distribution hashes in `MODULE.bazel.lock`.
 
 ### Example usage
 
@@ -271,6 +269,30 @@ pip.parse(
 )
 use_repo(pip, "my_deps")
 ```
+
+Under `WORKSPACE`, pass it to {obj}`pip_parse` via {attr}`pip_parse.uv_lock`
+instead:
+
+```starlark
+load("@rules_python//python:pip.bzl", "pip_parse")
+
+pip_parse(
+    name = "my_deps",
+    python_interpreter_target = "@python_3_13_host//:python",
+    uv_lock = "//:uv.lock",
+)
+
+load("@my_deps//:requirements.bzl", "install_deps")
+
+install_deps()
+```
+
+The distributions that are the same on all platforms are downloaded with the
+Bazel downloader using the URLs and hashes from `uv.lock`, and the generated
+`requirements.bzl` records them so that it can be vendored. For the
+distributions that differ between platforms, `pip` selects the distribution for
+the host platform from the ones locked in `uv.lock`. See the
+`examples/pip_parse_vendored` example.
 
 `[tool.uv]` settings auto-detection and the {arg}`lock.project` attribute work
 the same way as described in the `uv pip compile` section above.

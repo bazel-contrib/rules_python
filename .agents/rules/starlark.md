@@ -129,7 +129,10 @@ globs: "*.bzl,BUILD,BUILD.bazel,*.bazel"
   `@bazel_skylib//lib:dicts.bzl` when merging dictionaries.
 * **Type Checks (`@bazel_skylib//lib:types.bzl`)**: Prefer `types.is_*` helpers
   (e.g., `types.is_dict(x)`, `types.is_list(x)`, `types.is_string(x)`) from
-  `@bazel_skylib//lib:types.bzl` instead of `type(x)` comparisons.
+  `@bazel_skylib//lib:types.bzl` instead of `type(x)` comparisons. Do not use
+  runtime type checks to support union parameter or field types (`str` vs.
+  `struct`, `str` vs. `list[str]`); enforce a single canonical type across all
+  callers and test fixtures.
 * **Non-Info Provider Naming**: Add `# buildifier: disable=name-conventions`
   above `provider()` declarations that do not end in `Info` (e.g. `*Fileset`).
 * **`config_setting` Naming**: Prefix `config_setting` names with `is_` (e.g.

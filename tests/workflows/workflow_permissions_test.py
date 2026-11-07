@@ -145,8 +145,8 @@ def test_on_comment_report_failure_needs_all_jobs():
     assert report_failure_needs == expected_needs
 
 
-def test_publish_bcr_splits_sphinxdocs_pr():
-    """Validates that publish.yml publishes sphinxdocs in a separate job."""
+def test_publish_bcr_splits_module_prs():
+    """Validates that publish.yml publishes each module root in a separate job."""
     rf = runfiles.CreateOrRaise()
     publish_path = rf.root() / "rules_python/.github/workflows/publish.yml"
     bcr_config_path = rf.root() / "rules_python/.bcr/config.yml"
@@ -155,15 +155,56 @@ def test_publish_bcr_splits_sphinxdocs_pr():
     bcr_config = yaml.safe_load(bcr_config_path.read_text(encoding="utf-8"))
 
     jobs = publish_content["jobs"]
-    assert set(jobs.keys()) == {"publish", "publish_sphinxdocs"}
+    assert set(jobs.keys()) == {"publish", "publish_gazelle", "publish_sphinxdocs"}
 
     def _parse_module_roots(job: dict) -> list[str]:
         raw = job["with"]["module_roots"]
         return [line.strip() for line in raw.splitlines() if line.strip()]
 
     publish_roots = _parse_module_roots(jobs["publish"])
+    gazelle_roots = _parse_module_roots(jobs["publish_gazelle"])
     sphinxdocs_roots = _parse_module_roots(jobs["publish_sphinxdocs"])
 
-    assert publish_roots == [".", "gazelle"]
+    assert publish_roots == ["."]
+    assert gazelle_roots == ["gazelle"]
     assert sphinxdocs_roots == ["sphinxdocs"]
-    assert set(publish_roots) | set(sphinxdocs_roots) == set(bcr_config["moduleRoots"])
+    assert (set(publish_roots) | set(gazelle_roots) | set(sphinxdocs_roots)) == set(
+        bcr_config["moduleRoots"]
+    )
+
+
+def test_release_workflows_dispatch_on_target_ref():
+    """Validates that post-branch release steps in on_comment.yaml use workflow_dispatch."""
+    rf = runfiles.CreateOrRaise()
+    workflows_dir = rf.root() / "rules_python/.github/workflows"
+
+    on_comment = yaml.safe_load(
+        (workflows_dir / "on_comment.yaml").read_text(encoding="utf-8")
+    )
+    assert "release_branch" in on_comment["jobs"]["parse_comment"]["outputs"]
+
+    branch_dispatched_jobs = {
+        # keep-sorted start
+        "call_create_rc": "release_create_rc.yaml",
+        "call_process_backports_after_add": "release_process_backports.yaml",
+        "call_process_backports_only": "release_process_backports.yaml",
+        "call_promote": "release_promote.yaml",
+        "call_sync_changelog": "release_sync_changelog.yaml",
+        # keep-sorted end
+    }
+    for job_name, expected_wf in branch_dispatched_jobs.items():
+        job = on_comment["jobs"][job_name]
+        assert "uses" not in job, f"{job_name} should use workflow_dispatch, not uses"
+        assert job.get("permissions") == {"actions": "write"}
+        steps = job["steps"]
+        assert len(steps) == 1
+        assert steps[0]["name"].startswith("Dispatch: Release: ")
+        assert f"gh workflow run {expected_wf}" in steps[0]["run"]
+        assert '--repo "$REPO"' in steps[0]["run"]
+        assert '--ref "$BRANCH"' in steps[0]["run"]
+        assert '--raw-field "issue=$ISSUE"' in steps[0]["run"]
+        assert steps[0]["env"]["REPO"] == "${{ github.repository }}"
+        assert (
+            steps[0]["env"]["BRANCH"]
+            == "${{ needs.parse_comment.outputs.release_branch }}"
+        )
