@@ -67,6 +67,20 @@ pip.configure(
 )
 use_repo(pip, "pypi_filtered")
 
+# `pypi_testonly` only exposes `iniconfig` and it is testonly.
+pip.parse(
+    hub_name = "pypi_testonly",
+    pyproject_toml = "//:pyproject_testonly.toml",
+    python_version = "3.11",
+    requirements_lock = "//:requirements_testonly.txt",
+)
+pip.configure(
+    testonly = True,
+    dependency_groups = ["test"],
+    hub_name = "pypi_testonly",
+)
+use_repo(pip, "pypi_testonly")
+
 pip.default(default_hub = "pypi_b")
 pip.default(unified_hub_requirements_bzl = True)
 pip.dep(

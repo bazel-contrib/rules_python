@@ -20,9 +20,16 @@ def hub_exposure(module_ctx, *, hubs, default_pyproject = None, _fail = fail):
         _fail: {type}`callable` the failure function, mainly for testing.
 
     Returns:
-        {type}`dict[str, list[str]] | None` the configured hubs mapped to the
-        sorted packages that they expose. The hubs that are not configured
-        are not included. Returns `None` on failure.
+        {type}`dict[str, struct] | None` the configured hubs mapped to a
+        struct with:
+          * `packages`: {type}`list[str]` the sorted packages that the hub
+            exposes.
+          * `testonly_packages`: {type}`list[str]` the sorted packages whose
+            aliases are testonly. A package is testonly only if all of the
+            tags that select it are testonly.
+
+        The hubs that are not configured are not included. Returns `None` on
+        failure.
     """
 
     # The root module wins over the owner of the hub when both configure it.
@@ -76,9 +83,12 @@ def hub_exposure(module_ctx, *, hubs, default_pyproject = None, _fail = fail):
                 # The pyproject.toml may list packages that are not in the hub,
                 # e.g. tools that are not locked.
                 if name in info.packages:
-                    exposed[name] = None
+                    exposed[name] = exposed.get(name, True) and tag.testonly
 
     return {
-        hub: sorted(packages)
+        hub: struct(
+            packages = sorted(packages),
+            testonly_packages = sorted([name for name, testonly in packages.items() if testonly]),
+        )
         for hub, packages in configured.items()
     }

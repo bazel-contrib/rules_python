@@ -833,9 +833,35 @@ def _test_configure(env):
         )
 
         pypi.exposed_packages().contains_exactly({"pypi_a": want})
-        pypi.configured_hubs().contains_exactly({"pypi_a": want})
+        pypi.configured_hubs().contains_exactly({"pypi_a": struct(
+            packages = want,
+            testonly_packages = [],
+        )})
 
 _tests.append(_test_configure)
+
+def _test_configure_testonly(env):
+    pypi = _configure_parse_modules(
+        env,
+        _mod(
+            name = "rules_python",
+            parse = [_configure_parse()],
+            configure = [
+                _configure(hub_name = "pypi_a", dependency_groups = ["default"]),
+                _configure(hub_name = "pypi_a", dependency_groups = ["dev", "test"], testonly = True),
+            ],
+        ),
+    )
+
+    pypi.exposed_packages().contains_exactly({"pypi_a": ["other_pkg", "simple"]})
+
+    # `simple` is also selected by the non-testonly tag.
+    pypi.configured_hubs().contains_exactly({"pypi_a": struct(
+        packages = ["other_pkg", "simple"],
+        testonly_packages = ["other_pkg"],
+    )})
+
+_tests.append(_test_configure_testonly)
 
 def _test_not_configured_exposes_all(env):
     # The pyproject.toml does not filter the hub without `pip.configure`.

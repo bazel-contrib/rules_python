@@ -380,7 +380,8 @@ You cannot use both the additive_build_content and additive_build_content_file a
     )
     if configured_hubs == None:
         return None
-    exposed_packages.update(configured_hubs)
+    for hub_name, info in configured_hubs.items():
+        exposed_packages[hub_name] = info.packages
 
     return struct(
         configured_hubs = configured_hubs,
@@ -417,7 +418,7 @@ def _create_unified_hub_repo(mods):
 
     for hub_name in hubs:
         # The hubs configured with `pip.configure` only expose some packages.
-        hub_packages = mods.configured_hubs.get(hub_name, mods.hub_whl_map[hub_name])
+        hub_packages = mods.configured_hubs[hub_name].packages if hub_name in mods.configured_hubs else mods.hub_whl_map[hub_name]
         for pkg_name in hub_packages:
             norm_pkg = normalize_name(pkg_name)
             if norm_pkg not in packages:
@@ -449,6 +450,13 @@ def _create_unified_hub_repo(mods):
         hubs = hubs,
         packages = packages,
         requirements_bzl = mods.unified_hub_requirements_bzl,
+        # An alias can't be less testonly than what it points to, so a package
+        # is testonly if it is testonly in any hub.
+        testonly_packages = sorted({
+            pkg: None
+            for hub_name in hubs
+            for pkg in (mods.configured_hubs[hub_name].testonly_packages if hub_name in mods.configured_hubs else [])
+        }),
     )
 
 def _pip_impl(module_ctx):
@@ -542,6 +550,7 @@ def _pip_impl(module_ctx):
             groups = mods.hub_group_map.get(hub_name),
             # The hubs configured with `pip.configure` hide the other packages.
             hide_unexposed_packages = hub_name in mods.configured_hubs,
+            testonly_packages = mods.configured_hubs[hub_name].testonly_packages if hub_name in mods.configured_hubs else [],
         )
 
     _create_unified_hub_repo(mods)
@@ -1106,6 +1115,22 @@ The name of the hub to configure.
 The `pyproject.toml` file that defines the dependency groups. Defaults to the
 {attr}`pip.parse.pyproject_toml` of the hub, then to
 {attr}`pip.default.pyproject_toml` if the hub is defined by the root module.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+        ),
+        "testonly": attr.bool(
+            default = False,
+            doc = """\
+Make the aliases of the selected packages testonly. A package that is also
+selected by a `pip.configure` tag without `testonly` is not testonly.
+
+The testonly packages are left out of the `all_requirements`,
+`all_whl_requirements` and `all_data_requirements` lists in the hub's
+`requirements.bzl` and listed in `all_testonly_requirements` instead. In the
+[Unified @pypi Hub](unified-pypi-hub), a package is testonly if it is testonly
+in any of the hubs.
 
 :::{versionadded} VERSION_NEXT_FEATURE
 :::

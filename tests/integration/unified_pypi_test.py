@@ -33,6 +33,25 @@ class UnifiedPypiTest(runner.TestCase):
             'ERROR: PyPI package "six" is not available when building under PyPI hub "pypi_filtered"\\. Try adding it to the requirements of this hub',
         )
 
+    def test_configure_testonly(self):
+        self.run_bazel(
+            "test",
+            "//:test_testonly",
+            "//:test_testonly_unified",
+            "//:test_all_testonly_requirements",
+        )
+        self.run_bazel("build", "//:bin_all_requirements")
+        result = self.run_bazel("build", "//:bin_testonly", check=False)
+        self.assertNotEqual(
+            result.exit_code,
+            0,
+            "Expected the testonly package to be rejected in a binary",
+        )
+        self.assert_result_matches(
+            result,
+            r"non-test target '//:bin_testonly' depends on testonly",
+        )
+
     def test_default_fallback_hub(self):
         self.run_bazel("test", "//:test_default")
 
