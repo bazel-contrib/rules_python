@@ -110,7 +110,7 @@ def _parse_args() -> argparse.Namespace:
         help=(
             "The versions of the package to download, each optionally with a "
             "PEP 508 environment marker for when the version should be used, "
-            "e.g. '7.10.7; python_version < \"3.15\"'. The markers should not "
+            "e.g. \"7.10.7; python_full_version < '3.15'\". The markers should not "
             "overlap."
         ),
     )
