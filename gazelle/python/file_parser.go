@@ -261,11 +261,11 @@ func (p *FileParser) isTypeCheckingBlock(node *sitter.Node) bool {
 
 // pytestPluginExpression unwraps parentheses, ignoring comments before the value.
 func pytestPluginExpression(node *sitter.Node) *sitter.Node {
-	for node != nil && node.Type() == "parenthesized_expression" {
+	for node != nil && node.Kind() == "parenthesized_expression" {
 		var expression *sitter.Node
-		for i := 0; i < int(node.NamedChildCount()); i++ {
+		for i := uint(0); i < node.NamedChildCount(); i++ {
 			child := node.NamedChild(i)
-			if child.Type() != sitterNodeTypeComment {
+			if child.Kind() != sitterNodeTypeComment {
 				expression = child
 				break
 			}
@@ -282,11 +282,11 @@ func pytestPluginString(node *sitter.Node, code []byte) (string, bool) {
 	if node == nil {
 		return "", false
 	}
-	if node.Type() == "concatenated_string" {
+	if node.Kind() == "concatenated_string" {
 		var value strings.Builder
-		for i := 0; i < int(node.NamedChildCount()); i++ {
+		for i := uint(0); i < node.NamedChildCount(); i++ {
 			child := node.NamedChild(i)
-			if child.Type() == sitterNodeTypeComment {
+			if child.Kind() == sitterNodeTypeComment {
 				continue
 			}
 			part, ok := pytestPluginString(child, code)
@@ -297,10 +297,10 @@ func pytestPluginString(node *sitter.Node, code []byte) (string, bool) {
 		}
 		return value.String(), true
 	}
-	if node.Type() != sitterNodeTypeString || node.HasError() {
+	if node.Kind() != sitterNodeTypeString || node.HasError() {
 		return "", false
 	}
-	literal := node.Content(code)
+	literal := node.Utf8Text(code)
 	quote := strings.IndexAny(literal, "\"'")
 	if quote < 0 {
 		return "", false
@@ -369,15 +369,15 @@ func pytestPluginString(node *sitter.Node, code []byte) (string, bool) {
 // imports. As with conditional imports, all statically declared alternatives are
 // included; Python code is never executed to determine the active branch.
 func (p *FileParser) parsePytestPlugins(node *sitter.Node) {
-	if p.inLocalScope || node.Type() != "assignment" {
+	if p.inLocalScope || node.Kind() != "assignment" {
 		return
 	}
 	left := node.ChildByFieldName("left")
-	if left == nil || left.Type() != sitterNodeTypeIdentifier || left.Content(p.code) != "pytest_plugins" {
+	if left == nil || left.Kind() != sitterNodeTypeIdentifier || left.Utf8Text(p.code) != "pytest_plugins" {
 		return
 	}
 	right := node.ChildByFieldName("right")
-	for right != nil && right.Type() == "assignment" {
+	for right != nil && right.Kind() == "assignment" {
 		right = right.ChildByFieldName("right")
 	}
 	right = pytestPluginExpression(right)
@@ -388,17 +388,17 @@ func (p *FileParser) parsePytestPlugins(node *sitter.Node) {
 		if value != "" {
 			p.output.Modules = append(p.output.Modules, Module{
 				Name:             value,
-				LineNumber:       node.StartPoint().Row + 1,
+				LineNumber:       uint32(node.StartPosition().Row) + 1,
 				Filepath:         p.relFilepath,
 				TypeCheckingOnly: p.inTypeCheckingBlock,
 				PytestPlugin:     true,
 			})
 		}
 	}
-	if right.Type() == "list" || right.Type() == "tuple" || right.Type() == "expression_list" {
-		for i := 0; i < int(right.NamedChildCount()); i++ {
+	if right.Kind() == "list" || right.Kind() == "tuple" || right.Kind() == "expression_list" {
+		for i := uint(0); i < right.NamedChildCount(); i++ {
 			child := right.NamedChild(i)
-			if child.Type() == sitterNodeTypeComment {
+			if child.Kind() == sitterNodeTypeComment {
 				continue
 			}
 			value, ok := pytestPluginString(child, p.code)
@@ -431,7 +431,7 @@ func (p *FileParser) parse(ctx context.Context, node *sitter.Node) {
 		p.inTypeCheckingBlock = wasInTypeCheckingBlock
 		p.inLocalScope = wasInLocalScope
 	}()
-	if node.Type() == "function_definition" || node.Type() == "class_definition" || node.Type() == "lambda" {
+	if node.Kind() == "function_definition" || node.Kind() == "class_definition" || node.Kind() == "lambda" {
 		p.inLocalScope = true
 	}
 	if p.isTypeCheckingBlock(node) {
