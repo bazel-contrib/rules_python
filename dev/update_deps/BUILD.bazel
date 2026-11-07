@@ -35,10 +35,12 @@ py_binary(
     name = "update_coverage_deps",
     srcs = ["update_coverage_deps.py"],
     data = [
+        "//dev/update_deps/coverage:uv.lock",
         "//python/private:coverage_deps_filegroup",
     ],
     env = {
         "UPDATE_FILE": "$(rlocationpath //python/private:coverage_deps_filegroup)",
+        "UV_LOCK": "$(rlocationpath //dev/update_deps/coverage:uv.lock)",
     },
     imports = ["../.."],
     deps = [
@@ -73,6 +75,20 @@ pytest_test(
     imports = ["../.."],
     target_compatible_with = SUPPORTS_BZLMOD,
     deps = [
+        ":update_file",
+    ],
+)
+
+pytest_test(
+    name = "update_coverage_deps_test",
+    srcs = [
+        "update_coverage_deps.py",
+        "update_coverage_deps_test.py",
+    ],
+    imports = ["../.."],
+    target_compatible_with = SUPPORTS_BZLMOD,
+    deps = [
+        ":args",
         ":update_file",
     ],
 )

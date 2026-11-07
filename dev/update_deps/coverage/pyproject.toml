@@ -1,0 +1,17 @@
+# The coverage.py versions that are bundled with the hermetic python toolchains.
+#
+# Newer coverage.py versions drop support for older python versions, so each
+# version is used for the python versions given by the marker.
+#
+# To update, edit this file and run:
+#   bazel run //dev/update_deps/coverage:uv_lock.update
+#   bazel run //dev/update_deps:update_coverage_deps
+[project]
+name = "rules-python-coverage"
+version = "0.0.0"
+requires-python = ">=3.9"
+dependencies = [
+    # The last version that supports python 3.9 and 3.10.
+    'coverage==7.10.7; python_version < "3.11"',
+    'coverage==7.17.2; python_version >= "3.11"',
+]
