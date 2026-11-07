@@ -11,7 +11,7 @@ fn temp_test_dir(prefix: &str) -> PathBuf {
         .unwrap_or_else(env::temp_dir);
     let dir = base.join(format!("shrubbery_{}_{}", prefix, std::process::id()));
     let _ = fs::remove_dir_all(&dir);
-    fs::create_dir_all(&dir).unwrap();
+    fs::create_dir_all(&dir).expect("create temp dir");
     dir
 }
 
@@ -43,20 +43,20 @@ fn test_subcommand_forwarding() {
     let zip_in = dir.join("in.zip");
     let out_pyz = dir.join("out.pyz");
 
-    fs::write(&preamble, b"#!/bin/sh\n").unwrap();
+    fs::write(&preamble, b"#!/bin/sh\n").expect("write preamble");
     fs::write(
         &zip_in,
         b"PK\x05\x06\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
     )
-    .unwrap();
+    .expect("write zip_in");
 
     assert_eq!(
         run_cli([
             "shrubbery",
             "exe_zip_maker",
-            preamble.to_str().unwrap(),
-            zip_in.to_str().unwrap(),
-            out_pyz.to_str().unwrap(),
+            preamble.to_str().expect("preamble path is UTF-8"),
+            zip_in.to_str().expect("zip_in path is UTF-8"),
+            out_pyz.to_str().expect("out_pyz path is UTF-8"),
         ]),
         0
     );
@@ -67,7 +67,10 @@ fn test_subcommand_forwarding() {
 fn test_cli_binary_subprocess() {
     let resolved = PathBuf::from(env::var_os("SHRUBBERY_BIN").expect("SHRUBBERY_BIN must be set"));
 
-    let help_out = Command::new(&resolved).arg("--help").output().unwrap();
+    let help_out = Command::new(&resolved)
+        .arg("--help")
+        .output()
+        .expect("run shrubbery --help");
     assert_eq!(help_out.status.code(), Some(0));
     let stdout = String::from_utf8_lossy(&help_out.stdout);
     for sub in SUBCOMMANDS {
@@ -77,7 +80,7 @@ fn test_cli_binary_subprocess() {
     let bad_out = Command::new(&resolved)
         .arg("not_a_subcommand")
         .output()
-        .unwrap();
+        .expect("run shrubbery with bad subcommand");
     assert_eq!(bad_out.status.code(), Some(1));
     assert!(
         String::from_utf8_lossy(&bad_out.stderr).contains("unknown subcommand"),

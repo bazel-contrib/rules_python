@@ -1,11 +1,15 @@
 //! Library supporting creating deterministic zipapp archives from a manifest.
 
+// Errors must be returned, not panicked; see `--config=rust-lint` in .bazelrc.
+#![deny(clippy::expect_used, clippy::unwrap_used)]
+
 use std::collections::HashSet;
 use std::ffi::OsString;
 use std::fs::{self, File, Metadata};
 use std::io::{self, BufWriter, Seek, Write};
 use std::path::{Path, PathBuf};
 
+use anyhow::{bail, Context, Result};
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, DateTime, ZipWriter, ZIP64_BYTES_THR};
 
@@ -100,13 +104,8 @@ pub fn relative_path(target: &str, start: &str) -> String {
         .take_while(|(a, b)| a == b)
         .count();
 
-    let mut result = Vec::new();
-    for _ in common..start_parts.len() {
-        result.push("..");
-    }
-    for &part in &target_parts[common..] {
-        result.push(part);
-    }
+    let mut result = vec![".."; start_parts.len() - common];
+    result.extend_from_slice(&target_parts[common..]);
     if result.is_empty() {
         ".".to_string()
     } else {
@@ -135,15 +134,12 @@ fn normalize_zip_path(path: &str) -> String {
 }
 
 /// Parses the `is_symlink` field of a manifest line.
-fn parse_symlink_mode(value: &str) -> io::Result<SymlinkMode> {
+fn parse_symlink_mode(value: &str) -> Result<SymlinkMode> {
     match value {
         "0" => Ok(SymlinkMode::Regular),
         "1" => Ok(SymlinkMode::Symlink),
         "-1" => Ok(SymlinkMode::Infer),
-        _ => Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!("invalid is_symlink value (expected 0, 1, or -1): {value}"),
-        )),
+        _ => bail!("invalid is_symlink value (expected 0, 1, or -1): {value}"),
     }
 }
 
@@ -175,7 +171,7 @@ fn parse_entry(
     workspace_name: &str,
     legacy_external_runfiles: bool,
     runfiles_dir: &str,
-) -> io::Result<Option<ManifestEntry>> {
+) -> Result<Option<ManifestEntry>> {
     let line = line.trim();
     if line.is_empty() {
         return Ok(None);
@@ -183,7 +179,7 @@ fn parse_entry(
 
     // Closures (not values): `file(...)` builds a `File` entry and `rf_path(...)` computes a
     // runfiles zip path. They capture the function arguments so the match arms stay short.
-    let file = |content_path: &str, is_symlink: &str| -> io::Result<EntryKind> {
+    let file = |content_path: &str, is_symlink: &str| -> Result<EntryKind> {
         Ok(EntryKind::File {
             content_path: PathBuf::from(content_path),
             symlink_mode: parse_symlink_mode(is_symlink)?,
@@ -230,12 +226,7 @@ fn parse_entry(
                 kind: EntryKind::Symlink { target },
             }
         }
-        _ => {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("unknown entry type or invalid format: {line}"),
-            ));
-        }
+        _ => bail!("unknown entry type or invalid format: {line}"),
     };
 
     Ok(Some(entry))
@@ -250,8 +241,9 @@ fn sort_key(entry: &ManifestEntry) -> (&str, bool) {
 }
 
 /// Reads and sorts all entries from the manifest file at `manifest_path`.
-fn read_manifest(options: &ZipOptions) -> io::Result<Vec<ManifestEntry>> {
-    let content = fs::read_to_string(&options.manifest_path)?;
+fn read_manifest(options: &ZipOptions) -> Result<Vec<ManifestEntry>> {
+    let content = fs::read_to_string(&options.manifest_path)
+        .with_context(|| format!("reading manifest {}", options.manifest_path.display()))?;
     let mut entries = Vec::new();
     for (line_idx, line) in content.lines().enumerate() {
         let parsed = parse_entry(
@@ -260,7 +252,7 @@ fn read_manifest(options: &ZipOptions) -> io::Result<Vec<ManifestEntry>> {
             options.legacy_external_runfiles,
             &options.runfiles_dir,
         )
-        .map_err(|e| io::Error::new(e.kind(), format!("line {}: {e}", line_idx + 1)))?;
+        .with_context(|| format!("manifest line {}", line_idx + 1))?;
         if let Some(entry) = parsed {
             entries.push(entry);
         }
@@ -286,16 +278,15 @@ fn is_abs_path(path: &Path) -> bool {
     s.starts_with('/') || s.starts_with('\\')
 }
 
-fn read_link_string(path: &Path) -> io::Result<String> {
-    Ok(fs::read_link(path)?.to_string_lossy().into_owned())
+fn read_link_string(path: &Path) -> Result<String> {
+    let target =
+        fs::read_link(path).with_context(|| format!("reading symlink {}", path.display()))?;
+    Ok(target.to_string_lossy().into_owned())
 }
 
 /// Determines whether `content_path` should be stored as a symlink and returns its target
 /// (relative to the symlink's parent directory).
-fn source_symlink_target(
-    content_path: &Path,
-    symlink_mode: SymlinkMode,
-) -> io::Result<Option<String>> {
+fn source_symlink_target(content_path: &Path, symlink_mode: SymlinkMode) -> Result<Option<String>> {
     let symlink_mode = match symlink_mode {
         SymlinkMode::Infer if fs::metadata(content_path).is_err() => SymlinkMode::Symlink,
         SymlinkMode::Infer => SymlinkMode::Regular,
@@ -308,7 +299,8 @@ fn source_symlink_target(
         return Ok(None);
     }
 
-    let target = fs::read_link(content_path)?;
+    let target = fs::read_link(content_path)
+        .with_context(|| format!("reading symlink {}", content_path.display()))?;
     if !is_abs_path(&target) {
         return Ok(Some(target.to_string_lossy().into_owned()));
     }
@@ -319,7 +311,8 @@ fn source_symlink_target(
     // machine's Bazel output base (e.g. the _solib links Bazel creates for shared
     // libraries) and would dangle wherever the zipapp runs, so store the file.
     if is_symlink_path(&target) {
-        let source_target = fs::read_link(&target)?;
+        let source_target = fs::read_link(&target)
+            .with_context(|| format!("reading symlink {}", target.display()))?;
         if !is_abs_path(&source_target) {
             return Ok(Some(source_target.to_string_lossy().into_owned()));
         }
@@ -352,7 +345,7 @@ fn mode_from_metadata(meta: &Metadata) -> u32 {
 /// Fixed timestamp for all entries so output is deterministic. This is the earliest
 /// MS-DOS timestamp a zip can represent and matches the Python implementation.
 fn fixed_timestamp() -> DateTime {
-    DateTime::from_date_and_time(1980, 1, 1, 0, 0, 0).expect("valid zip timestamp")
+    DateTime::DEFAULT
 }
 
 fn file_options(compress_level: u32, unix_mode: u32) -> SimpleFileOptions {
@@ -379,7 +372,7 @@ fn write_entry<W: Write + Seek>(
     entry: &ManifestEntry,
     options: &ZipOptions,
     seen: &mut HashSet<String>,
-) -> io::Result<()> {
+) -> Result<()> {
     // Normalize slashes, otherwise the `seen` logic doesn't work correctly.
     let zip_path = normalize_zip_path(&entry.zip_path);
     if !seen.insert(zip_path.clone()) {
@@ -390,12 +383,14 @@ fn write_entry<W: Write + Seek>(
     let (content_path, symlink_mode) = match &entry.kind {
         EntryKind::Empty => {
             // Create empty file
-            zf.start_file(&zip_path, file_options(options.compress_level, 0o644))?;
+            zf.start_file(&zip_path, file_options(options.compress_level, 0o644))
+                .with_context(|| format!("adding {zip_path}"))?;
             return Ok(());
         }
         EntryKind::Symlink { target } => {
             let target = convert_symlink_target(target, &options.platform_pathsep);
-            zf.add_symlink(&zip_path, target, symlink_options())?;
+            zf.add_symlink(&zip_path, target, symlink_options())
+                .with_context(|| format!("adding {zip_path}"))?;
             return Ok(());
         }
         EntryKind::File {
@@ -406,41 +401,47 @@ fn write_entry<W: Write + Seek>(
 
     if let Some(symlink_target) = source_symlink_target(content_path, symlink_mode)? {
         let target = convert_symlink_target(&symlink_target, &options.platform_pathsep);
-        zf.add_symlink(&zip_path, target, symlink_options())?;
+        zf.add_symlink(&zip_path, target, symlink_options())
+            .with_context(|| format!("adding {zip_path}"))?;
         return Ok(());
     }
 
-    let mut src = File::open(content_path)?;
-    let meta = src.metadata()?;
+    let mut src =
+        File::open(content_path).with_context(|| format!("opening {}", content_path.display()))?;
+    let meta = src
+        .metadata()
+        .with_context(|| format!("reading metadata of {}", content_path.display()))?;
     // Preserve permissions, otherwise execute is dropped.
     let mode = mode_from_metadata(&meta);
     let opts = file_options(options.compress_level, mode).large_file(meta.len() >= ZIP64_BYTES_THR);
-    zf.start_file(&zip_path, opts)?;
-    io::copy(&mut src, zf)?;
+    zf.start_file(&zip_path, opts)
+        .with_context(|| format!("adding {zip_path}"))?;
+    io::copy(&mut src, zf)
+        .with_context(|| format!("copying {} into {zip_path}", content_path.display()))?;
     Ok(())
 }
 
 /// Creates a zip file from a manifest according to `options`.
-pub fn create_zip(options: &ZipOptions) -> io::Result<()> {
+pub fn create_zip(options: &ZipOptions) -> Result<()> {
     if options.compress_level > 9 {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            format!(
-                "invalid compress_level (expected 0-9): {}",
-                options.compress_level
-            ),
-        ));
+        bail!(
+            "invalid compress_level (expected 0-9): {}",
+            options.compress_level
+        );
     }
     let entries = read_manifest(options)?;
 
     if let Some(parent) = options.output_zip.parent() {
         // TODO: Use `Path::is_empty()` once it is stable (Rust 1.98).
         if !parent.as_os_str().is_empty() {
-            fs::create_dir_all(parent)?;
+            fs::create_dir_all(parent)
+                .with_context(|| format!("creating directory {}", parent.display()))?;
         }
     }
 
-    let out_file = BufWriter::with_capacity(BLOCK_SIZE, File::create(&options.output_zip)?);
+    let out_file = File::create(&options.output_zip)
+        .with_context(|| format!("creating {}", options.output_zip.display()))?;
+    let out_file = BufWriter::with_capacity(BLOCK_SIZE, out_file);
     let mut zf = ZipWriter::new(out_file);
     let mut seen = HashSet::new();
 
@@ -448,8 +449,9 @@ pub fn create_zip(options: &ZipOptions) -> io::Result<()> {
         write_entry(&mut zf, entry, options, &mut seen)?;
     }
 
-    let mut inner = zf.finish()?;
-    inner.flush()
+    let mut inner = zf.finish().context("finishing zip")?;
+    inner.flush().context("flushing zip")?;
+    Ok(())
 }
 
 /// Parses a `0`/`1` flag value, naming `flag` in the error.
@@ -548,7 +550,7 @@ where
     };
     if let Err(err) = create_zip(&options) {
         eprintln!(
-            "zipper: error creating zip {}: {err}",
+            "zipper: error creating zip {}: {err:#}",
             options.output_zip.display()
         );
         return 1;

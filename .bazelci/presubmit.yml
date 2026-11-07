@@ -219,6 +219,16 @@ tasks:
     test_targets:
       - "//..."
 
+  rust_lint:
+    name: "Rust: clippy and rustfmt"
+    platform: ubuntu2204
+    build_flags:
+      - "--config=rust-lint"
+    build_targets:
+      - "//crates/..."
+      - "//tests/zipper/..."
+      - "//tests/shrubbery/..."
+
   ubuntu_min_workspace:
     <<: *minimum_supported_version
     <<: *reusable_config

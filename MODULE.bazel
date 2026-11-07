@@ -113,6 +113,11 @@ rust_crates = use_extension(
 )
 
 # keep-sorted start block=yes by_regex=package\s*=\s*"([^"]+)" newline_separated=yes
+rust_crates.spec(
+    package = "anyhow",
+    version = "1.0.104",
+)
+
 # Not used directly; it's a transitive dep of zip. zip's `deflate-flate2`
 # feature enables flate2 without selecting a backend, so a top-level spec is
 # needed to pick the pure-Rust `rust_backend` and avoid the C zlib backend,
@@ -168,7 +173,7 @@ rust_crates.from_specs(
 # rules_rust has no @rules_rust//rust/platform config_setting for Linux ppc64le,
 # so don't mark the crates as incompatible with platforms that don't match one
 # of the triples above. Such platforms get only the unconditional dependencies,
-# which suffice for flate2, lexopt, sha2, and zip.
+# which suffice for anyhow, flate2, lexopt, sha2, and zip.
 rust_crates.render_config(
     generate_target_compatible_with = False,
 )

@@ -1,5 +1,5 @@
 {
-  "checksum": "cfdbe001314d0b6838fa800a8e3f7b957c2eec7fd6b9425571be6bfb48c17509",
+  "checksum": "5ff57ce440feaf77d11b1bc2b03610d76513c432001f89ececc95b14c3e8042f",
   "crates": {
     "adler2 2.0.1": {
       "name": "adler2",
@@ -40,6 +40,81 @@
         "MIT"
       ],
       "license_file": "LICENSE-0BSD"
+    },
+    "anyhow 1.0.104": {
+      "name": "anyhow",
+      "version": "1.0.104",
+      "package_url": "https://github.com/dtolnay/anyhow",
+      "repository": {
+        "Http": {
+          "url": "https://static.crates.io/crates/anyhow/1.0.104/download",
+          "sha256": "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
+        }
+      },
+      "targets": [
+        {
+          "Library": {
+            "crate_name": "anyhow",
+            "crate_root": "src/lib.rs",
+            "srcs": {
+              "allow_empty": true,
+              "include": [
+                "**/*.rs"
+              ]
+            }
+          }
+        },
+        {
+          "BuildScript": {
+            "crate_name": "build_script_build",
+            "crate_root": "build.rs",
+            "srcs": {
+              "allow_empty": true,
+              "include": [
+                "**/*.rs"
+              ]
+            }
+          }
+        }
+      ],
+      "library_target_name": "anyhow",
+      "common_attrs": {
+        "compile_data_glob": [
+          "**"
+        ],
+        "crate_features": {
+          "common": [
+            "default",
+            "std"
+          ],
+          "selects": {}
+        },
+        "extra_deps": {
+          "common": [
+            ":build_script_build"
+          ],
+          "selects": {}
+        },
+        "edition": "2021",
+        "version": "1.0.104"
+      },
+      "build_script_attrs": {
+        "compile_data_glob": [
+          "**"
+        ],
+        "compile_data_glob_excludes": [
+          "**/*.rs"
+        ],
+        "data_glob": [
+          "**"
+        ]
+      },
+      "license": "MIT OR Apache-2.0",
+      "license_ids": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "license_file": "LICENSE-APACHE"
     },
     "block-buffer 0.10.4": {
       "name": "block-buffer",
@@ -426,6 +501,10 @@
         ],
         "deps": {
           "common": [
+            {
+              "id": "anyhow 1.0.104",
+              "target": "anyhow"
+            },
             {
               "id": "flate2 1.1.10",
               "target": "flate2"
@@ -1309,6 +1388,7 @@
     ]
   },
   "direct_deps": [
+    "anyhow 1.0.104",
     "flate2 1.1.10",
     "lexopt 0.3.2",
     "sha2 0.10.9",
