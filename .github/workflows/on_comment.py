@@ -136,6 +136,15 @@ _BACKPORT_ALLOWED_USERS: frozenset[str] = frozenset(
         "gholms",
     ]
 )
+_BRANCH_DISPATCHED_COMMANDS = frozenset(
+    {
+        _Command.CREATE_RC,
+        _Command.PROCESS_BACKPORTS,
+        _Command.SYNC_CHANGELOG,
+        _Command.ADD_BACKPORTS,
+        _Command.PROMOTE,
+    }
+)
 
 
 def _is_command_allowed(
@@ -316,7 +325,8 @@ def process_comment(*, report_failure: bool = False) -> int:
         _write_github_env("issue_number", issue_number)
 
         if has_release_label:
-            if release_branch := _get_release_branch(event):
+            release_branch = _get_release_branch(event)
+            if release_branch:
                 _write_github_output("release_branch", release_branch)
             command = _process_release_issue_comment(
                 comment_body=comment_body,
@@ -324,6 +334,9 @@ def process_comment(*, report_failure: bool = False) -> int:
                 repo=repo,
                 comment_id=comment_id,
             )
+            if command in _BRANCH_DISPATCHED_COMMANDS and not release_branch:
+                print("::error::Could not determine release branch from issue title.")
+                return 1
         elif has_backport_label:
             command = _process_backport_issue_comment(
                 comment_body=comment_body,
