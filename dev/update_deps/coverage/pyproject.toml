@@ -11,6 +11,7 @@ name = "rules-python-coverage"
 version = "0.0.0"
 requires-python = ">=3.9"
 dependencies = [
-    'coverage==7.10.7; python_version < "3.15"',
-    'coverage==7.17.0; python_version >= "3.15"',
+    # The last version that supports python 3.9 and 3.10.
+    'coverage==7.10.7; python_version < "3.11"',
+    'coverage==7.17.2; python_version >= "3.11"',
 ]

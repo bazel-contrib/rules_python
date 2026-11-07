@@ -36,14 +36,14 @@ def _test_select_platform_whl(env):
     for python_version, platform, want in [
         ("3.9.18", "x86_64-unknown-linux-gnu", "coverage-7.10.7-cp39-cp39-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl"),
         ("3.10", "aarch64-unknown-linux-gnu", "coverage-7.10.7-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl"),
-        ("3.12.4", "x86_64-apple-darwin", "coverage-7.10.7-cp312-cp312-macosx_10_13_x86_64.whl"),
-        ("3.13.1", "aarch64-apple-darwin", "coverage-7.10.7-cp313-cp313-macosx_11_0_arm64.whl"),
-        ("3.15.0", "x86_64-apple-darwin", "coverage-7.17.0-cp315-cp315-macosx_10_15_x86_64.whl"),
-        ("3.11.4", "i386-unknown-linux-gnu", "coverage-7.10.7-cp311-cp311-manylinux1_i686.manylinux_2_28_i686.manylinux_2_5_i686.whl"),
-        ("3.13.1", "riscv64-unknown-linux-gnu", "coverage-7.10.7-cp313-cp313-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl"),
-        ("3.13.1", "x86_64-unknown-linux-musl", "coverage-7.10.7-cp313-cp313-musllinux_1_2_x86_64.whl"),
-        ("3.15.0", "ppc64le-unknown-linux-gnu", "coverage-7.17.0-cp315-cp315-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl"),
-        ("3.15.0", "x86_64-unknown-linux-musl", "coverage-7.17.0-cp315-cp315-musllinux_1_2_x86_64.whl"),
+        ("3.12.4", "x86_64-apple-darwin", "coverage-7.17.2-cp312-cp312-macosx_10_13_x86_64.whl"),
+        ("3.13.1", "aarch64-apple-darwin", "coverage-7.17.2-cp313-cp313-macosx_11_0_arm64.whl"),
+        ("3.15.0", "x86_64-apple-darwin", "coverage-7.17.2-cp315-cp315-macosx_10_15_x86_64.whl"),
+        ("3.11.4", "i386-unknown-linux-gnu", "coverage-7.17.2-cp311-cp311-manylinux1_i686.manylinux_2_28_i686.manylinux_2_5_i686.whl"),
+        ("3.13.1", "riscv64-unknown-linux-gnu", "coverage-7.17.2-cp313-cp313-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl"),
+        ("3.13.1", "x86_64-unknown-linux-musl", "coverage-7.17.2-cp313-cp313-musllinux_1_2_x86_64.whl"),
+        ("3.15.0", "ppc64le-unknown-linux-gnu", "coverage-7.17.2-cp315-cp315-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl"),
+        ("3.15.0", "x86_64-unknown-linux-musl", "coverage-7.17.2-cp315-cp315-musllinux_1_2_x86_64.whl"),
     ]:
         got = select_coverage_whl(python_version = python_version, platform = platform)
         env.expect.where(
@@ -55,9 +55,8 @@ _tests.append(_test_select_platform_whl)
 
 def _test_select_freethreaded_whl(env):
     for python_version, platform, want in [
-        ("3.13.1", "aarch64-apple-darwin-freethreaded", "coverage-7.10.7-cp313-cp313t-macosx_11_0_arm64.whl"),
-        ("3.14.0", "x86_64-unknown-linux-gnu-freethreaded", "coverage-7.10.7-cp314-cp314t-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl"),
-        ("3.15.0", "aarch64-unknown-linux-gnu-freethreaded", "coverage-7.17.0-cp315-cp315t-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl"),
+        ("3.14.0", "x86_64-unknown-linux-gnu-freethreaded", "coverage-7.17.2-cp314-cp314t-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl"),
+        ("3.15.0", "aarch64-unknown-linux-gnu-freethreaded", "coverage-7.17.2-cp315-cp315t-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl"),
     ]:
         got = select_coverage_whl(python_version = python_version, platform = platform)
         env.expect.where(
@@ -69,15 +68,17 @@ _tests.append(_test_select_freethreaded_whl)
 
 def _test_select_fallback_whl(env):
     for python_version, platform, want in [
-        # There are no freethreaded wheels for this version
-        ("3.12.4", "x86_64-unknown-linux-gnu-freethreaded", "coverage-7.10.7-py3-none-any.whl"),
+        # There are no freethreaded wheels for these versions
+        ("3.13.1", "aarch64-apple-darwin-freethreaded", "coverage-7.17.2-py3-none-any.whl"),
+        ("3.12.4", "x86_64-unknown-linux-gnu-freethreaded", "coverage-7.17.2-py3-none-any.whl"),
         # Platforms without bundled platform specific wheels
-        ("3.13.1", "armv7-unknown-linux-gnu", "coverage-7.10.7-py3-none-any.whl"),
-        ("3.13.1", "s390x-unknown-linux-gnu", "coverage-7.10.7-py3-none-any.whl"),
-        ("3.13.1", "arm64e-apple-darwin", "coverage-7.10.7-py3-none-any.whl"),
-        ("3.15.0", "s390x-unknown-linux-gnu", "coverage-7.17.0-py3-none-any.whl"),
+        ("3.13.1", "armv7-unknown-linux-gnu", "coverage-7.17.2-py3-none-any.whl"),
+        ("3.13.1", "s390x-unknown-linux-gnu", "coverage-7.17.2-py3-none-any.whl"),
+        ("3.13.1", "arm64e-apple-darwin", "coverage-7.17.2-py3-none-any.whl"),
+        ("3.15.0", "s390x-unknown-linux-gnu", "coverage-7.17.2-py3-none-any.whl"),
+        ("3.10.2", "s390x-unknown-linux-gnu", "coverage-7.10.7-py3-none-any.whl"),
         # Python versions without bundled platform specific wheels
-        ("3.16.0", "x86_64-unknown-linux-gnu", "coverage-7.17.0-py3-none-any.whl"),
+        ("3.16.0", "x86_64-unknown-linux-gnu", "coverage-7.17.2-py3-none-any.whl"),
     ]:
         got = select_coverage_whl(python_version = python_version, platform = platform)
         env.expect.where(
