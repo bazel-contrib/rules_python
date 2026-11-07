@@ -416,7 +416,9 @@ def _create_unified_hub_repo(mods):
     extra_aliases = {}
 
     for hub_name in hubs:
-        for pkg_name in mods.hub_whl_map[hub_name]:
+        # The hubs configured with `pip.configure` only expose some packages.
+        hub_packages = mods.configured_hubs.get(hub_name, mods.hub_whl_map[hub_name])
+        for pkg_name in hub_packages:
             norm_pkg = normalize_name(pkg_name)
             if norm_pkg not in packages:
                 packages[norm_pkg] = []
