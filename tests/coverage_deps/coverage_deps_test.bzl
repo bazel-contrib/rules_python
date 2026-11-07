@@ -63,20 +63,21 @@ def _test_select_freethreaded_whl(env):
 _tests.append(_test_select_freethreaded_whl)
 
 def _test_select_fallback_whl(env):
-    for python_version, platform in [
+    for python_version, platform, want in [
         # There are no freethreaded wheels for this version
-        ("3.12.4", "x86_64-unknown-linux-gnu-freethreaded"),
+        ("3.12.4", "x86_64-unknown-linux-gnu-freethreaded", "coverage-7.10.7-py3-none-any.whl"),
         # Platforms without bundled platform specific wheels
-        ("3.13.1", "riscv64-unknown-linux-gnu"),
-        ("3.13.1", "x86_64-unknown-linux-musl"),
+        ("3.13.1", "riscv64-unknown-linux-gnu", "coverage-7.10.7-py3-none-any.whl"),
+        ("3.13.1", "x86_64-unknown-linux-musl", "coverage-7.10.7-py3-none-any.whl"),
+        ("3.15.0", "x86_64-unknown-linux-musl", "coverage-7.17.0-py3-none-any.whl"),
         # Python versions without bundled platform specific wheels
-        ("3.16.0", "x86_64-unknown-linux-gnu"),
+        ("3.16.0", "x86_64-unknown-linux-gnu", "coverage-7.17.0-py3-none-any.whl"),
     ]:
         got = select_coverage_whl(python_version = python_version, platform = platform)
         env.expect.where(
             python_version = python_version,
             platform = platform,
-        ).that_str(got.filename).equals("coverage-7.10.7-py3-none-any.whl")
+        ).that_str(got.filename).equals(want)
 
 _tests.append(_test_select_fallback_whl)
 

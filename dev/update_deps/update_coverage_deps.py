@@ -36,16 +36,22 @@ class Whl:
     filename: str
     url: str
     sha256: str
+    marker: str
 
     def __repr__(self):
-        return "\n".join(
-            [
-                "struct(",
-                f'    url = "{self.url}",',
-                f'    hash = "sha256:{self.sha256}",',
-                "),",
-            ]
-        )
+        lines = [
+            "struct(",
+            f'    url = "{self.url}",',
+            f'    hash = "sha256:{self.sha256}",',
+        ]
+        if self.marker:
+            if '"' in self.marker and "'" not in self.marker:
+                marker = f"'{self.marker}'"
+            else:
+                marker = json.dumps(self.marker)
+            lines.append(f"    marker = {marker},")
+        lines.append("),")
+        return "\n".join(lines)
 
 
 @dataclass
@@ -60,52 +66,33 @@ class Whls:
         return "[\n{}\n]".format(inner)
 
 
-def _whl(filename: str, url: str, digests: dict[str, str], **kwargs: Any) -> Whl:
+def _whl(
+    filename: str, url: str, digests: dict[str, str], marker: str, **kwargs: Any
+) -> Whl:
     return Whl(
         filename=filename,
         url=url,
         sha256=digests["sha256"],
+        marker=marker,
     )
 
 
 @dataclass
 class VersionSpec:
-    """A package version and the CPython minor versions to take wheels for."""
+    """A package version and the PEP 508 marker for when to use it."""
 
     version: str
-    min_minor: int
-    max_minor: int
-
-    def matches(self, python_tag: str) -> bool:
-        if not python_tag.startswith("cp3"):
-            return False
-
-        minor = python_tag[len("cp3") :]
-        return minor.isdigit() and self.min_minor <= int(minor) <= self.max_minor
-
-
-def _parse_py_tag(tag: str) -> int:
-    if not tag.startswith("cp3") or not tag[len("cp3") :].isdigit():
-        raise argparse.ArgumentTypeError(f"Expected a 'cp3<minor>' tag, got '{tag}'")
-    return int(tag[len("cp3") :])
+    marker: str
 
 
 def _parse_version_spec(value: str) -> VersionSpec:
-    version, sep, py_range = value.partition(":")
-    if not sep or not version or not py_range:
+    version, _, marker = value.partition(";")
+    version = version.strip()
+    if not version:
         raise argparse.ArgumentTypeError(
-            f"Expected '<version>:<cp3X>[-<cp3Y>]', got '{value}'"
+            f"Expected '<version>[; <marker>]', got '{value}'"
         )
-
-    lo, _, hi = py_range.partition("-")
-    spec = VersionSpec(
-        version=version,
-        min_minor=_parse_py_tag(lo),
-        max_minor=_parse_py_tag(hi or lo),
-    )
-    if spec.min_minor > spec.max_minor:
-        raise argparse.ArgumentTypeError(f"Invalid python range in '{value}'")
-    return spec
+    return VersionSpec(version=version, marker=marker.strip())
 
 
 def _parse_args() -> argparse.Namespace:
@@ -121,11 +108,10 @@ def _parse_args() -> argparse.Namespace:
         nargs="+",
         type=_parse_version_spec,
         help=(
-            "The versions of the package to download, each with the range of "
-            "the CPython versions to take the wheels for, e.g. "
-            "'7.10.7:cp39-cp314 7.17.0:cp315'. The 'py3-none-any' wheel of the "
-            "first version is used as the fallback for platforms without a "
-            "platform specific wheel."
+            "The versions of the package to download, each optionally with a "
+            "PEP 508 environment marker for when the version should be used, "
+            "e.g. '7.10.7; python_version < \"3.15\"'. The markers should not "
+            "overlap."
         ),
     )
     parser.add_argument(
@@ -154,7 +140,7 @@ def main():
     args = _parse_args()
 
     whls = []
-    for i, spec in enumerate(args.versions):
+    for spec in args.versions:
         for u in _get_urls(args.name, spec.version):
             if u["yanked"]:
                 continue
@@ -162,16 +148,7 @@ def main():
             if not u["filename"].endswith(".whl"):
                 continue
 
-            if u["filename"].endswith("-py3-none-any.whl"):
-                # Only a single fallback wheel is needed.
-                if i == 0:
-                    whls.append(_whl(**u))
-                continue
-
-            if not spec.matches(u["python_version"]):
-                continue
-
-            whls.append(_whl(**u))
+            whls.append(_whl(marker=spec.marker, **u))
 
     whls.sort(key=lambda x: x.filename)
 
