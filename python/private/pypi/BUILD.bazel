@@ -633,6 +633,15 @@ bzl_library(
 )
 
 bzl_library(
+    name = "dependency_groups",
+    srcs = ["dependency_groups.bzl"],
+    deps = [
+        ":pep508_requirement",
+        "//python/private:normalize_name",
+    ],
+)
+
+bzl_library(
     name = "argparse",
     srcs = ["argparse.bzl"],
 )

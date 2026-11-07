@@ -18,10 +18,22 @@ def read_pyproject(module_ctx, pyproject):
         {type}`struct` with the attributes:
           * `requires_python`: {type}`str | None` the raw `requires-python`
             value (e.g. `"==3.13.9"`), or `None` if it is not set.
+          * `name`: {type}`str | None` the `[project] name`.
+          * `dependencies`: {type}`list[str]` the `[project] dependencies`.
+          * `optional_dependencies`: {type}`dict[str, list[str]]` the
+            `[project.optional-dependencies]` table.
+          * `dependency_groups`: {type}`dict[str, list]` the PEP 735
+            `[dependency-groups]` table. Items are either requirement strings
+            or `{include-group = "<name>"}` tables.
     """
     data = toml.decode(module_ctx.read(module_ctx.path(pyproject), watch = "yes"))
+    project = data.get("project", {})
     return struct(
-        requires_python = data.get("project", {}).get("requires-python"),
+        requires_python = project.get("requires-python"),
+        name = project.get("name"),
+        dependencies = project.get("dependencies") or [],
+        optional_dependencies = project.get("optional-dependencies") or {},
+        dependency_groups = data.get("dependency-groups") or {},
     )
 
 def version_from_requires_python(requires_python):
