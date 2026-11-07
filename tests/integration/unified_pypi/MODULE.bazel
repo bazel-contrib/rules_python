@@ -53,6 +53,48 @@ pip.parse(
 )
 use_repo(pip, "pypi_b")
 
+# The venvs are selections of the `pypi_b` packages that are used through the
+# unified hub.
+pip.configure(
+    dependency_groups = ["default"],
+    hub_name = "pypi_b",
+    pyproject_toml = "//:pyproject_venvs.toml",
+    venv = "pypi_b_colorama",
+)
+pip.configure(
+    hub_name = "pypi_b",
+    pyproject_toml = "//:pyproject_venvs.toml",
+    venv = "pypi_b_dev",
+)
+
+# `pypi_filtered` only exposes the `[project] dependencies` of the
+# `pyproject.toml`, the other packages are not public.
+pip.parse(
+    hub_name = "pypi_filtered",
+    pyproject_toml = "//:pyproject_filtered.toml",
+    python_version = "3.11",
+    requirements_lock = "//:requirements_b.txt",
+)
+pip.configure(
+    dependency_groups = ["default"],
+    hub_name = "pypi_filtered",
+)
+use_repo(pip, "pypi_filtered")
+
+# `pypi_testonly` only exposes `iniconfig` and it is testonly.
+pip.parse(
+    hub_name = "pypi_testonly",
+    pyproject_toml = "//:pyproject_testonly.toml",
+    python_version = "3.11",
+    requirements_lock = "//:requirements_testonly.txt",
+)
+pip.configure(
+    testonly = True,
+    dependency_groups = ["test"],
+    hub_name = "pypi_testonly",
+)
+use_repo(pip, "pypi_testonly")
+
 pip.default(default_hub = "pypi_b")
 pip.default(unified_hub_requirements_bzl = True)
 pip.dep(

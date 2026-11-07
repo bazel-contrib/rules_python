@@ -1,5 +1,6 @@
 """Helper functions for setting up targets within the Unified PyPI Hub repository."""
 
+load("@bazel_skylib//lib:selects.bzl", "selects")
 load(
     "@rules_python//python/private/pypi:labels.bzl",
     "DATA_LABEL",
@@ -31,15 +32,19 @@ _STANDARD_ALIASES = [
     EXTRACTED_WHEEL_FILES,
 ]
 
-def define_pypi_package_targets(name, pkg_hubs, extra_aliases, hubs, default_hub = None):
+def define_pypi_package_targets(name, pkg_hubs, extra_aliases, hubs, default_hub = None, testonly = False, venvs = {}):
     """Define the targets for a PyPI package in the unified PyPI hub.
 
     Args:
         name: normalized PyPI package name, serving as the main target name.
         pkg_hubs: list of hubs that contain this package.
         extra_aliases: dict mapping extra alias names to lists of hubs that support them.
-        hubs: list of all concrete hub names.
+        hubs: list of all concrete hub and venv names.
         default_hub: the hub to use by default.
+        testonly: whether all targets should be marked as testonly.
+        venvs: dict mapping the venv names to the hubs that provide their
+            packages. The hubs and venvs that resolve to the same target
+            share a `config_setting_group`.
     """
     pkg_name = name
 
@@ -47,13 +52,16 @@ def define_pypi_package_targets(name, pkg_hubs, extra_aliases, hubs, default_hub
     native.alias(
         name = pkg_name,
         actual = ":pkg",
+        testonly = testonly,
     )
 
     all_aliases = _STANDARD_ALIASES + sorted(extra_aliases.keys())
     missing_errors = {}
+    groups = {}
 
     for alias_name in all_aliases:
-        select_map = {}
+        # The target mapped to the hubs and venvs that resolve to it.
+        targets = {}
         for hub in hubs:
             is_supported = (
                 (alias_name in _STANDARD_ALIASES and hub in pkg_hubs) or
@@ -61,8 +69,8 @@ def define_pypi_package_targets(name, pkg_hubs, extra_aliases, hubs, default_hub
             )
 
             if is_supported:
-                select_map["//:_is_venv_" + hub] = "@{hub}//{pkg}:{alias}".format(
-                    hub = hub,
+                target = "@{hub}//{pkg}:{alias}".format(
+                    hub = venvs.get(hub, hub),
                     pkg = pkg_name,
                     alias = alias_name,
                 )
@@ -73,7 +81,18 @@ def define_pypi_package_targets(name, pkg_hubs, extra_aliases, hubs, default_hub
                         "hub_name": hub,
                         "package_name": pkg_name if alias_name in _STANDARD_ALIASES else (pkg_name + ":" + alias_name),
                     }
-                select_map["//:_is_venv_" + hub] = ":{}".format(err_target)
+                target = ":{}".format(err_target)
+            targets.setdefault(target, []).append(hub)
+
+        select_map = {}
+        for target, target_hubs in targets.items():
+            if len(target_hubs) == 1:
+                select_map["//:_is_venv_" + target_hubs[0]] = target
+                continue
+
+            group = "_is_venv_" + "_or_".join(target_hubs)
+            groups[group] = target_hubs
+            select_map[":" + group] = target
 
         # //conditions:default fallback
         default_supported = (
@@ -100,6 +119,14 @@ def define_pypi_package_targets(name, pkg_hubs, extra_aliases, hubs, default_hub
         native.alias(
             name = alias_name,
             actual = select(select_map),
+            testonly = testonly,
+        )
+
+    for group, group_hubs in groups.items():
+        selects.config_setting_group(
+            name = group,
+            match_any = ["//:_is_venv_" + hub for hub in group_hubs],
+            visibility = ["//visibility:private"],
         )
 
     # Generate missing package error targets

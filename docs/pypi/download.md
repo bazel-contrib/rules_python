@@ -134,6 +134,107 @@ rename, and `requirement("numpy")` routes through the active hub like
 fixed at loading time, before the active hub is known, so load them from a
 concrete hub instead. Prefer `@pypi//<pkg>` labels in new code.
 
+(pip-configure)=
+### Configuring the Exposed Packages (pip.configure)
+
+By default a hub exposes all of the packages from its requirements files or
+`uv.lock` file, including the transitive dependencies. A `pip.configure` tag
+can limit the hub to the packages listed in a `pyproject.toml` file: the
+`[project] dependencies`, `[project.optional-dependencies]` and PEP 735
+`[dependency-groups]` tables.
+
+```toml
+[project]
+dependencies = ["numpy"]
+
+[dependency-groups]
+dev = ["pytest"]
+```
+
+```starlark
+pip.parse(
+    hub_name = "pypi_hub",
+    pyproject_toml = "//:pyproject.toml",
+    requirements_lock = "//:requirements_lock.txt",
+)
+
+pip.configure(
+    hub_name = "pypi_hub",
+    dependency_groups = ["default", "group:dev"],
+)
+```
+
+Here `@pypi_hub//numpy` and `@pypi_hub//pytest` can be used, but the
+dependencies of `numpy` are only used through `@pypi_hub//numpy`. The
+`all_requirements` lists in the hub's `requirements.bzl` and the
+[Unified @pypi Hub](unified-pypi-hub) only contain the exposed packages.
+
+The {attr}`pip.configure.dependency_groups` attribute defaults to `["*"]`,
+which selects every group. Use `["*", "transitive"]` to expose all of the
+packages of the hub, including the transitive dependencies. Selecting the
+transitive dependencies of only some of the groups is not supported.
+
+Multiple tags for the same hub are combined. Only the root module and the
+module that created the hub can configure it; if both do, the root module
+wins. A self reference such as `my-project[test]` in the `pyproject.toml`
+selects the optional dependencies of the project. The packages that are not
+part of the hub are ignored, so a single `pyproject.toml` can list tools that
+are missing from the lock file.
+
+#### Testonly Packages
+
+Set {attr}`pip.configure.testonly` to make the selected packages testonly, so
+that they can only be used by tests and other testonly targets:
+
+```starlark
+pip.configure(
+    hub_name = "pypi_hub",
+    dependency_groups = ["default"],
+)
+pip.configure(
+    hub_name = "pypi_hub",
+    dependency_groups = ["group:test"],
+    testonly = True,
+)
+```
+
+A package that is also selected by a tag without `testonly` is not testonly.
+The testonly packages are left out of the `all_requirements`,
+`all_whl_requirements` and `all_data_requirements` lists in the hub's
+`requirements.bzl` and are listed in `all_testonly_requirements` instead. In
+the [Unified @pypi Hub](unified-pypi-hub), a package is testonly if it is
+testonly in any of the hubs.
+
+The other packages of the hub depend on the testonly packages through the same
+targets, so a package that a non-testonly package depends on can't be
+testonly.
+
+#### Venvs
+
+Set {attr}`pip.configure.venv` to create a venv, a named selection of the
+packages of a hub, instead of changing the hub:
+
+```starlark
+pip.configure(
+    hub_name = "pypi_hub",
+    venv = "pypi_hub_docs",
+    dependency_groups = ["default", "group:docs"],
+)
+```
+
+The venv is used through the [Unified @pypi Hub](unified-pypi-hub) by setting
+`--@rules_python//python/config_settings:venv=pypi_hub_docs`. It resolves the
+`@pypi//<pkg>` labels to the packages of `pypi_hub`, so nothing is downloaded
+twice, and the packages that are not selected are reported as missing. A venv
+does not create a new repository and does not change the hub.
+
+A venv name must not collide with a hub and a venv can't be used with two
+different hubs. The packages of a venv are testonly if they are testonly in
+the hub.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+
 ### Declaring Abstract Dependencies (pip.dep)
 
 :::{versionadded} 2.2.0
