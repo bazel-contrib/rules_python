@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use zip::{CompressionMethod, DateTime, ZipArchive};
-use zipper_lib::{create_zip, parse_args, relative_path, Cli, ZipOptions};
+use zipper_lib::{Cli, ZipOptions, create_zip, parse_args, relative_path};
 
 static TEST_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
@@ -674,10 +674,12 @@ fn test_symlink_extraction() {
     }
 
     let link_path = extract_dir.join("runfiles/my_ws/path/to/link");
-    assert!(fs::symlink_metadata(&link_path)
-        .expect("link_path should exist")
-        .file_type()
-        .is_symlink());
+    assert!(
+        fs::symlink_metadata(&link_path)
+            .expect("link_path should exist")
+            .file_type()
+            .is_symlink()
+    );
     assert_eq!(
         fs::read_link(&link_path).expect("link_path should be a symlink"),
         PathBuf::from("../../target/path")
@@ -688,10 +690,12 @@ fn test_symlink_extraction() {
     );
 
     let link2_path = extract_dir.join("runfiles/my_ws/same_dir_link");
-    assert!(fs::symlink_metadata(&link2_path)
-        .expect("link2_path should exist")
-        .file_type()
-        .is_symlink());
+    assert!(
+        fs::symlink_metadata(&link2_path)
+            .expect("link2_path should exist")
+            .file_type()
+            .is_symlink()
+    );
     assert_eq!(
         fs::read_link(&link2_path).expect("link2_path should be a symlink"),
         PathBuf::from("same_dir_target")

@@ -3,7 +3,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
-use shrubbery_lib::{run_cli, SUBCOMMANDS};
+use shrubbery_lib::{SUBCOMMANDS, run_cli};
 
 fn temp_test_dir(prefix: &str) -> PathBuf {
     let base = env::var_os("TEST_TMPDIR")
