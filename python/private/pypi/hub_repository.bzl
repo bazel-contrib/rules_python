@@ -30,6 +30,7 @@ def _impl(rctx):
         bzl_packages = rctx.attr.packages
     else:
         bzl_packages = rctx.attr.packages or rctx.attr.whl_map.keys()
+    testonly_packages = rctx.attr.testonly_packages
     aliases = render_multiplatform_pkg_aliases(
         aliases = {
             key: _whl_config_settings_from_json(values)
@@ -39,6 +40,7 @@ def _impl(rctx):
         extra_hub_aliases = rctx.attr.extra_hub_aliases,
         requirement_cycles = rctx.attr.groups,
         platform_config_settings = rctx.attr.platform_config_settings,
+        testonly_packages = testonly_packages,
     )
     for path, contents in aliases.items():
         rctx.file(path, contents)
@@ -57,18 +59,25 @@ def _impl(rctx):
             "%%PACKAGES%%": render.dict(rctx.attr.whl_map, value_repr = lambda x: "None"),
         },
     )
+
+    # The testonly packages are only listed in `all_testonly_requirements`.
+    all_packages = [p for p in bzl_packages if p not in testonly_packages]
     rctx.template("requirements.bzl", rctx.attr._requirements_bzl_template, substitutions = {
         "%%ALL_DATA_REQUIREMENTS%%": render.list([
             macro_tmpl.format(p, "data")
-            for p in bzl_packages
+            for p in all_packages
         ]),
         "%%ALL_REQUIREMENTS%%": render.list([
             macro_tmpl.format(p, "pkg")
-            for p in bzl_packages
+            for p in all_packages
+        ]),
+        "%%ALL_TESTONLY_REQUIREMENTS%%": render.list([
+            macro_tmpl.format(p, "pkg")
+            for p in testonly_packages
         ]),
         "%%ALL_WHL_REQUIREMENTS_BY_PACKAGE%%": render.dict({
             p: macro_tmpl.format(p, "whl")
-            for p in bzl_packages
+            for p in all_packages
         }),
         "%%MACRO_TMPL%%": macro_tmpl,
     })
@@ -100,6 +109,10 @@ unless `hide_unexposed_packages` is set.
         "repo_name": attr.string(
             mandatory = True,
             doc = "The apparent name of the repo. This is needed because in bzlmod, the name attribute becomes the canonical name.",
+        ),
+        "testonly_packages": attr.string_list(
+            default = [],
+            doc = "The packages whose aliases should be testonly.",
         ),
         "whl_map": attr.string_dict(
             mandatory = True,
