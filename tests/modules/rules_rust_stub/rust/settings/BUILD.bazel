@@ -1,0 +1,10 @@
+load("@bazel_skylib//rules:common_settings.bzl", "string_list_flag")
+
+package(default_visibility = ["//visibility:public"])
+
+# The root .bazelrc sets this flag on every build (see the `rust-lint` config);
+# it is unused in WORKSPACE mode because the stub has no Rust targets.
+string_list_flag(
+    name = "clippy_flags",
+    build_setting_default = [],
+)
