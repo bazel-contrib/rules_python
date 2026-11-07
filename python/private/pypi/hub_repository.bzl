@@ -26,12 +26,16 @@ exports_files(["requirements.bzl"])
 """
 
 def _impl(rctx):
-    bzl_packages = rctx.attr.packages or rctx.attr.whl_map.keys()
+    if rctx.attr.hide_unexposed_packages:
+        bzl_packages = rctx.attr.packages
+    else:
+        bzl_packages = rctx.attr.packages or rctx.attr.whl_map.keys()
     aliases = render_multiplatform_pkg_aliases(
         aliases = {
             key: _whl_config_settings_from_json(values)
             for key, values in rctx.attr.whl_map.items()
         },
+        exposed_packages = bzl_packages if rctx.attr.hide_unexposed_packages else None,
         extra_hub_aliases = rctx.attr.extra_hub_aliases,
         requirement_cycles = rctx.attr.groups,
         platform_config_settings = rctx.attr.platform_config_settings,
@@ -78,10 +82,15 @@ hub_repository = repository_rule(
         "groups": attr.string_list_dict(
             mandatory = False,
         ),
+        "hide_unexposed_packages": attr.bool(
+            default = False,
+            doc = "Make the aliases of the packages that are not in `packages` visible only to the wheel repositories.",
+        ),
         "packages": attr.string_list(
             mandatory = False,
             doc = """\
-The list of packages that will be exposed via all_*requirements macros. Defaults to whl_map keys.
+The list of packages that will be exposed via all_*requirements macros. Defaults to whl_map keys
+unless `hide_unexposed_packages` is set.
 """,
         ),
         "platform_config_settings": attr.string_list_dict(
