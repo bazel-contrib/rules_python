@@ -30,9 +30,11 @@ build --config=rust-lint
 build:rust-lint --aspects=@rules_rust//rust:defs.bzl%rust_clippy_aspect
 build:rust-lint --aspects=@rules_rust//rust:defs.bzl%rustfmt_aspect
 build:rust-lint --output_groups=+clippy_checks,+rustfmt_checks
-# `unwrap()` is forbidden everywhere; the non-test crates additionally deny
-# `expect()` via a crate-level attribute.
-build:rust-lint --@rules_rust//rust/settings:clippy_flags=-Dwarnings,-Dclippy::unwrap_used
+# Non-test crates deny `unwrap()`/`expect()` via a crate-level attribute
+# (errors must be returned, not panicked). Tests may panic freely; see
+# .clippy.toml.
+build:rust-lint --@rules_rust//rust/settings:clippy_flags=-Dwarnings
+build:rust-lint --@rules_rust//rust/settings:clippy.toml=//:.clippy.toml
 
 # Ensure ongoing compatibility with this flag.
 common --incompatible_disallow_struct_provider_syntax
