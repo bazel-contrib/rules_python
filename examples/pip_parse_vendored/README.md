@@ -8,7 +8,8 @@ The requirements now form a triple:
 
 - pyproject.toml - human editable, expresses only direct dependencies and
   load-bearing version constraints
-- requirements.txt - lockfile produced by pip-compile or other means
+- uv.lock - lockfile produced by `uv lock`, see the `uv_lock` target in the
+  BUILD file
 - requirements.bzl - the "parsed" version of the lockfile readable by Bazel downloader
 
 The `requirements.bzl` file contains baked-in attributes such as

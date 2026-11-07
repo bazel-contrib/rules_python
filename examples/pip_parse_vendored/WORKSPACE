@@ -36,7 +36,7 @@ pip_parse(
     envsubst = ["PIP_RETRIES"],
     extra_pip_args = ["--retries=${PIP_RETRIES:-5}"],
     python_interpreter_target = "@python3_14_host//:python",
-    requirements_lock = "//:requirements.txt",
+    uv_lock = "//:uv.lock",
 )
 
 # This example vendors the file produced by `pip_parse` above into the repo.
