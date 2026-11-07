@@ -168,12 +168,19 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
     if not platforms:
         fail("BUG: platforms must be configured")
 
+    reachable_platforms = _uv_lock_reachable_platforms(
+        packages = uv_lock["package"],
+        all_platforms = all_platforms,
+        platforms = platforms,
+    )
+
     for pkg in uv_lock["package"]:
         name = pkg["name"]
         version = pkg["version"]
         norm_name = normalize_name(name)
         entry = uv_packages.setdefault(norm_name, {
             "distribution": name,
+            "resolved_platforms": {},
             "resolved_srcs": [],
             "versions": {},
         })
@@ -189,16 +196,7 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
         pkg_extras = sorted(extras_map.get(name, []))
         extra_str = "[{}]".format(",".join(pkg_extras)) if pkg_extras else ""
 
-        markers = pkg.get("resolution-markers", [])
-        if markers:
-            marker_expr = " or ".join(markers)
-            pkg_platforms = [
-                p
-                for p in all_platforms
-                if evaluate(marker_expr, env = platforms[p].env)
-            ]
-        else:
-            pkg_platforms = list(all_platforms)
+        pkg_platforms = reachable_platforms.get((norm_name, version), [])
 
         # Prepare candidates
         candidates = []
@@ -266,6 +264,7 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
         # Group platforms by resolved source
         src_to_plats = {}
         for p, src in plat_to_src.items():
+            entry["resolved_platforms"][p] = None
             key = src.filename + src.digest
             src_to_plats.setdefault(key, struct(src = src, plats = [])).plats.append(p)
 
@@ -301,14 +300,12 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
         versions = sorted(info["versions"].keys())
         item = struct(
             name = norm_name,
-            # Only expose packages that resolved to at least one source. uv
-            # workspace/root members (e.g. `source = { virtual = "." }` or
-            # editable installs) resolve to no wheel/sdist, so exposing them
-            # would add a dangling entry to the hub's `all_requirements` /
-            # `all_whl_requirements` and create an alias to a subpackage that
-            # doesn't exist. This mirrors the requirements path, which also
-            # gates `is_exposed`.
-            is_exposed = bool(info["resolved_srcs"]),
+            # Only expose packages that resolved to a source on every target
+            # platform, matching `_parse_requirements_from_req_files`. Workspace
+            # root members and platform-conditional packages are omitted from
+            # `all_requirements` / `all_whl_requirements` so building those
+            # target lists succeeds on every platform.
+            is_exposed = len(info["resolved_platforms"]) == len(all_platforms),
             is_multiple_versions = len(versions) > 1,
             index_url = info["index_url"],
             srcs = info["resolved_srcs"],
@@ -317,6 +314,153 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
 
     logger.debug(lambda: "Parsed {} packages from uv.lock".format(len(ret)))
     return ret
+
+def _uv_lock_pkg_deps(pkg):
+    """Return all outgoing dependency entries for a uv.lock package entry.
+
+    Args:
+        pkg: {type}`dict` A package entry from `uv.lock`.
+
+    Returns:
+        {type}`list[dict]` Dependency entries targeting other packages.
+    """
+    pkg_name = normalize_name(pkg["name"])
+    deps = list(pkg.get("dependencies", []))
+    for group_deps in pkg.get("optional-dependencies", {}).values():
+        deps.extend(group_deps)
+    for group_deps in pkg.get("dev-dependencies", {}).values():
+        deps.extend(group_deps)
+    return [
+        dep
+        for dep in deps
+        if normalize_name(dep["name"]) != pkg_name
+    ]
+
+def _uv_lock_is_pkg_eligible(pkg, plat_env):
+    """Check whether a uv.lock package entry's resolution-markers match plat_env.
+
+    Args:
+        pkg: {type}`dict` A package entry from `uv.lock`.
+        plat_env: {type}`dict[str, str]` PEP 508 environment markers.
+
+    Returns:
+        {type}`bool` True if the package entry applies to `plat_env`.
+    """
+    markers = pkg.get("resolution-markers", [])
+    if not markers:
+        return True
+    return evaluate(" or ".join(markers), env = plat_env)
+
+def _uv_lock_reachable_keys_for_platform(
+        packages,
+        pkgs_by_name,
+        deps_by_key,
+        roots,
+        plat_env):
+    """Compute the set of (norm_name, version) keys reachable on one platform.
+
+    Args:
+        packages: {type}`list[dict]` Package entries from `uv.lock`.
+        pkgs_by_name: {type}`dict[str, list[dict]]` Packages indexed by
+            normalized name.
+        deps_by_key: {type}`dict[tuple[str, str], list[dict]]` Outgoing
+            dependencies indexed by `(norm_name, version)`.
+        roots: {type}`list[tuple[str, str]]` Root `(norm_name, version)` keys
+            with no incoming dependency edges.
+        plat_env: {type}`dict[str, str]` PEP 508 environment markers for the
+            platform.
+
+    Returns:
+        {type}`dict[tuple[str, str], bool]` Set of reachable package keys.
+    """
+    eligible = {
+        (normalize_name(pkg["name"]), pkg.get("version", "")): True
+        for pkg in packages
+        if _uv_lock_is_pkg_eligible(pkg, plat_env)
+    }
+    reachable = {key: True for key in roots if key in eligible}
+    frontier = [key for key in roots if key in eligible]
+    for _ in range(len(packages)):
+        if not frontier:
+            break
+        next_frontier = []
+        for curr_key in frontier:
+            for dep in deps_by_key.get(curr_key, []):
+                marker = dep.get("marker")
+                if marker and not evaluate(marker, env = plat_env):
+                    continue
+                dep_name = normalize_name(dep["name"])
+                dep_version = dep.get("version")
+                for target_pkg in pkgs_by_name.get(dep_name, []):
+                    target_version = target_pkg.get("version", "")
+                    target_key = (dep_name, target_version)
+                    if target_key not in eligible or target_key in reachable:
+                        continue
+                    if not dep_version or target_version == dep_version:
+                        reachable[target_key] = True
+                        next_frontier.append(target_key)
+        frontier = next_frontier
+    return reachable
+
+def _uv_lock_reachable_platforms(packages, all_platforms, platforms):
+    """Compute the target platforms where each uv.lock package entry is reachable.
+
+    In `uv.lock`, platform-specific dependencies carry PEP 508 markers on the
+    dependency edges (`dependencies = [{ name = "...", marker = "..." }]`),
+    while transitive dependencies of those packages carry no markers of their
+    own. A package entry is applicable to a platform only if it is reachable
+    from a root package via dependency edges whose markers evaluate to True on
+    that platform.
+
+    Args:
+        packages: {type}`list[dict]` Package entries from `uv.lock`.
+        all_platforms: {type}`list[str]` The list of all platform names.
+        platforms: {type}`dict[str, struct]` Mapping of platform name to
+            platform struct (containing `.env`).
+
+    Returns:
+        {type}`dict[tuple[str, str], list[str]]` Mapping from
+        `(norm_name, version)` to the sorted list of reachable platform names.
+    """
+    pkgs_by_name = {}
+    deps_by_key = {}
+    for pkg in packages:
+        norm_name = normalize_name(pkg["name"])
+        key = (norm_name, pkg.get("version", ""))
+        pkgs_by_name.setdefault(norm_name, []).append(pkg)
+        deps_by_key[key] = _uv_lock_pkg_deps(pkg)
+
+    has_incoming = {}
+    for deps in deps_by_key.values():
+        for dep in deps:
+            dep_name = normalize_name(dep["name"])
+            dep_version = dep.get("version")
+            for target_pkg in pkgs_by_name.get(dep_name, []):
+                target_version = target_pkg.get("version", "")
+                if not dep_version or target_version == dep_version:
+                    has_incoming[(dep_name, target_version)] = True
+
+    roots = [
+        (normalize_name(pkg["name"]), pkg.get("version", ""))
+        for pkg in packages
+        if (normalize_name(pkg["name"]), pkg.get("version", "")) not in has_incoming
+    ]
+
+    reachable_by_pkg = {}
+    for p in all_platforms:
+        platform = platforms.get(p)
+        if not platform:
+            continue
+        reachable = _uv_lock_reachable_keys_for_platform(
+            packages = packages,
+            pkgs_by_name = pkgs_by_name,
+            deps_by_key = deps_by_key,
+            roots = roots,
+            plat_env = platform.env,
+        )
+        for key in reachable:
+            reachable_by_pkg.setdefault(key, []).append(p)
+    return reachable_by_pkg
 
 def _uv_lock_git_requirement(git_source):
     """Turn a uv.lock git source into a pip direct reference.

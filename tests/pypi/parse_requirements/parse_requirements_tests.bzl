@@ -100,6 +100,7 @@ foo==0.0.1 --hash=sha512:deadbeef
 foo[extra]==0.0.2 --hash=sha256:deadbeef
 bar==0.0.1 --hash=sha256:deadb00f
 """,
+        "uv_lock_dep_markers": """{"package":[{"name":"bar","version":"0.0.1","source":{"registry":"https://pypi.org/simple"},"dependencies":[{"name":"baz"}],"wheels":[{"hash":"sha256:bbbb","url":"https://files.pythonhosted.org/packages/bar-0.0.1-py3-none-any.whl"}]},{"name":"baz","version":"0.0.1","source":{"registry":"https://pypi.org/simple"},"sdist":{"hash":"sha256:cccc","url":"https://files.pythonhosted.org/packages/baz-0.0.1.tar.gz"},"wheels":[{"hash":"sha256:dddd","url":"https://files.pythonhosted.org/packages/baz-0.0.1-cp311-cp311-manylinux_2_17_x86_64.whl"}]},{"name":"foo","version":"0.0.1","source":{"registry":"https://pypi.org/simple"},"dependencies":[{"name":"bar","marker":"sys_platform == 'linux'"}],"wheels":[{"hash":"sha256:aaaa","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]},{"name":"root-pkg","version":"0.0.0","source":{"virtual":"."},"dependencies":[{"name":"foo"}]}]}""",
         "uv_lock_empty": """{"package":[]}""",
         "uv_lock_foo": """{"package":[{"dependencies":[{"extra":"extra","name":"bar"}],"name":"foo","source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]}]}""",
         "uv_lock_foo_bar": """{"package":[{"name":"bar","version":"0.0.1","source":{"registry":"https://pypi.org/simple"},"sdist":{"hash":"sha256:deadb00f","url":"https://files.pythonhosted.org/packages/bar-0.0.1.tar.gz"}},{"name":"foo","version":"0.0.1","source":{"registry":"https://pypi.org/simple"},"wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl"}]}]}""",
@@ -1744,6 +1745,100 @@ def _test_uv_lock_requires_dist_extras(env):
     ])
 
 _tests.append(_test_uv_lock_requires_dist_extras)
+
+def _test_uv_lock_dep_markers(env):
+    """Test that dependency markers filter transitive packages per platform."""
+    got = parse_requirements(
+        uv_lock = "uv_lock_dep_markers",
+        platforms = {
+            "cp311_linux_x86_64": struct(
+                env = pep508_env(
+                    python_version = "3.11.0",
+                    os = "linux",
+                    arch = "x86_64",
+                ),
+                whl_abi_tags = ["none", "cp311"],
+                whl_platform_tags = ["any", "manylinux_*_x86_64"],
+            ),
+            "cp311_windows_x86_64": struct(
+                env = pep508_env(
+                    python_version = "3.11.0",
+                    os = "windows",
+                    arch = "x86_64",
+                ),
+                whl_abi_tags = ["none", "cp311"],
+                whl_platform_tags = ["any", "win_amd64"],
+            ),
+        },
+    )
+    env.expect.that_collection(got).contains_exactly([
+        struct(
+            name = "bar",
+            index_url = "https://pypi.org/simple/bar",
+            is_exposed = False,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "bar",
+                    extra_pip_args = [],
+                    requirement_line = "bar==0.0.1",
+                    target_platforms = ["cp311_linux_x86_64"],
+                    filename = "bar-0.0.1-py3-none-any.whl",
+                    digest = "sha256:bbbb",
+                    url = "https://files.pythonhosted.org/packages/bar-0.0.1-py3-none-any.whl",
+                    yanked = None,
+                ),
+            ],
+        ),
+        struct(
+            name = "baz",
+            index_url = "https://pypi.org/simple/baz",
+            is_exposed = False,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "baz",
+                    extra_pip_args = [],
+                    requirement_line = "baz==0.0.1",
+                    target_platforms = ["cp311_linux_x86_64"],
+                    filename = "baz-0.0.1-cp311-cp311-manylinux_2_17_x86_64.whl",
+                    digest = "sha256:dddd",
+                    url = "https://files.pythonhosted.org/packages/baz-0.0.1-cp311-cp311-manylinux_2_17_x86_64.whl",
+                    yanked = None,
+                ),
+            ],
+        ),
+        struct(
+            name = "foo",
+            index_url = "https://pypi.org/simple/foo",
+            is_exposed = True,
+            is_multiple_versions = False,
+            srcs = [
+                struct(
+                    distribution = "foo",
+                    extra_pip_args = [],
+                    requirement_line = "foo==0.0.1",
+                    target_platforms = [
+                        "cp311_linux_x86_64",
+                        "cp311_windows_x86_64",
+                    ],
+                    filename = "foo-0.0.1-py3-none-any.whl",
+                    digest = "sha256:aaaa",
+                    url = "https://files.pythonhosted.org/packages/foo-0.0.1-py3-none-any.whl",
+                    yanked = None,
+                ),
+            ],
+        ),
+        struct(
+            name = "root_pkg",
+            index_url = "",
+            is_exposed = False,
+            is_multiple_versions = False,
+            srcs = [],
+        ),
+    ])
+
+_tests.append(_test_uv_lock_dep_markers)
 
 def parse_requirements_test_suite(name):
     """Create the test suite.

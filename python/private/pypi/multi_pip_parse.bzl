@@ -146,14 +146,20 @@ def multi_pip_parse(name, default_version, python_versions, python_interpreter_t
     for python_version in python_versions:
         if not python_version in python_interpreter_target:
             fail("Missing python_interpreter_target for Python version %s in '%s'" % (python_version, name))
-        if not python_version in requirements_lock:
-            fail("Missing requirements_lock for Python version %s in '%s'" % (python_version, name))
+        version_requirements_lock = None
+        if requirements_lock != None:
+            if not python_version in requirements_lock:
+                fail(
+                    "Missing requirements_lock for Python version %s in '%s'" %
+                    (python_version, name),
+                )
+            version_requirements_lock = requirements_lock[python_version]
 
         pip_parse_name = name + "_" + python_version.replace(".", "_")
         pip_parse(
             name = pip_parse_name,
             python_interpreter_target = python_interpreter_target[python_version],
-            requirements_lock = requirements_lock[python_version],
+            requirements_lock = version_requirements_lock,
             **kwargs
         )
         pip_parses[python_version] = pip_parse_name
