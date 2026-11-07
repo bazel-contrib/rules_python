@@ -26,7 +26,7 @@ load("//python/private/pypi:select_whl.bzl", "select_whl")
 # file, see `//dev/update_deps/coverage:pyproject.toml` for how to update them.
 #
 # Newer coverage versions do not support older python versions, so each version
-# has a `python_version` marker for when it should be used.
+# has a `python_full_version` marker for when it should be used.
 # START: maintained by 'bazel run //dev/update_deps:update_coverage_deps <version>'
 _coverage_wheels = [
     struct(
