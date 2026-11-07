@@ -375,9 +375,12 @@ dev_python.override(
 
 # For testing the coverage collection with the bundled coverage tool.
 # See //tests/coverage:coverage_collection_test
+#
+# NOTE: A full version is used so that the toolchain is named after it and does
+# not shadow the toolchains that are checked in //tests/toolchains.
 dev_python.toolchain(
     configure_coverage_tool = True,
-    python_version = "3.12",
+    python_version = "3.12.16",
 )
 
 # For testing an arbitrary runtime triggered by a custom flag.
