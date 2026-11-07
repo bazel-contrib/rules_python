@@ -132,6 +132,9 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 
 {#v2-5-0-added}
 ### Added
+* (coverage) Added bundled coverage.py wheels for Python 3.15 on Linux and macOS,
+  including free-threaded interpreters. Existing Python versions retain their
+  current coverage.py wheels.
 * (packaging) {obj}`py_wheel` now expands Python toolchain make variables by
   default and in `platform` and `python_requires`. {obj}`py_runtime_pair` and
   {obj}`current_py_toolchain` now provide version and wheel tag make variables.
@@ -166,6 +169,7 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
   toolchains with the new {obj}`uv_toolchains_manifest` repository rule and
   {obj}`uv_register_toolchains` macro.
   ([#1975](https://github.com/bazel-contrib/rules_python/issues/1975))
+
 
 
 {#v2-4-6}
