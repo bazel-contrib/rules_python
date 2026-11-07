@@ -23,7 +23,6 @@ import argparse
 import json
 import os
 import textwrap
-from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
 from urllib import request
@@ -31,102 +30,82 @@ from urllib import request
 from dev.update_deps.args import path_from_runfiles
 from dev.update_deps.update_file import update_file
 
-# This should be kept in sync with //python:versions.bzl
-_supported_platforms = {
-    # Windows is unsupported right now
-    # "win_amd64": "x86_64-pc-windows-msvc",
-    "manylinux1_x86_64": "x86_64-unknown-linux-gnu",
-    "manylinux2014_x86_64": "x86_64-unknown-linux-gnu",
-    "manylinux2014_aarch64": "aarch64-unknown-linux-gnu",
-    "macosx_11_0_arm64": "aarch64-apple-darwin",
-    "macosx_10_9_x86_64": "x86_64-apple-darwin",
-    "macosx_10_13_x86_64": "x86_64-apple-darwin",
-    "macosx_10_15_x86_64": "x86_64-apple-darwin",
-    ("t", "manylinux1_x86_64"): "x86_64-unknown-linux-gnu-freethreaded",
-    ("t", "manylinux2014_x86_64"): "x86_64-unknown-linux-gnu-freethreaded",
-    ("t", "manylinux2014_aarch64"): "aarch64-unknown-linux-gnu-freethreaded",
-    ("t", "macosx_11_0_arm64"): "aarch64-apple-darwin-freethreaded",
-    ("t", "macosx_10_9_x86_64"): "x86_64-apple-darwin-freethreaded",
-    ("t", "macosx_10_13_x86_64"): "x86_64-apple-darwin-freethreaded",
-    ("t", "macosx_10_15_x86_64"): "x86_64-apple-darwin-freethreaded",
-}
-
 
 @dataclass
-class Dep:
-    name: str
-    platform: str
-    python: str
+class Whl:
+    filename: str
     url: str
     sha256: str
-
-    @property
-    def repo_name(self):
-        return f"pypi__{self.name}_{self.python}_{self.platform}"
 
     def __repr__(self):
         return "\n".join(
             [
-                "(",
-                f'    "{self.url}",',
-                f'    "{self.sha256}",',
-                ")",
+                "struct(",
+                f'    url = "{self.url}",',
+                f'    hash = "sha256:{self.sha256}",',
+                "),",
             ]
         )
 
 
 @dataclass
-class Deps:
-    deps: list[Dep]
+class Whls:
+    whls: list[Whl]
 
     def __repr__(self):
-        deps = defaultdict(dict)
-        for d in self.deps:
-            deps[d.python][d.platform] = d
-
-        parts = []
-        for python, contents in deps.items():
-            inner = textwrap.indent(
-                "\n".join([f'"{platform}": {d},' for platform, d in contents.items()]),
-                prefix="    ",
-            )
-            parts.append('"{}": {{\n{}\n}},'.format(python, inner))
-        return "{{\n{}\n}}".format(textwrap.indent("\n".join(parts), prefix="    "))
+        inner = textwrap.indent(
+            "\n".join([repr(w) for w in self.whls]),
+            prefix="    ",
+        )
+        return "[\n{}\n]".format(inner)
 
 
-def _get_platforms(filename: str, python_version: str):
-    name, _, tail = filename.partition("-")
-    version, _, tail = tail.partition("-")
-    got_python_version, _, tail = tail.partition("-")
-    if python_version != got_python_version:
-        return []
-    abi, _, tail = tail.partition("-")
-
-    platforms, _, tail = tail.rpartition(".")
-    platforms = platforms.split(".")
-
-    return [("t", p) for p in platforms] if abi.endswith("t") else platforms
-
-
-def _map(
-    name: str,
-    filename: str,
-    python_version: str,
-    url: str,
-    digests: dict[str, str],
-    platform: str | tuple[str, str],
-    **kwargs: Any,
-):
-    if platform and platform not in _supported_platforms:
-        return None
-
-    return Dep(
-        name=name,
-        platform=_supported_platforms[platform] if platform else "",
-        python=python_version,
+def _whl(filename: str, url: str, digests: dict[str, str], **kwargs: Any) -> Whl:
+    return Whl(
+        filename=filename,
         url=url,
         sha256=digests["sha256"],
     )
+
+
+@dataclass
+class VersionSpec:
+    """A package version and the CPython minor versions to take wheels for."""
+
+    version: str
+    min_minor: int
+    max_minor: int
+
+    def matches(self, python_tag: str) -> bool:
+        if not python_tag.startswith("cp3"):
+            return False
+
+        minor = python_tag[len("cp3") :]
+        return minor.isdigit() and self.min_minor <= int(minor) <= self.max_minor
+
+
+def _parse_py_tag(tag: str) -> int:
+    if not tag.startswith("cp3") or not tag[len("cp3") :].isdigit():
+        raise argparse.ArgumentTypeError(f"Expected a 'cp3<minor>' tag, got '{tag}'")
+    return int(tag[len("cp3") :])
+
+
+def _parse_version_spec(value: str) -> VersionSpec:
+    version, sep, py_range = value.partition(":")
+    if not sep or not version or not py_range:
+        raise argparse.ArgumentTypeError(
+            f"Expected '<version>:<cp3X>[-<cp3Y>]', got '{value}'"
+        )
+
+    lo, _, hi = py_range.partition("-")
+    spec = VersionSpec(
+        version=version,
+        min_minor=_parse_py_tag(lo),
+        max_minor=_parse_py_tag(hi or lo),
+    )
+    if spec.min_minor > spec.max_minor:
+        raise argparse.ArgumentTypeError(f"Invalid python range in '{value}'")
+    return spec
 
 
 def _parse_args() -> argparse.Namespace:
@@ -138,16 +117,16 @@ def _parse_args() -> argparse.Namespace:
         help="The name of the package",
     )
     parser.add_argument(
-        "version",
-        type=str,
-        help="The version of the package to download",
-    )
-    parser.add_argument(
-        "--py",
+        "versions",
         nargs="+",
-        type=str,
-        default=["cp39", "cp310", "cp311", "cp312", "cp313", "cp314", "cp315"],
-        help="Supported python versions",
+        type=_parse_version_spec,
+        help=(
+            "The versions of the package to download, each with the range of "
+            "the CPython versions to take the wheels for, e.g. "
+            "'7.10.7:cp39-cp314 7.17.0:cp315'. The 'py3-none-any' wheel of the "
+            "first version is used as the fallback for platforms without a "
+            "platform specific wheel."
+        ),
     )
     parser.add_argument(
         "--dry-run",
@@ -163,59 +142,47 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main():
-    args = _parse_args()
-
-    api_url = f"https://pypi.org/pypi/{args.name}/{args.version}/json"
+def _get_urls(name: str, version: str) -> list[dict[str, Any]]:
+    api_url = f"https://pypi.org/pypi/{name}/{version}/json"
     req = request.Request(api_url)
     with request.urlopen(req) as response:
         data = json.loads(response.read().decode("utf-8"))
+    return data["urls"]
 
-    urls = []
-    default_url = None
-    for u in data["urls"]:
-        if u["yanked"]:
-            continue
 
-        if not u["filename"].endswith(".whl"):
-            continue
+def main():
+    args = _parse_args()
 
-        if u["filename"].endswith("py3-none-any.whl"):
-            default_url = _map(name=args.name, platform="", **u)
-            continue
+    whls = []
+    for i, spec in enumerate(args.versions):
+        for u in _get_urls(args.name, spec.version):
+            if u["yanked"]:
+                continue
 
-        if u["python_version"] not in args.py:
-            continue
+            if not u["filename"].endswith(".whl"):
+                continue
 
-        if f"_{u['python_version']}m_" in u["filename"]:
-            continue
+            if u["filename"].endswith("-py3-none-any.whl"):
+                # Only a single fallback wheel is needed.
+                if i == 0:
+                    whls.append(_whl(**u))
+                continue
 
-        platforms = _get_platforms(
-            u["filename"],
-            u["python_version"],
-        )
+            if not spec.matches(u["python_version"]):
+                continue
 
-        result = [_map(name=args.name, platform=p, **u) for p in platforms]
-        urls.extend(filter(None, result))
+            whls.append(_whl(**u))
 
-    urls.sort(key=lambda x: f"{x.python}_{x.platform}")
+    whls.sort(key=lambda x: x.filename)
 
-    # Update the coverage_deps, which are used to register deps
+    # Update the coverage wheels, the compatible wheel is selected in Starlark
     update_file(
         path=args.update_file,
-        snippet="\n".join(
-            [
-                f"_default = {repr(default_url)}",
-                f"_coverage_deps = {repr(Deps(urls))}",
-                "",
-            ]
-        ),
+        snippet="_coverage_wheels = {}\n".format(repr(Whls(whls))),
         start_marker="# START: maintained by 'bazel run //dev/update_deps:update_coverage_deps <version>'",
         end_marker="# END: maintained by 'bazel run //dev/update_deps:update_coverage_deps <version>'",
         dry_run=args.dry_run,
     )
-
-    return
 
 
 if __name__ == "__main__":

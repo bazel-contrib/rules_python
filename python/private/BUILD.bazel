@@ -354,8 +354,11 @@ bzl_library(
     name = "coverage_deps",
     srcs = ["coverage_deps.bzl"],
     deps = [
+        ":repo_utils",
         ":version_label",
+        "//python:versions",
         "//python/private:bazel_tools",
+        "//python/private/pypi:select_whl",
     ],
 )
 
