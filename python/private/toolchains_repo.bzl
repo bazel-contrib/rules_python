@@ -172,7 +172,7 @@ _MULTI_TOOLCHAIN_ALIASES_PIP_TEMPLATE = """
 
 load("@@{rules_python}//python:pip.bzl", "pip_parse", _multi_pip_parse = "multi_pip_parse")
 
-def multi_pip_parse(name, requirements_lock, **kwargs):
+def multi_pip_parse(name, requirements_lock = None, **kwargs):
     return _multi_pip_parse(
         name = name,
         python_versions = {python_versions},
