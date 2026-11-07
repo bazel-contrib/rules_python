@@ -68,12 +68,19 @@ When adding or updating a Rust crate dependency:
 
 ## Errors, Panics & Linting
 * **Return errors, don't panic**: Production crates (`crates/*/src/*.rs`)
-  carry `#![deny(clippy::expect_used, clippy::unwrap_used)]`; use `anyhow`
-  (`bail!`, `.context()`, `.with_context(|| ...)`) and `?` so every failure
-  names the path, line, or entry it concerns, and print the chain with
-  `{err:#}` in `run_cli`. Reach for `const` values (e.g.
+  carry `#![deny(clippy::expect_used, clippy::unwrap_used)]`; propagate
+  with `?` and attach context so every failure names the path, line, or
+  entry it concerns. Reach for `const` values (e.g.
   `zip::DateTime::DEFAULT`) instead of `.expect()` on infallible
   constructors.
+* **Choose the error type by audience**: For CLI tools and other code that
+  owns the error-handling context (the `shrubbery` subcommand crates), use
+  `anyhow` (`bail!`, `.context()`, `.with_context(|| ...)`) and print the
+  chain with `{err:#}` in `run_cli`. For library code consumed by other
+  crates, define a typed error (`thiserror` enum implementing
+  `std::error::Error` with `#[from]`/`#[source]`) so callers can match on
+  variants and errors compose across crate boundaries; such a type still
+  converts into `anyhow::Error` for free at the CLI layer.
 * **Tests may panic**: `unwrap()`, `expect()`, `panic!`, and indexing are
   allowed in test code (`.clippy.toml` sets `allow-*-in-tests`). When using
   `expect()`, write the message in std's recommended style, stating why the
