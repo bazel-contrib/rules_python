@@ -66,7 +66,7 @@ fn test_create_zip_with_files_and_symlinks() {
     #[cfg(unix)]
     let symlink_path = {
         let p = tmp.path().join("symlink_source");
-        std::os::unix::fs::symlink("target.txt", &p).expect("create symlink p");
+        std::os::unix::fs::symlink("target.txt", &p).expect("create symlink_source");
         p
     };
 
@@ -756,7 +756,7 @@ impl TempDir {
             id
         ));
         let _ = fs::remove_dir_all(&path);
-        fs::create_dir_all(&path).expect("create path");
+        fs::create_dir_all(&path).expect("create temp dir");
         Self { path }
     }
 

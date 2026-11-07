@@ -343,14 +343,13 @@ fn mode_from_metadata(meta: &Metadata) -> u32 {
 }
 
 /// Fixed timestamp for all entries so output is deterministic. This is the earliest
-/// MS-DOS timestamp a zip can represent and matches the Python implementation.
-fn fixed_timestamp() -> DateTime {
-    DateTime::DEFAULT
-}
+/// MS-DOS timestamp a zip can represent (1980-01-01 00:00:00) and matches the Python
+/// implementation.
+const FIXED_TIMESTAMP: DateTime = DateTime::DEFAULT;
 
 fn file_options(compress_level: u32, unix_mode: u32) -> SimpleFileOptions {
     let options = SimpleFileOptions::default()
-        .last_modified_time(fixed_timestamp())
+        .last_modified_time(FIXED_TIMESTAMP)
         .unix_permissions(unix_mode);
     if compress_level == 0 {
         options.compression_method(CompressionMethod::Stored)
@@ -364,7 +363,7 @@ fn file_options(compress_level: u32, unix_mode: u32) -> SimpleFileOptions {
 /// Options for symlink entries. `add_symlink` already sets `0o777 | S_IFLNK` and always stores
 /// symlinks uncompressed, so only the timestamp needs fixing.
 fn symlink_options() -> SimpleFileOptions {
-    SimpleFileOptions::default().last_modified_time(fixed_timestamp())
+    SimpleFileOptions::default().last_modified_time(FIXED_TIMESTAMP)
 }
 
 fn write_entry<W: Write + Seek>(
@@ -375,6 +374,7 @@ fn write_entry<W: Write + Seek>(
 ) -> Result<()> {
     // Normalize slashes, otherwise the `seen` logic doesn't work correctly.
     let zip_path = normalize_zip_path(&entry.zip_path);
+    let adding = || format!("adding {zip_path}");
     if !seen.insert(zip_path.clone()) {
         // This can occur because symlink entries have precedence over non-symlink entries.
         return Ok(());
@@ -384,13 +384,13 @@ fn write_entry<W: Write + Seek>(
         EntryKind::Empty => {
             // Create empty file
             zf.start_file(&zip_path, file_options(options.compress_level, 0o644))
-                .with_context(|| format!("adding {zip_path}"))?;
+                .with_context(adding)?;
             return Ok(());
         }
         EntryKind::Symlink { target } => {
             let target = convert_symlink_target(target, &options.platform_pathsep);
             zf.add_symlink(&zip_path, target, symlink_options())
-                .with_context(|| format!("adding {zip_path}"))?;
+                .with_context(adding)?;
             return Ok(());
         }
         EntryKind::File {
@@ -402,7 +402,7 @@ fn write_entry<W: Write + Seek>(
     if let Some(symlink_target) = source_symlink_target(content_path, symlink_mode)? {
         let target = convert_symlink_target(&symlink_target, &options.platform_pathsep);
         zf.add_symlink(&zip_path, target, symlink_options())
-            .with_context(|| format!("adding {zip_path}"))?;
+            .with_context(adding)?;
         return Ok(());
     }
 
@@ -414,8 +414,7 @@ fn write_entry<W: Write + Seek>(
     // Preserve permissions, otherwise execute is dropped.
     let mode = mode_from_metadata(&meta);
     let opts = file_options(options.compress_level, mode).large_file(meta.len() >= ZIP64_BYTES_THR);
-    zf.start_file(&zip_path, opts)
-        .with_context(|| format!("adding {zip_path}"))?;
+    zf.start_file(&zip_path, opts).with_context(adding)?;
     io::copy(&mut src, zf)
         .with_context(|| format!("copying {} into {zip_path}", content_path.display()))?;
     Ok(())
@@ -549,10 +548,7 @@ where
         }
     };
     if let Err(err) = create_zip(&options) {
-        eprintln!(
-            "zipper: error creating zip {}: {err:#}",
-            options.output_zip.display()
-        );
+        eprintln!("zipper: error: {err:#}");
         return 1;
     }
     0
