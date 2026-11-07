@@ -25,6 +25,7 @@ jobs:
       issue_number: ${{ steps.parse.outputs.issue_number }}
       pr_number: ${{ steps.parse.outputs.pr_number }}
       backports: ${{ steps.parse.outputs.backports }}
+      release_branch: ${{ steps.parse.outputs.release_branch }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -45,11 +46,23 @@ jobs:
   call_create_rc:
     needs: parse_comment
     if: needs.parse_comment.outputs.command == 'create-rc'
-    uses: ./.github/workflows/release_create_rc.yaml
-    with:
-      issue: ${{ needs.parse_comment.outputs.issue_number }}
-      comment_id: "${{ github.event.comment.id }}"
-    secrets: inherit
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: "Dispatch: Release: Create RC"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ needs.parse_comment.outputs.release_branch }}
+          ISSUE: ${{ needs.parse_comment.outputs.issue_number }}
+          COMMENT_ID: "${{ github.event.comment.id }}"
+        run: |
+          gh workflow run release_create_rc.yaml \
+            --repo "$REPO" \
+            --ref "$BRANCH" \
+            --raw-field "issue=$ISSUE" \
+            --raw-field "comment_id=$COMMENT_ID"
 
   call_prepare_complete:
     needs: parse_comment
@@ -90,36 +103,82 @@ jobs:
   call_process_backports_after_add:
     needs: [parse_comment, call_add_backports]
     if: needs.parse_comment.outputs.command == 'add-backports'
-    uses: ./.github/workflows/release_process_backports.yaml
-    with:
-      issue: ${{ needs.parse_comment.outputs.issue_number }}
-      comment_id: "${{ github.event.comment.id }}"
-    secrets: inherit
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: "Dispatch: Release: Process Backports"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ needs.parse_comment.outputs.release_branch }}
+          ISSUE: ${{ needs.parse_comment.outputs.issue_number }}
+          COMMENT_ID: "${{ github.event.comment.id }}"
+        run: |
+          gh workflow run release_process_backports.yaml \
+            --repo "$REPO" \
+            --ref "$BRANCH" \
+            --raw-field "issue=$ISSUE" \
+            --raw-field "comment_id=$COMMENT_ID"
 
   call_process_backports_only:
     needs: parse_comment
     if: needs.parse_comment.outputs.command == 'process-backports'
-    uses: ./.github/workflows/release_process_backports.yaml
-    with:
-      issue: ${{ needs.parse_comment.outputs.issue_number }}
-      comment_id: "${{ github.event.comment.id }}"
-    secrets: inherit
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: "Dispatch: Release: Process Backports"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ needs.parse_comment.outputs.release_branch }}
+          ISSUE: ${{ needs.parse_comment.outputs.issue_number }}
+          COMMENT_ID: "${{ github.event.comment.id }}"
+        run: |
+          gh workflow run release_process_backports.yaml \
+            --repo "$REPO" \
+            --ref "$BRANCH" \
+            --raw-field "issue=$ISSUE" \
+            --raw-field "comment_id=$COMMENT_ID"
 
   call_sync_changelog:
     needs: parse_comment
     if: needs.parse_comment.outputs.command == 'sync-changelog'
-    uses: ./.github/workflows/release_sync_changelog.yaml
-    with:
-      issue: ${{ needs.parse_comment.outputs.issue_number }}
-    secrets: inherit
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: "Dispatch: Release: Sync Changelog"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ needs.parse_comment.outputs.release_branch }}
+          ISSUE: ${{ needs.parse_comment.outputs.issue_number }}
+        run: |
+          gh workflow run release_sync_changelog.yaml \
+            --repo "$REPO" \
+            --ref "$BRANCH" \
+            --raw-field "issue=$ISSUE"
 
   call_promote:
     needs: parse_comment
     if: needs.parse_comment.outputs.command == 'promote'
-    uses: ./.github/workflows/release_promote.yaml
-    with:
-      issue: ${{ needs.parse_comment.outputs.issue_number }}
-    secrets: inherit
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: "Dispatch: Release: Promote"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ needs.parse_comment.outputs.release_branch }}
+          ISSUE: ${{ needs.parse_comment.outputs.issue_number }}
+        run: |
+          gh workflow run release_promote.yaml \
+            --repo "$REPO" \
+            --ref "$BRANCH" \
+            --raw-field "issue=$ISSUE"
 
   call_backport_prepare:
     needs: parse_comment

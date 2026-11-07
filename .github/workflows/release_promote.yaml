@@ -5,7 +5,11 @@ on:
     inputs:
       version:
         description: 'The final version to release (e.g., 0.38.0)'
-        required: true
+        required: false
+        type: string
+      issue:
+        description: 'The tracking issue number'
+        required: false
         type: string
   workflow_call:
     inputs:
