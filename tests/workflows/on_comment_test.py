@@ -41,6 +41,7 @@ class GitHubActionEnv:
         self,
         *,
         issue_number: int | str = 4175,
+        issue_title: str = "",
         comment_id: int | str = 5772601429,
         comment_url: str = "",
         repo: str = "bazel-contrib/rules_python",
@@ -58,8 +59,13 @@ class GitHubActionEnv:
         }
         if user_login:
             comment["user"] = {"login": user_login}
+        issue: dict[str, object] = {}
+        if issue_number:
+            issue["number"] = issue_number
+        if issue_title:
+            issue["title"] = issue_title
         payload = {
-            "issue": {"number": issue_number} if issue_number else {},
+            "issue": issue,
             "comment": comment,
             "repository": {"full_name": repo} if repo else {},
         }
@@ -118,6 +124,7 @@ def _run_comment(
 
 
 def test_release_issue_create_rc(monkeypatch, gha_env):
+    gha_env.set_event(issue_title="Release 2.5.0")
     _run_comment(
         monkeypatch,
         "/create-rc",
@@ -125,6 +132,7 @@ def test_release_issue_create_rc(monkeypatch, gha_env):
     )
     assert gha_env.read_outputs() == {
         "issue_number": "100",
+        "release_branch": "release/2.5",
         "command": "create-rc",
     }
     assert gha_env.read_env() == {"issue_number": "100"}

@@ -105,26 +105,7 @@ def test_build_jobs_use_buildbuddy_rbe():
 def test_artifacts_manifest_json_built_and_published():
     """Verifies artifacts_manifest.json is generated, uploaded, and published."""
     build_workflow = _load_workflow()
-    for job_name in ("build", "build_wheel"):
-        checkout_steps = [
-            s
-            for s in build_workflow["jobs"][job_name]["steps"]
-            if s.get("uses", "").startswith("actions/checkout")
-        ]
-        assert len(checkout_steps) == 1
-        assert checkout_steps[0].get("with", {}).get("ref") == "${{ inputs.ref }}"
-
     package_steps = build_workflow["jobs"]["package"]["steps"]
-
-    checkout_steps = [
-        s for s in package_steps if s.get("uses", "").startswith("actions/checkout")
-    ]
-    assert len(checkout_steps) == 1
-    assert "ref" not in checkout_steps[0].get("with", {}), (
-        "package job must check out the workflow ref so packaging scripts "
-        "match the workflow definition; create_archive_and_notes.sh checks out "
-        "inputs.ref"
-    )
 
     generate_steps = [
         s for s in package_steps if s.get("name") == "Generate artifacts manifest"

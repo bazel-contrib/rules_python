@@ -9,6 +9,8 @@ import re
 import subprocess
 import sys
 
+_RELEASE_TITLE_RE = re.compile(r"Release (\d+\.\d+)\.\d+", re.IGNORECASE)
+
 
 def _load_event_data() -> dict:
     """Loads event JSON payload from GITHUB_EVENT_PATH."""
@@ -93,6 +95,15 @@ def _post_issue_comment(repo: str, issue_number: str, body: str) -> None:
         ],
         check=True,
     )
+
+
+def _get_release_branch(event: dict) -> str | None:
+    """Extracts the release/X.Y branch name from the issue title."""
+    issue_data = event.get("issue") or {}
+    title = str(issue_data.get("title") or "")
+    if m := _RELEASE_TITLE_RE.search(title):
+        return f"release/{m.group(1)}"
+    return None
 
 
 def _react_negative(repo: str, comment_id: str) -> None:
@@ -305,6 +316,8 @@ def process_comment(*, report_failure: bool = False) -> int:
         _write_github_env("issue_number", issue_number)
 
         if has_release_label:
+            if release_branch := _get_release_branch(event):
+                _write_github_output("release_branch", release_branch)
             command = _process_release_issue_comment(
                 comment_body=comment_body,
                 issue_number=issue_number,
