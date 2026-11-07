@@ -193,14 +193,16 @@ bazel_dep(name = "rules_multirun", version = "0.9.0", dev_dependency = True)
 bazel_dep(name = "bazel_ci_rules", version = "1.0.0", dev_dependency = True)
 bazel_dep(name = "rules_pkg", version = "1.2.0", dev_dependency = True)
 
-# Rust toolchains to build the release artifacts for Linux from Linux x86_64;
-# see dev/release_artifacts. They target musl, which Rust can link statically
-# with its bundled rust-lld, so no C cross toolchain is needed.
 rust = use_extension(
     "@rules_rust//rust:extensions.bzl",
     "rust",
     dev_dependency = True,
 )
+rust.toolchain(edition = "2024")
+
+# Rust toolchains to build the release artifacts for Linux from Linux x86_64;
+# see dev/release_artifacts. They target musl, which Rust can link statically
+# with its bundled rust-lld, so no C cross toolchain is needed.
 rust.repository_set(
     # rules_rust also registers an x86_64 to x86_64 toolchain from this set, in
     # name order with its default ones, so the name must sort after
@@ -209,7 +211,7 @@ rust.repository_set(
     # The default allocator library needs a C toolchain for the target platform,
     # but there isn't one. This one is what rules_rust uses for e.g. Windows.
     allocator_library = "@rules_rust//rust/private/cc:empty",
-    edition = "2021",
+    edition = "2024",
     exec_triple = "x86_64-unknown-linux-gnu",
     target_compatible_with = [
         "@platforms//cpu:aarch64",
@@ -302,7 +304,7 @@ rust.repository_set(
     # On Windows, rules_rust names toolchains after a hash of the full name:
     # rw-1886791612 for this one, after rust_windows_x86_64's rw-1704990954.
     name = "rust_release_windows",
-    edition = "2021",
+    edition = "2024",
     exec_triple = "x86_64-pc-windows-msvc",
     target_compatible_with = [
         "@platforms//cpu:x86_32",
