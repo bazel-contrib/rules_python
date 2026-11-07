@@ -70,16 +70,19 @@ fn test_create_zip_with_files_and_symlinks() {
         p
     };
 
-    let mut manifest_lines = vec![
+    let manifest = [
         format!("regular|0|file1.txt|{}", file1_path.display()),
         format!("rf-file|0|foo/bar.txt|{}", file1_path.display()),
         format!("rf-root-symlink|0|root_file|{}", file1_path.display()),
         "rf-empty|empty_file".to_string(),
-    ];
+    ]
+    .join("\n");
+    // Rebinding (rather than `Vec::push` under `#[cfg(unix)]`) keeps clippy's
+    // `useless_vec`/`unused_mut` lints quiet on Windows.
     #[cfg(unix)]
-    manifest_lines.push(format!("rf-symlink|1|link1|{}", symlink_path.display()));
+    let manifest = format!("{manifest}\nrf-symlink|1|link1|{}", symlink_path.display());
 
-    fs::write(&manifest_path, manifest_lines.join("\n")).expect("write manifest");
+    fs::write(&manifest_path, manifest).expect("write manifest");
 
     let opts = default_options(&manifest_path, &output_zip);
     create_zip(&opts).expect("create_zip");

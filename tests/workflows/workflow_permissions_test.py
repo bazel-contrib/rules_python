@@ -143,3 +143,27 @@ def test_on_comment_report_failure_needs_all_jobs():
     report_failure_needs = set(jobs["report_failure"]["needs"])
     expected_needs = set(jobs.keys()) - {"noop", "report_failure"}
     assert report_failure_needs == expected_needs
+
+
+def test_publish_bcr_splits_sphinxdocs_pr():
+    """Validates that publish.yml publishes sphinxdocs in a separate job."""
+    rf = runfiles.CreateOrRaise()
+    publish_path = rf.root() / "rules_python/.github/workflows/publish.yml"
+    bcr_config_path = rf.root() / "rules_python/.bcr/config.yml"
+
+    publish_content = yaml.safe_load(publish_path.read_text(encoding="utf-8"))
+    bcr_config = yaml.safe_load(bcr_config_path.read_text(encoding="utf-8"))
+
+    jobs = publish_content["jobs"]
+    assert set(jobs.keys()) == {"publish", "publish_sphinxdocs"}
+
+    def _parse_module_roots(job: dict) -> list[str]:
+        raw = job["with"]["module_roots"]
+        return [line.strip() for line in raw.splitlines() if line.strip()]
+
+    publish_roots = _parse_module_roots(jobs["publish"])
+    sphinxdocs_roots = _parse_module_roots(jobs["publish_sphinxdocs"])
+
+    assert publish_roots == [".", "gazelle"]
+    assert sphinxdocs_roots == ["sphinxdocs"]
+    assert set(publish_roots) | set(sphinxdocs_roots) == set(bcr_config["moduleRoots"])

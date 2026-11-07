@@ -1,5 +1,5 @@
 {
-  "checksum": "5ff57ce440feaf77d11b1bc2b03610d76513c432001f89ececc95b14c3e8042f",
+  "checksum": "7f9a06aa6df743d20963095d0fe2ee50cbe1bac5ffd344c8b29c7e2851576f07",
   "crates": {
     "adler2 2.0.1": {
       "name": "adler2",
@@ -506,7 +506,7 @@
               "target": "anyhow"
             },
             {
-              "id": "flate2 1.1.10",
+              "id": "flate2 1.1.11",
               "target": "flate2"
             },
             {
@@ -570,14 +570,14 @@
       ],
       "license_file": "LICENSE-APACHE"
     },
-    "flate2 1.1.10": {
+    "flate2 1.1.11": {
       "name": "flate2",
-      "version": "1.1.10",
+      "version": "1.1.11",
       "package_url": "https://github.com/rust-lang/flate2-rs",
       "repository": {
         "Http": {
-          "url": "https://static.crates.io/crates/flate2/1.1.10/download",
-          "sha256": "6e634e2e0ebac1ee034020da1ca582e17ffe4e0f5e985823721e168928136dcb"
+          "url": "https://static.crates.io/crates/flate2/1.1.11/download",
+          "sha256": "626d4928326b646e70f65ed36fc7cf9f206bdb68a0019ee7c6b4709da4e084c4"
         }
       },
       "targets": [
@@ -621,7 +621,7 @@
           "selects": {}
         },
         "edition": "2018",
-        "version": "1.1.10"
+        "version": "1.1.11"
       },
       "license": "MIT OR Apache-2.0",
       "license_ids": [
@@ -1305,7 +1305,7 @@
               "target": "crc32fast"
             },
             {
-              "id": "flate2 1.1.10",
+              "id": "flate2 1.1.11",
               "target": "flate2"
             },
             {
@@ -1389,7 +1389,7 @@
   },
   "direct_deps": [
     "anyhow 1.0.104",
-    "flate2 1.1.10",
+    "flate2 1.1.11",
     "lexopt 0.3.2",
     "sha2 0.10.9",
     "zip 8.6.0"

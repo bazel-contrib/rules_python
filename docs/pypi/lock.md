@@ -4,8 +4,10 @@
 # Lock
 
 :::{note}
-`rules_python` supports `requirements.txt` and `uv.lock` (bzlmod only)
-formats.
+`rules_python` supports `requirements.txt` and `uv.lock` formats. Generating
+`uv.lock` with {obj}`lock` is supported under both `bzlmod` and `WORKSPACE`,
+while consuming `uv.lock` to install packages via {attr}`pip.parse.uv_lock` is
+supported under `bzlmod` only.
 
 #{gh-issue}`2787` tracks `pylock.toml` support.
 :::
@@ -70,8 +72,6 @@ compile_pip_requirements(
 ### uv pip compile
 
 We also have a setup for the `uv pip compile` way of generating lock files.
-This is well tested with the public PyPI index, but you may hit some rough
-edges with private mirrors.
 
 #### Setup
 
@@ -234,10 +234,16 @@ lock(
    `diff_test` from `bazel_skylib`.
 :::
 
-## uv.lock (bzlmod only)
+## uv.lock
 
 The {obj}`lock` rule also supports generating cross-platform `uv.lock` files
-using `uv lock` when {arg}`lock.out` ends with `.lock` (such as `uv.lock`).
+using `uv lock` when {arg}`lock.out` ends with `.lock` (such as `uv.lock`),
+under both `bzlmod` and `WORKSPACE` (see the `uv` toolchain setup in the
+`uv pip compile` section above). Consuming `uv.lock` to install dependencies via
+{attr}`pip.parse.uv_lock` is supported under `bzlmod` only. Because `uv.lock`
+already records distribution URLs and hashes across platforms, {obj}`pip.parse`
+does not need to query the PyPI Simple API or store distribution hashes in
+`MODULE.bazel.lock`.
 
 ### Example usage
 
