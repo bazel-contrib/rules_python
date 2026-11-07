@@ -12,14 +12,16 @@ static TEST_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 /// Reads all entries from a ZIP file on disk using `zip::ZipArchive` (which verifies CRC-32).
 fn read_zip_entries(zip_path: &Path) -> Vec<ParsedZipEntry> {
-    let file = File::open(zip_path).expect("open output zip");
-    let mut archive = ZipArchive::new(file).expect("parse output zip");
+    let file = File::open(zip_path).expect("output zip should open");
+    let mut archive = ZipArchive::new(file).expect("output zip should be a valid archive");
     let mut entries = Vec::with_capacity(archive.len());
 
     for i in 0..archive.len() {
-        let mut entry = archive.by_index(i).expect("read zip entry");
+        let mut entry = archive.by_index(i).expect("zip entry should be readable");
         let mut data = Vec::with_capacity(entry.size() as usize);
-        entry.read_to_end(&mut data).expect("read zip entry data");
+        entry
+            .read_to_end(&mut data)
+            .expect("zip entry data should be readable");
         assert_eq!(
             data.len() as u64,
             entry.size(),
@@ -61,12 +63,12 @@ fn test_create_zip_with_files_and_symlinks() {
     let output_zip = tmp.path().join("output.zip");
 
     let file1_path = tmp.path().join("file1.txt");
-    fs::write(&file1_path, b"content1").expect("write file1_path");
+    fs::write(&file1_path, b"content1").expect("file1_path should be writable");
 
     #[cfg(unix)]
     let symlink_path = {
         let p = tmp.path().join("symlink_source");
-        std::os::unix::fs::symlink("target.txt", &p).expect("create symlink_source");
+        std::os::unix::fs::symlink("target.txt", &p).expect("symlink_source should be creatable");
         p
     };
 
@@ -82,10 +84,10 @@ fn test_create_zip_with_files_and_symlinks() {
     #[cfg(unix)]
     let manifest = format!("{manifest}\nrf-symlink|1|link1|{}", symlink_path.display());
 
-    fs::write(&manifest_path, manifest).expect("write manifest");
+    fs::write(&manifest_path, manifest).expect("manifest should be writable");
 
     let opts = default_options(&manifest_path, &output_zip);
-    create_zip(&opts).expect("create_zip");
+    create_zip(&opts).expect("create_zip should succeed");
 
     let entries = read_zip_entries(&output_zip);
     let by_name: HashMap<String, ParsedZipEntry> =
@@ -105,7 +107,7 @@ fn test_create_zip_with_files_and_symlinks() {
     assert_eq!(
         by_name["runfiles/my_ws/empty_file"]
             .unix_mode
-            .expect("entry has unix mode")
+            .expect("entry should have a unix mode")
             & 0o777,
         0o644
     );
@@ -123,10 +125,11 @@ fn test_create_zip_with_direct_symlink() {
     let manifest_path = tmp.path().join("manifest.txt");
     let output_zip = tmp.path().join("output.zip");
 
-    fs::write(&manifest_path, "symlink|path/to/link|target/path\n").expect("write manifest_path");
+    fs::write(&manifest_path, "symlink|path/to/link|target/path\n")
+        .expect("manifest_path should be writable");
 
     let opts = default_options(&manifest_path, &output_zip);
-    create_zip(&opts).expect("create_zip");
+    create_zip(&opts).expect("create_zip should succeed");
 
     let entries = read_zip_entries(&output_zip);
     assert_eq!(entries.len(), 1);
@@ -143,18 +146,19 @@ fn test_create_zip_with_source_symlink_marked_as_regular() {
     let output_zip = tmp.path().join("output.zip");
 
     let target_path = tmp.path().join("python3.14");
-    fs::write(&target_path, b"python").expect("write target_path");
+    fs::write(&target_path, b"python").expect("target_path should be writable");
     let symlink_path = tmp.path().join("python");
-    std::os::unix::fs::symlink("python3.14", &symlink_path).expect("create symlink symlink_path");
+    std::os::unix::fs::symlink("python3.14", &symlink_path)
+        .expect("symlink_path symlink should be creatable");
 
     fs::write(
         &manifest_path,
         format!("rf-file|0|bin/python|{}\n", symlink_path.display()),
     )
-    .expect("write manifest_path");
+    .expect("manifest_path should be writable");
 
     let opts = default_options(&manifest_path, &output_zip);
-    create_zip(&opts).expect("create_zip");
+    create_zip(&opts).expect("create_zip should succeed");
 
     let entries = read_zip_entries(&output_zip);
     assert_eq!(entries.len(), 1);
@@ -171,21 +175,21 @@ fn test_create_zip_with_sandboxed_source_symlink() {
     let output_zip = tmp.path().join("output.zip");
 
     let source_dir = tmp.path().join("source");
-    fs::create_dir_all(&source_dir).expect("create source_dir");
+    fs::create_dir_all(&source_dir).expect("source_dir should be creatable");
     let target_path = source_dir.join("python3.14");
-    fs::write(&target_path, b"python").expect("write target_path");
+    fs::write(&target_path, b"python").expect("target_path should be writable");
     let source_symlink = source_dir.join("python");
     std::os::unix::fs::symlink("python3.14", &source_symlink)
-        .expect("create symlink source_symlink");
+        .expect("source_symlink symlink should be creatable");
 
     let sandbox_dir = tmp.path().join("sandbox");
-    fs::create_dir_all(&sandbox_dir).expect("create sandbox_dir");
+    fs::create_dir_all(&sandbox_dir).expect("sandbox_dir should be creatable");
     let sandbox_symlink = sandbox_dir.join("python");
     std::os::unix::fs::symlink(&source_symlink, &sandbox_symlink)
-        .expect("create symlink sandbox_symlink");
+        .expect("sandbox_symlink symlink should be creatable");
     let sandbox_regular = sandbox_dir.join("python3.14");
     std::os::unix::fs::symlink(&target_path, &sandbox_regular)
-        .expect("create symlink sandbox_regular");
+        .expect("sandbox_regular symlink should be creatable");
 
     fs::write(
         &manifest_path,
@@ -195,10 +199,10 @@ fn test_create_zip_with_sandboxed_source_symlink() {
             sandbox_regular.display()
         ),
     )
-    .expect("write manifest_path");
+    .expect("manifest_path should be writable");
 
     let opts = default_options(&manifest_path, &output_zip);
-    create_zip(&opts).expect("create_zip");
+    create_zip(&opts).expect("create_zip should succeed");
 
     let entries = read_zip_entries(&output_zip);
     let by_name: HashMap<String, ParsedZipEntry> =
@@ -219,28 +223,30 @@ fn test_create_zip_with_sandboxed_absolute_source_symlink() {
     let output_zip = tmp.path().join("output.zip");
 
     let library_dir = tmp.path().join("external");
-    fs::create_dir_all(&library_dir).expect("create library_dir");
+    fs::create_dir_all(&library_dir).expect("library_dir should be creatable");
     let library = library_dir.join("libfoo.so");
-    fs::write(&library, b"library").expect("write library");
+    fs::write(&library, b"library").expect("library should be writable");
 
     let solib_dir = tmp.path().join("solib");
-    fs::create_dir_all(&solib_dir).expect("create solib_dir");
+    fs::create_dir_all(&solib_dir).expect("solib_dir should be creatable");
     let solib_link = solib_dir.join("libfoo.so");
-    std::os::unix::fs::symlink(&library, &solib_link).expect("create symlink solib_link");
+    std::os::unix::fs::symlink(&library, &solib_link)
+        .expect("solib_link symlink should be creatable");
 
     let sandbox_dir = tmp.path().join("sandbox");
-    fs::create_dir_all(&sandbox_dir).expect("create sandbox_dir");
+    fs::create_dir_all(&sandbox_dir).expect("sandbox_dir should be creatable");
     let sandbox_link = sandbox_dir.join("libfoo.so");
-    std::os::unix::fs::symlink(&solib_link, &sandbox_link).expect("create symlink sandbox_link");
+    std::os::unix::fs::symlink(&solib_link, &sandbox_link)
+        .expect("sandbox_link symlink should be creatable");
 
     fs::write(
         &manifest_path,
         format!("rf-file|0|_solib/libfoo.so|{}\n", sandbox_link.display()),
     )
-    .expect("write manifest_path");
+    .expect("manifest_path should be writable");
 
     let opts = default_options(&manifest_path, &output_zip);
-    create_zip(&opts).expect("create_zip");
+    create_zip(&opts).expect("create_zip should succeed");
 
     let entries = read_zip_entries(&output_zip);
     assert_eq!(entries.len(), 1);
@@ -258,10 +264,10 @@ fn test_is_symlink_minus_one_inference() {
 
     let broken_link = tmp.path().join("dangling_link");
     std::os::unix::fs::symlink("nonexistent_target", &broken_link)
-        .expect("create symlink broken_link");
+        .expect("broken_link symlink should be creatable");
 
     let existing_file = tmp.path().join("real.txt");
-    fs::write(&existing_file, b"real content").expect("write existing_file");
+    fs::write(&existing_file, b"real content").expect("existing_file should be writable");
 
     fs::write(
         &manifest_path,
@@ -271,10 +277,10 @@ fn test_is_symlink_minus_one_inference() {
             existing_file.display()
         ),
     )
-    .expect("write manifest_path");
+    .expect("manifest_path should be writable");
 
     let opts = default_options(&manifest_path, &output_zip);
-    create_zip(&opts).expect("create_zip");
+    create_zip(&opts).expect("create_zip should succeed");
 
     let entries = read_zip_entries(&output_zip);
     let by_name: HashMap<String, ParsedZipEntry> =
@@ -296,7 +302,7 @@ fn test_pathsep_normalization() {
     let output_zip = tmp.path().join("output.zip");
 
     let file1_path = tmp.path().join("file1.txt");
-    fs::write(&file1_path, b"content1").expect("write file1_path");
+    fs::write(&file1_path, b"content1").expect("file1_path should be writable");
 
     fs::write(
         &manifest_path,
@@ -305,11 +311,11 @@ fn test_pathsep_normalization() {
             file1_path.display()
         ),
     )
-    .expect("write manifest_path");
+    .expect("manifest_path should be writable");
 
     let mut opts = default_options(&manifest_path, &output_zip);
     opts.platform_pathsep = "\\".to_string();
-    create_zip(&opts).expect("create_zip");
+    create_zip(&opts).expect("create_zip should succeed");
 
     let entries = read_zip_entries(&output_zip);
     let by_name: HashMap<String, ParsedZipEntry> =
@@ -327,7 +333,7 @@ fn test_symlink_precedence() {
     let output_zip = tmp.path().join("output.zip");
 
     let file1_path = tmp.path().join("file1.txt");
-    fs::write(&file1_path, b"content1").expect("write file1_path");
+    fs::write(&file1_path, b"content1").expect("file1_path should be writable");
 
     fs::write(
         &manifest_path,
@@ -336,10 +342,10 @@ fn test_symlink_precedence() {
             file1_path.display()
         ),
     )
-    .expect("write manifest_path");
+    .expect("manifest_path should be writable");
 
     let opts = default_options(&manifest_path, &output_zip);
-    create_zip(&opts).expect("create_zip");
+    create_zip(&opts).expect("create_zip should succeed");
 
     let entries = read_zip_entries(&output_zip);
     assert_eq!(entries.len(), 1);
@@ -355,36 +361,39 @@ fn test_timestamps_and_permissions_are_deterministic() {
     let output_zip = tmp.path().join("output.zip");
 
     let file1_path = tmp.path().join("file1.sh");
-    fs::write(&file1_path, b"#!/bin/sh\necho hi\n").expect("write file1_path");
+    fs::write(&file1_path, b"#!/bin/sh\necho hi\n").expect("file1_path should be writable");
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         let mut perms = fs::metadata(&file1_path)
-            .expect("stat file1_path")
+            .expect("file1_path should exist")
             .permissions();
         perms.set_mode(0o755);
-        fs::set_permissions(&file1_path, perms).expect("chmod file1_path");
+        fs::set_permissions(&file1_path, perms).expect("file1_path permissions should be settable");
     }
 
     fs::write(
         &manifest_path,
         format!("regular|0|file1.sh|{}\n", file1_path.display()),
     )
-    .expect("write manifest_path");
+    .expect("manifest_path should be writable");
 
     let opts = default_options(&manifest_path, &output_zip);
-    create_zip(&opts).expect("create_zip");
+    create_zip(&opts).expect("create_zip should succeed");
 
     let entries = read_zip_entries(&output_zip);
     assert_eq!(entries.len(), 1);
     assert_eq!(
         entries[0].last_modified,
-        Some(DateTime::from_date_and_time(1980, 1, 1, 0, 0, 0).expect("valid timestamp"))
+        Some(
+            DateTime::from_date_and_time(1980, 1, 1, 0, 0, 0)
+                .expect("1980-01-01 should be a valid zip timestamp")
+        )
     );
     assert!(entries[0].unix_mode.is_some());
     #[cfg(unix)]
     assert_eq!(
-        entries[0].unix_mode.expect("entry has unix mode") & 0o777,
+        entries[0].unix_mode.expect("entry should have a unix mode") & 0o777,
         0o755
     );
 }
@@ -396,7 +405,7 @@ fn test_runfiles_mapping_with_cross_repo_paths() {
     let output_zip = tmp.path().join("output.zip");
 
     let file1_path = tmp.path().join("file1.txt");
-    fs::write(&file1_path, b"content1").expect("write file1_path");
+    fs::write(&file1_path, b"content1").expect("file1_path should be writable");
 
     fs::write(
         &manifest_path,
@@ -405,10 +414,10 @@ fn test_runfiles_mapping_with_cross_repo_paths() {
             file1_path.display()
         ),
     )
-    .expect("write manifest_path");
+    .expect("manifest_path should be writable");
 
     let opts = default_options(&manifest_path, &output_zip);
-    create_zip(&opts).expect("create_zip");
+    create_zip(&opts).expect("create_zip should succeed");
 
     let entries = read_zip_entries(&output_zip);
     let by_name: HashMap<String, ParsedZipEntry> =
@@ -426,7 +435,7 @@ fn test_runfiles_mapping_with_legacy_external_paths() {
     let output_zip = tmp.path().join("output.zip");
 
     let file1_path = tmp.path().join("file1.txt");
-    fs::write(&file1_path, b"content1").expect("write file1_path");
+    fs::write(&file1_path, b"content1").expect("file1_path should be writable");
 
     fs::write(
         &manifest_path,
@@ -435,11 +444,11 @@ fn test_runfiles_mapping_with_legacy_external_paths() {
             file1_path.display()
         ),
     )
-    .expect("write manifest_path");
+    .expect("manifest_path should be writable");
 
     let mut opts = default_options(&manifest_path, &output_zip);
     opts.legacy_external_runfiles = true;
-    create_zip(&opts).expect("create_zip");
+    create_zip(&opts).expect("create_zip should succeed");
 
     let entries = read_zip_entries(&output_zip);
     let by_name: HashMap<String, ParsedZipEntry> =
@@ -457,11 +466,11 @@ fn test_output_deterministic_ordering() {
     let output_zip = tmp.path().join("output.zip");
 
     let file1 = tmp.path().join("file1");
-    fs::write(&file1, b"1").expect("write file1");
+    fs::write(&file1, b"1").expect("file1 should be writable");
     let file2 = tmp.path().join("file2");
-    fs::write(&file2, b"2").expect("write file2");
+    fs::write(&file2, b"2").expect("file2 should be writable");
     let file3 = tmp.path().join("file3");
-    fs::write(&file3, b"3").expect("write file3");
+    fs::write(&file3, b"3").expect("file3 should be writable");
 
     fs::write(
         &manifest_path,
@@ -475,10 +484,10 @@ fn test_output_deterministic_ordering() {
         ]
         .join("\n"),
     )
-    .expect("write manifest");
+    .expect("manifest should be writable");
 
     let opts = default_options(&manifest_path, &output_zip);
-    create_zip(&opts).expect("create_zip");
+    create_zip(&opts).expect("create_zip should succeed");
 
     let names: Vec<String> = read_zip_entries(&output_zip)
         .into_iter()
@@ -506,7 +515,7 @@ fn test_deflated_compression() {
 
     let file1 = tmp.path().join("repeated.txt");
     let content = "hello world! ".repeat(500);
-    fs::write(&file1, content.as_bytes()).expect("write file1");
+    fs::write(&file1, content.as_bytes()).expect("file1 should be writable");
 
     fs::write(
         &manifest_path,
@@ -515,11 +524,11 @@ fn test_deflated_compression() {
             file1.display()
         ),
     )
-    .expect("write manifest_path");
+    .expect("manifest_path should be writable");
 
     let mut opts = default_options(&manifest_path, &output_zip);
     opts.compress_level = 6;
-    create_zip(&opts).expect("create_zip");
+    create_zip(&opts).expect("create_zip should succeed");
 
     let entries = read_zip_entries(&output_zip);
     let by_name: HashMap<String, ParsedZipEntry> =
@@ -571,7 +580,7 @@ fn test_parse_args_cli() {
             "--runfiles-dir=custom_rf",
             "--target-platform-pathsep=\\",
         ])
-        .expect("all flags parse"),
+        .expect("all flags should parse"),
     );
 
     assert_eq!(opts.manifest_path, PathBuf::from("manifest.txt"));
@@ -591,28 +600,34 @@ fn test_parse_args_cli() {
             "m.txt",
             "o.zip",
         ])
-        .expect("space-separated flags parse"),
+        .expect("space-separated flag values should parse"),
     );
     assert_eq!(opts2.compress_level, 0);
     assert!(!opts2.legacy_external_runfiles);
 
-    assert_eq!(parse_args(["--help"]).expect("--help parses"), Cli::Help);
-    assert_eq!(parse_args(["a", "b", "-h"]).expect("-h parses"), Cli::Help);
+    assert_eq!(
+        parse_args(["--help"]).expect("--help should parse"),
+        Cli::Help
+    );
+    assert_eq!(
+        parse_args(["a", "b", "-h"]).expect("-h should parse"),
+        Cli::Help
+    );
 
     let err = parse_args(["only_one_arg"])
-        .expect_err("one positional must fail")
+        .expect_err("a single positional should be rejected")
         .to_string();
     assert!(err.contains("expected 2 positional"), "{err}");
     let err = parse_args(["a", "b", "--legacy-external-runfiles=2"])
-        .expect_err("bad bool flag must fail")
+        .expect_err("a non-0/1 bool flag should be rejected")
         .to_string();
     assert!(err.contains("expected 0 or 1"), "{err}");
     let err = parse_args(["a", "b", "--compression=10"])
-        .expect_err("compression 10 must fail")
+        .expect_err("--compression=10 should be rejected")
         .to_string();
     assert!(err.contains("expected 0-9"), "{err}");
     let err = parse_args(["a", "b", "--unknown-flag"])
-        .expect_err("unknown flag must fail")
+        .expect_err("an unknown flag should be rejected")
         .to_string();
     assert!(err.contains("unknown-flag"), "{err}");
 }
@@ -625,7 +640,7 @@ fn test_symlink_extraction() {
     let output_zip = tmp.path().join("output.zip");
 
     let target_file = tmp.path().join("target_file.txt");
-    fs::write(&target_file, b"target content").expect("write target_file");
+    fs::write(&target_file, b"target content").expect("target_file should be writable");
 
     fs::write(
         &manifest_path,
@@ -637,52 +652,52 @@ fn test_symlink_extraction() {
         ]
         .join("\n"),
     )
-    .expect("write manifest");
+    .expect("manifest should be writable");
 
     let opts = default_options(&manifest_path, &output_zip);
-    create_zip(&opts).expect("create_zip");
+    create_zip(&opts).expect("create_zip should succeed");
 
     let extract_dir = tmp.path().join("extract");
-    fs::create_dir_all(&extract_dir).expect("create extract_dir");
+    fs::create_dir_all(&extract_dir).expect("extract_dir should be creatable");
 
     for entry in read_zip_entries(&output_zip) {
         let extract_path = extract_dir.join(&entry.name);
         if let Some(parent) = extract_path.parent() {
-            fs::create_dir_all(parent).expect("create parent dir");
+            fs::create_dir_all(parent).expect("parent dir should be creatable");
         }
         if entry.is_symlink {
             std::os::unix::fs::symlink(entry.text(), &extract_path)
-                .expect("create symlink extract_path");
+                .expect("extract_path symlink should be creatable");
         } else {
-            fs::write(&extract_path, &entry.data).expect("write extract_path");
+            fs::write(&extract_path, &entry.data).expect("extract_path should be writable");
         }
     }
 
     let link_path = extract_dir.join("runfiles/my_ws/path/to/link");
     assert!(fs::symlink_metadata(&link_path)
-        .expect("lstat link_path")
+        .expect("link_path should exist")
         .file_type()
         .is_symlink());
     assert_eq!(
-        fs::read_link(&link_path).expect("readlink link_path"),
+        fs::read_link(&link_path).expect("link_path should be a symlink"),
         PathBuf::from("../../target/path")
     );
     assert_eq!(
-        fs::read_to_string(&link_path).expect("read link_path"),
+        fs::read_to_string(&link_path).expect("link_path should be readable"),
         "target content"
     );
 
     let link2_path = extract_dir.join("runfiles/my_ws/same_dir_link");
     assert!(fs::symlink_metadata(&link2_path)
-        .expect("lstat link2_path")
+        .expect("link2_path should exist")
         .file_type()
         .is_symlink());
     assert_eq!(
-        fs::read_link(&link2_path).expect("readlink link2_path"),
+        fs::read_link(&link2_path).expect("link2_path should be a symlink"),
         PathBuf::from("same_dir_target")
     );
     assert_eq!(
-        fs::read_to_string(&link2_path).expect("read link2_path"),
+        fs::read_to_string(&link2_path).expect("link2_path should be readable"),
         "target content"
     );
 }
@@ -693,12 +708,12 @@ fn test_invalid_manifest_line_returns_error() {
     let manifest_path = tmp.path().join("manifest.txt");
     let output_zip = tmp.path().join("output.zip");
 
-    fs::write(&manifest_path, "unknown_type|foo|bar\n").expect("write manifest_path");
+    fs::write(&manifest_path, "unknown_type|foo|bar\n").expect("manifest_path should be writable");
 
     let opts = default_options(&manifest_path, &output_zip);
     let err = format!(
         "{:#}",
-        create_zip(&opts).expect_err("malformed manifest must fail")
+        create_zip(&opts).expect_err("a malformed manifest should be rejected")
     );
     assert!(err.contains("manifest line 1: unknown entry type"), "{err}");
 }
@@ -710,17 +725,17 @@ fn test_invalid_is_symlink_value_returns_error() {
     let output_zip = tmp.path().join("output.zip");
 
     let file1_path = tmp.path().join("file1.txt");
-    fs::write(&file1_path, b"content1").expect("write file1_path");
+    fs::write(&file1_path, b"content1").expect("file1_path should be writable");
     fs::write(
         &manifest_path,
         format!("rf-file|5|foo|{}\n", file1_path.display()),
     )
-    .expect("write manifest_path");
+    .expect("manifest_path should be writable");
 
     let opts = default_options(&manifest_path, &output_zip);
     let err = format!(
         "{:#}",
-        create_zip(&opts).expect_err("bad is_symlink must fail")
+        create_zip(&opts).expect_err("an invalid is_symlink value should be rejected")
     );
     assert!(
         err.contains("manifest line 1: invalid is_symlink value"),
@@ -733,13 +748,13 @@ fn test_compress_level_out_of_range_returns_error() {
     let tmp = TempDir::new("compress_level_range");
     let manifest_path = tmp.path().join("manifest.txt");
     let output_zip = tmp.path().join("output.zip");
-    fs::write(&manifest_path, "rf-empty|empty\n").expect("write manifest_path");
+    fs::write(&manifest_path, "rf-empty|empty\n").expect("manifest_path should be writable");
 
     let mut opts = default_options(&manifest_path, &output_zip);
     opts.compress_level = 10;
     let err = format!(
         "{:#}",
-        create_zip(&opts).expect_err("compress_level 10 must fail")
+        create_zip(&opts).expect_err("compress_level 10 should be rejected")
     );
     assert!(err.contains("expected 0-9"), "{err}");
     assert!(!output_zip.exists());
@@ -759,7 +774,7 @@ impl TempDir {
             id
         ));
         let _ = fs::remove_dir_all(&path);
-        fs::create_dir_all(&path).expect("create temp dir");
+        fs::create_dir_all(&path).expect("temp dir should be creatable");
         Self { path }
     }
 
@@ -789,6 +804,6 @@ struct ParsedZipEntry {
 
 impl ParsedZipEntry {
     fn text(&self) -> &str {
-        std::str::from_utf8(&self.data).expect("entry data is UTF-8")
+        std::str::from_utf8(&self.data).expect("entry data should be UTF-8")
     }
 }
