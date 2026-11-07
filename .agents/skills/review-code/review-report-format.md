@@ -14,4 +14,12 @@ For each issue found, provide:
   `HUMAN-SIGN-OFF`, quoting the author's justification and evaluating whether
   it holds up).
 - Proposed Fix: Concrete code snippet, diff, or replacement text.
-- Draft Comment: Ready-to-post comment in user's voice.
+- Draft Comment: Ready-to-post comment in user's voice, structured as:
+  ```markdown
+  <brief/concise description of issue>
+
+  Suggested fix: <fix, under 20 lines / 10 sentences>
+
+  Where: <other locations where this is applicable, if more than just the
+  commented location>
+  ```
