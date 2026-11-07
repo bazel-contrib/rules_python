@@ -628,6 +628,16 @@ bzl_library(
 )
 
 bzl_library(
+    name = "python_toolchain_platform",
+    srcs = ["python_toolchain_platform.bzl"],
+    deps = [
+        ":pep508_env",
+        ":platform",
+        "//python/private:version",
+    ],
+)
+
+bzl_library(
     name = "argparse",
     srcs = ["argparse.bzl"],
 )

@@ -17,10 +17,9 @@
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
-load("//python:versions.bzl", "FREETHREADED")
 load("//python/private:repo_utils.bzl", "repo_utils")
-load("//python/private:version_label.bzl", "version_label")
 load("//python/private/pypi:pep508_evaluate.bzl", "evaluate")
+load("//python/private/pypi:python_toolchain_platform.bzl", "python_toolchain_platform")
 load("//python/private/pypi:select_whl.bzl", "select_whl")
 
 # The wheels below were generated with:
@@ -30,8 +29,7 @@ load("//python/private/pypi:select_whl.bzl", "select_whl")
 #       '7.17.0; python_version >= "3.15"'
 #
 # Newer coverage versions do not support older python versions, so each version
-# has a `python_version` marker for when it should be used. The markers are
-# evaluated against `python_version` and `python_full_version` only.
+# has a `python_version` marker for when it should be used.
 # START: maintained by 'bazel run //dev/update_deps:update_coverage_deps <version>'
 _coverage_wheels = [
     struct(
@@ -1142,15 +1140,6 @@ _coverage_wheels = [
 ]
 # END: maintained by 'bazel run //dev/update_deps:update_coverage_deps <version>'
 
-# The whl platform tags that each of the supported toolchain platforms can use.
-# Any toolchain platform that is not listed here can only use the `any` wheels.
-_WHL_PLATFORM_TAGS = {
-    "aarch64-apple-darwin": ["macosx_*_arm64"],
-    "aarch64-unknown-linux-gnu": ["manylinux_*_aarch64"],
-    "x86_64-apple-darwin": ["macosx_*_x86_64"],
-    "x86_64-unknown-linux-gnu": ["manylinux_*_x86_64"],
-}
-
 _coverage_patch = Label("//python/private:coverage.patch")
 
 def select_coverage_whl(*, python_version, platform):
@@ -1164,21 +1153,15 @@ def select_coverage_whl(*, python_version, platform):
         A struct with `filename`, `url` and `sha256` attributes of the best
         matching wheel from `_coverage_wheels`.
     """
-    abi = "cp" + version_label(python_version)
-    base_platform = platform
-    if platform.endswith(FREETHREADED):
-        abi += "t"
-        base_platform = platform[:-len(FREETHREADED)]
-
-    marker_env = {
-        "python_full_version": python_version,
-        "python_version": ".".join(python_version.split(".")[:2]),
-    }
+    target_platform = python_toolchain_platform(
+        python_version = python_version,
+        platform_name = platform,
+    )
 
     whls = []
     for whl in _coverage_wheels:
         marker = getattr(whl, "marker", "")
-        if marker and not evaluate(marker, env = marker_env):
+        if marker and not evaluate(marker, env = target_platform.env):
             continue
 
         algo, _, digest = whl.hash.partition(":")
@@ -1194,8 +1177,9 @@ def select_coverage_whl(*, python_version, platform):
     whl = select_whl(
         whls = whls,
         python_version = python_version,
-        whl_platform_tags = ["any"] + _WHL_PLATFORM_TAGS.get(base_platform, []),
-        whl_abi_tags = ["none", abi],
+        implementation_name = target_platform.env["implementation_name"],
+        whl_platform_tags = target_platform.whl_platform_tags,
+        whl_abi_tags = target_platform.whl_abi_tags,
         logger = repo_utils.logger(name = "coverage_dep", verbosity_level = "WARN"),
     )
     if not whl:

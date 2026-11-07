@@ -39,6 +39,11 @@ def _test_select_platform_whl(env):
         ("3.12.4", "x86_64-apple-darwin", "coverage-7.10.7-cp312-cp312-macosx_10_13_x86_64.whl"),
         ("3.13.1", "aarch64-apple-darwin", "coverage-7.10.7-cp313-cp313-macosx_11_0_arm64.whl"),
         ("3.15.0", "x86_64-apple-darwin", "coverage-7.17.0-cp315-cp315-macosx_10_15_x86_64.whl"),
+        ("3.11.4", "i386-unknown-linux-gnu", "coverage-7.10.7-cp311-cp311-manylinux1_i686.manylinux_2_28_i686.manylinux_2_5_i686.whl"),
+        ("3.13.1", "riscv64-unknown-linux-gnu", "coverage-7.10.7-cp313-cp313-manylinux_2_31_riscv64.manylinux_2_39_riscv64.whl"),
+        ("3.13.1", "x86_64-unknown-linux-musl", "coverage-7.10.7-cp313-cp313-musllinux_1_2_x86_64.whl"),
+        ("3.15.0", "ppc64le-unknown-linux-gnu", "coverage-7.17.0-cp315-cp315-manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64le.whl"),
+        ("3.15.0", "x86_64-unknown-linux-musl", "coverage-7.17.0-cp315-cp315-musllinux_1_2_x86_64.whl"),
     ]:
         got = select_coverage_whl(python_version = python_version, platform = platform)
         env.expect.where(
@@ -67,9 +72,10 @@ def _test_select_fallback_whl(env):
         # There are no freethreaded wheels for this version
         ("3.12.4", "x86_64-unknown-linux-gnu-freethreaded", "coverage-7.10.7-py3-none-any.whl"),
         # Platforms without bundled platform specific wheels
-        ("3.13.1", "riscv64-unknown-linux-gnu", "coverage-7.10.7-py3-none-any.whl"),
-        ("3.13.1", "x86_64-unknown-linux-musl", "coverage-7.10.7-py3-none-any.whl"),
-        ("3.15.0", "x86_64-unknown-linux-musl", "coverage-7.17.0-py3-none-any.whl"),
+        ("3.13.1", "armv7-unknown-linux-gnu", "coverage-7.10.7-py3-none-any.whl"),
+        ("3.13.1", "s390x-unknown-linux-gnu", "coverage-7.10.7-py3-none-any.whl"),
+        ("3.13.1", "arm64e-apple-darwin", "coverage-7.10.7-py3-none-any.whl"),
+        ("3.15.0", "s390x-unknown-linux-gnu", "coverage-7.17.0-py3-none-any.whl"),
         # Python versions without bundled platform specific wheels
         ("3.16.0", "x86_64-unknown-linux-gnu", "coverage-7.17.0-py3-none-any.whl"),
     ]:
