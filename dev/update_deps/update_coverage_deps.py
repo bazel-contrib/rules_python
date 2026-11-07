@@ -13,19 +13,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""A small script to update bazel files within the repo.
+"""Update the bundled coverage wheels from the coverage `uv.lock` file.
 
-We are not running this with 'bazel run' to keep the dependencies minimal
+The coverage versions are defined in `//dev/update_deps/coverage:pyproject.toml`
+and locked with `bazel run //dev/update_deps/coverage:uv_lock.update`.
 """
 
 # NOTE @aignas 2023-01-09: We should only depend on core Python 3 packages.
 import argparse
 import json
 import os
+import pathlib
 import textwrap
 from dataclasses import dataclass
 from typing import Any
-from urllib import request
+
+import tomllib
 
 from dev.update_deps.args import path_from_runfiles
 from dev.update_deps.update_file import update_file
@@ -35,14 +38,14 @@ from dev.update_deps.update_file import update_file
 class Whl:
     filename: str
     url: str
-    sha256: str
+    hash: str
     marker: str
 
     def __repr__(self):
         lines = [
             "struct(",
             f'    url = "{self.url}",',
-            f'    hash = "sha256:{self.sha256}",',
+            f'    hash = "{self.hash}",',
         ]
         if self.marker:
             if '"' in self.marker and "'" not in self.marker:
@@ -66,33 +69,34 @@ class Whls:
         return "[\n{}\n]".format(inner)
 
 
-def _whl(
-    filename: str, url: str, digests: dict[str, str], marker: str, **kwargs: Any
-) -> Whl:
-    return Whl(
-        filename=filename,
-        url=url,
-        sha256=digests["sha256"],
-        marker=marker,
-    )
+def _marker(markers: list[str]) -> str:
+    if len(markers) == 1:
+        return markers[0]
+
+    return " or ".join(f"({m})" for m in markers)
 
 
-@dataclass
-class VersionSpec:
-    """A package version and the PEP 508 marker for when to use it."""
+def get_whls(uv_lock: dict[str, Any], name: str) -> list[Whl]:
+    """Get all of the wheels for the given package from the parsed uv.lock."""
+    whls = []
+    for pkg in uv_lock.get("package", []):
+        if pkg["name"] != name:
+            continue
 
-    version: str
-    marker: str
+        marker = _marker(pkg.get("resolution-markers", []))
+        for wheel in pkg.get("wheels", []):
+            url = wheel["url"]
+            whls.append(
+                Whl(
+                    filename=url.rpartition("/")[2],
+                    url=url,
+                    hash=wheel["hash"],
+                    marker=marker,
+                )
+            )
 
-
-def _parse_version_spec(value: str) -> VersionSpec:
-    version, _, marker = value.partition(";")
-    version = version.strip()
-    if not version:
-        raise argparse.ArgumentTypeError(
-            f"Expected '<version>[; <marker>]', got '{value}'"
-        )
-    return VersionSpec(version=version, marker=marker.strip())
+    whls.sort(key=lambda x: x.filename)
+    return whls
 
 
 def _parse_args() -> argparse.Namespace:
@@ -104,15 +108,10 @@ def _parse_args() -> argparse.Namespace:
         help="The name of the package",
     )
     parser.add_argument(
-        "versions",
-        nargs="+",
-        type=_parse_version_spec,
-        help=(
-            "The versions of the package to download, each optionally with a "
-            "PEP 508 environment marker for when the version should be used, "
-            "e.g. '7.10.7; python_version < \"3.15\"'. The markers should not "
-            "overlap."
-        ),
+        "--uv-lock",
+        type=path_from_runfiles,
+        default=os.environ.get("UV_LOCK"),
+        help="The path to the uv.lock file, defaults to the value taken from UV_LOCK",
     )
     parser.add_argument(
         "--dry-run",
@@ -128,29 +127,13 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _get_urls(name: str, version: str) -> list[dict[str, Any]]:
-    api_url = f"https://pypi.org/pypi/{name}/{version}/json"
-    req = request.Request(api_url)
-    with request.urlopen(req) as response:
-        data = json.loads(response.read().decode("utf-8"))
-    return data["urls"]
-
-
 def main():
     args = _parse_args()
 
-    whls = []
-    for spec in args.versions:
-        for u in _get_urls(args.name, spec.version):
-            if u["yanked"]:
-                continue
-
-            if not u["filename"].endswith(".whl"):
-                continue
-
-            whls.append(_whl(marker=spec.marker, **u))
-
-    whls.sort(key=lambda x: x.filename)
+    uv_lock = tomllib.loads(pathlib.Path(args.uv_lock).read_text())
+    whls = get_whls(uv_lock, args.name)
+    if not whls:
+        raise RuntimeError(f"No wheels for '{args.name}' found in {args.uv_lock}")
 
     # Update the coverage wheels, the compatible wheel is selected in Starlark
     update_file(
