@@ -328,7 +328,8 @@ def test_release_issue_missing_release_branch_fails(monkeypatch, gha_env, capsys
     assert rc == 1
     captured = capsys.readouterr()
     assert (
-        "::error::Could not determine release branch from issue title." in captured.out
+        "::error::Could not determine release branch for issue #100 from"
+        " title: 'Invalid title'." in captured.out
     )
 
 

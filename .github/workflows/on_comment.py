@@ -335,7 +335,11 @@ def process_comment(*, report_failure: bool = False) -> int:
                 comment_id=comment_id,
             )
             if command in _BRANCH_DISPATCHED_COMMANDS and not release_branch:
-                print("::error::Could not determine release branch from issue title.")
+                issue_title = str((event.get("issue") or {}).get("title") or "")
+                print(
+                    f"::error::Could not determine release branch for issue"
+                    f" #{issue_number} from title: '{issue_title}'."
+                )
                 return 1
         elif has_backport_label:
             command = _process_backport_issue_comment(
