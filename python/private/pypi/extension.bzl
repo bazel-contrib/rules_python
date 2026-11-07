@@ -1026,9 +1026,9 @@ the uv.lock file will be used as the primary source for package metadata.
 
 :::{versionchanged} VERSION_NEXT_PATCH
 Package platforms follow dependency markers from virtual and editable workspace
-roots. Root project extras remain included; dependency extras are followed when
-requested along reachable edges. Locks without workspace roots use package-level
-resolution markers.
+roots, including development dependency groups. All recorded optional extras
+remain enabled, and their dependency markers are respected. Locks without
+workspace roots use package-level resolution markers.
 :::
 """,
         ),

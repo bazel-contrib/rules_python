@@ -1804,28 +1804,54 @@ def _test_uv_lock_transitive_markers(env):
 
 _tests.append(_test_uv_lock_transitive_markers)
 
-def _test_uv_lock_requested_extras(env):
+def _test_uv_lock_all_extras(env):
     got = _parse_uv_graph([
         _uv_graph_package("root", source = {"virtual": "."}, dependencies = [
             {"name": "parent"},
             {"extra": ["fast"], "marker": "sys_platform == 'linux'", "name": "parent"},
         ]),
         _uv_graph_package("parent", **{"optional-dependencies": {
-            "fast": [{"extra": "nested", "name": "child"}],
-            "unused": [{"name": "unreachable"}],
+            "fast": [{"extra": ["nested"], "name": "child"}],
+            "unused": [{"name": "optional"}],
         }}),
         _uv_graph_package("child", **{"optional-dependencies": {
-            "nested": [{"name": "leaf"}],
+            "nested": [
+                {"name": "leaf"},
+                {"marker": "sys_platform == 'linux'", "name": "linux_only"},
+            ],
         }}),
         _uv_graph_package("leaf"),
-        _uv_graph_package("unreachable"),
+        _uv_graph_package("optional"),
+        _uv_graph_package("linux_only"),
     ])
-    env.expect.that_collection(got["parent"].srcs[0].target_platforms).contains_exactly(["linux_x86_64", "osx_aarch64"])
-    for name in ["child", "leaf"]:
-        env.expect.that_collection(got[name].srcs[0].target_platforms).contains_exactly(["linux_x86_64"])
-    env.expect.that_bool(got["unreachable"].is_exposed).equals(False)
 
-_tests.append(_test_uv_lock_requested_extras)
+    # uv_lock_extras_map enables all extras, even when the edge requesting an
+    # extra is limited to one platform. Optional edges still honor markers.
+    for name in ["parent", "child", "leaf", "optional"]:
+        env.expect.that_collection(got[name].srcs[0].target_platforms).contains_exactly(["linux_x86_64", "osx_aarch64"])
+    env.expect.that_collection(got["linux_only"].srcs[0].target_platforms).contains_exactly(["linux_x86_64"])
+
+_tests.append(_test_uv_lock_all_extras)
+
+def _test_uv_lock_root_dev_dependencies(env):
+    for source in [{"virtual": "."}, {"editable": "workspace"}]:
+        got = _parse_uv_graph([
+            _uv_graph_package("root", source = source, **{"dev-dependencies": {
+                "dev": [{"name": "pytest"}],
+                "lint": [{"marker": "sys_platform == 'linux'", "name": "linter"}],
+            }}),
+            _uv_graph_package("pytest", dependencies = [{"name": "child"}]),
+            _uv_graph_package("child"),
+            _uv_graph_package("linter"),
+            _uv_graph_package("unreachable"),
+        ])
+        for name in ["pytest", "child"]:
+            env.expect.that_collection(got[name].srcs).has_size(1)
+            env.expect.that_collection(got[name].srcs[0].target_platforms).contains_exactly(["linux_x86_64", "osx_aarch64"])
+        env.expect.that_collection(got["linter"].srcs[0].target_platforms).contains_exactly(["linux_x86_64"])
+        env.expect.that_bool(got["unreachable"].is_exposed).equals(False)
+
+_tests.append(_test_uv_lock_root_dev_dependencies)
 
 def _test_uv_lock_root_optional_dependencies(env):
     got = _parse_uv_graph([
