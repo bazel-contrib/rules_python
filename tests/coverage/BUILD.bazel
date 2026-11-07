@@ -18,7 +18,7 @@ py_reconfig_test(
     main = "instrumented.py",
     # The bundled coverage tool is configured only for this version, see the
     # `MODULE.bazel` file.
-    python_version = "3.12",
+    python_version = "3.12.16",
     tags = ["manual"],
     # The bundled coverage tool is not supported on Windows and it is only
     # configured with bzlmod.
