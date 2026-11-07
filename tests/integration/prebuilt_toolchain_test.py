@@ -80,16 +80,18 @@ class PrebuiltToolchainTest(runner.TestCase):
             "//:zipapp_test",
         )
 
-        aquery_res = self.run_bazel(
-            "aquery",
-            override_flag,
-            _NEED_SHRUBBERY_FLAG,
-            "mnemonic(PyZipAppCreateExecutableZip, //:zipapp_test)",
-        )
-        self.assert_result_matches(
-            aquery_res,
-            r"rules_python_shrubbery_prebuilt_file/file/downloaded",
-        )
+        for mnemonic in ("PyZipAppCreateExecutableZip", "PyZipAppCreateZip"):
+            with self.subTest(mnemonic=mnemonic):
+                aquery_res = self.run_bazel(
+                    "aquery",
+                    override_flag,
+                    _NEED_SHRUBBERY_FLAG,
+                    f"mnemonic({mnemonic}, //:zipapp_test)",
+                )
+                self.assert_result_matches(
+                    aquery_res,
+                    r"rules_python_shrubbery_prebuilt_file/file/downloaded",
+                )
 
 
 if __name__ == "__main__":
