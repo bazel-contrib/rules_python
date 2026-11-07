@@ -37,6 +37,7 @@ def _impl(rctx):
             for key, values in rctx.attr.whl_map.items()
         },
         exposed_packages = bzl_packages if rctx.attr.hide_unexposed_packages else None,
+        extra_internal_visibility = rctx.attr.extra_internal_visibility,
         extra_hub_aliases = rctx.attr.extra_hub_aliases,
         requirement_cycles = rctx.attr.groups,
         platform_config_settings = rctx.attr.platform_config_settings,
@@ -87,6 +88,10 @@ hub_repository = repository_rule(
         "extra_hub_aliases": attr.string_list_dict(
             doc = "Extra aliases to make for specific wheels in the hub repo.",
             mandatory = True,
+        ),
+        "extra_internal_visibility": attr.string_list(
+            default = [],
+            doc = "The extra visibility of the packages that are not exposed, e.g. for the unified hub.",
         ),
         "groups": attr.string_list_dict(
             mandatory = False,

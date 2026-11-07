@@ -25,7 +25,7 @@ define_pypi_package_targets(
     extra_aliases = {extra_aliases},
     hubs = {hubs},
     pkg_hubs = {pkg_hubs},
-    testonly = {testonly},
+    testonly = {testonly},{venvs}
 )
 """
 
@@ -59,7 +59,9 @@ def dist_info_requirement(name):
 '''
 
 def _unified_hub_repo_impl(rctx):
-    hubs = rctx.attr.hubs
+    # The venvs are selected with the same flag as the hubs.
+    venvs = rctx.attr.venvs
+    hubs = rctx.attr.hubs + [venv for venv in sorted(venvs) if venv not in rctx.attr.hubs]
     default_hub = rctx.attr.default_hub or None
 
     # 1. Generate Root BUILD.bazel with shared config settings
@@ -95,6 +97,7 @@ def _unified_hub_repo_impl(rctx):
                 pkg_hubs = pkg_hubs,
                 pkg_name = pkg_name,
                 testonly = pkg_name in testonly_packages,
+                venvs = "\n    venvs = {},".format(render.dict(dict(sorted(venvs.items())), key_repr = repr).replace("\n", "\n    ")) if venvs else "",
             ),
         )
 
@@ -139,6 +142,10 @@ unified_hub_repo = repository_rule(
         "testonly_packages": attr.string_list(
             default = [],
             doc = "Packages that are testonly in at least one hub.",
+        ),
+        "venvs": attr.string_dict(
+            default = {},
+            doc = "The venvs mapped to the hubs that provide their packages.",
         ),
     },
     doc = "Private repository rule creating the automatic Unified PyPI Hub.",

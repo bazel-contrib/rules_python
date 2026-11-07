@@ -437,6 +437,7 @@ bzl_library(
     name = "unified_hub_setup",
     srcs = ["unified_hub_setup.bzl"],
     deps = [
+        "@bazel_skylib//lib:selects",
         "@rules_python//python/private/pypi:labels",
         "@rules_python//python/private/pypi:missing_package",
     ],
