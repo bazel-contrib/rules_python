@@ -1,7 +1,7 @@
 //! Unified `shrubbery` ("Shell replacements for Bazel build tools in Rust") subcommand
 //! dispatcher for `@rules_python` Rust build tools.
 
-// Errors must be returned, not panicked; see `--config=rust-lint` in .bazelrc.
+// Errors must be returned, not panicked; see the `rust-lint` config in .bazelrc.
 #![deny(clippy::expect_used, clippy::unwrap_used)]
 
 use std::ffi::OsString;

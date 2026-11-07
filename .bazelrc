@@ -23,14 +23,13 @@ build --config=pyrefly
 build:pyrefly --aspects=//tests/support/pyrefly:pyrefly.bzl%pyrefly_aspect
 build:pyrefly --output_groups=+pyrefly
 
-# Lint Rust code with clippy and check rustfmt formatting.
-# Usage: bazel build --config=rust-lint //...
+# Lint Rust code with clippy and check rustfmt formatting on every build that
+# touches a Rust target, so problems surface locally before CI. The output
+# groups are additive (`+`), so normal build outputs are unaffected.
+build --config=rust-lint
 build:rust-lint --aspects=@rules_rust//rust:defs.bzl%rust_clippy_aspect
 build:rust-lint --aspects=@rules_rust//rust:defs.bzl%rustfmt_aspect
-# Only the lint output groups (no `+`): non-Rust targets are analyzed but not
-# built, so `//...` is cheap. `-pyrefly` drops the group added by the always-on
-# `--config=pyrefly` so Python isn't type-checked here.
-build:rust-lint --output_groups=clippy_checks,rustfmt_checks,-pyrefly
+build:rust-lint --output_groups=+clippy_checks,+rustfmt_checks
 # `unwrap()` is forbidden everywhere; the non-test crates additionally deny
 # `expect()` via a crate-level attribute.
 build:rust-lint --@rules_rust//rust/settings:clippy_flags=-Dwarnings,-Dclippy::unwrap_used

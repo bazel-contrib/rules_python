@@ -219,17 +219,6 @@ tasks:
     test_targets:
       - "//..."
 
-  rust_lint:
-    name: "Rust: clippy and rustfmt"
-    platform: ubuntu2204
-    build_flags:
-      <<: *reusable_config_build_flags
-      ? "--config=rust-lint"
-    # Build everything, not just //crates/..., so Rust code anywhere in the
-    # repo is linted; the aspects are no-ops on non-Rust targets.
-    build_targets:
-      - "..."
-
   ubuntu_min_workspace:
     <<: *minimum_supported_version
     <<: *reusable_config
