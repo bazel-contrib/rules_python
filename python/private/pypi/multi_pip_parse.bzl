@@ -124,7 +124,7 @@ _multi_pip_parse = repository_rule(
     },
 )
 
-def multi_pip_parse(name, default_version, python_versions, python_interpreter_target, requirements_lock = None, minor_mapping = None, **kwargs):
+def multi_pip_parse(name, default_version, python_versions, python_interpreter_target, requirements_lock, minor_mapping, **kwargs):
     """NOT INTENDED FOR DIRECT USE!
 
     This is intended to be used by the multi_pip_parse implementation in the template of the
@@ -135,7 +135,7 @@ def multi_pip_parse(name, default_version, python_versions, python_interpreter_t
         default_version: {type}`str` the default Python version.
         python_versions: {type}`list[str]` all Python toolchain versions currently registered.
         python_interpreter_target: {type}`dict[str, Label]` a dictionary which keys are Python versions and values are resolved host interpreters.
-        requirements_lock: {type}`dict[str, Label] | None` a dictionary which keys are Python versions and values are locked requirements files.
+        requirements_lock: {type}`dict[str, Label]` a dictionary which keys are Python versions and values are locked requirements files.
         minor_mapping: {type}`dict[str, str]` mapping between `X.Y` to `X.Y.Z` format.
         **kwargs: extra arguments passed to all wrapped pip_parse.
 
@@ -146,14 +146,20 @@ def multi_pip_parse(name, default_version, python_versions, python_interpreter_t
     for python_version in python_versions:
         if not python_version in python_interpreter_target:
             fail("Missing python_interpreter_target for Python version %s in '%s'" % (python_version, name))
-        if requirements_lock != None and not python_version in requirements_lock:
-            fail("Missing requirements_lock for Python version %s in '%s'" % (python_version, name))
+        version_requirements_lock = None
+        if requirements_lock != None:
+            if not python_version in requirements_lock:
+                fail(
+                    "Missing requirements_lock for Python version %s in '%s'" %
+                    (python_version, name),
+                )
+            version_requirements_lock = requirements_lock[python_version]
 
         pip_parse_name = name + "_" + python_version.replace(".", "_")
         pip_parse(
             name = pip_parse_name,
             python_interpreter_target = python_interpreter_target[python_version],
-            requirements_lock = requirements_lock[python_version] if requirements_lock != None else None,
+            requirements_lock = version_requirements_lock,
             **kwargs
         )
         pip_parses[python_version] = pip_parse_name
