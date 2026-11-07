@@ -1,0 +1,3 @@
+load(":python_toolchain_platform_tests.bzl", "python_toolchain_platform_test_suite")
+
+python_toolchain_platform_test_suite(name = "python_toolchain_platform_tests")
