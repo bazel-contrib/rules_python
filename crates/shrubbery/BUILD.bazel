@@ -8,16 +8,17 @@ licenses(["notice"])
 rust_library(
     name = "shrubbery_lib",
     srcs = ["src/lib.rs"],
-    edition = "2021",
+    edition = "2024",
     deps = [
         "//crates/exe_zip_maker:exe_zip_maker_lib",
+        "//crates/zipper:zipper_lib",
     ],
 )
 
 rust_binary(
     name = "shrubbery",
     srcs = ["src/main.rs"],
-    edition = "2021",
+    edition = "2024",
     visibility = ["//visibility:public"],
     deps = [":shrubbery_lib"],
 )

@@ -23,20 +23,27 @@ project's workflow rules and conventions:
    use `imports = ["../../.github/workflows"]` in `BUILD.bazel`, and do not
    modify `sys.path`.
 7. Verify console messaging: ensure scripts use GHA workflow command syntax
-   (e.g. `::error::`, `::warning::`, `::notice::`, `::group::`).
-8. Verify non-trivial scripts (such as multi-line shell or Python logic) are
+   (e.g. `::error::`, `::warning::`, `::notice::`, `::group::`) and include
+   identifying context (such as issue/PR numbers) in error messages.
+8. Verify cross-branch dispatch and ref handling: ensure workflows triggered on
+   `main` that operate on another branch (such as `release/X.Y`) dispatch onto
+   that ref via `gh workflow run ... --ref "$BRANCH"` from the router workflow
+   (with step name `"Dispatch: <Workflow Name>"`), never use silent ref
+   fallbacks (`|| github.ref_name`), and match `workflow_dispatch.inputs` on
+   the target branch.
+9. Verify non-trivial scripts (such as multi-line shell or Python logic) are
    factored into standalone files (e.g. `.sh` or `.py` files) rather than
    inlined in workflow YAML steps (`run: |`), shell scripts, or command
    invocations via heredocs (`<< 'EOF'`) or `-c` flags (`bash -c`,
    `python3 -c`).
-9. Verify local composite actions: ensure workflows use local composite action
-   wrappers (specifically `uses: ./.github/actions/setup-bazel`) rather than
-   invoking `bazel-contrib/setup-bazel` directly. If a workflow calls
-   `bazel-contrib/setup-bazel` directly, replace it with
-   `uses: ./.github/actions/setup-bazel` (updating
-   `.github/actions/setup-bazel/action.yaml` if new defaults or inputs are
-   needed).
-10. Audit for injection and security vulnerabilities:
+10. Verify local composite actions: ensure workflows use local composite action
+    wrappers (specifically `uses: ./.github/actions/setup-bazel`) rather than
+    invoking `bazel-contrib/setup-bazel` directly. If a workflow calls
+    `bazel-contrib/setup-bazel` directly, replace it with
+    `uses: ./.github/actions/setup-bazel` (updating
+    `.github/actions/setup-bazel/action.yaml` if new defaults or inputs are
+    needed).
+11. Audit for injection and security vulnerabilities:
     - Require explicit top-level `permissions:` (`{}` or minimal scopes) in all
       workflows, and explicit job-level permissions for reusable workflow calls
       or write jobs (`actions/missing-workflow-permissions`).

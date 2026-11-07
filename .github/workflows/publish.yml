@@ -27,9 +27,25 @@ jobs:
     uses: bazel-contrib/publish-to-bcr/.github/workflows/publish.yaml@v1.7.0
     with:
       tag_name: ${{ inputs.tag_name }}
-      module_roots: |
-        .
-        gazelle
+      module_roots: .
+      # GitHub repository which is a fork of the upstream where the Pull Request will be opened.
+      registry_fork: bazel-contrib/bazel-central-registry
+      attest: false
+      # Create non-draft PRs so the BCR bazel-io bot processes them. Otherwise,
+      # since a bazel-contrib bot, we have to wait for BCR maintainers to mark it
+      # non-draft or approve it.
+      draft: false
+    permissions:
+      contents: write
+    secrets:
+      # Necessary to push to the BCR fork, and to open a pull request against a registry
+      publish_token: ${{ secrets.publish_token || secrets.BCR_PUBLISH_TOKEN }}
+
+  publish_gazelle:
+    uses: bazel-contrib/publish-to-bcr/.github/workflows/publish.yaml@v1.7.0
+    with:
+      tag_name: ${{ inputs.tag_name }}
+      module_roots: gazelle
       # GitHub repository which is a fork of the upstream where the Pull Request will be opened.
       registry_fork: bazel-contrib/bazel-central-registry
       attest: false

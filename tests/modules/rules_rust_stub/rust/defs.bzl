@@ -38,3 +38,11 @@ def rust_test(name, **_kwargs):
         name = name,
         tags = ["manual"],
     )
+
+def _noop_aspect_impl(_target, _ctx):
+    return []
+
+# The root .bazelrc applies these aspects on every build (see the `rust-lint`
+# config). They do nothing here because the stub has no Rust targets to lint.
+rust_clippy_aspect = aspect(implementation = _noop_aspect_impl)
+rustfmt_aspect = aspect(implementation = _noop_aspect_impl)

@@ -15,9 +15,13 @@
 ""
 
 load("@bazel_skylib//lib:sets.bzl", "sets")
+load("@toml.bzl", "toml")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
 load("//python/private:text_util.bzl", "render")
+load("//python/private:version.bzl", "version")
+load(":default_platforms.bzl", "default_platforms")
+load(":hash.bzl", "hash")
 load(":parse_requirements.bzl", "host_platform", "parse_requirements", "select_requirement")
 load(":pep508_env.bzl", "env")
 load(":pip_repository_attrs.bzl", "ATTRS")
@@ -110,6 +114,8 @@ def _pip_repository_impl(rctx):
     ]
 
     marker_env = env(os = rctx.os.name, arch = rctx.os.arch, python_version = python_version)
+    parsed_python_version = version.parse(python_version, strict = True)
+    platform_defaults = default_platforms()
     requirements_by_platform = parse_requirements(
         rctx,
         requirements_by_platform = requirements_files_by_platform(
@@ -118,6 +124,7 @@ def _pip_repository_impl(rctx):
             requirements_lock = rctx.attr.requirements_lock,
             requirements_osx = rctx.attr.requirements_darwin,
             requirements_windows = rctx.attr.requirements_windows,
+            uv_lock = rctx.attr.uv_lock,
             extra_pip_args = rctx.attr.extra_pip_args,
             platforms = platforms,
         ),
@@ -125,15 +132,25 @@ def _pip_repository_impl(rctx):
         platforms = {
             p: struct(
                 env = marker_env,
-                whl_abi_tags = [],
-                whl_platform_tags = [],
+                # The tags are used to select the wheels from the `uv.lock` file.
+                whl_abi_tags = [
+                    tag.format(
+                        major = parsed_python_version.release[0],
+                        minor = parsed_python_version.release[1],
+                    )
+                    for tag in ["none"] + platform_defaults.get(p, {}).get("whl_abi_tags", [])
+                ],
+                whl_platform_tags = ["any"] + platform_defaults.get(p, {}).get("whl_platform_tags", []),
             )
             for p in platforms
         },
         extract_url_srcs = False,
+        uv_lock = rctx.attr.uv_lock,
+        toml_decode = toml.decode,
         logger = logger,
     )
     selected_requirements = {}
+    selected_srcs = {}
     options = None
     repository_platform = host_platform(rctx)
     for whl in requirements_by_platform:
@@ -145,6 +162,31 @@ def _pip_repository_impl(rctx):
             continue
         options = options or requirement.extra_pip_args
         selected_requirements[whl.name] = requirement.requirement_line
+
+        if not requirement.url:
+            continue
+
+        # The `uv.lock` file has the URLs of the distributions. The generated
+        # `requirements.bzl` file may be vendored and used on any platform, so
+        # only use the bazel downloader if the same distribution is used on all
+        # of the platforms.
+        is_whl = requirement.filename.endswith(".whl")
+        is_universal = len({src.url: None for src in whl.srcs}) == 1
+        if is_universal and (is_whl or not rctx.attr.download_only):
+            selected_srcs["{}_{}".format(rctx.attr.name, whl.name)] = {
+                "filename": requirement.filename,
+                "integrity": hash.integrity(requirement.digest),
+                "urls": [requirement.url],
+            }
+        else:
+            # Let `pip` select the distribution for the host platform, but
+            # ensure that only the locked distributions can be used.
+            digests = sorted({src.digest: None for src in whl.srcs})
+            if all(digests):
+                selected_requirements[whl.name] = " ".join([requirement.requirement_line] + [
+                    "--hash={}".format(d)
+                    for d in digests
+                ])
 
     bzl_packages = sorted(selected_requirements.keys())
 
@@ -267,6 +309,13 @@ def _pip_repository_impl(rctx):
                 for p, r in sorted(selected_requirements.items())
             ],
         ),
+        "%%PACKAGE_SRCS%%": render.dict(
+            {
+                name: render.dict(srcs)
+                for name, srcs in sorted(selected_srcs.items())
+            },
+            value_repr = str,
+        ),
     })
 
     return
@@ -285,6 +334,17 @@ generated using the `package_name` macro.
         ),
         _template = attr.label(
             default = ":requirements.bzl.tmpl.workspace",
+        ),
+        uv_lock = attr.label(
+            allow_single_file = True,
+            doc = """\
+A label pointing to the `uv.lock` file. If provided, the `uv.lock` file will be
+used as the primary source for package metadata and the distributions will be
+downloaded using the URLs from the `uv.lock` file.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
         ),
         **ATTRS
     ),

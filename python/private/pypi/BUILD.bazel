@@ -127,6 +127,7 @@ bzl_library(
     name = "extension",
     srcs = ["extension.bzl"],
     deps = [
+        ":default_platforms",
         ":hub_builder",
         ":hub_repository",
         ":parse_whl_name",
@@ -323,6 +324,8 @@ bzl_library(
     name = "pip_repository",
     srcs = ["pip_repository.bzl"],
     deps = [
+        ":default_platforms",
+        ":hash",
         ":parse_requirements",
         ":pep508_env",
         ":pip_repository_attrs",
@@ -332,7 +335,9 @@ bzl_library(
         "//python/private:normalize_name",
         "//python/private:repo_utils",
         "//python/private:text_util",
+        "//python/private:version",
         "@bazel_skylib//lib:sets",
+        "@toml.bzl//:toml",
     ],
 )
 
@@ -645,6 +650,11 @@ bzl_library(
 bzl_library(
     name = "attrs",
     srcs = ["attrs.bzl"],
+)
+
+bzl_library(
+    name = "default_platforms",
+    srcs = ["default_platforms.bzl"],
 )
 
 bzl_library(

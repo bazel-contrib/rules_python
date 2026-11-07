@@ -11,6 +11,7 @@ rust_test(
     data = [
         "//crates/shrubbery",
     ],
+    edition = "2024",
     env = {
         "SHRUBBERY_BIN": "$(rootpath //crates/shrubbery)",
     },

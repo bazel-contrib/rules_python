@@ -41,6 +41,22 @@ globs: ".github/workflows/**,.github/actions/**,.github/dependabot.yml"
   release tag or a commit (e.g. in presubmit), use that exact tag or commit SHA
   value throughout. Never invent dummy version strings (e.g. `0.0.0-dev`) or
   create synthetic git tags to work around downstream logic.
+* **Cross-Branch Workflow Dispatch (`gh workflow run`)**: When a default-branch
+  event (such as `issue_comment`) triggers work that operates on a specific
+  branch (e.g., `release/X.Y`), dispatch the target workflow onto that ref via
+  `gh workflow run <workflow> --repo "$REPO" --ref "$BRANCH"` (with job-level
+  `permissions: actions: write`) in the entry-point router workflow as soon as
+  the target branch is determined. Do not mix `main` workflows (`uses:`) with
+  release-branch checkouts or place re-dispatch logic inside the target
+  workflows. Name dispatch steps `"Dispatch: <Target Workflow Name>"` and
+  verify the target workflow's `workflow_dispatch.inputs` schema matches on
+  both `main` and the target branch.
+* **No Silent Ref Fallbacks (`|| github.ref_name`)**: Never use fallback
+  expressions such as `${{ needs.parse.outputs.branch || github.ref_name }}`
+  that silently run a job against the wrong branch when an output is empty.
+  Fail fast in the parsing step with a contextual `::error::` message
+  (including relevant identifiers such as issue number and title) when a
+  required output cannot be determined.
 * **No `--stamp` or `--embed_label` on Pull Requests**: Only pass `--stamp` and
   `--embed_label` on release builds, never on `pull_request` builds, to avoid
   busting remote/RBE caching.
