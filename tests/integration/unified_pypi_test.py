@@ -7,6 +7,19 @@ from tests.integration import runner
 
 
 class UnifiedPypiTest(runner.TestCase):
+    def test_configure_hides_unexposed_packages(self):
+        self.run_bazel("test", "//:test_filtered_direct")
+        result = self.run_bazel("build", "//:bin_filtered_six", check=False)
+        self.assertNotEqual(
+            result.exit_code,
+            0,
+            "Expected the alias of the unexposed package to be hidden",
+        )
+        self.assert_result_matches(
+            result,
+            r"alias '[^']*//six:six'.*is not visible from",
+        )
+
     def test_default_fallback_hub(self):
         self.run_bazel("test", "//:test_default")
 

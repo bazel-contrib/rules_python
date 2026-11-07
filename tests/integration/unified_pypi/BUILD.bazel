@@ -95,3 +95,19 @@ platform(
         "@platforms//os:windows",
     ],
 )
+
+# The pypi_filtered hub only makes its pyproject.toml packages public.
+py_test(
+    name = "test_filtered_direct",
+    srcs = ["test_default.py"],
+    main = "test_default.py",
+    deps = ["@pypi_filtered//colorama"],
+)
+
+py_binary(
+    name = "bin_filtered_six",
+    srcs = ["bin_six_a.py"],
+    main = "bin_six_a.py",
+    tags = ["manual"],
+    deps = ["@pypi_filtered//six"],
+)

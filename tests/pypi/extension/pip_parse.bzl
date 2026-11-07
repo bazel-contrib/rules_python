@@ -1,5 +1,17 @@
 """A simple test helper"""
 
+def configure(
+        *,
+        dependency_groups = ["*"],
+        hub_name,
+        pyproject_toml = None):
+    """A simple helper for testing to simulate the PyPI extension configure tag class"""
+    return struct(
+        dependency_groups = dependency_groups,
+        hub_name = hub_name,
+        pyproject_toml = pyproject_toml,
+    )
+
 def pip_parse(
         *,
         hub_name,
