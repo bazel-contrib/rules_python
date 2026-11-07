@@ -53,6 +53,20 @@ pip.parse(
 )
 use_repo(pip, "pypi_b")
 
+# The venvs are selections of the `pypi_b` packages that are used through the
+# unified hub.
+pip.configure(
+    dependency_groups = ["default"],
+    hub_name = "pypi_b",
+    pyproject_toml = "//:pyproject_venvs.toml",
+    venv = "pypi_b_colorama",
+)
+pip.configure(
+    hub_name = "pypi_b",
+    pyproject_toml = "//:pyproject_venvs.toml",
+    venv = "pypi_b_dev",
+)
+
 # `pypi_filtered` only exposes the `[project] dependencies` of the
 # `pyproject.toml`, the other packages are not public.
 pip.parse(

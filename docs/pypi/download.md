@@ -209,6 +209,29 @@ The other packages of the hub depend on the testonly packages through the same
 targets, so a package that a non-testonly package depends on can't be
 testonly.
 
+#### Venvs
+
+Set {attr}`pip.configure.venv` to create a venv, a named selection of the
+packages of a hub, instead of changing the hub:
+
+```starlark
+pip.configure(
+    hub_name = "pypi_hub",
+    venv = "pypi_hub_docs",
+    dependency_groups = ["default", "group:docs"],
+)
+```
+
+The venv is used through the [Unified @pypi Hub](unified-pypi-hub) by setting
+`--@rules_python//python/config_settings:venv=pypi_hub_docs`. It resolves the
+`@pypi//<pkg>` labels to the packages of `pypi_hub`, so nothing is downloaded
+twice, and the packages that are not selected are reported as missing. A venv
+does not create a new repository and does not change the hub.
+
+A venv name must not collide with a hub and a venv can't be used with two
+different hubs. The packages of a venv are testonly if they are testonly in
+the hub.
+
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
 

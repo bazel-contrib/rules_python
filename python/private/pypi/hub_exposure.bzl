@@ -20,8 +20,10 @@ def hub_exposure(module_ctx, *, hubs, default_pyproject = None, _fail = fail):
         _fail: {type}`callable` the failure function, mainly for testing.
 
     Returns:
-        {type}`dict[str, struct] | None` the configured hubs mapped to a
-        struct with:
+        {type}`dict[str, struct] | None` the configured hubs and venvs mapped
+        to a struct with:
+          * `hub`: {type}`str` the hub that provides the packages. For a venv
+            this is different from the key.
           * `packages`: {type}`list[str]` the sorted packages that the hub
             exposes.
           * `testonly_packages`: {type}`list[str]` the sorted packages whose
@@ -30,6 +32,9 @@ def hub_exposure(module_ctx, *, hubs, default_pyproject = None, _fail = fail):
 
         The hubs that are not configured are not included. Returns `None` on
         failure.
+
+        A venv is a named selection of the packages of a hub that is used
+        through the unified `@pypi` hub.
     """
 
     # The root module wins over the owner of the hub when both configure it.
@@ -39,6 +44,7 @@ def hub_exposure(module_ctx, *, hubs, default_pyproject = None, _fail = fail):
         tag.hub_name: None
         for mod in root_modules
         for tag in mod.tags.configure
+        if tag.venv in ("", tag.hub_name)
     }
 
     configured = {}
@@ -53,10 +59,18 @@ def hub_exposure(module_ctx, *, hubs, default_pyproject = None, _fail = fail):
                 return None
 
             info = hubs[hub]
-            if not mod.is_root and (mod.name != info.module_name or hub in root_configured):
+            venv = tag.venv or hub
+            if not mod.is_root and mod.name != info.module_name:
                 # Only the root module and the module that created the hub can
                 # configure it.
                 continue
+            if venv == hub and not mod.is_root and hub in root_configured:
+                continue
+            if venv != hub:
+                err = _venv_error(venv, hub, hubs = hubs, configured = configured, testonly = tag.testonly)
+                if err:
+                    _fail(err)
+                    return None
 
             pyproject = (
                 tag.pyproject_toml or
@@ -77,8 +91,8 @@ def hub_exposure(module_ctx, *, hubs, default_pyproject = None, _fail = fail):
             else:
                 packages = selection.packages
 
-            # Multiple tags for the same hub are combined.
-            exposed = configured.setdefault(hub, {})
+            # Multiple tags for the same hub or venv are combined.
+            exposed = configured.setdefault(venv, struct(hub = hub, packages = {})).packages
             for name in packages:
                 # The pyproject.toml may list packages that are not in the hub,
                 # e.g. tools that are not locked.
@@ -86,9 +100,25 @@ def hub_exposure(module_ctx, *, hubs, default_pyproject = None, _fail = fail):
                     exposed[name] = exposed.get(name, True) and tag.testonly
 
     return {
-        hub: struct(
-            packages = sorted(packages),
-            testonly_packages = sorted([name for name, testonly in packages.items() if testonly]),
+        name: struct(
+            hub = info.hub,
+            packages = sorted(info.packages),
+            testonly_packages = sorted([pkg for pkg, testonly in info.packages.items() if testonly]),
         )
-        for hub, packages in configured.items()
+        for name, info in configured.items()
     }
+
+def _venv_error(venv, hub, *, hubs, configured, testonly):
+    if venv in hubs:
+        return "pip.configure() venv '{}' conflicts with the hub of the same name".format(venv)
+    if venv in ("pypi", "auto"):
+        return "pip.configure() venv name '{}' is reserved".format(venv)
+    if venv in configured and configured[venv].hub != hub:
+        return "pip.configure() venv '{}' is used with both hub '{}' and hub '{}'".format(
+            venv,
+            configured[venv].hub,
+            hub,
+        )
+    if testonly:
+        return "pip.configure() does not support `testonly` for the venv '{}', the packages are testonly only if they are testonly in the hub '{}'".format(venv, hub)
+    return None

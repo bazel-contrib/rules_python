@@ -165,3 +165,36 @@ py_binary(
     tags = ["manual"],
     deps = ["@pypi_testonly//iniconfig"],
 )
+
+# The venvs of pypi_b resolve to the pypi_b packages.
+py_test(
+    name = "test_venv_colorama",
+    srcs = ["test_default.py"],
+    config_settings = {
+        "@rules_python//python/config_settings:venv": "pypi_b_colorama",
+    },
+    main = "test_default.py",
+    deps = ["@pypi//colorama"],
+)
+
+py_test(
+    name = "test_venv_dev",
+    srcs = ["test_default.py"],
+    config_settings = {
+        "@rules_python//python/config_settings:venv": "pypi_b_dev",
+    },
+    main = "test_default.py",
+    deps = ["@pypi//colorama"],
+)
+
+# six is not selected by the pypi_b_colorama venv:
+py_binary(
+    name = "bin_venv_six",
+    srcs = ["bin_six_a.py"],
+    config_settings = {
+        "@rules_python//python/config_settings:venv": "pypi_b_colorama",
+    },
+    main = "bin_six_a.py",
+    tags = ["manual"],
+    deps = ["@pypi//six"],
+)

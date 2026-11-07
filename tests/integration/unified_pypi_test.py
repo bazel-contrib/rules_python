@@ -52,6 +52,22 @@ class UnifiedPypiTest(runner.TestCase):
             r"non-test target '//:bin_testonly' depends on testonly",
         )
 
+    def test_configure_venvs(self):
+        self.run_bazel(
+            "test", "//:test_venv_colorama", "//:test_venv_dev", "//:test_default"
+        )
+        self.run_bazel("cquery", "//:bin_venv_six")
+        result = self.run_bazel("build", "//:bin_venv_six", check=False)
+        self.assertNotEqual(
+            result.exit_code,
+            0,
+            "Expected build to fail during execution phase",
+        )
+        self.assert_result_matches(
+            result,
+            'ERROR: PyPI package "six" is not available when building under PyPI hub "pypi_b_colorama"\\. Try adding it to the requirements of this hub',
+        )
+
     def test_default_fallback_hub(self):
         self.run_bazel("test", "//:test_default")
 

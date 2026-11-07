@@ -120,6 +120,7 @@ def _parse_modules(env, **kwargs):
         parse_modules(**kwargs),
         attrs = dict(
             configured_hubs = subjects.dict,
+            venvs = subjects.dict,
             declared_deps = subjects.dict,
             default_hub = subjects.str,
             exposed_packages = subjects.dict,
@@ -834,6 +835,7 @@ def _test_configure(env):
 
         pypi.exposed_packages().contains_exactly({"pypi_a": want})
         pypi.configured_hubs().contains_exactly({"pypi_a": struct(
+            hub = "pypi_a",
             packages = want,
             testonly_packages = [],
         )})
@@ -857,6 +859,7 @@ def _test_configure_testonly(env):
 
     # `simple` is also selected by the non-testonly tag.
     pypi.configured_hubs().contains_exactly({"pypi_a": struct(
+        hub = "pypi_a",
         packages = ["other_pkg", "simple"],
         testonly_packages = ["other_pkg"],
     )})
@@ -879,6 +882,31 @@ def _test_not_configured_exposes_all(env):
     pypi.configured_hubs().contains_exactly({})
 
 _tests.append(_test_not_configured_exposes_all)
+
+def _test_configure_venvs(env):
+    pypi = _configure_parse_modules(
+        env,
+        _mod(
+            name = "rules_python",
+            parse = [_configure_parse()],
+            configure = [
+                _configure(hub_name = "pypi_a", venv = "venv_dev", dependency_groups = ["dev"]),
+            ],
+        ),
+    )
+
+    # The hub itself is not configured.
+    pypi.exposed_packages().contains_exactly({
+        "pypi_a": ["other_pkg", "simple", "transitive_pkg"],
+    })
+    pypi.configured_hubs().contains_exactly({})
+    pypi.venvs().contains_exactly({"venv_dev": struct(
+        hub = "pypi_a",
+        packages = ["other_pkg"],
+        testonly_packages = [],
+    )})
+
+_tests.append(_test_configure_venvs)
 
 def extension_test_suite(name):
     """Create the test suite.

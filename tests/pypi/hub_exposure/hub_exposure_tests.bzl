@@ -23,12 +23,13 @@ def _hub(*, module_name = "root", pyproject = None):
         exposed_packages = ["other_pkg", "simple", "transitive_pkg"],
     )
 
-def _configure(hub_name = "hub", dependency_groups = ["*"], pyproject_toml = None, testonly = False):
+def _configure(hub_name = "hub", dependency_groups = ["*"], pyproject_toml = None, testonly = False, venv = ""):
     return mocks.tag(
         hub_name = hub_name,
         dependency_groups = dependency_groups,
         pyproject_toml = pyproject_toml,
         testonly = testonly,
+        venv = venv,
     )
 
 def _module(name = "root", is_root = True, configure = []):
@@ -165,6 +166,41 @@ def _test_configure_testonly(env):
     env.expect.that_collection(got["hub"].testonly_packages).contains_exactly(["other_pkg", "simple"])
 
 _tests.append(_test_configure_testonly)
+
+def _test_configure_venvs(env):
+    got, failures = _exposure(_module(configure = [
+        _configure(venv = "dev", dependency_groups = ["dev"]),
+        _configure(venv = "dev", dependency_groups = ["default"]),
+        _configure(venv = "main", dependency_groups = ["default"]),
+    ]))
+    env.expect.that_collection(failures).contains_exactly([])
+
+    # The hub itself is not configured.
+    env.expect.that_dict(_packages(got)).contains_exactly({
+        "dev": ["other_pkg", "simple"],
+        "main": ["simple"],
+    })
+    env.expect.that_str(got["dev"].hub).equals("hub")
+    env.expect.that_str(got["main"].hub).equals("hub")
+
+_tests.append(_test_configure_venvs)
+
+def _test_configure_venv_errors(env):
+    hubs = {
+        "hub": _hub(pyproject = "pyproject.toml"),
+        "other": _hub(pyproject = "pyproject.toml"),
+    }
+    for configure, want in [
+        ([_configure(venv = "other")], "pip.configure() venv 'other' conflicts with the hub of the same name"),
+        ([_configure(venv = "pypi")], "pip.configure() venv name 'pypi' is reserved"),
+        ([_configure(venv = "auto")], "pip.configure() venv name 'auto' is reserved"),
+        ([_configure(venv = "dev"), _configure(hub_name = "other", venv = "dev")], "pip.configure() venv 'dev' is used with both hub 'hub' and hub 'other'"),
+        ([_configure(venv = "dev", testonly = True)], "pip.configure() does not support `testonly` for the venv 'dev', the packages are testonly only if they are testonly in the hub 'hub'"),
+    ]:
+        _, failures = _exposure(_module(configure = configure), hubs = hubs)
+        env.expect.that_collection(failures).contains_exactly([want])
+
+_tests.append(_test_configure_venv_errors)
 
 def hub_exposure_test_suite(name):
     """Create the test suite.

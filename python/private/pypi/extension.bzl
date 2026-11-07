@@ -372,19 +372,26 @@ You cannot use both the additive_build_content and additive_build_content_file a
             exposed_packages = out.exposed_packages,
         )
 
-    configured_hubs = hub_exposure(
+    configured = hub_exposure(
         module_ctx,
         hubs = hubs,
         default_pyproject = config.pyproject_toml,
         _fail = _fail,
     )
-    if configured_hubs == None:
+    if configured == None:
         return None
-    for hub_name, info in configured_hubs.items():
-        exposed_packages[hub_name] = info.packages
+    configured_hubs = {}
+    venvs = {}
+    for name, info in configured.items():
+        if name == info.hub:
+            configured_hubs[name] = info
+            exposed_packages[name] = info.packages
+        else:
+            venvs[name] = info
 
     return struct(
         configured_hubs = configured_hubs,
+        venvs = venvs,
         config = config,
         declared_deps = declared_deps,
         default_hub = config.default_hub or renamed_default_hub,
@@ -416,9 +423,17 @@ def _create_unified_hub_repo(mods):
     packages = {}
     extra_aliases = {}
 
-    for hub_name in hubs:
+    # The venvs are named selections of the packages of a hub, which can be
+    # selected with the same `venv` flag as the hubs.
+    venvs = {name: info.hub for name, info in mods.venvs.items()}
+    for hub_name in hubs + sorted(venvs):
         # The hubs configured with `pip.configure` only expose some packages.
-        hub_packages = mods.configured_hubs[hub_name].packages if hub_name in mods.configured_hubs else mods.hub_whl_map[hub_name]
+        if hub_name in venvs:
+            hub_packages = mods.venvs[hub_name].packages
+        elif hub_name in mods.configured_hubs:
+            hub_packages = mods.configured_hubs[hub_name].packages
+        else:
+            hub_packages = mods.hub_whl_map[hub_name]
         for pkg_name in hub_packages:
             norm_pkg = normalize_name(pkg_name)
             if norm_pkg not in packages:
@@ -426,7 +441,7 @@ def _create_unified_hub_repo(mods):
             if hub_name not in packages[norm_pkg]:
                 packages[norm_pkg].append(hub_name)
 
-            extra = mods.extra_aliases.get(hub_name, {}).get(norm_pkg, [])
+            extra = mods.extra_aliases.get(venvs.get(hub_name, hub_name), {}).get(norm_pkg, [])
             for alias_name in extra:
                 qual_alias = "%s:%s" % (norm_pkg, alias_name)
                 if qual_alias not in extra_aliases:
@@ -450,6 +465,7 @@ def _create_unified_hub_repo(mods):
         hubs = hubs,
         packages = packages,
         requirements_bzl = mods.unified_hub_requirements_bzl,
+        venvs = venvs,
         # An alias can't be less testonly than what it points to, so a package
         # is testonly if it is testonly in any hub.
         testonly_packages = sorted({
@@ -550,6 +566,8 @@ def _pip_impl(module_ctx):
             groups = mods.hub_group_map.get(hub_name),
             # The hubs configured with `pip.configure` hide the other packages.
             hide_unexposed_packages = hub_name in mods.configured_hubs,
+            # The venvs may select the packages that the hub does not expose.
+            extra_internal_visibility = ["@pypi//:__subpackages__"] if hub_name in [v.hub for v in mods.venvs.values()] else [],
             testonly_packages = mods.configured_hubs[hub_name].testonly_packages if hub_name in mods.configured_hubs else [],
         )
 
@@ -1131,6 +1149,26 @@ The testonly packages are left out of the `all_requirements`,
 `requirements.bzl` and listed in `all_testonly_requirements` instead. In the
 [Unified @pypi Hub](unified-pypi-hub), a package is testonly if it is testonly
 in any of the hubs.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+        ),
+        "venv": attr.string(
+            mandatory = False,
+            doc = """\
+Create a venv instead of configuring the hub. Defaults to {attr}`hub_name`.
+
+A venv is a named selection of the packages of the hub that is used through
+the [Unified @pypi Hub](unified-pypi-hub) by setting
+{flag}`--@rules_python//python/config_settings:venv` to its name. It does not
+create a new repository and the hub itself is not changed. The packages that
+are not selected are reported as missing, like the packages that are not in a
+hub.
+
+The name must not collide with a hub and a venv can't be used with two
+different hubs. Multiple tags with the same `venv` are combined. `testonly` is
+not supported for venvs.
 
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
