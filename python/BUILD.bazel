@@ -29,6 +29,7 @@ that @rules_python//python is only concerned with the core rules.
 # gazelle:resolve starlark //python:current_py_toolchain.bzl //python:current_py_toolchain_bzl
 
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("@rules_python_internal//:rules_python_config.bzl", "config")
 load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
 load(":current_py_toolchain.bzl", "current_py_toolchain")
 
@@ -115,7 +116,15 @@ alias(
 
 # The toolchain type for Python rules. Provides a Python 2 and/or Python 3
 # runtime.
-alias(
+#
+# Bazel versions that forward @bazel_tools//tools/python:toolchain_type to this
+# target get the actual type. On all others, this is an alias of the type in
+# @bazel_tools, so that both labels always refer to the same type.
+# buildifier: disable=no-effect
+toolchain_type(
+    name = "toolchain_type",
+) if config.toolchain_type_in_rules_python else alias(
+    # buildifier: disable=duplicated-name
     name = "toolchain_type",
     actual = "@bazel_tools//tools/python:toolchain_type",
 )
