@@ -153,10 +153,12 @@ jobs:
     env:
       REF: ${{ inputs.ref || github.sha }}
     steps:
+      # Check out the workflow's ref (not inputs.ref) so packaging scripts like
+      # generate_artifacts_manifest.py match this workflow's CLI flags;
+      # create_archive_and_notes.sh fetches and checks out inputs.ref itself.
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref }}
           persist-credentials: false
 
       - name: Download built artifacts
