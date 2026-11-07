@@ -373,6 +373,13 @@ dev_python.override(
     register_all_versions = True,
 )
 
+# For testing the coverage collection with the bundled coverage tool.
+# See //tests/coverage:coverage_collection_test
+dev_python.toolchain(
+    configure_coverage_tool = True,
+    python_version = "3.12",
+)
+
 # For testing an arbitrary runtime triggered by a custom flag.
 # See //tests/toolchains:custom_platform_toolchain_test
 dev_python.single_version_platform_override(

@@ -1,0 +1,41 @@
+load("//python:py_library.bzl", "py_library")
+load("//python:py_test.bzl", "py_test")
+load("//tests/support:py_reconfig.bzl", "py_reconfig_test")
+load("//tests/support:support.bzl", "NOT_WINDOWS", "SUPPORTS_BZLMOD")
+
+py_library(
+    name = "lib",
+    srcs = ["lib.py"],
+)
+
+# The program that is built with coverage enabled. It is run by the
+# `coverage_collection_test` below, which sets the same environment variables
+# that `bazel coverage` would set.
+py_reconfig_test(
+    name = "instrumented",
+    srcs = ["instrumented.py"],
+    collect_code_coverage = "true",
+    main = "instrumented.py",
+    # The bundled coverage tool is configured only for this version, see the
+    # `MODULE.bazel` file.
+    python_version = "3.12",
+    tags = ["manual"],
+    # The bundled coverage tool is not supported on Windows and it is only
+    # configured with bzlmod.
+    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    deps = [":lib"],
+)
+
+py_test(
+    name = "coverage_collection_test",
+    srcs = ["coverage_collection_test.py"],
+    data = [
+        "lib.py",
+        ":instrumented",
+    ],
+    env = {
+        "INSTRUMENTED": "$(rlocationpath :instrumented)",
+    },
+    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    deps = ["//python/runfiles"],
+)
