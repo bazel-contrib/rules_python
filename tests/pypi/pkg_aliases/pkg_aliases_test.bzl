@@ -396,12 +396,14 @@ def _test_deps_and_aliases_integration(env):
     ]
 
     # buildifier: disable=unsorted-dict-items
+    # The library is the group implementation target, because the public
+    # `pkg` label is an alias to the group.
     want_library = {
-        "name": "pkg",
+        "name": "_pkg",
         "deps": ["srcs", "//bar:pkg"] + select({":is_include_baz_true": ["//baz:pkg"], "//conditions:default": []}),
         "srcs": ["srcs"],
         "tags": [],
-        "visibility": ["//:__subpackages__"],
+        "visibility": ["//_groups:__pkg__"],
     }
 
     pkg_aliases(

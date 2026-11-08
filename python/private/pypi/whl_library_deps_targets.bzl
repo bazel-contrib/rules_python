@@ -108,6 +108,13 @@ def whl_library_deps_targets(
 
         py_library_label = PY_LIBRARY_IMPL_LABEL
         whl_file_label = WHEEL_FILE_IMPL_LABEL
+    elif group_name and dep_template.startswith("//"):
+        # The targets are created in the hub repository next to the group
+        # implementation, which consumes the implementation labels. The public
+        # labels are aliases to the group created by {obj}`pkg_aliases`.
+        py_library_label = PY_LIBRARY_IMPL_LABEL
+        whl_file_label = WHEEL_FILE_IMPL_LABEL
+        impl_vis = ["//_groups:__pkg__"]
     else:
         py_library_label = PY_LIBRARY_PUBLIC_LABEL
         whl_file_label = WHEEL_FILE_PUBLIC_LABEL

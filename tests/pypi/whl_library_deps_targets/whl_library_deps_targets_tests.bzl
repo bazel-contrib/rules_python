@@ -139,6 +139,50 @@ def _test_whl_library_deps_targets_no_deps(env):
 
 _tests.append(_test_whl_library_deps_targets_no_deps)
 
+def _test_whl_library_deps_targets_hub_group(env):
+    filegroup_calls = []
+    py_library_calls = []
+
+    # The targets are created in the hub repository, like `pkg_aliases` does.
+    whl_library_deps_targets(
+        metadata_name = "Foo",
+        dep_template = "//{name}:{target}",
+        requires_dist = ["bar", "baz"],
+        group_name = "qux",
+        group_deps = ["foo", "baz"],
+        repo = None,
+        aliases = {},
+        native = struct(
+            filegroup = lambda **kwargs: filegroup_calls.append(kwargs),
+            alias = lambda **kwargs: fail("unexpected alias: {}".format(kwargs)),
+        ),
+        rules = struct(
+            py_library = lambda **kwargs: py_library_calls.append(kwargs),
+            env_marker_setting = lambda **kwargs: fail("unexpected: {}".format(kwargs)),
+        ),
+    )
+
+    env.expect.that_collection(filegroup_calls).contains_exactly([
+        {
+            "name": "_whl",
+            "srcs": ["whl_file"],
+            "data": ["//bar:whl"],
+            "visibility": ["//_groups:__pkg__"],
+        },
+    ])  # buildifier: @unsorted-dict-items
+    env.expect.that_collection(py_library_calls).contains_exactly([
+        {
+            "name": "_pkg",
+            "srcs": ["srcs"],
+            "deps": ["srcs", "//bar:pkg"],
+            "precompile": "disabled",
+            "tags": [],
+            "visibility": ["//_groups:__pkg__"],
+        },
+    ])  # buildifier: @unsorted-dict-items
+
+_tests.append(_test_whl_library_deps_targets_hub_group)
+
 def _test_whl_library_deps_targets_repo_aliases(env):
     alias_calls = []
 
