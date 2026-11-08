@@ -147,6 +147,79 @@ def _parse_requirements_with_uv_lock(
         logger = logger,
     )
 
+def _uv_lock_package_dependencies(pkg):
+    """Collect regular, optional, and development dependency edges."""
+    deps = list(pkg.get("dependencies", []))
+    for table in ["optional-dependencies", "dev-dependencies"]:
+        for group in pkg.get(table, {}).values():
+            deps.extend(group)
+    return deps
+
+def _uv_lock_package_platforms(packages, all_platforms, platforms):
+    """Find each lock entry's platforms by walking dependency edges from roots.
+
+    Follow all optional dependencies because uv_lock_extras_map enables every
+    recorded extra. Development dependency groups must also remain available.
+    """
+    by_name = {}
+    roots = []
+    dependencies = []
+    for i, pkg in enumerate(packages):
+        by_name.setdefault(normalize_name(pkg["name"]), []).append(i)
+        dependencies.append(_uv_lock_package_dependencies(pkg))
+        source = pkg.get("source", {})
+        if "virtual" in source or "editable" in source:
+            roots.append(i)
+
+    result = [[] for _ in packages]
+    for p in all_platforms:
+        marker_env = platforms[p].env
+        compatible = {
+            i: None
+            for i, pkg in enumerate(packages)
+            if not pkg.get("resolution-markers") or evaluate(
+                " or ".join(pkg["resolution-markers"]),
+                env = marker_env,
+                strict = False,
+            ) != False
+        }
+        if not roots:
+            # Exported/synthetic locks without workspace roots retain the
+            # package-level resolution-marker behavior.
+            for i in compatible:
+                result[i].append(p)
+            continue
+
+        visited = {i: None for i in roots if i in compatible}
+        queue = list(visited)
+
+        # Mark packages when enqueuing so cycles and diamonds cannot exceed
+        # the number of packages. Starlark has no while loops.
+        for _ in range(len(packages)):
+            if not queue:
+                break
+            i = queue.pop()
+            result[i].append(p)
+            for dep in dependencies[i]:
+                # Unknown values (notably `extra`) may remain as expressions;
+                # only a definitively false platform marker excludes an edge.
+                marker = dep.get("marker", "")
+                if marker and evaluate(marker, env = marker_env, strict = False) == False:
+                    continue
+                for target in by_name.get(normalize_name(dep["name"]), []):
+                    if target not in compatible or target in visited:
+                        continue
+
+                    # Forked entries can share a name but differ in identity.
+                    pkg = packages[target]
+                    if "version" in dep and dep["version"] != pkg["version"]:
+                        continue
+                    if "source" in dep and dep["source"] != pkg.get("source", {}):
+                        continue
+                    visited[target] = None
+                    queue.append(target)
+    return result
+
 def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, platforms = {}):
     """Parse uv.lock JSON and build the same return structs as parse_requirements.
 
@@ -168,7 +241,8 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
     if not platforms:
         fail("BUG: platforms must be configured")
 
-    for pkg in uv_lock["package"]:
+    package_platforms = _uv_lock_package_platforms(uv_lock["package"], all_platforms, platforms)
+    for i, pkg in enumerate(uv_lock["package"]):
         name = pkg["name"]
         version = pkg["version"]
         norm_name = normalize_name(name)
@@ -189,16 +263,7 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
         pkg_extras = sorted(extras_map.get(name, []))
         extra_str = "[{}]".format(",".join(pkg_extras)) if pkg_extras else ""
 
-        markers = pkg.get("resolution-markers", [])
-        if markers:
-            marker_expr = " or ".join(markers)
-            pkg_platforms = [
-                p
-                for p in all_platforms
-                if evaluate(marker_expr, env = platforms[p].env)
-            ]
-        else:
-            pkg_platforms = list(all_platforms)
+        pkg_platforms = package_platforms[i]
 
         # Prepare candidates
         candidates = []
