@@ -7,12 +7,21 @@
 use std::ffi::OsString;
 use std::process::ExitCode;
 
+/// Subcommand name constants supported by `shrubbery`.
+pub mod subcommands {
+    // keep-sorted start case=no
+    pub const EXE_ZIP_MAKER: &str = "exe_zip_maker";
+    pub const ZIP_MAIN_MAKER: &str = "zip_main_maker";
+    pub const ZIPPER: &str = "zipper";
+    // keep-sorted end
+}
+
 /// Canonical subcommand names supported by `shrubbery`.
 pub const SUBCOMMANDS: &[&str] = &[
-    // keep-sorted start
-    "exe_zip_maker",
-    "zip_main_maker",
-    "zipper",
+    // keep-sorted start case=no
+    subcommands::EXE_ZIP_MAKER,
+    subcommands::ZIP_MAIN_MAKER,
+    subcommands::ZIPPER,
     // keep-sorted end
 ];
 
@@ -53,10 +62,10 @@ where
     }
 
     match sub_raw.as_ref() {
-        // keep-sorted start
-        "exe_zip_maker" => exe_zip_maker_lib::run_cli(iter),
-        "zip_main_maker" => zip_main_maker_lib::run_cli(iter),
-        "zipper" => zipper_lib::run_cli(iter),
+        // keep-sorted start case=no
+        subcommands::EXE_ZIP_MAKER => exe_zip_maker_lib::run_cli(iter),
+        subcommands::ZIP_MAIN_MAKER => zip_main_maker_lib::run_cli(iter),
+        subcommands::ZIPPER => zipper_lib::run_cli(iter),
         // keep-sorted end
         _ => {
             eprintln!("shrubbery: error: unknown subcommand '{}'", sub_raw);

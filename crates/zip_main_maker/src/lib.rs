@@ -22,6 +22,17 @@ use zip_manifest::{SymlinkMode, parse_manifest_line};
 /// Template placeholder replaced with the computed SHA-256 hex digest of the application inputs.
 pub const APP_HASH_PLACEHOLDER: &str = "%APP_HASH%";
 
+mod flags {
+    // keep-sorted start
+    pub const HASH_FILES_MANIFEST: &str = "hash_files_manifest";
+    pub const HELP: &str = "help";
+    pub const HELP_SHORT: char = 'h';
+    pub const OUTPUT: &str = "output";
+    pub const SUBSTITUTION: &str = "substitution";
+    pub const TEMPLATE: &str = "template";
+    // keep-sorted end
+}
+
 /// Usage text for `--help`. `lexopt` does not generate help, so this is maintained by hand.
 const USAGE: &str = "\
 Usage: zip_main_maker [OPTIONS] --template <PATH> --output <PATH> --hash_files_manifest <PATH>
@@ -119,9 +130,12 @@ pub fn generate_zip_main(options: &Options) -> Result<()> {
 }
 
 fn parse_substitution(raw: &str) -> std::result::Result<(String, String), String> {
-    let (key, val) = raw
-        .split_once('=')
-        .ok_or_else(|| format!("invalid --substitution value (expected KEY=VALUE): {raw}"))?;
+    let (key, val) = raw.split_once('=').ok_or_else(|| {
+        format!(
+            "invalid --{} value (expected KEY=VALUE): {raw}",
+            flags::SUBSTITUTION
+        )
+    })?;
     Ok((key.to_string(), val.to_string()))
 }
 
@@ -146,28 +160,34 @@ where
     let mut parser = lexopt::Parser::from_args(expanded);
     while let Some(arg) = parser.next()? {
         match arg {
-            Short('h') | Long("help") => return Ok(Cli::Help),
-            Long("template") => {
+            Short(flags::HELP_SHORT) | Long(flags::HELP) => return Ok(Cli::Help),
+            Long(flags::TEMPLATE) => {
                 template = Some(PathBuf::from(parser.value()?));
             }
-            Long("output") => {
+            Long(flags::OUTPUT) => {
                 output = Some(PathBuf::from(parser.value()?));
             }
-            Long("substitution") => {
+            Long(flags::SUBSTITUTION) => {
                 let (key, val) = parser.value()?.parse_with(parse_substitution)?;
                 substitutions.insert(key, val);
             }
-            Long("hash_files_manifest") => {
+            Long(flags::HASH_FILES_MANIFEST) => {
                 hash_files_manifest = Some(PathBuf::from(parser.value()?));
             }
             _ => bail!("{}", arg.unexpected()),
         }
     }
 
-    let template = template.context("missing required argument: --template")?;
-    let output = output.context("missing required argument: --output")?;
-    let hash_files_manifest =
-        hash_files_manifest.context("missing required argument: --hash_files_manifest")?;
+    let template =
+        template.with_context(|| format!("missing required argument: --{}", flags::TEMPLATE))?;
+    let output =
+        output.with_context(|| format!("missing required argument: --{}", flags::OUTPUT))?;
+    let hash_files_manifest = hash_files_manifest.with_context(|| {
+        format!(
+            "missing required argument: --{}",
+            flags::HASH_FILES_MANIFEST
+        )
+    })?;
 
     Ok(Cli::Run(Options {
         template,

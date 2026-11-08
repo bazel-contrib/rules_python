@@ -98,6 +98,15 @@ fn test_cli_binary_subprocess() {
     let stdout = String::from_utf8_lossy(&help_out.stdout);
     for sub in SUBCOMMANDS {
         assert!(stdout.contains(sub), "missing {} in help: {}", sub, stdout);
+        let sub_help = Command::new(&resolved)
+            .args([*sub, "--help"])
+            .output()
+            .expect("registered subcommand should run");
+        let sub_stderr = String::from_utf8_lossy(&sub_help.stderr);
+        assert!(
+            !sub_stderr.contains("unknown subcommand"),
+            "registered subcommand {sub} was rejected by run_cli: {sub_stderr}"
+        );
     }
 
     let bad_out = Command::new(&resolved)

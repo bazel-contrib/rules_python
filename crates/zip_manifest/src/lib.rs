@@ -6,12 +6,31 @@
 use std::fmt;
 use std::path::Path;
 
+mod symlink_modes {
+    // keep-sorted start
+    pub const INFER: &str = "-1";
+    pub const REGULAR: &str = "0";
+    pub const SYMLINK: &str = "1";
+    // keep-sorted end
+}
+
+mod entry_kinds {
+    // keep-sorted start
+    pub const REGULAR: &str = "regular";
+    pub const RF_EMPTY: &str = "rf-empty";
+    pub const RF_FILE: &str = "rf-file";
+    pub const RF_ROOT_SYMLINK: &str = "rf-root-symlink";
+    pub const RF_SYMLINK: &str = "rf-symlink";
+    pub const SYMLINK: &str = "symlink";
+    // keep-sorted end
+}
+
 /// Parses the `is_symlink` field (`"0"`, `"1"`, or `"-1"`) of a manifest line.
 pub fn parse_symlink_mode(value: &str) -> Result<SymlinkMode, ManifestParseError> {
     match value {
-        "0" => Ok(SymlinkMode::Regular),
-        "1" => Ok(SymlinkMode::Symlink),
-        "-1" => Ok(SymlinkMode::Infer),
+        symlink_modes::REGULAR => Ok(SymlinkMode::Regular),
+        symlink_modes::SYMLINK => Ok(SymlinkMode::Symlink),
+        symlink_modes::INFER => Ok(SymlinkMode::Infer),
         _ => Err(ManifestParseError::InvalidSymlinkMode {
             value: value.to_string(),
         }),
@@ -59,7 +78,7 @@ pub fn parse_manifest_line(line: &str) -> Result<ManifestLine<'_>, ManifestParse
         return Err(invalid());
     };
     let entry = match kind {
-        "regular" => {
+        entry_kinds::REGULAR => {
             let (is_symlink, zip_path, content_path) = split_three(rest).ok_or_else(invalid)?;
             RawManifestEntry::Regular {
                 symlink_mode: parse_symlink_mode(is_symlink)?,
@@ -67,13 +86,13 @@ pub fn parse_manifest_line(line: &str) -> Result<ManifestLine<'_>, ManifestParse
                 content_path: Path::new(content_path),
             }
         }
-        "rf-empty" => {
+        entry_kinds::RF_EMPTY => {
             if rest.contains('|') {
                 return Err(invalid());
             }
             RawManifestEntry::RfEmpty { runfile_path: rest }
         }
-        "rf-file" => {
+        entry_kinds::RF_FILE => {
             let (is_symlink, runfile_path, content_path) = split_three(rest).ok_or_else(invalid)?;
             RawManifestEntry::RfFile {
                 symlink_mode: parse_symlink_mode(is_symlink)?,
@@ -81,7 +100,7 @@ pub fn parse_manifest_line(line: &str) -> Result<ManifestLine<'_>, ManifestParse
                 content_path: Path::new(content_path),
             }
         }
-        "rf-symlink" => {
+        entry_kinds::RF_SYMLINK => {
             let (is_symlink, runfile_symlink_path, content_path) =
                 split_three(rest).ok_or_else(invalid)?;
             RawManifestEntry::RfSymlink {
@@ -90,7 +109,7 @@ pub fn parse_manifest_line(line: &str) -> Result<ManifestLine<'_>, ManifestParse
                 content_path: Path::new(content_path),
             }
         }
-        "rf-root-symlink" => {
+        entry_kinds::RF_ROOT_SYMLINK => {
             let (is_symlink, runfile_root_path, content_path) =
                 split_three(rest).ok_or_else(invalid)?;
             RawManifestEntry::RfRootSymlink {
@@ -99,7 +118,7 @@ pub fn parse_manifest_line(line: &str) -> Result<ManifestLine<'_>, ManifestParse
                 content_path: Path::new(content_path),
             }
         }
-        "symlink" => {
+        entry_kinds::SYMLINK => {
             let (runfile_root_path, link_to_runfile_root_path) =
                 split_two(rest).ok_or_else(invalid)?;
             RawManifestEntry::Symlink {
@@ -242,7 +261,10 @@ impl fmt::Display for ManifestParseError {
             Self::InvalidSymlinkMode { value } => {
                 write!(
                     f,
-                    "invalid is_symlink value (expected 0, 1, or -1): {value}"
+                    "invalid is_symlink value (expected {}, {}, or {}): {value}",
+                    symlink_modes::REGULAR,
+                    symlink_modes::SYMLINK,
+                    symlink_modes::INFER,
                 )
             }
         }
