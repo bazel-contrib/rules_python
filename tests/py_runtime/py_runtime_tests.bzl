@@ -17,7 +17,6 @@ load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "matching")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
-load("//python:py_library.bzl", "py_library")
 load("//python:py_runtime.bzl", "py_runtime")
 load("//python:py_runtime_info.bzl", "PyRuntimeInfo")
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
@@ -233,17 +232,17 @@ def _test_coverage_tool_plain_files_impl(env, target):
 
 _tests.append(_test_coverage_tool_plain_files)
 
-def _test_coverage_tool_py_library(name):
+def _test_coverage_tool_extracted_whl_files(name):
     rt_util.helper_target(
         py_runtime,
         name = name + "_subject",
         python_version = "PY3",
         interpreter_path = "/bogus",
-        coverage_tool = name + "_coverage_lib",
+        coverage_tool = name + "_extracted_whl_files",
     )
     rt_util.helper_target(
-        py_library,
-        name = name + "_coverage_lib",
+        native.filegroup,
+        name = name + "_extracted_whl_files",
         srcs = [
             "site-packages/coverage/__init__.py",
             "site-packages/coverage/__main__.py",
@@ -252,10 +251,10 @@ def _test_coverage_tool_py_library(name):
     analysis_test(
         name = name,
         target = name + "_subject",
-        impl = _test_coverage_tool_py_library_impl,
+        impl = _test_coverage_tool_extracted_whl_files_impl,
     )
 
-def _test_coverage_tool_py_library_impl(env, target):
+def _test_coverage_tool_extracted_whl_files_impl(env, target):
     info = env.expect.that_target(target).provider(PyRuntimeInfo, factory = py_runtime_info_subject)
     info.coverage_tool().short_path_equals("{package}/site-packages/coverage/__main__.py")
     info.coverage_files().contains_at_least([
@@ -263,7 +262,7 @@ def _test_coverage_tool_py_library_impl(env, target):
         "{package}/site-packages/coverage/__main__.py",
     ])
 
-_tests.append(_test_coverage_tool_py_library)
+_tests.append(_test_coverage_tool_extracted_whl_files)
 
 def _test_in_build_interpreter(name):
     rt_util.helper_target(
