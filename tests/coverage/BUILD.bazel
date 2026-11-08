@@ -50,14 +50,13 @@ py_reconfig_test(
     deps = [":lib"],
 )
 
-py_test(
+pytest_test(
     name = "coverage_from_pypi_test",
     srcs = ["coverage_collection_test.py"],
     data = [":instrumented_pypi"],
     env = {
         "INSTRUMENTED": "$(rlocationpath :instrumented_pypi)",
     },
-    main = "coverage_collection_test.py",
     target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
     deps = ["//python/runfiles"],
 )
