@@ -1395,7 +1395,7 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
         {
             "attr": struct(
                 auth_patterns = {},
-                envsubst = {},
+                envsubst = [],
                 extra_index_urls = [],
                 index_url = "https://pypi.org/simple",
                 index_url_overrides = {},
