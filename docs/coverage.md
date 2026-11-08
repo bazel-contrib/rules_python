@@ -72,3 +72,29 @@ important behaviors of the target are:
 *   It provides a single output file OR it provides an executable output; this
     output is treated as the coverage entry point.
 *   If it provides runfiles, then `runfiles.files` are included into `py_test`.
+*   Otherwise, if one of its output files is `coverage/__main__.py`, then that
+    file is treated as the coverage entry point. This allows using the files
+    of an extracted `coverage` wheel.
+
+### Using `coverage` from PyPI
+
+To use the version of `coverage` that is locked in your requirements instead of
+the one bundled with `rules_python`, point the toolchain to the extracted files
+of the `coverage` package in your {obj}`pip.parse` hub:
+
+```starlark
+python.single_version_platform_override(
+    coverage_tool = "@pypi//coverage:extracted_whl_files",
+    platform = "x86_64-unknown-linux-gnu",
+    python_version = "3.13.2",
+)
+```
+
+Or set `py_runtime.coverage_tool = "@pypi//coverage:extracted_whl_files"` when
+defining your own runtime.
+
+:::{note}
+Use the `extracted_whl_files` target and not `@pypi//coverage`: the
+`py_library` depends on the Python toolchain itself, so using it as the
+coverage tool of the toolchain creates a dependency cycle.
+:::

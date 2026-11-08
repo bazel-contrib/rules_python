@@ -25,6 +25,24 @@ load(":version.bzl", "version")
 
 _py_builtins = py_internal
 
+_COVERAGE_MAIN = "coverage/__main__.py"
+
+def _coverage_main(files):
+    """Return the `coverage/__main__.py` entry point from the coverage files.
+
+    Args:
+        files: {type}`depset[File]` the files of the coverage tool target, e.g.
+            `@pypi//coverage:extracted_whl_files`.
+
+    Returns:
+        {type}`File | None` the entry point of the coverage tool.
+    """
+    for f in files.to_list():
+        if f.short_path == _COVERAGE_MAIN or f.short_path.endswith("/" + _COVERAGE_MAIN):
+            return f
+
+    return None
+
 def coverage_tool_missing_message(*, coverage_enabled, coverage_tool, label):
     """Build the warning for a selected runtime that cannot produce coverage.
 
@@ -133,7 +151,9 @@ def _py_runtime_impl(ctx):
         elif coverage_di.files_to_run and coverage_di.files_to_run.executable:
             coverage_tool = coverage_di.files_to_run.executable
         else:
-            fail("coverage_tool must be an executable target or must produce exactly one file.")
+            coverage_tool = _coverage_main(coverage_di.files)
+            if not coverage_tool:
+                fail("coverage_tool must be an executable target, must produce exactly one file or must contain '{}'.".format(_COVERAGE_MAIN))
 
         coverage_files = depset(transitive = [
             coverage_di.files,
@@ -311,6 +331,17 @@ The entry point for the tool must be loadable by a Python interpreter (e.g. a
 `.py` or `.pyc` file).  It must accept the command line arguments
 of [`coverage.py`](https://coverage.readthedocs.io), at least including
 the `run` and `lcov` subcommands.
+
+If the target produces multiple files and one of them is
+`coverage/__main__.py`, then it is used as the entry point. This allows using
+the extracted `coverage` wheel from a {obj}`pip.parse` hub, e.g.
+`@pypi//coverage:extracted_whl_files`. Note, that `@pypi//coverage` cannot be
+used, because a `py_library` depends on the Python toolchain, which would
+create a dependency cycle.
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+The extracted files of the `coverage` wheel can be used.
+:::
 """,
             ),
             "files": attr.label_list(

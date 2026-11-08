@@ -232,6 +232,38 @@ def _test_coverage_tool_plain_files_impl(env, target):
 
 _tests.append(_test_coverage_tool_plain_files)
 
+def _test_coverage_tool_extracted_whl_files(name):
+    rt_util.helper_target(
+        py_runtime,
+        name = name + "_subject",
+        python_version = "PY3",
+        interpreter_path = "/bogus",
+        coverage_tool = name + "_extracted_whl_files",
+    )
+    rt_util.helper_target(
+        native.filegroup,
+        name = name + "_extracted_whl_files",
+        srcs = [
+            "site-packages/coverage/__init__.py",
+            "site-packages/coverage/__main__.py",
+        ],
+    )
+    analysis_test(
+        name = name,
+        target = name + "_subject",
+        impl = _test_coverage_tool_extracted_whl_files_impl,
+    )
+
+def _test_coverage_tool_extracted_whl_files_impl(env, target):
+    info = env.expect.that_target(target).provider(PyRuntimeInfo, factory = py_runtime_info_subject)
+    info.coverage_tool().short_path_equals("{package}/site-packages/coverage/__main__.py")
+    info.coverage_files().contains_at_least([
+        "{package}/site-packages/coverage/__init__.py",
+        "{package}/site-packages/coverage/__main__.py",
+    ])
+
+_tests.append(_test_coverage_tool_extracted_whl_files)
+
 def _test_in_build_interpreter(name):
     rt_util.helper_target(
         py_runtime,

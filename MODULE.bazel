@@ -401,6 +401,36 @@ dev_python.override(
     register_all_versions = True,
 )
 
+# For testing the coverage collection with the bundled coverage tool.
+# See //tests/coverage:coverage_collection_test
+#
+# NOTE: A full version is used so that the toolchain is named after it and does
+# not shadow the toolchains that are checked in //tests/toolchains.
+dev_python.toolchain(
+    configure_coverage_tool = True,
+    python_version = "3.12.16",
+)
+
+# For testing the coverage collection with the coverage tool from a PyPI hub.
+# See //tests/coverage:coverage_from_pypi_test
+dev_python.toolchain(
+    python_version = "3.13.13",
+)
+
+[
+    dev_python.single_version_platform_override(
+        coverage_tool = "@dev_pip//coverage:extracted_whl_files",
+        platform = platform,
+        python_version = "3.13.13",
+    )
+    for platform in [
+        "aarch64-apple-darwin",
+        "aarch64-unknown-linux-gnu",
+        "x86_64-apple-darwin",
+        "x86_64-unknown-linux-gnu",
+    ]
+]
+
 # For testing an arbitrary runtime triggered by a custom flag.
 # See //tests/toolchains:custom_platform_toolchain_test
 dev_python.single_version_platform_override(
