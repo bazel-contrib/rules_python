@@ -37,7 +37,7 @@ class ExampleTest(unittest.TestCase):
 
         # Let's run the entrypoint and check the tool version.
         #
-        # NOTE @aignas 2023-08-24: the Windows python launcher with Python 3.9 and bazel 6 is not happy if we start
+        # NOTE @aignas 2023-08-24: the Windows python launcher with Python 3.10 and bazel 6 is not happy if we start
         # passing extra files via `subprocess.run` and it starts to fail with an error that the file which is the
         # entry_point cannot be found. However, just calling `--version` seems to be fine.
         proc = subprocess.run(
@@ -50,7 +50,7 @@ class ExampleTest(unittest.TestCase):
             "",
             proc.stderr.decode("utf-8").strip(),
         )
-        self.assertRegex(proc.stdout.decode("utf-8").strip(), r"^pylint 2\.15\.9")
+        self.assertRegex(proc.stdout.decode("utf-8").strip(), r"^pylint 4\.")
 
     def test_pylint_report_has_expected_warnings(self):
         rlocation_path = os.environ.get("PYLINT_REPORT")
@@ -61,10 +61,12 @@ class ExampleTest(unittest.TestCase):
         pylint_report = pathlib.Path(runfiles.Create().Rlocation(rlocation_path))
         self.assertTrue(pylint_report.exists(), f"'{pylint_report}' does not exist")
 
+        report_text = pylint_report.read_text().strip()
         self.assertRegex(
-            pylint_report.read_text().strip(),
-            r"W8201: Logging should be used instead of the print\(\) function\. \(print-function\)",
+            report_text,
+            r"C0116: Missing function or method docstring \(missing-function-docstring\)",
         )
+        self.assertNotRegex(report_text, r"unused-import")
 
 
 if __name__ == "__main__":

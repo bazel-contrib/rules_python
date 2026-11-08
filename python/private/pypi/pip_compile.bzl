@@ -156,6 +156,7 @@ def pip_compile(
         Label("@pypi__pyproject_hooks//:lib"),
         Label("@pypi__setuptools//:lib"),
         Label("@pypi__tomli//:lib"),
+        Label("@pypi__typing_extensions//:lib"),
         Label("@pypi__zipp//:lib"),
         Label("//python/runfiles:runfiles"),
     ] + extra_deps

@@ -1,0 +1,23 @@
+# Toolchain types used internally by rules_python.
+#
+# These are in a separate package so toolchain() registrations and rules can
+# depend on the type without loading the toolchain implementation.
+
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
+load("//python/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")
+
+package(default_visibility = ["//:__subpackages__"])
+
+licenses(["notice"])
+
+distribution_filegroup(
+    name = "distribution",
+)
+
+# Toolchain providing the unified Rust `shrubbery` binary
+# (`shrubbery <subcommand> ...`). It is optional: when no toolchain is
+# registered, rules fall back to their Python or script implementations.
+toolchain_type(
+    name = "shrubbery",
+    visibility = NOT_ACTUALLY_PUBLIC,
+)

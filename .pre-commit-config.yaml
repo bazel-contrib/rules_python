@@ -52,22 +52,16 @@ repos:
         name: Sort runtimes manifest
         language: system
         entry: ./python/private/tools/sort_manifest.py
-        files: ^python/private/runtimes_manifest\.txt$
-      - id: sync-runtimes-manifest
-        name: Sync runtimes manifest workspace
-        language: system
-        entry: ./python/private/tools/sync_runtimes_manifest_workspace.py
-        files: ^python/private/runtimes_manifest\.txt$
-        pass_filenames: false
+        files: ^python/private/runtimes_manifest\.bzl$
       - id: sync-downloader-configs
         name: Sync downloader configs
         language: system
-        entry: ./tools/private/sync_downloader_configs.py
+        entry: ./dev/sync_downloader_configs.py
         files: downloader_config\.cfg$
         pass_filenames: false
       - id: gazelle
         name: Run Gazelle
         language: system
-        entry: bazel run //tools/private/gazelle
+        entry: bazel run //dev/gazelle
         files: (\.bzl|\.bazel|BUILD|WORKSPACE(\.bzlmod)?)$
         pass_filenames: false

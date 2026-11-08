@@ -169,6 +169,7 @@ class TestContents(unittest.TestCase):
                     "@rules_python//python/config_settings:add_srcs_to_runfiles",
                     "@rules_python//python/config_settings:precompile",
                     "@rules_python//python/config_settings:precompile_source_retention",
+                    "@rules_python//python/config_settings:pyi_deps_to_runfiles",
                     "@rules_python//python/config_settings:venvs_site_packages",
                     "@rules_python//python/private:sentinel",
                 },

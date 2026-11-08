@@ -18,6 +18,8 @@ Label attributes with defaults cannot accept None, otherwise they fall
 back to using the default. A sentinel allows detecting an intended None value.
 """
 
+load(":py_info.bzl", "PyInfo")
+
 SentinelInfo = provider(
     doc = "Indicates this was the sentinel target.",
     fields = [],
@@ -29,6 +31,8 @@ def _sentinel_impl(ctx):
         SentinelInfo(),
         # Also output ToolchainInfo to allow it to be used for noop toolchains
         platform_common.ToolchainInfo(),
+        # Also output PyInfo to allow it to be used as a noop Python dependency
+        PyInfo(transitive_sources = depset()),
     ]
 
 sentinel = rule(implementation = _sentinel_impl)

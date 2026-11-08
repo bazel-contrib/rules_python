@@ -1,0 +1,124 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
+load(
+    ":cc_toolchain_available_config_setting.bzl",
+    "cc_toolchain_available_config_setting",
+)
+load(":release_files.bzl", "cross_compiled_files", "release_files")
+
+package(default_visibility = ["//:__subpackages__"])
+
+# Files that the release workflow builds for each platform in dev/platforms;
+# see build.sh.
+release_files(
+    name = "artifacts_for_release",
+    srcs = [
+        "//crates/shrubbery",
+    ],
+    # Under WORKSPACE, rules_rust is a stub without the rustc flags setting
+    # that release_files sets, so building this would fail.
+    tags = [] if BZLMOD_ENABLED else ["manual"],
+)
+
+# artifacts_for_release for the other platforms in dev/platforms that the host
+# can cross-compile for, so that builds of //... on each host cover them. The
+# select()s match the target platform, which is the host's unless --platforms
+# is set. Arm Windows needs its own select(): Windows x86_64 hosts can match
+# both is_windows_x86_64 and is_windows_x86_64_with_msvc_arm64, and in a single
+# select() that ambiguous match would be an error.
+#
+# To reproduce a failure, build artifacts_for_release with
+# --platforms=//dev/platforms:<triple>; see build.sh. If a platform's build
+# breaks presubmit without a related change, tag this target "manual" until
+# it's fixed.
+cross_compiled_files(
+    name = "cross_compiled_artifacts",
+    src = ":artifacts_for_release",
+    platforms = select({
+        ":is_linux_x86_64": [
+            "//dev/platforms:aarch64-unknown-linux-musl",
+            "//dev/platforms:armv7-unknown-linux-musleabihf",
+            "//dev/platforms:i686-unknown-linux-musl",
+            "//dev/platforms:powerpc64le-unknown-linux-musl",
+            "//dev/platforms:riscv64gc-unknown-linux-musl",
+            "//dev/platforms:x86_64-unknown-linux-musl",
+        ],
+        ":is_macos_aarch64": ["//dev/platforms:x86_64-apple-darwin"],
+        ":is_windows_x86_64": ["//dev/platforms:i686-pc-windows-msvc"],
+        "//conditions:default": [],
+    }) + select({
+        ":is_windows_x86_64_with_msvc_arm64": [
+            "//dev/platforms:aarch64-pc-windows-msvc",
+        ],
+        "//conditions:default": [],
+    }),
+    # See artifacts_for_release.
+    tags = [] if BZLMOD_ENABLED else ["manual"],
+)
+
+# Matches on Windows x86_64 if Visual Studio's optional ARM64 build tools
+# (Microsoft.VisualStudio.Component.VC.Tools.ARM64) are installed, so that the
+# C++ toolchain for Windows arm64 works. Without them, aarch64-pc-windows-msvc
+# is skipped, or the build fails if require_msvc_arm64 is set. After installing
+# them, run `bazel fetch --configure --force` so that rules_cc detects them.
+cc_toolchain_available_config_setting(
+    name = "is_windows_x86_64_with_msvc_arm64",
+    constraint_values = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:windows",
+    ],
+    platform = "//dev/platforms:aarch64-pc-windows-msvc",
+    required_flag = ":require_msvc_arm64",
+)
+
+# BazelCI sets this through --config=ci (see .bazelrc). Its Windows images have
+# the ARM64 build tools, so losing them fails the build instead of going
+# unnoticed. It has no effect unless the target platform is Windows x86_64.
+bool_flag(
+    name = "require_msvc_arm64",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "is_linux_x86_64",
+    constraint_values = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+    ],
+)
+
+config_setting(
+    name = "is_macos_aarch64",
+    constraint_values = [
+        "@platforms//cpu:aarch64",
+        "@platforms//os:macos",
+    ],
+)
+
+config_setting(
+    name = "is_windows_x86_64",
+    constraint_values = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:windows",
+    ],
+)
+
+bzl_library(
+    name = "release_files",
+    srcs = ["release_files.bzl"],
+    deps = ["//python/private:common_labels"],
+)
+
+bzl_library(
+    name = "cc_toolchain_available_config_setting",
+    srcs = ["cc_toolchain_available_config_setting.bzl"],
+    deps = [
+        "@bazel_skylib//rules:common_settings",
+        "@rules_cc//cc:find_cc_toolchain_bzl",
+    ],
+)
+
+exports_files([
+    "generate_artifacts_manifest.py",
+])

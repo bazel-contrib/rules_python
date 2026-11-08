@@ -12,44 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# The following is experimental API and currently not intended for use outside this example.
 load("@rules_python//python/uv/private:lock.bzl", "lock")  # buildifier: disable=bzl-visibility
 
 licenses(["notice"])  # Apache 2.0
 
 lock(
-    name = "bzlmod_requirements_3_9",
-    srcs = ["bzlmod/requirements.in"],
-    out = "bzlmod/requirements_lock_3_9.txt",
-    args = [
-        "--emit-index-url",
-        "--universal",
-        "--python-version=3.9",
-    ],
-    python_version = "3.9",
+    name = "bzlmod_uv_lock",
+    srcs = ["bzlmod/pyproject.toml"],
+    out = "bzlmod/uv.lock",
+    directory = "examples/bzlmod",
+    python_version = "3.10",
+    visibility = ["//:__subpackages__"],
 )
 
 lock(
-    name = "bzlmod_requirements_3_11",
-    srcs = ["bzlmod/requirements.in"],
-    out = "bzlmod/requirements_lock_3_11.txt",
-    args = [
-        "--emit-index-url",
-        "--universal",
-        "--python-version=3.11",
-    ],
+    name = "bzlmod_other_module_uv_lock",
+    srcs = ["bzlmod/other_module/pyproject.toml"],
+    out = "bzlmod/other_module/uv.lock",
+    directory = "examples/bzlmod/other_module",
     python_version = "3.11",
-)
-
-lock(
-    name = "bzlmod_requirements_3_11_windows",
-    srcs = ["bzlmod/requirements.in"],
-    out = "bzlmod/requirements_windows_3_11.txt",
-    args = [
-        "--emit-index-url",
-        "--python-platform",
-        "windows",
-        "--python-version=3.11",
-    ],
-    python_version = "3.11",
+    visibility = ["//:__subpackages__"],
 )

@@ -22,8 +22,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	sitter "github.com/smacker/go-tree-sitter"
-	"github.com/smacker/go-tree-sitter/python"
+	sitter "github.com/tree-sitter/go-tree-sitter"
+	tree_sitter_python "github.com/tree-sitter/tree-sitter-python/bindings/go"
 )
 
 const (
@@ -47,31 +47,35 @@ type ParserOutput struct {
 }
 
 type FileParser struct {
-	code                 []byte
-	relFilepath          string
-	output               ParserOutput
-	inTypeCheckingBlock  bool
+	code                []byte
+	relFilepath         string
+	output              ParserOutput
+	inTypeCheckingBlock bool
 }
 
 func NewFileParser() *FileParser {
 	return &FileParser{}
 }
 
-// ParseCode instantiates a new tree-sitter Parser and parses the python code, returning
-// the tree-sitter RootNode.
-// It prints a warning if parsing fails.
-func ParseCode(code []byte, path string) (*sitter.Node, error) {
+// parseCodeToTree instantiates a new tree-sitter Parser and parses the Python code,
+// returning the parsed tree-sitter Tree. Callers are responsible for calling Close()
+// on the returned Tree to release its underlying C resources when finished.
+// It logs a warning if the syntax tree contains parse errors.
+func parseCodeToTree(code []byte, path string) (*sitter.Tree, error) {
 	parser := sitter.NewParser()
-	parser.SetLanguage(python.GetLanguage())
-
-	tree, err := parser.ParseCtx(context.Background(), nil, code)
-	if err != nil {
+	defer parser.Close()
+	if err := parser.SetLanguage(sitter.NewLanguage(tree_sitter_python.Language())); err != nil {
 		return nil, err
+	}
+
+	tree := parser.ParseCtx(context.Background(), code, nil)
+	if tree == nil {
+		return nil, fmt.Errorf("failed to parse %q", path)
 	}
 
 	root := tree.RootNode()
 	if !root.HasError() {
-		return root, nil
+		return tree, nil
 	}
 
 	log.Printf("WARNING: failed to parse %q. The resulting BUILD target may be incorrect.", path)
@@ -80,43 +84,54 @@ func ParseCode(code []byte, path string) (*sitter.Node, error) {
 	// failure may be in some part of the code that Gazelle doesn't care about.
 	verbose, envExists := os.LookupEnv("RULES_PYTHON_GAZELLE_VERBOSE")
 	if !envExists || verbose != "1" {
-		return root, nil
+		return tree, nil
 	}
 
-	for i := 0; i < int(root.ChildCount()); i++ {
+	for i := uint(0); i < root.ChildCount(); i++ {
 		child := root.Child(i)
 		if child.IsError() {
 			// Example logs:
 			// gazelle: Parse error at {Row:1 Column:0}:
 			// def search_one_more_level[T]():
-			log.Printf("Parse error at %+v:\n%+v", child.StartPoint(), child.Content(code))
+			log.Printf("Parse error at %+v:\n%+v", child.StartPosition(), child.Utf8Text(code))
 			// Log the internal tree-sitter representation of what was parsed. Eg:
 			// gazelle: The above was parsed as: (ERROR (identifier) (call function: (list (identifier)) arguments: (argument_list)))
-			log.Printf("The above was parsed as: %v", child.String())
+			log.Printf("The above was parsed as: %v", child.ToSexp())
 		}
 	}
 
-	return root, nil
+	return tree, nil
+}
+
+// ParseCode instantiates a new tree-sitter Parser and parses the python code, returning
+// the tree-sitter RootNode.
+// It prints a warning if parsing fails.
+func ParseCode(code []byte, path string) (*sitter.Node, error) {
+	tree, err := parseCodeToTree(code, path)
+	if err != nil {
+		return nil, err
+	}
+	return tree.RootNode(), nil
 }
 
 // parseMain returns true if the python file has an `if __name__ == "__main__":` block,
 // which is a common idiom for python scripts/binaries.
 func (p *FileParser) parseMain(ctx context.Context, node *sitter.Node) bool {
-	for i := 0; i < int(node.ChildCount()); i++ {
+	for i := uint(0); i < node.ChildCount(); i++ {
 		if err := ctx.Err(); err != nil {
 			return false
 		}
 		child := node.Child(i)
-		if child.Type() == sitterNodeTypeIfStatement &&
-			child.Child(1).Type() == sitterNodeTypeComparisonOperator && child.Child(1).Child(1).Type() == "==" {
+		if child.Kind() == sitterNodeTypeIfStatement &&
+			child.Child(1).Kind() == sitterNodeTypeComparisonOperator && child.Child(1).Child(1).Kind() == "==" {
 			statement := child.Child(1)
 			a, b := statement.Child(0), statement.Child(2)
 			// convert "'__main__' == __name__" to "__name__ == '__main__'"
-			if b.Type() == sitterNodeTypeIdentifier {
+			if b.Kind() == sitterNodeTypeIdentifier {
 				a, b = b, a
 			}
-			if a.Type() == sitterNodeTypeIdentifier && a.Content(p.code) == "__name__" &&
-				b.Type() == sitterNodeTypeString && string(p.code[b.StartByte()+1:b.EndByte()-1]) == "__main__" {
+			if a.Kind() == sitterNodeTypeIdentifier && a.Utf8Text(p.code) == "__name__" &&
+				b.Kind() == sitterNodeTypeString && string(p.code[b.StartByte()+1:b.EndByte()-1]) == "__main__" {
 				return true
 			}
 		}
@@ -127,18 +142,18 @@ func (p *FileParser) parseMain(ctx context.Context, node *sitter.Node) bool {
 // parseImportStatement parses a node for an import statement, returning a `Module` and a boolean
 // representing if the parse was OK or not.
 func parseImportStatement(node *sitter.Node, code []byte) (Module, bool) {
-	switch node.Type() {
+	switch node.Kind() {
 	case sitterNodeTypeDottedName:
 		return Module{
-			Name:       node.Content(code),
-			LineNumber: node.StartPoint().Row + 1,
+			Name:       node.Utf8Text(code),
+			LineNumber: uint32(node.StartPosition().Row) + 1,
 		}, true
 	case sitterNodeTypeAliasedImport:
 		return parseImportStatement(node.Child(0), code)
 	case sitterNodeTypeWildcardImport:
 		return Module{
 			Name:       "*",
-			LineNumber: node.StartPoint().Row + 1,
+			LineNumber: uint32(node.StartPosition().Row) + 1,
 		}, true
 	}
 	return Module{}, false
@@ -158,8 +173,8 @@ func cleanImportString(s string) string {
 // an import statement. It updates FileParser.output.Modules with the `module` that the
 // import represents.
 func (p *FileParser) parseImportStatements(node *sitter.Node) bool {
-	if node.Type() == sitterNodeTypeImportStatement {
-		for j := 1; j < int(node.ChildCount()); j++ {
+	if node.Kind() == sitterNodeTypeImportStatement {
+		for j := uint(1); j < node.ChildCount(); j++ {
 			m, ok := parseImportStatement(node.Child(j), p.code)
 			if !ok {
 				continue
@@ -173,15 +188,15 @@ func (p *FileParser) parseImportStatements(node *sitter.Node) bool {
 			}
 			p.output.Modules = append(p.output.Modules, m)
 		}
-	} else if node.Type() == sitterNodeTypeImportFromStatement {
-		from := node.Child(1).Content(p.code)
+	} else if node.Kind() == sitterNodeTypeImportFromStatement {
+		from := node.Child(1).Utf8Text(p.code)
 		from = cleanImportString(from)
 		// If the import is from the current package, we don't need to add it to the modules i.e. from . import Class1.
 		// If the import is from a different relative package i.e. from .package1 import foo, we need to add it to the modules.
 		if from == "." {
 			return true
 		}
-		for j := 3; j < int(node.ChildCount()); j++ {
+		for j := uint(3); j < node.ChildCount(); j++ {
 			m, ok := parseImportStatement(node.Child(j), p.code)
 			if !ok {
 				continue
@@ -202,8 +217,8 @@ func (p *FileParser) parseImportStatements(node *sitter.Node) bool {
 // parseComments parses a node for comments, returning true if the node is a comment.
 // It updates FileParser.output.Comments with the parsed comment.
 func (p *FileParser) parseComments(node *sitter.Node) bool {
-	if node.Type() == sitterNodeTypeComment {
-		p.output.Comments = append(p.output.Comments, Comment(node.Content(p.code)))
+	if node.Kind() == sitterNodeTypeComment {
+		p.output.Comments = append(p.output.Comments, Comment(node.Utf8Text(p.code)))
 		return true
 	}
 	return false
@@ -217,23 +232,23 @@ func (p *FileParser) SetCodeAndFile(code []byte, relPackagePath, filename string
 
 // isTypeCheckingBlock returns true if the given node is an `if TYPE_CHECKING:` block.
 func (p *FileParser) isTypeCheckingBlock(node *sitter.Node) bool {
-	if node.Type() != sitterNodeTypeIfStatement || node.ChildCount() < 2 {
+	if node.Kind() != sitterNodeTypeIfStatement || node.ChildCount() < 2 {
 		return false
 	}
 
 	condition := node.Child(1)
 
 	// Handle `if TYPE_CHECKING:`
-	if condition.Type() == sitterNodeTypeIdentifier && condition.Content(p.code) == "TYPE_CHECKING" {
+	if condition.Kind() == sitterNodeTypeIdentifier && condition.Utf8Text(p.code) == "TYPE_CHECKING" {
 		return true
 	}
 
 	// Handle `if typing.TYPE_CHECKING:`
-	if condition.Type() == "attribute" && condition.ChildCount() >= 3 {
+	if condition.Kind() == "attribute" && condition.ChildCount() >= 3 {
 		object := condition.Child(0)
 		attr := condition.Child(2)
-		if object.Type() == sitterNodeTypeIdentifier && object.Content(p.code) == "typing" &&
-			attr.Type() == sitterNodeTypeIdentifier && attr.Content(p.code) == "TYPE_CHECKING" {
+		if object.Kind() == sitterNodeTypeIdentifier && object.Utf8Text(p.code) == "typing" &&
+			attr.Kind() == sitterNodeTypeIdentifier && attr.Utf8Text(p.code) == "TYPE_CHECKING" {
 			return true
 		}
 	}
@@ -252,7 +267,7 @@ func (p *FileParser) parse(ctx context.Context, node *sitter.Node) {
 		p.inTypeCheckingBlock = true
 	}
 
-	for i := 0; i < int(node.ChildCount()); i++ {
+	for i := uint(0); i < node.ChildCount(); i++ {
 		if err := ctx.Err(); err != nil {
 			return
 		}
@@ -271,10 +286,12 @@ func (p *FileParser) parse(ctx context.Context, node *sitter.Node) {
 }
 
 func (p *FileParser) Parse(ctx context.Context) (*ParserOutput, error) {
-	rootNode, err := ParseCode(p.code, p.relFilepath)
+	tree, err := parseCodeToTree(p.code, p.relFilepath)
 	if err != nil {
 		return nil, err
 	}
+	defer tree.Close()
+	rootNode := tree.RootNode()
 
 	p.output.HasMain = p.parseMain(ctx, rootNode)
 

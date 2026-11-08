@@ -19,6 +19,7 @@ load(":py_info.bzl", "PyInfo")
 load(":py_package.bzl", "py_package_lib")
 load(":rule_builders.bzl", "ruleb")
 load(":stamp_impl.bzl", "is_stamping_enabled")
+load(":toolchain_types.bzl", "TARGET_TOOLCHAIN_TYPE")
 load(":transition_labels.bzl", "TRANSITION_LABELS")
 load(":version.bzl", "version")
 
@@ -36,7 +37,17 @@ PyWheelInfo = provider(
 _distribution_attrs = {
     "abi": attr.string(
         default = "none",
-        doc = "Python ABI tag. 'none' for pure-Python wheels.",
+        doc = """
+Python ABI tag. 'none' for pure-Python wheels.
+
+Supports make variables, e.g. `abi = "$(PY_WHEEL_ABI_TAG)"`. See
+{rule}`py_runtime_pair` for variables provided by the Python toolchain.
+
+:::{versionchanged} 2.5.0
+Python toolchain make variables (such as `$(PY_WHEEL_ABI_TAG)`) are available by
+default.
+:::
+""",
     ),
     "compress": attr.bool(
         default = True,
@@ -59,7 +70,7 @@ For the available keys, see <https://bazel.build/docs/user-manual#workspace-stat
     ),
     "platform": attr.string(
         default = "any",
-        doc = """\
+        doc = """
 Supported platform. Use 'any' for pure-Python wheel.
 
 If you have included platform-specific data, such as a .pyd or .so
@@ -75,11 +86,27 @@ platform = select({
     "//platforms:linux_x86_64": "manylinux2014_x86_64",
 })
 `
+
+Supports make variables.
+
+:::{versionchanged} 2.5.0
+Supports make variables.
+:::
 """,
     ),
     "python_tag": attr.string(
         default = "py3",
-        doc = "Supported Python version(s), eg `py3`, `cp35.cp36`, etc",
+        doc = """
+Supported Python version(s), eg `py3`, `cp35.cp36`, etc.
+
+Supports make variables, e.g. `python_tag = "$(PY_WHEEL_PYTHON_TAG)"`. See
+{rule}`py_runtime_pair` for variables provided by the Python toolchain.
+
+:::{versionchanged} 2.5.0
+Python toolchain make variables (such as `$(PY_WHEEL_PYTHON_TAG)`) are available
+by default.
+:::
+""",
     ),
     "stamp": attr.int(
         doc = """\
@@ -257,9 +284,16 @@ be moved under that directory.
                'e.g `{{"Bug Tracker": "http://bitbucket.org/tarek/distribute/issues/"}}`'),
     ),
     "python_requires": attr.string(
-        doc = (
-            "Python versions required by this distribution, e.g. '>=3.5,<3.7'"
-        ),
+        doc = """
+Python versions required by this distribution, e.g. '>=3.5,<3.7'.
+
+Supports make variables, e.g. `python_requires = "==$(PY_MAJOR_DOT_MINOR).*"`.
+See {rule}`py_runtime_pair` for variables provided by the Python toolchain.
+
+:::{versionchanged} 2.5.0
+Supports make variables.
+:::
+""",
         default = "",
     ),
     "strip_path_prefixes": attr.string_list(
@@ -360,6 +394,8 @@ def _input_file_to_arg(input_file):
 
 def _py_wheel_impl(ctx):
     abi = _replace_make_variables(ctx.attr.abi, ctx)
+    platform = _replace_make_variables(ctx.attr.platform, ctx)
+    python_requires = _replace_make_variables(ctx.attr.python_requires, ctx)
     python_tag = _replace_make_variables(ctx.attr.python_tag, ctx)
     version_str = _replace_make_variables(ctx.attr.version, ctx)
 
@@ -368,7 +404,7 @@ def _py_wheel_impl(ctx):
         version.normalize(version_str),
         _escape_filename_segment(python_tag),
         _escape_filename_segment(abi),
-        _escape_filename_segment(ctx.attr.platform),
+        _escape_filename_segment(platform),
     ]
 
     outfile = ctx.actions.declare_file("-".join(filename_segments) + ".whl")
@@ -402,7 +438,7 @@ def _py_wheel_impl(ctx):
     args.add("--version", version_str)
     args.add("--python_tag", python_tag)
     args.add("--abi", abi)
-    args.add("--platform", ctx.attr.platform)
+    args.add("--platform", platform)
     args.add("--out", outfile)
     args.add("--name_file", name_file)
     args.add_all(ctx.attr.strip_path_prefixes, format_each = "--strip_path_prefix=%s")
@@ -450,8 +486,8 @@ def _py_wheel_impl(ctx):
     for c in ctx.attr.classifiers:
         metadata_contents.append("Classifier: %s" % c)
 
-    if ctx.attr.python_requires:
-        metadata_contents.append("Requires-Python: %s" % ctx.attr.python_requires)
+    if python_requires:
+        metadata_contents.append("Requires-Python: %s" % python_requires)
 
     if ctx.attr.requires and ctx.attr.requires_file:
         fail("`requires` and `requires_file` are mutually exclusive. Please update {}".format(ctx.label))
@@ -640,7 +676,7 @@ def _transition_wheel_impl(settings, attr):
 
 py_wheel = ruleb.Rule(
     implementation = py_wheel_lib.implementation,
-    doc = """\
+    doc = """
 Internal rule used by the [py_wheel macro](#py_wheel).
 
 These intentionally have the same name to avoid sharp edges with Bazel macros.
@@ -653,4 +689,7 @@ in the way they expect.
         inputs = TRANSITION_LABELS,
         outputs = TRANSITION_LABELS,
     ),
+    toolchains = [
+        ruleb.ToolchainType(TARGET_TOOLCHAIN_TYPE, mandatory = False),
+    ],
 ).build()

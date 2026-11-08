@@ -1,0 +1,209 @@
+# Builds all deliverables for a release without publishing them:
+# - `//dev/release_artifacts:artifacts_for_release` for the platforms in
+#   dev/platforms, which cover python-build-standalone's platforms except s390x;
+#   see dev/release_artifacts/build.sh. Linux x86_64 runners cross-compile the
+#   files for other Linux CPUs. macOS and Windows files need those OSes' SDKs,
+#   so they're built on those OSes.
+# - `SHA256SUMS`, `artifacts_manifest.json`, and `artifacts_manifest.bzl` for
+#   the built platform binaries.
+# - The release source archive (`rules_python-<ref>.tar.gz`) and
+#   `release_notes.txt`.
+# - The `bazel_runfiles` wheel (`//python/runfiles:wheel.dist`).
+name: "Release: Build Artifacts"
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "The git ref (e.g. release tag) to build. Defaults to the selected ref."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: Build ${{ matrix.triple }}
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    # Builds take a few minutes; cancel hung ones instead of holding a runner
+    # for the default 6 hours.
+    timeout-minutes: 30
+    strategy:
+      # Report the result of every platform instead of stopping at the first
+      # failure.
+      fail-fast: false
+      matrix:
+        include:
+          - triple: aarch64-apple-darwin
+            runner: macos-15
+          - triple: aarch64-pc-windows-msvc
+            runner: windows-11-arm
+          - triple: x86_64-apple-darwin
+            runner: macos-15-intel
+          - triple: x86_64-pc-windows-msvc
+            runner: windows-2022
+          # Cross-compiled; see dev/platforms/BUILD.bazel and
+          # dev/release_artifacts/BUILD.bazel.
+          - triple: i686-pc-windows-msvc
+            runner: windows-2022
+          - triple: linux
+            runner: ubuntu-24.04
+    env:
+      REF: ${{ inputs.ref || github.sha }}
+      TRIPLE: ${{ matrix.triple }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: Setup Bazel
+        uses: ./.github/actions/setup-bazel
+        with:
+          buildbuddy_api_key: >-
+            ${{ github.event_name == 'pull_request'
+            && secrets.BUILDBUDDY_CAS_ONLY_KEY
+            || (github.event_name != 'pull_request' && secrets.BUILDBUDDY_READ_WRITE_KEY)
+            || '' }}
+
+      # Release commands run main's workflows, even for patch releases of older
+      # release branches. Skip refs without dev/platforms, since their scripts
+      # don't build for the job's platform, or don't exist. If a ref's
+      # dev/platforms lacks the job's platform, build.sh fails.
+      - name: Build artifacts
+        id: build
+        if: hashFiles('dev/platforms/BUILD.bazel') != ''
+        run: dev/release_artifacts/build.sh "$REF" "$TRIPLE"
+
+      # build.sh only sets `files` if the build succeeded. If the build failed,
+      # it only adds a warning, since releases don't use the files yet.
+      - name: Verify artifacts
+        if: steps.build.outputs.files != ''
+        run: dev/release_artifacts/verify.sh "$TRIPLE"
+
+      # Stores the files with this workflow run so the package job, caller
+      # workflow, and users viewing the run can download them.
+      - name: Upload artifacts
+        if: steps.build.outputs.files != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-artifacts-${{ matrix.triple }}
+          path: ${{ steps.build.outputs.files }}
+          if-no-files-found: error
+
+  build_wheel:
+    name: Build wheel
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: Setup Bazel
+        uses: ./.github/actions/setup-bazel
+        with:
+          buildbuddy_api_key: >-
+            ${{ github.event_name == 'pull_request'
+            && secrets.BUILDBUDDY_CAS_ONLY_KEY
+            || (github.event_name != 'pull_request' && secrets.BUILDBUDDY_READ_WRITE_KEY)
+            || '' }}
+
+      - name: Build runfiles wheel
+        env:
+          INPUT_REF: ${{ inputs.ref }}
+        # ${INPUT_REF:+...} expands to the --stamp and --embed_label flags only
+        # when INPUT_REF is non-empty (release builds, not CI builds).
+        run: >-
+          bazel build
+          ${INPUT_REF:+--stamp "--embed_label=$INPUT_REF"}
+          //python/runfiles:wheel.dist
+          //python/runfiles:wheel.publish
+          //tools/publish:twine
+
+      - name: Check runfiles wheel
+        run: bazel-bin/tools/publish/twine check bazel-bin/python/runfiles/dist/*.whl
+
+      - name: Upload runfiles wheel
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-wheel
+          path: bazel-bin/python/runfiles/dist/*.whl
+          if-no-files-found: error
+
+  package:
+    name: Package release
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    env:
+      REF: ${{ inputs.ref || github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: Download built artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: release-artifacts-*
+          path: release-artifacts
+          merge-multiple: true
+
+      # The hashFiles(...) checks below are for backwards compatibility with
+      # patch releases of older release branches that predate these scripts and
+      # artifacts (and while artifact build failures are non-fatal). They can be
+      # removed once older release branches are no longer supported.
+      - name: Generate SHA256SUMS
+        if: hashFiles('release-artifacts/*') != ''
+        working-directory: release-artifacts
+        run: sha256sum * > ../SHA256SUMS
+
+      - name: Generate artifacts manifest
+        if: >-
+          hashFiles('dev/release_artifacts/generate_artifacts_manifest.py') != '' &&
+          hashFiles('release-artifacts/*') != ''
+        run: >-
+          dev/release_artifacts/generate_artifacts_manifest.py
+          --bzl-output=artifacts_manifest.bzl
+          --json-output=artifacts_manifest.json
+          -- "$REF" release-artifacts
+
+      - name: Upload artifacts manifest
+        if: hashFiles('artifacts_manifest.json') != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-manifest
+          path: artifacts_manifest.json
+          if-no-files-found: error
+
+      - name: Create release archive and notes
+        env:
+          INPUT_REF: ${{ inputs.ref }}
+        run: .github/workflows/create_archive_and_notes.sh "$INPUT_REF"
+
+      - name: Upload release archive and notes
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-archive
+          path: |
+            rules_python-*.tar.gz
+            release_notes.txt
+            SHA256SUMS
+          if-no-files-found: error

@@ -60,12 +60,14 @@ declare -a INTERPRETER_ARGS_FROM_TARGET=(
 %interpreter_args%
 )
 
+cleanup_zip_dir=""
 if [[ "$IS_ZIPFILE" == "1" ]]; then
   # NOTE: Macs have an old version of mktemp, so we must use only the
   # minimal functionality of it.
   zip_dir=$(mktemp -d)
 
   if [[ -n "$zip_dir" && -z "${RULES_PYTHON_BOOTSTRAP_VERBOSE:-}" ]]; then
+    cleanup_zip_dir=1
     trap 'rm -fr "$zip_dir"' EXIT
   fi
   # unzip emits a warning and exits with code 1 when there is extraneous data,
@@ -121,12 +123,12 @@ else
       if [[ ! -L "$stub_filename" ]]; then
         break
       fi
-      stub_filename=$(readlink $stub_filename)
+      stub_filename=$(readlink "$stub_filename")
     done
     echo >&2 "Unable to find runfiles directory for $1"
     exit 1
   }
-  RUNFILES_DIR=$(find_runfiles_root $0)
+  RUNFILES_DIR=$(find_runfiles_root "$0")
 fi
 
 if [[ -n "$RULES_PYTHON_TESTING_TELL_RUNFILES_ROOT" ]]; then
@@ -148,15 +150,16 @@ function find_python_interpreter() {
   fi
 }
 
-python_exe=$(find_python_interpreter $RUNFILES_DIR $PYTHON_BINARY)
+python_exe=$(find_python_interpreter "$RUNFILES_DIR" "$PYTHON_BINARY")
 
 # Zip files have to re-create the venv bin/python3 symlink because they
 # don't contain it already.
 if [[ "$IS_ZIPFILE" == "1" ]]; then
-  use_exec=0
+  # A detached watcher below owns cleanup after exec replaces this bootstrap.
+  use_exec=1
   # It should always be under runfiles, but double check this. We don't
   # want to accidentally create symlinks elsewhere.
-  if [[ "$python_exe" != $RUNFILES_DIR/* ]]; then
+  if [[ "$python_exe" != "$RUNFILES_DIR"/* ]]; then
     echo >&2 "ERROR: Program's venv binary not under runfiles: $python_exe"
     exit 1
   fi
@@ -176,15 +179,15 @@ if [[ "$IS_ZIPFILE" == "1" ]]; then
     fi
   fi
   # The bin/ directory may not exist if it is empty.
-  mkdir -p "$(dirname $python_exe)"
+  mkdir -p "$(dirname "$python_exe")"
   _symlink "$symlink_to" "$python_exe"
 elif [[ "$RECREATE_VENV_AT_RUNTIME" == "1" ]]; then
   if [[ -n "$RULES_PYTHON_EXTRACT_ROOT" ]]; then
     use_exec=1
     # Use our runfiles path as a unique, reusable, location for the
     # binary-specific venv being created.
-    venv="$RULES_PYTHON_EXTRACT_ROOT/$(dirname $(dirname $PYTHON_BINARY))"
-    mkdir -p $RULES_PYTHON_EXTRACT_ROOT
+    venv="$RULES_PYTHON_EXTRACT_ROOT/$(dirname "$(dirname "$PYTHON_BINARY")")"
+    mkdir -p "$RULES_PYTHON_EXTRACT_ROOT"
   else
     # Re-exec'ing can't be used because we have to clean up the temporary
     # venv directory that is created.
@@ -196,7 +199,7 @@ elif [[ "$RECREATE_VENV_AT_RUNTIME" == "1" ]]; then
   fi
 
   # Match the basename; some tools, e.g. pyvenv key off the executable name
-  python_exe="$venv/bin/$(basename $PYTHON_BINARY_ACTUAL)"
+  python_exe="$venv/bin/$(basename "$PYTHON_BINARY_ACTUAL")"
 
   if [[ ! -e "$python_exe" ]]; then
     if [[ "$PYTHON_BINARY_ACTUAL" == /* ]]; then
@@ -215,7 +218,7 @@ elif [[ "$RECREATE_VENV_AT_RUNTIME" == "1" ]]; then
       fi
     fi
 
-    runfiles_venv="$RUNFILES_DIR/$(dirname $(dirname $PYTHON_BINARY))"
+    runfiles_venv="$RUNFILES_DIR/$(dirname "$(dirname "$PYTHON_BINARY")")"
     # When RESOLVE_PYTHON_BINARY_AT_RUNTIME is true, it means the toolchain
     # has thrown two complications at us:
     # 1. The build-time assumption of the Python version may not match the
@@ -253,7 +256,7 @@ EOF
     _symlink "$python_exe_actual" "$python_exe"
 
     if [[ ! -e "$venv_site_packages" ]]; then
-      mkdir -p $(dirname $venv_site_packages)
+      mkdir -p "$(dirname "$venv_site_packages")"
       _symlink "$runfiles_venv_site_packages" "$venv_site_packages"
     fi
   fi
@@ -270,7 +273,7 @@ fi
 if [[ ! -x "$python_exe" ]]; then
   if [[ ! -e "$python_exe" ]]; then
     echo >&2 "ERROR: Python interpreter not found: $python_exe"
-    ls -l $python_exe >&2
+    ls -l "$python_exe" >&2
     exit 1
   elif [[ ! -x "$python_exe" ]]; then
     echo >&2 "ERROR: Python interpreter not executable: $python_exe"
@@ -297,10 +300,6 @@ if [[ -z "${PYTHONSAFEPATH+x}" ]]; then
   interpreter_env+=("PYTHONSAFEPATH=${PYTHONSAFEPATH-1}")
 fi
 
-if [[ "$IS_ZIPFILE" == "1" ]]; then
-  interpreter_args+=("-XRULES_PYTHON_ZIP_DIR=$zip_dir")
-fi
-
 if [[ -n "${RULES_PYTHON_ADDITIONAL_INTERPRETER_ARGS}" ]]; then
   read -a additional_interpreter_args <<< "${RULES_PYTHON_ADDITIONAL_INTERPRETER_ARGS}"
   interpreter_args+=("${additional_interpreter_args[@]}")
@@ -325,6 +324,52 @@ command=(
   "$@"
 )
 
+# Prints an identifier for a running process that changes if the PID is reused,
+# or nothing once the process has exited. A zombie counts as exited, so it
+# doesn't matter whether the caller has reaped it yet.
+process_identity() {
+  local stat fields
+  if [[ -r "/proc/$1/stat" ]]; then
+    stat=$(< "/proc/$1/stat") || return 0
+    # The command name is in parentheses and may contain spaces, so split the
+    # fields after the last ")": field 3 (state) through field 22 (start time).
+    read -r -a fields <<< "${stat##*) }"
+    if [[ "${fields[0]}" != "Z" ]]; then
+      echo "${fields[19]}"
+    fi
+  elif command -v ps >/dev/null 2>&1; then
+    stat=$(ps -o stat=,lstart= -p "$1" 2>/dev/null)
+    stat="${stat#"${stat%%[![:space:]]*}"}"
+    if [[ -n "$stat" && "$stat" != Z* ]]; then
+      echo "${stat#* }"
+    fi
+  elif kill -0 "$1" 2>/dev/null; then
+    echo "running"
+  fi
+}
+
+if [[ -n "$cleanup_zip_dir" ]]; then
+  # exec replaces this shell, so the EXIT trap can't remove the extracted files.
+  # Instead, start a watcher that removes them once this PID, which becomes the
+  # Python process, exits. Unlike the trap, this also works when the process is
+  # killed with SIGKILL. The watcher is double-forked so it isn't a child of the
+  # Python process, and it doesn't hold this process's stdio open. It stays in
+  # the caller's process group, so it ignores the signals sent to a whole group
+  # (e.g. Ctrl-C in a terminal) and exits on its own once the process is gone.
+  # Unlike the implicit SIGINT ignore for background jobs, `trap ''` also
+  # applies to the commands it runs.
+  launcher_pid=$$
+  launcher_identity=$(process_identity "$launcher_pid")
+  ( (
+    trap '' INT QUIT HUP TERM
+    while [[ -n "$launcher_identity" &&
+             "$(process_identity "$launcher_pid")" == "$launcher_identity" ]]; do
+      sleep 1
+    done
+    rm -fr "$zip_dir"
+  ) </dev/null >/dev/null 2>&1 & )
+fi
+
 # We use `exec` instead of a child process so that signals sent directly (e.g.
 # using `kill`) to this process (the PID seen by the calling process) are
 # received by the Python process. Otherwise, this process receives the signal
@@ -333,8 +378,8 @@ command=(
 # for more information.
 #
 # However, we can't use exec when there is cleanup to do afterwards. Control
-# must return to this process so it can run the trap handlers. Such cases
-# occur when zip mode or recreate_venv_at_runtime creates temporary files.
+# must return to this process so it can run the trap handlers. This case
+# occurs when recreate_venv_at_runtime creates a temporary venv.
 if [[ "$use_exec" == "0" ]]; then
   "${command[@]}"
   exit $?

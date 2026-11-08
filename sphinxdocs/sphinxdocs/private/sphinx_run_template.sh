@@ -18,7 +18,7 @@ if [[ -z "$source_dir" ]]; then
     exit 1
 fi
 
-for path in "%SPHINX_RUNFILES_PATH%" "%SPHINX_EXEC_PATH%"; do
+for path in "./%SPHINX_RUNFILES_PATH%" "./%SPHINX_EXEC_PATH%"; do
   if [[ -e $path ]]; then
     sphinx=$path
     break

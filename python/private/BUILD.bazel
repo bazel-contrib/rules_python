@@ -17,6 +17,7 @@ load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
 load("//python:py_binary.bzl", "py_binary")
 load("//python:py_library.bzl", "py_library")
 load(":bazel_config_mode.bzl", "bazel_config_mode")
+load(":distribution_filegroup.bzl", "distribution_filegroup")
 load(":py_exec_tools_toolchain.bzl", "current_interpreter_executable")
 load(":py_interpreter_program.bzl", "py_interpreter_program")
 load(":sentinel_impl.bzl", "sentinel")
@@ -34,27 +35,17 @@ licenses(["notice"])
 
 exports_files([
     "runtime_env_toolchain_interpreter.sh",
-    "runtimes_manifest.txt",
-    "runtimes_manifest_workspace.bzl",
+    "runtimes_manifest.bzl",
 ])
 
-filegroup(
+distribution_filegroup(
     name = "distribution",
-    srcs = glob(["**"]) + [
-        "//python/private/api:distribution",
-        "//python/private/cc:distribution",
-        "//python/private/pypi:distribution",
-        "//python/private/whl_filegroup:distribution",
-        "//python/private/zipapp:distribution",
-        "//tools/build_defs/python/private:distribution",
-    ],
-    visibility = ["//python:__pkg__"],
 )
 
 filegroup(
     name = "coverage_deps_filegroup",
     srcs = ["coverage_deps.bzl"],
-    visibility = ["//tools/private/update_deps:__pkg__"],
+    visibility = ["//:__subpackages__"],
 )
 
 # Filegroup of bzl files that can be used by downstream rules for documentation generation
@@ -232,10 +223,13 @@ sentinel(
     visibility = ["//visibility:public"],
 )
 
-py_binary(
-    name = "sync_runtimes_manifest_workspace",
-    srcs = ["tools/sync_runtimes_manifest_workspace.py"],
-    visibility = ["//:__subpackages__"],
+py_library(
+    name = "sort_manifest_lib",
+    srcs = ["tools/sort_manifest.py"],
+    imports = ["../.."],
+    visibility = [
+        "//tests/toolchains:__pkg__",
+    ],
 )
 
 # Tool used by py_test's validation action to statically check that the main
@@ -330,6 +324,7 @@ bzl_library(
     deps = [
         ":builders",
         ":cc_helper",
+        ":flags",
         ":py_cc_link_params_info",
         ":py_info",
         ":py_internal",
@@ -346,6 +341,7 @@ bzl_library(
     name = "config_settings",
     srcs = ["config_settings.bzl"],
     deps = [
+        ":common_labels",
         ":text_util",
         ":version",
         ":visibility",
@@ -469,6 +465,7 @@ bzl_library(
     srcs = ["precompile.bzl"],
     deps = [
         ":attributes",
+        ":common",
         ":flags",
         ":py_interpreter_program",
         ":toolchain_types",
@@ -561,12 +558,12 @@ bzl_library(
         ":py_executable_info",
         ":py_info",
         ":py_internal",
-        ":py_runtime_info",
         ":reexports",
         ":rule_builders",
         ":toolchain_types",
         ":transition_labels",
         ":venv_runfiles",
+        "//python/private/toolchains:shrubbery_toolchain",
         "@bazel_skylib//lib:dicts",
         "@bazel_skylib//lib:paths",
         "@bazel_skylib//lib:structs",
@@ -677,6 +674,7 @@ bzl_library(
         ":common_labels",
         ":reexports",
         "//python:py_runtime_info",
+        "//python/private/pypi:python_tag",
         "@bazel_skylib//rules:common_settings",
     ],
 )
@@ -736,6 +734,7 @@ bzl_library(
         ":py_package",
         ":rule_builders",
         ":stamp_impl",
+        ":toolchain_types",
         ":transition_labels",
         ":version",
     ],
@@ -753,6 +752,7 @@ bzl_library(
         ":python_register_toolchains",
         ":pythons_hub",
         ":repo_utils",
+        ":runtimes_manifest",
         ":toolchains_repo",
         ":version",
         "//python:versions",
@@ -776,6 +776,7 @@ bzl_library(
     deps = [
         ":coverage_deps",
         ":full_version",
+        ":pbs_manifest",
         ":python_repository",
         ":toolchains_repo",
         "//python:versions",
@@ -787,6 +788,7 @@ bzl_library(
     srcs = ["python_repository.bzl"],
     deps = [
         ":auth",
+        ":pbs_manifest",
         ":repo_utils",
         ":text_util",
         "//python:versions",
@@ -798,6 +800,7 @@ bzl_library(
     srcs = ["pythons_hub.bzl"],
     deps = [
         ":pbs_manifest",
+        ":runtimes_manifest",
         ":text_util",
         ":toolchains_repo",
         "//python:versions",
@@ -880,6 +883,7 @@ bzl_library(
     name = "toolchains_repo",
     srcs = ["toolchains_repo.bzl"],
     deps = [
+        ":pbs_manifest",
         ":repo_utils",
         ":text_util",
         "//python:versions",
@@ -932,6 +936,17 @@ bzl_library(
 )
 
 bzl_library(
+    name = "sentinel_impl",
+    srcs = ["sentinel_impl.bzl"],
+    deps = [":py_info"],
+)
+
+bzl_library(
+    name = "artifacts_manifest",
+    srcs = ["artifacts_manifest.bzl"],
+)
+
+bzl_library(
     name = "bzlmod_enabled",
     srcs = ["bzlmod_enabled.bzl"],
 )
@@ -939,6 +954,11 @@ bzl_library(
 bzl_library(
     name = "common_labels",
     srcs = ["common_labels.bzl"],
+)
+
+bzl_library(
+    name = "distribution_filegroup",
+    srcs = ["distribution_filegroup.bzl"],
 )
 
 bzl_library(
@@ -1002,13 +1022,8 @@ bzl_library(
 )
 
 bzl_library(
-    name = "runtimes_manifest_workspace",
-    srcs = ["runtimes_manifest_workspace.bzl"],
-)
-
-bzl_library(
-    name = "sentinel_impl",
-    srcs = ["sentinel_impl.bzl"],
+    name = "runtimes_manifest",
+    srcs = ["runtimes_manifest.bzl"],
 )
 
 bzl_library(

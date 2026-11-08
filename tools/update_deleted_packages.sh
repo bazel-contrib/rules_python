@@ -36,6 +36,6 @@ cd $DIR
         xargs -I{} find {} \( -name BUILD -or -name BUILD.bazel \) |
         xargs -n 1 dirname |
         grep -v "gazelle/docs" |
-        sort -u |
+        LC_ALL=C sort -u |
         sed 's/^/common --deleted_packages=/g' 
 } | tee "$DIR"/.bazelrc.deleted_packages

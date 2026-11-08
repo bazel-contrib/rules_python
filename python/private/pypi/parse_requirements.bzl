@@ -147,6 +147,79 @@ def _parse_requirements_with_uv_lock(
         logger = logger,
     )
 
+def _uv_lock_package_dependencies(pkg):
+    """Collect regular, optional, and development dependency edges."""
+    deps = list(pkg.get("dependencies", []))
+    for table in ["optional-dependencies", "dev-dependencies"]:
+        for group in pkg.get(table, {}).values():
+            deps.extend(group)
+    return deps
+
+def _uv_lock_package_platforms(packages, all_platforms, platforms):
+    """Find each lock entry's platforms by walking dependency edges from roots.
+
+    Follow all optional dependencies because uv_lock_extras_map enables every
+    recorded extra. Development dependency groups must also remain available.
+    """
+    by_name = {}
+    roots = []
+    dependencies = []
+    for i, pkg in enumerate(packages):
+        by_name.setdefault(normalize_name(pkg["name"]), []).append(i)
+        dependencies.append(_uv_lock_package_dependencies(pkg))
+        source = pkg.get("source", {})
+        if "virtual" in source or "editable" in source:
+            roots.append(i)
+
+    result = [[] for _ in packages]
+    for p in all_platforms:
+        marker_env = platforms[p].env
+        compatible = {
+            i: None
+            for i, pkg in enumerate(packages)
+            if not pkg.get("resolution-markers") or evaluate(
+                " or ".join(pkg["resolution-markers"]),
+                env = marker_env,
+                strict = False,
+            ) != False
+        }
+        if not roots:
+            # Exported/synthetic locks without workspace roots retain the
+            # package-level resolution-marker behavior.
+            for i in compatible:
+                result[i].append(p)
+            continue
+
+        visited = {i: None for i in roots if i in compatible}
+        queue = list(visited)
+
+        # Mark packages when enqueuing so cycles and diamonds cannot exceed
+        # the number of packages. Starlark has no while loops.
+        for _ in range(len(packages)):
+            if not queue:
+                break
+            i = queue.pop()
+            result[i].append(p)
+            for dep in dependencies[i]:
+                # Unknown values (notably `extra`) may remain as expressions;
+                # only a definitively false platform marker excludes an edge.
+                marker = dep.get("marker", "")
+                if marker and evaluate(marker, env = marker_env, strict = False) == False:
+                    continue
+                for target in by_name.get(normalize_name(dep["name"]), []):
+                    if target not in compatible or target in visited:
+                        continue
+
+                    # Forked entries can share a name but differ in identity.
+                    pkg = packages[target]
+                    if "version" in dep and dep["version"] != pkg["version"]:
+                        continue
+                    if "source" in dep and dep["source"] != pkg.get("source", {}):
+                        continue
+                    visited[target] = None
+                    queue.append(target)
+    return result
+
 def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, platforms = {}):
     """Parse uv.lock JSON and build the same return structs as parse_requirements.
 
@@ -168,17 +241,11 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
     if not platforms:
         fail("BUG: platforms must be configured")
 
-    for pkg in uv_lock["package"]:
+    package_platforms = _uv_lock_package_platforms(uv_lock["package"], all_platforms, platforms)
+    for i, pkg in enumerate(uv_lock["package"]):
         name = pkg["name"]
         version = pkg["version"]
         norm_name = normalize_name(name)
-        dependencies = pkg.get("dependencies", [])
-        if dependencies:
-            dependencies = [
-                "{name}; {marker}".format(**dep) if "marker" in dep else dep["name"]
-                for dep in dependencies
-            ]
-
         entry = uv_packages.setdefault(norm_name, {
             "distribution": name,
             "resolved_srcs": [],
@@ -196,16 +263,7 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
         pkg_extras = sorted(extras_map.get(name, []))
         extra_str = "[{}]".format(",".join(pkg_extras)) if pkg_extras else ""
 
-        markers = pkg.get("resolution-markers", [])
-        if markers:
-            marker_expr = " or ".join(markers)
-            pkg_platforms = [
-                p
-                for p in all_platforms
-                if evaluate(marker_expr, env = platforms[p].env)
-            ]
-        else:
-            pkg_platforms = list(all_platforms)
+        pkg_platforms = package_platforms[i]
 
         # Prepare candidates
         candidates = []
@@ -233,14 +291,16 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
 
         git_struct = None
         if pkg.get("source", {}).get("git"):
-            url = pkg["source"]["git"]
-            _, _, filename = url.rpartition("/")
+            # A git source is not a downloadable artifact. Leave `url` and
+            # `filename` empty, the same as a `foo @ git+...` line from a
+            # requirements file, so that `pip` builds it from the requirement
+            # line instead of the Bazel downloader trying to fetch the URL.
             git_struct = struct(
-                filename = filename,
-                url = url,
+                filename = "",
+                url = "",
                 digest = "",
                 kind = "git",
-                source = pkg["source"],
+                requirement = _uv_lock_git_requirement(pkg["source"]["git"]),
             )
 
         plat_to_src = {}
@@ -278,14 +338,20 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
         for key, val in src_to_plats.items():
             src = val.src
             plats = sorted(val.plats)
-            requirement_line = "{name}{extras}=={version}".format(
-                name = name,
-                extras = extra_str,
-                version = version,
-            )
+            if src.kind == "git":
+                requirement_line = "{name}{extras} @ {requirement}".format(
+                    name = name,
+                    extras = extra_str,
+                    requirement = src.requirement,
+                )
+            else:
+                requirement_line = "{name}{extras}=={version}".format(
+                    name = name,
+                    extras = extra_str,
+                    version = version,
+                )
             entry["resolved_srcs"].append(struct(
                 distribution = name,
-                dependencies = dependencies,
                 extra_pip_args = extra_pip_args or [],
                 requirement_line = requirement_line,
                 target_platforms = plats,
@@ -316,6 +382,55 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
 
     logger.debug(lambda: "Parsed {} packages from uv.lock".format(len(ret)))
     return ret
+
+def _uv_lock_git_requirement(git_source):
+    """Turn a uv.lock git source into a pip direct reference.
+
+    uv records `<repo url>?<query>#<resolved commit>`, where the query carries
+    `rev`, `tag` or `branch` and optionally `subdirectory`. pip expects
+    `git+<repo url>@<commit>[#subdirectory=<dir>]`. Pinning to the resolved
+    commit rather than the requested ref keeps the build reproducible.
+
+    Args:
+        git_source: {type}`str` the `source.git` value from uv.lock.
+
+    Returns:
+        {type}`str` the pip direct reference, without the `<name> @ ` prefix.
+    """
+    head, _, commit = git_source.partition("#")
+    repo_url, _, query = head.partition("?")
+    subdirectory = ""
+    for param in query.split("&"):
+        key, _, value = param.partition("=")
+        if key == "subdirectory":
+            # uv percent-encodes the value (`python%2Ffoo`), but pip reads the
+            # `#subdirectory=` fragment as a literal path.
+            subdirectory = _percent_decode(value)
+    requirement = "git+{}@{}".format(repo_url, commit)
+    if subdirectory:
+        requirement += "#subdirectory={}".format(subdirectory)
+    return requirement
+
+# Printable ASCII, indexed by `code point - 0x20`, as Starlark has no `chr()`.
+_PRINTABLE_ASCII = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
+
+def _percent_decode(value):
+    """Decode `%XX` escapes of printable ASCII; leave any other escape as-is."""
+    parts = value.split("%")
+    out = [parts[0]]
+    for part in parts[1:]:
+        code = int(part[:2], 16) if len(part) >= 2 and _is_hex(part[:2]) else -1
+        if code >= 0x20 and code <= 0x7e:
+            out.append(_PRINTABLE_ASCII[code - 0x20] + part[2:])
+        else:
+            out.append("%" + part)
+    return "".join(out)
+
+def _is_hex(s):
+    for c in s.elems():
+        if c not in "0123456789abcdefABCDEF":
+            return False
+    return True
 
 def _parse_uv_lock_hash(hash_str):
     """Parse a uv.lock `hash` value of the form `<algo>:<digest>`.
@@ -528,7 +643,6 @@ def _package_srcs(
                 key,
                 struct(
                     distribution = name,
-                    dependencies = [],
                     extra_pip_args = r.extra_pip_args,
                     requirement_line = req_line,
                     target_platforms = [],

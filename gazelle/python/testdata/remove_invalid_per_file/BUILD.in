@@ -16,6 +16,13 @@ py_library(
     visibility = ["//:__subpackages__"],
 )
 
+py_library(
+    name = "deleted_lib_with_imports_attrib",
+    srcs = ["deleted.py"],
+    imports = ["."],
+    visibility = ["//:__subpackages__"],
+)
+
 # Valid py_binary — __main__.py exists on disk, should be kept.
 py_binary(
     name = "remove_invalid_per_file_bin",
@@ -30,6 +37,13 @@ py_binary(
     visibility = ["//:__subpackages__"],
 )
 
+py_binary(
+    name = "deleted_bin_with_imports_attrib",
+    srcs = ["deleted_bin.py"],
+    imports = ["."],
+    visibility = ["//:__subpackages__"],
+)
+
 # Valid py_test — bar_test.py exists on disk, should be kept.
 py_test(
     name = "bar_test",
@@ -41,5 +55,12 @@ py_test(
 py_test(
     name = "deleted_test",
     srcs = ["deleted_test.py"],
+    visibility = ["//:__subpackages__"],
+)
+
+py_test(
+    name = "deleted_test_with_imports_attrib",
+    srcs = ["deleted_test.py"],
+    imports = ["."],
     visibility = ["//:__subpackages__"],
 )

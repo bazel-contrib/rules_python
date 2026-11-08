@@ -1,6 +1,6 @@
 load("//python:py_library.bzl", "py_library")
+load("//python:pytest_test.bzl", "pytest_test")
 load("//tests/support:support.bzl", "NOT_WINDOWS")
-load("//tests/support/pytest_test:pytest_test.bzl", "pytest_test")
 
 py_library(
     name = "on_comment",
@@ -17,5 +17,89 @@ pytest_test(
     deps = [
         ":on_comment",
         "@pypi//pytest_mock",
+    ],
+)
+
+py_library(
+    name = "on_pr_closed",
+    testonly = True,
+    srcs = ["//.github/workflows:on_pr_closed.py"],
+    imports = ["../../.github/workflows"],
+    target_compatible_with = NOT_WINDOWS,
+)
+
+pytest_test(
+    name = "on_pr_closed_test",
+    srcs = ["on_pr_closed_test.py"],
+    target_compatible_with = NOT_WINDOWS,
+    deps = [
+        ":on_pr_closed",
+        "@pypi//pytest_mock",
+    ],
+)
+
+pytest_test(
+    name = "release_build_artifacts_test",
+    srcs = ["release_build_artifacts_test.py"],
+    data = [
+        "//.github/workflows:all_files",
+        "//dev/platforms:BUILD.bazel",
+    ],
+    target_compatible_with = ["@platforms//os:linux"],
+    deps = [
+        "//python/runfiles",
+        "@pypi//pyyaml",
+    ],
+)
+
+pytest_test(
+    name = "workflow_permissions_test",
+    srcs = ["workflow_permissions_test.py"],
+    data = [
+        "//.bcr:config_yml",
+        "//.github/workflows:all_files",
+    ],
+    target_compatible_with = NOT_WINDOWS,
+    deps = [
+        "//python/runfiles",
+        "@pypi//pyyaml",
+    ],
+)
+
+pytest_test(
+    name = "release_artifacts_test",
+    srcs = ["release_artifacts_test.py"],
+    data = [
+        "//:MODULE.bazel",
+        "//.github/workflows:create_archive_and_notes.sh",
+        "//dev/release_artifacts:generate_artifacts_manifest.py",
+    ],
+    target_compatible_with = ["@platforms//os:linux"],
+    deps = [
+        "//python/runfiles",
+    ],
+)
+
+py_library(
+    name = "download_bazel",
+    testonly = True,
+    srcs = ["//.github/actions/setup-bazel:download_bazel.py"],
+    imports = ["../../.github/actions/setup-bazel"],
+    target_compatible_with = NOT_WINDOWS,
+)
+
+pytest_test(
+    name = "setup_bazel_test",
+    srcs = ["setup_bazel_test.py"],
+    data = [
+        "//:.bazelrc",
+        "//:buildbuddy.bazelrc",
+        "//.github/actions/setup-bazel:all_files",
+    ],
+    target_compatible_with = NOT_WINDOWS,
+    deps = [
+        ":download_bazel",
+        "//python/runfiles",
+        "@pypi//pyyaml",
     ],
 )

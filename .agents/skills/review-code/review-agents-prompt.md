@@ -13,5 +13,9 @@ against `AGENTS.md`:
    not modified unless explicitly instructed.
 5. Check that all repo rules and macro conventions described in `AGENTS.md`
    are respected.
+6. Verify non-trivial scripts (such as multi-line shell or Python logic) are
+   factored into standalone files (e.g. `.sh` or `.py` files) rather than
+   inlined via heredocs (`<< 'EOF'`), `-c` flags (`bash -c`, `python3 -c`), or
+   multi-line workflow `run:` blocks.
 
 @.agents/skills/review-code/review-report-format.md

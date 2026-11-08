@@ -1,3 +1,8 @@
+---
+trigger: model_decision
+description: C/C++ rules design and Bazel rules_cc integration invariants
+---
+
 # C/C++ Rules Design & Bazel rules_cc Integration
 
 ## Concise `cc_shared_library` Interface & Export Rules

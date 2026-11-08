@@ -34,7 +34,6 @@ setting maps to and their precedence, refer to documentation on that page.
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("//python/private:common_labels.bzl", "labels")
 load("//python/private:text_util.bzl", "render")
-load("//python/private/pypi:whl_library_targets.bzl", "whl_library_deps_targets")
 load(
     ":labels.bzl",
     "DATA_LABEL",
@@ -47,6 +46,7 @@ load(
     "WHEEL_FILE_IMPL_LABEL",
     "WHEEL_FILE_PUBLIC_LABEL",
 )
+load(":whl_library_deps_targets.bzl", "whl_library_deps_targets")
 
 _NO_MATCH_ERROR_TEMPLATE = """\
 No matching wheel for current configuration's Python version and platform.
@@ -82,10 +82,10 @@ def pkg_aliases(
         actual,
         group_name = None,
         extra_aliases = None,
-        requires_dist = [],  # comes from METADATA or lock file
-        extras = [],  # comes from METADATA or lock file
-        include = [],  # comes from `//:config.bzl#packages`
-        group_deps = [],  # comes as an arg
+        requires_dist = [],
+        extras = [],
+        include = [],
+        group_deps = [],
         **kwargs):
     """Create aliases for an actual package.
 
@@ -98,20 +98,24 @@ def pkg_aliases(
             the aliases to point to mapping to repositories. The keys are passed
             to bazel skylib's `selects.with_or`, so they can be tuples as well.
         group_name: {type}`str` The group name that the pkg belongs to.
-        group_deps: {type}`list[str]` The packages that are in the given group.
+        group_deps: {type}`list[str]` The packages that are in the given group. Comes
+            as an arg through the hub repository.
         extra_aliases: {type}`list[str]` The extra aliases to be created.
-        requires_dist: {type}`list[str]` The list of dependencies.
+        requires_dist: {type}`list[str]` The list of dependencies. Comes from METADATA or a lock
+            file.
         extras: {type}`list[str]` The extras for which we should add extra
-            dependencies when parsing the requires_dist.
+            dependencies when parsing the requires_dist. Comes from METADATA or a lock file.
         include: {type}`list[str]` The subset of packages to include.
+            Comes from `//:config.bzl#packages`
         **kwargs: extra kwargs to pass to {bzl:obj}`get_config_settings`.
     """
-    metadata_name = name
-
-    alias = kwargs.pop("native", native).alias
+    _native = kwargs.pop("native", native)
+    rules = kwargs.pop("rules", struct(
+        whl_library_deps_targets = whl_library_deps_targets,
+    ))
     select = kwargs.pop("select", selects.with_or)
 
-    alias(
+    _native.alias(
         name = name,
         actual = ":" + PY_LIBRARY_PUBLIC_LABEL,
     )
@@ -120,10 +124,10 @@ def pkg_aliases(
         # if it has a group_name set, then it will create the impl label target in the
         # current macro, we still need to do the aliases to the actual groups package as
         # per below
-        whl_library_deps_targets(
+        rules.whl_library_deps_targets(
             repo = None,
             aliases = {},  # not none
-            metadata_name = metadata_name,
+            metadata_name = name,
             requires_dist = requires_dist,
             extras = extras,
             include = include,
@@ -131,6 +135,8 @@ def pkg_aliases(
             group_name = group_name,
             dep_template = "//{name}:{target}",  # this is const in this setting
             visibility = ["//visibility:public"],
+            native = _native,
+            rules = rules,
         )
         target_names = {}
     else:
@@ -148,10 +154,10 @@ def pkg_aliases(
 
     target_names = target_names | {
         DATA_LABEL: DATA_LABEL,
-        WHEEL_FILE: WHEEL_FILE,
-        PY_SRCS_LABEL: PY_SRCS_LABEL,
         DIST_INFO_LABEL: DIST_INFO_LABEL,
         EXTRACTED_WHEEL_FILES: EXTRACTED_WHEEL_FILES,
+        PY_SRCS_LABEL: PY_SRCS_LABEL,
+        WHEEL_FILE: WHEEL_FILE,
     } | {
         x: x
         for x in extra_aliases or []
@@ -159,7 +165,7 @@ def pkg_aliases(
 
     actual = multiplatform_whl_aliases(aliases = actual, **kwargs)
     if type(actual) == type({}) and "//conditions:default" not in actual:
-        alias(
+        _native.alias(
             name = _INCOMPATIBLE,
             actual = select(
                 {_LABEL_CURRENT_CONFIG_NO_MATCH: _LABEL_NONE},
@@ -201,21 +207,21 @@ def pkg_aliases(
         kwargs = {}
         if target_name.startswith("_"):
             kwargs["visibility"] = ["//_groups:__subpackages__"]
-        elif target_name in [WHEEL_FILE, PY_SRCS_LABEL]:
+        elif target_name in (WHEEL_FILE, PY_SRCS_LABEL):
             kwargs["visibility"] = ["//visibility:private"]
 
-        alias(
+        _native.alias(
             name = target_name,
             actual = _actual,
             **kwargs
         )
 
     if group_name:
-        alias(
+        _native.alias(
             name = PY_LIBRARY_PUBLIC_LABEL,
             actual = "//_groups:{}_pkg".format(group_name),
         )
-        alias(
+        _native.alias(
             name = WHEEL_FILE_PUBLIC_LABEL,
             actual = "//_groups:{}_whl".format(group_name),
         )

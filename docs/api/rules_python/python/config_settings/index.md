@@ -242,6 +242,22 @@ The `auto` value
 The `omit_if_generated_source` value was removed
 ::::
 
+::::{bzl:flag} pyi_deps_to_runfiles
+Controls whether dependencies listed in `pyi_deps` are propagated to runtime
+runfiles.
+
+Values:
+
+* `auto`: (default) Automatically decide the effective value based on the
+  compilation mode. In `opt` and standard builds, `pyi_deps` are pruned from
+  runtime runfiles.
+* `yes`: Propagate `pyi_deps` into runtime runfiles (legacy behavior).
+* `no`: Do not propagate `pyi_deps` into runtime runfiles.
+
+:::{versionadded} 2.5.0
+:::
+::::
+
 ::::{bzl:flag} validate_test_main
 Determines if `py_test` runs a build-time validation that its main module
 actually runs tests.
@@ -297,6 +313,27 @@ Values:
 * `no`: Use regular Python toolchains, default.
 * `yes`: Use the experimental Python toolchain with freethreaded compile option enabled.
 :::{versionadded} 0.38.0
+:::
+::::
+
+::::{bzl:flag} py_pbs_distribution
+Set which python-build-standalone archive the hermetic Python toolchains use.
+
+Values:
+* `auto`: Let `rules_python` choose; currently the same as `install_only`,
+  default.
+* `install_only`: Use the runtime with debug symbols.
+* `install_only_stripped`: Use the runtime without debug symbols, which is
+  substantially smaller.
+* `full`: Use the runtime that also includes build artifacts.
+
+If a Python version or platform has no archive of the selected kind, the
+`install_only` archive is used instead.
+
+See {ref}`Selecting the runtime archive <selecting-the-runtime-archive>` for
+details.
+
+:::{versionadded} 2.5.0
 :::
 ::::
 

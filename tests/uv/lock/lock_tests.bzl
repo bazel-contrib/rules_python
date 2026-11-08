@@ -16,8 +16,89 @@
 
 load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
 load("@bazel_skylib//rules:native_binary.bzl", "native_test")
+load("@rules_testing//lib:test_suite.bzl", "test_suite")
+load("//python:py_binary.bzl", "py_binary")
 load("//python/uv:lock.bzl", "lock")
+load("//python/uv:uv_toolchain.bzl", "uv_toolchain")
+load("//python/uv/private:lock.bzl", lock_testing = "testing")  # buildifier: disable=bzl-visibility
 load("//tests/support:py_reconfig.bzl", "py_reconfig_test")
+
+_basic_tests = []
+
+def _extra_runfiles_impl(ctx):
+    symlink_payload = ctx.actions.declare_file(
+        ctx.label.name + ".symlink_payload",
+    )
+    ctx.actions.write(symlink_payload, "symlink payload\n")
+    root_symlink_payload = ctx.actions.declare_file(
+        ctx.label.name + ".root_symlink_payload",
+    )
+    ctx.actions.write(root_symlink_payload, "root symlink payload\n")
+
+    # Keep the payloads out of ordinary runfiles to require their symlink mappings.
+    return [DefaultInfo(
+        runfiles = ctx.runfiles(
+            symlinks = {"uv_wrapper/symlink_payload.txt": symlink_payload},
+            root_symlinks = {
+                "uv_wrapper/root_symlink_payload.txt": root_symlink_payload,
+            },
+        ),
+    )]
+
+_extra_runfiles = rule(
+    implementation = _extra_runfiles_impl,
+)
+
+def _test_reroot(env):
+    reroot = lock_testing.reroot
+    env.expect.that_str(
+        reroot("dev/requirements.in", "dev"),
+    ).equals("requirements.in")
+    env.expect.that_str(reroot("dev/sub/pkg.txt", "dev")).equals("sub/pkg.txt")
+    env.expect.that_str(reroot("dev", "dev")).equals(".")
+    env.expect.that_str(reroot("a/b/c/foo.txt", "a/b")).equals("c/foo.txt")
+    env.expect.that_str(
+        reroot("requirements.in", None),
+    ).equals("requirements.in")
+    env.expect.that_str(
+        reroot("requirements.in", ""),
+    ).equals("requirements.in")
+
+_basic_tests.append(_test_reroot)
+
+def _test_reroot_all(env):
+    reroot_all = lock_testing.reroot_all
+    env.expect.that_collection(
+        reroot_all(["dev/a.txt", "dev/b.txt"], "dev"),
+    ).contains_exactly(["a.txt", "b.txt"]).in_order()
+
+_basic_tests.append(_test_reroot_all)
+
+def _test_up(env):
+    up = lock_testing.up
+    env.expect.that_str(up("foo/bar", None)).equals("foo/bar")
+    env.expect.that_str(up("foo/bar", "")).equals("foo/bar")
+    env.expect.that_str(up("foo/bar", "dev")).equals("../foo/bar")
+    env.expect.that_str(
+        up("foo/bar", "examples/bzlmod"),
+    ).equals("../../foo/bar")
+    env.expect.that_str(up("foo/bar", "a/b/c")).equals("../../../foo/bar")
+
+_basic_tests.append(_test_up)
+
+def _test_up_absolute(env):
+    up = lock_testing.up
+    env.expect.that_str(
+        up("/usr/bin/python3", "dev"),
+    ).equals("/usr/bin/python3")
+    env.expect.that_str(
+        up("/usr/bin/python3", "a/b/c"),
+    ).equals("/usr/bin/python3")
+    env.expect.that_str(
+        up("C:/Python312/python.exe", "dev"),
+    ).equals("C:/Python312/python.exe")
+
+_basic_tests.append(_test_up_absolute)
 
 def lock_test_suite(name):
     """The test suite with various lock-related integration tests
@@ -43,6 +124,22 @@ def lock_test_suite(name):
     )
 
     lock(
+        name = "requirements_directory",
+        srcs = ["testdata/requirements.in"],
+        constraints = [
+            "testdata/constraints.txt",
+            "testdata/constraints2.txt",
+        ],
+        build_constraints = [
+            "testdata/build_constraints.txt",
+            "testdata/build_constraints2.txt",
+        ],
+        directory = "tests/uv/lock/testdata",
+        tags = ["no-remote-exec"],
+        out = "testdata/requirements_directory.txt",
+    )
+
+    lock(
         name = "requirements_new_file",
         srcs = ["testdata/requirements.in"],
         out = "does_not_exist.txt",
@@ -65,9 +162,14 @@ def lock_test_suite(name):
             "requirements_new_file.run",
             "requirements.update",
             "requirements.run",
+            "requirements_directory.update",
+            "requirements_directory.run",
             "testdata/requirements.txt",
+            "testdata/requirements_directory.txt",
             "uv_lock_test.run",
+            "uv_lock_directory_test.run",
             ":requirements",
+            ":requirements_directory",
         ],
         main = "lock_run_test.py",
         tags = [
@@ -90,11 +192,33 @@ def lock_test_suite(name):
         file2 = "testdata/requirements.txt",
     )
 
+    diff_test(
+        name = "requirements_directory_test",
+        timeout = "short",
+        file1 = ":requirements_directory",
+        file2 = "testdata/requirements_directory.txt",
+    )
+
     lock(
         name = "uv_lock_test",
         srcs = ["testdata/pyproject.toml"],
         out = "testdata/uv_lock_expected.lock",
         tags = ["no-remote-exec"],
+    )
+
+    lock(
+        name = "uv_lock_directory_test",
+        srcs = ["testdata/pyproject.toml"],
+        directory = "tests/uv/lock/testdata",
+        out = "testdata/uv_lock_expected.lock",
+        tags = ["no-remote-exec"],
+    )
+
+    diff_test(
+        name = "uv_lock_directory_diff_test",
+        timeout = "short",
+        file1 = ":uv_lock_directory_test",
+        file2 = "testdata/uv_lock_expected.lock",
     )
 
     native_test(
@@ -106,12 +230,69 @@ def lock_test_suite(name):
         }),
     )
 
+    _extra_runfiles(
+        name = "uv_extra_runfiles",
+    )
+
+    py_binary(
+        name = "uv_with_runfiles",
+        srcs = ["uv_with_runfiles.py"],
+        data = [
+            "testdata/toolchain_payload.txt",
+            ":uv_extra_runfiles",
+        ],
+        deps = ["//python/runfiles"],
+    )
+
+    uv_toolchain(
+        name = "uv_with_runfiles_impl",
+        uv = ":uv_with_runfiles",
+        version = "0.0.0",
+    )
+
+    native.toolchain(
+        name = "uv_with_runfiles_toolchain",
+        toolchain = ":uv_with_runfiles_impl",
+        toolchain_type = "//python/uv:uv_toolchain_type",
+    )
+
+    lock(
+        name = "toolchain_requirements",
+        srcs = ["testdata/requirements.in"],
+        out = "toolchain_requirements.txt",
+        directory = None,
+    )
+
+    for mode in ["run", "update"]:
+        py_reconfig_test(
+            name = "toolchain_runfiles_" + mode + "_test",
+            srcs = ["toolchain_runfiles_test.py"],
+            main = "toolchain_runfiles_test.py",
+            args = ["$(rlocationpath :toolchain_requirements." + mode + ")"],
+            data = [":toolchain_requirements." + mode],
+            deps = ["//python/runfiles"],
+            extra_toolchains = [
+                str(Label(":uv_with_runfiles_toolchain")),
+                str(Label("//tests/support/cc_toolchains:all")),
+            ],
+        )
+
+    test_suite(
+        name = name + "_basic",
+        basic_tests = _basic_tests,
+    )
+
     native.test_suite(
         name = name,
         tests = [
+            ":" + name + "_basic",
+            ":toolchain_runfiles_run_test",
+            ":toolchain_runfiles_update_test",
             ":requirements_test",
+            ":requirements_directory_test",
             "//tests/uv/lock/pyproject_toml:requirements_test",
             ":requirements_run_tests",
             ":uv_lock_test_check",
+            ":uv_lock_directory_diff_test",
         ],
     )

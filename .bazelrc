@@ -23,6 +23,20 @@ build --config=pyrefly
 build:pyrefly --aspects=//tests/support/pyrefly:pyrefly.bzl%pyrefly_aspect
 build:pyrefly --output_groups=+pyrefly
 
+# Lint Rust code with clippy and check rustfmt formatting on every build that
+# touches a Rust target, so problems surface locally before CI. The output
+# groups are additive (`+`), so normal build outputs are unaffected.
+build --config=rust-lint
+build:rust-lint --aspects=@rules_rust//rust:defs.bzl%rust_clippy_aspect
+build:rust-lint --aspects=@rules_rust//rust:defs.bzl%rustfmt_aspect
+build:rust-lint --output_groups=+clippy_checks,+rustfmt_checks
+# Non-test crates deny `unwrap()`/`expect()` via a crate-level attribute
+# (errors must be returned, not panicked). Tests may panic freely; see
+# .clippy.toml. `-Dwarnings` makes any clippy warning fail the build; the toml
+# only configures how lints behave, it cannot set lint levels.
+build:rust-lint --@rules_rust//rust/settings:clippy_flags=-Dwarnings
+build:rust-lint --@rules_rust//rust/settings:clippy.toml=//:.clippy.toml
+
 # Ensure ongoing compatibility with this flag.
 common --incompatible_disallow_struct_provider_syntax
 # Makes Bazel 7 act more like Bazel 8
@@ -36,9 +50,6 @@ common --enable_platform_specific_config
 # See https://github.com/bazel-contrib/rules_python/issues/3655
 common --incompatible_strict_action_env=false
 
-# To work around bug on bazel 7
-common:ci --experimental_repository_cache_hardlinks=false
-
 # Windows makes use of runfiles for some rules
 build --enable_runfiles
 
@@ -47,12 +58,22 @@ common --enable_bzlmod
 
 # Local disk cache greatly speeds up builds if the regular cache is lost
 common --disk_cache=~/.cache/bazel/bazel-disk-cache
+# Shared repository cache avoids re-downloading external dependencies across workspaces
+common --repository_cache=~/.cache/bazel/bazel-repo-cache
+# Hardlinks save disk space and copy time when unpacking repositories
+common --experimental_repository_cache_hardlinks=true
 # Drop `experimental_` prefix once Bazel 7 is no longer supported
 common --experimental_downloader_config=downloader_config.cfg
 common --http_timeout_scaling=10.0
 common --experimental_repository_downloader_retries=10
 
-
+# BazelCI's default and RBE bzlmod jobs pass --config=ci; see
+# .bazelci/presubmit.yml.
+# To work around bug on bazel 7
+common:ci --experimental_repository_cache_hardlinks=false
+# Make missing Visual Studio ARM64 build tools an error on Windows x86_64; see
+# dev/release_artifacts/BUILD.bazel.
+common:ci --//dev/release_artifacts:require_msvc_arm64=true
 
 # Additional config to use for readthedocs builds.
 # See .readthedocs.yml for additional flags that can only be determined from
@@ -80,6 +101,12 @@ build:macos --host_copt=-Wno-deprecated-declarations
 build:macos --host_copt=-Wno-stringop-overread
 build:macos --host_copt=-Wno-sign-compare
 
+# BuildBuddy's managed cloud pool only has Linux executors; disable remote
+# execution on macOS and Windows while keeping BES and remote caching enabled.
+common:macos --remote_executor=
+common:windows --remote_executor=
+
 import %workspace%/specialized_configs.bazelrc
+import %workspace%/buildbuddy.bazelrc
 
 try-import user.bazelrc

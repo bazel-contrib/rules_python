@@ -108,6 +108,35 @@ ValidateTestMainFlag = FlagEnum(
     is_enabled = _ValidateTestMainFlag_is_enabled,
 )
 
+# Bazel compilation modes (e.g. from `ctx.var["COMPILATION_MODE"]`).
+# buildifier: disable=name-conventions
+CompilationMode = enum(
+    DBG = "dbg",
+    FASTBUILD = "fastbuild",
+    OPT = "opt",
+)
+
+def _PyiDepsToRunfilesFlag_is_enabled(ctx):
+    value = ctx.attr._pyi_deps_to_runfiles_flag[BuildSettingInfo].value
+    if value == PyiDepsToRunfilesFlag.AUTO:
+        # In 'opt' compilation mode, prune pyi_deps from runtime runfiles.
+        if ctx.var.get("COMPILATION_MODE") == CompilationMode.OPT:
+            return False
+        return False
+    return value == PyiDepsToRunfilesFlag.YES
+
+# Determines if pyi_deps are propagated to runtime runfiles.
+# buildifier: disable=name-conventions
+PyiDepsToRunfilesFlag = FlagEnum(
+    # Automatically decide the effective value based on compilation mode.
+    AUTO = "auto",
+    # Propagate pyi_deps into runtime runfiles (legacy behavior).
+    YES = "yes",
+    # Do not propagate pyi_deps into runtime runfiles.
+    NO = "no",
+    is_enabled = _PyiDepsToRunfilesFlag_is_enabled,
+)
+
 def _string_flag_impl(ctx):
     if ctx.attr.override:
         value = ctx.attr.override
@@ -260,4 +289,46 @@ LibcFlag = FlagEnum(
     # Prefer musl wheels (e.g. musllinux_2_17_x86_64)
     MUSL = "musl",
     get_value = _libc_flag_get_value,
+)
+
+# Determines which python-build-standalone distribution (archive) is used for
+# the hermetic runtimes.
+#
+# buildifier: disable=name-conventions
+PbsDistributionFlag = FlagEnum(
+    # Let rules_python choose; currently the same as install_only.
+    AUTO = "auto",
+    # The install_only archive, which includes debug symbols.
+    INSTALL_ONLY = "install_only",
+    # The install_only_stripped archive, which omits debug symbols.
+    INSTALL_ONLY_STRIPPED = "install_only_stripped",
+    # The full archive, which includes build artifacts.
+    FULL = "full",
+)
+
+def _pbs_distribution_flag_impl(ctx):
+    value = ctx.build_setting_value
+    if value not in PbsDistributionFlag.flag_values():
+        fail((
+            "Invalid value for {name}: got {value}, must be one of {allowed}"
+        ).format(
+            name = ctx.label,
+            value = value,
+            allowed = PbsDistributionFlag.flag_values(),
+        ))
+
+    # config_setting matches against the FeatureFlagInfo value, so `auto` is
+    # resolved here and toolchains only need to match concrete distributions.
+    effective = value
+    if value == PbsDistributionFlag.AUTO:
+        effective = PbsDistributionFlag.INSTALL_ONLY
+    return [
+        BuildSettingInfo(value = value),
+        config_common.FeatureFlagInfo(value = effective),
+    ]
+
+pbs_distribution_flag = rule(
+    implementation = _pbs_distribution_flag_impl,
+    build_setting = config.string(flag = True),
+    doc = "The python-build-standalone distribution to use for hermetic runtimes.",
 )

@@ -8,5 +8,5 @@ local_path_override(
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.toolchain(
-    python_version = "3.9",
+    python_version = "3.11",
 )

@@ -144,6 +144,60 @@ def _test_py_runtime_pair_and_binary_impl(env, target):
 
 _tests.append(_test_py_runtime_pair_and_binary)
 
+def _template_var_info_factory(value, meta):
+    return subjects.struct(
+        value,
+        meta = meta,
+        attrs = {
+            "variables": subjects.dict,
+        },
+    )
+
+def _test_template_variables(name):
+    rt_util.helper_target(
+        py_runtime,
+        name = name + "_runtime",
+        abi_flags = "t",
+        implementation_name = "cpython",
+        interpreter_path = "/fake_interpreter",
+        interpreter_version_info = {
+            "major": "3",
+            "minor": "13",
+        },
+        python_version = "PY3",
+    )
+    rt_util.helper_target(
+        py_runtime_pair,
+        name = name + "_subject",
+        py3_runtime = name + "_runtime",
+    )
+    analysis_test(
+        name = name,
+        target = name + "_subject",
+        impl = _test_template_variables_impl,
+    )
+
+def _test_template_variables_impl(env, target):
+    template_vars = env.expect.that_target(target).provider(
+        platform_common.TemplateVariableInfo,
+        factory = _template_var_info_factory,
+    )
+    template_vars.variables().contains_exactly({
+        "PYTHON3": "/fake_interpreter",
+        "PYTHON3_ROOTPATH": "/fake_interpreter",
+        "PY_ABI_FLAGS": "t",
+        "PY_IMPLEMENTATION_NAME": "cpython",
+        "PY_MAJOR": "3",
+        "PY_MAJOR_DOT_MINOR": "3.13",
+        "PY_MAJOR_MINOR_NODOT": "313",
+        "PY_MINOR": "13",
+        "PY_WHEEL_ABI_TAG": "cp313t",
+        "PY_WHEEL_IMPLEMENTATION_TAG": "cp",
+        "PY_WHEEL_PYTHON_TAG": "cp313",
+    })
+
+_tests.append(_test_template_variables)
+
 def py_runtime_pair_test_suite(name):
     test_suite(
         name = name,

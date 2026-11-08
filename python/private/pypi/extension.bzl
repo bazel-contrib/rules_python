@@ -22,6 +22,7 @@ load("//python/private:auth.bzl", "AUTH_ATTRS")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:pyproject_utils.bzl", "read_pyproject", "version_from_requires_python")
 load("//python/private:repo_utils.bzl", "repo_utils")
+load(":default_platforms.bzl", "default_platforms")
 load(":hub_builder.bzl", "hub_builder")
 load(":hub_repository.bzl", "hub_repository", "whl_config_settings_to_json")
 load(":parse_whl_name.bzl", "parse_whl_name")
@@ -29,8 +30,10 @@ load(":pep508_env.bzl", "env")
 load(":pip_repository_attrs.bzl", "ATTRS")
 load(":platform.bzl", _plat = "platform")
 load(":pypi_cache.bzl", "pypi_cache")
+load(":shared_whl_srcs.bzl", "shared_whl_srcs")
 load(":simpleapi_download.bzl", "simpleapi_download")
 load(":unified_hub_repo.bzl", "unified_hub_repo")
+load(":whl_deps_repo.bzl", "whl_deps_repo")
 load(":whl_library.bzl", "whl_library")
 
 def _whl_mods_impl(whl_mods_dict):
@@ -57,128 +60,6 @@ def _whl_mods_impl(whl_mods_dict):
             name = hub_name,
             whl_mods = whl_mods,
         )
-
-def default_platforms():
-    """Return the built-in default platform definitions.
-
-    These provide the platform metadata needed for pip wheel resolution
-    (whl_abi_tags, whl_platform_tags, config_settings, etc.) across all
-    common OS/arch combinations. They are always used as the starting point
-    for build_config; root modules can override individual platforms via
-    pip.default tags.
-
-    Returns:
-        A dict of platform name to platform config dicts.
-    """
-    # NOTE @aignas 2025-07-06: we define these platforms to keep backwards compatibility. Whilst we
-    # stabilize the API this list may be updated with a mention in the CHANGELOG.
-
-    platforms = {}
-
-    # Linux platforms
-    for cpu in ["x86_64", "aarch64"]:
-        for freethreaded in ["", "_freethreaded"]:
-            platform_name = "linux_{}{}".format(cpu, freethreaded)
-            platforms[platform_name] = {
-                "arch_name": cpu,
-                "config_settings": [
-                    "@platforms//cpu:{}".format(cpu),
-                    "@platforms//os:linux",
-                    "//python/config_settings:_is_py_freethreaded_{}".format(
-                        "yes" if freethreaded else "no",
-                    ),
-                ],
-                "env": {"platform_version": "0"},
-                "marker": "python_version >= '3.13'" if freethreaded else "",
-                "name": platform_name,
-                "os_name": "linux",
-                "whl_abi_tags": ["cp{major}{minor}t"] if freethreaded else [
-                    "abi3",
-                    "cp{major}{minor}",
-                ],
-                "whl_platform_tags": [
-                    "linux_{}".format(cpu),
-                    "manylinux_*_{}".format(cpu),
-                ],
-            }
-
-    # macOS platforms
-    for cpu, platform_tag_cpus in {
-        "aarch64": ["universal2", "arm64"],
-        "x86_64": ["universal2", "x86_64"],
-    }.items():
-        for freethreaded in ["", "_freethreaded"]:
-            platform_name = "osx_{}{}".format(cpu, freethreaded)
-            platforms[platform_name] = {
-                "arch_name": cpu,
-                "config_settings": [
-                    "@platforms//cpu:{}".format(cpu),
-                    "@platforms//os:osx",
-                    "//python/config_settings:_is_py_freethreaded_{}".format(
-                        "yes" if freethreaded else "no",
-                    ),
-                ],
-                "env": {"platform_version": "14.0"},
-                "marker": "python_version >= '3.13'" if freethreaded else "",
-                "name": platform_name,
-                "os_name": "osx",
-                "whl_abi_tags": ["cp{major}{minor}t"] if freethreaded else [
-                    "abi3",
-                    "cp{major}{minor}",
-                ],
-                "whl_platform_tags": [
-                    "macosx_*_{}".format(suffix)
-                    for suffix in platform_tag_cpus
-                ],
-            }
-
-    # Windows x86_64 platforms
-    for freethreaded in ["", "_freethreaded"]:
-        platform_name = "windows_x86_64{}".format(freethreaded)
-        platforms[platform_name] = {
-            "arch_name": "x86_64",
-            "config_settings": [
-                "@platforms//cpu:x86_64",
-                "@platforms//os:windows",
-                "//python/config_settings:_is_py_freethreaded_{}".format(
-                    "yes" if freethreaded else "no",
-                ),
-            ],
-            "env": {"platform_version": "0"},
-            "marker": "python_version >= '3.13'" if freethreaded else "",
-            "name": platform_name,
-            "os_name": "windows",
-            "whl_abi_tags": ["cp{major}{minor}t"] if freethreaded else [
-                "abi3",
-                "cp{major}{minor}",
-            ],
-            "whl_platform_tags": ["win_amd64"],
-        }
-
-    # Windows aarch64 platforms
-    for freethreaded in ["", "_freethreaded"]:
-        platform_name = "windows_aarch64{}".format(freethreaded)
-        platforms[platform_name] = {
-            "arch_name": "aarch64",
-            "config_settings": [
-                "@platforms//cpu:aarch64",
-                "@platforms//os:windows",
-                "//python/config_settings:_is_py_freethreaded_{}".format(
-                    "yes" if freethreaded else "no",
-                ),
-            ],
-            "env": {"platform_version": "0"},
-            "marker": "python_version >= '3.13'" if freethreaded else "python_version >= '3.11'",
-            "name": platform_name,
-            "os_name": "windows",
-            "whl_abi_tags": ["cp{major}{minor}t"] if freethreaded else [
-                "abi3",
-                "cp{major}{minor}",
-            ],
-            "whl_platform_tags": ["win_arm64"],
-        }
-
-    return platforms
 
 def _configure(config, *, override = False, **kwargs):
     """Set the value in the config if the value is provided"""
@@ -207,6 +88,7 @@ def build_config(
         A struct with the configuration.
     """
     default_hub = None
+    unified_hub_requirements_bzl = False
     defaults = {
         "platforms": default_platforms(),
         "python_version": None,
@@ -221,6 +103,8 @@ def build_config(
                     if default_hub:
                         fail("Duplicate pip.default tag: only one explicit default PyPI hub is allowed.")
                     default_hub = tag.default_hub
+            if tag.unified_hub_requirements_bzl and mod.is_root:
+                unified_hub_requirements_bzl = True
             pyproject_toml = tag.pyproject_toml
             if pyproject_toml:
                 pyproject = read_pyproject(module_ctx, pyproject_toml)
@@ -270,6 +154,7 @@ def build_config(
         },
         enable_pipstar_extract = enable_pipstar_extract,
         toml_decode = toml.decode,
+        unified_hub_requirements_bzl = unified_hub_requirements_bzl,
     )
 
 def parse_modules(
@@ -454,7 +339,6 @@ You cannot use both the additive_build_content and additive_build_content_file a
     # Keeps track of all the hub's whl repos across the different versions.
     # dict[hub, dict[whl, dict[version, str pip]]]
     # Where hub, whl, and pip are the repo names
-    dep_graph = {}
     hub_whl_map = {}
     hub_group_map = {}
     exposed_packages = {}
@@ -469,7 +353,6 @@ You cannot use both the additive_build_content and additive_build_content_file a
             else:
                 whl_libraries[whl_name] = lib
 
-        dep_graph[hub.name] = out.dep_graph
         exposed_packages[hub.name] = out.exposed_packages
         extra_aliases[hub.name] = out.extra_aliases
         hub_group_map[hub.name] = out.group_map
@@ -479,12 +362,12 @@ You cannot use both the additive_build_content and additive_build_content_file a
         config = config,
         declared_deps = declared_deps,
         default_hub = config.default_hub or renamed_default_hub,
-        dep_graph = dep_graph,
         exposed_packages = exposed_packages,
         extra_aliases = extra_aliases,
         facts = simpleapi_cache.get_facts(),
         hub_group_map = hub_group_map,
         hub_whl_map = hub_whl_map,
+        unified_hub_requirements_bzl = config.unified_hub_requirements_bzl,
         whl_libraries = whl_libraries,
         whl_mods = whl_mods,
         platform_config_settings = {
@@ -508,7 +391,7 @@ def _create_unified_hub_repo(mods):
     extra_aliases = {}
 
     for hub_name in hubs:
-        for pkg_name in mods.exposed_packages.get(hub_name, []):
+        for pkg_name in mods.hub_whl_map[hub_name]:
             norm_pkg = normalize_name(pkg_name)
             if norm_pkg not in packages:
                 packages[norm_pkg] = []
@@ -538,6 +421,7 @@ def _create_unified_hub_repo(mods):
         extra_aliases = extra_aliases,
         hubs = hubs,
         packages = packages,
+        requirements_bzl = mods.unified_hub_requirements_bzl,
     )
 
 def _pip_impl(module_ctx):
@@ -551,15 +435,15 @@ def _pip_impl(module_ctx):
 
     pip.parse(
         hub_name = "pip",
-        python_version = 3.9,
-        requirements_lock = "//:requirements_lock_3_9.txt",
-        requirements_windows = "//:requirements_windows_3_9.txt",
-    )
-    pip.parse(
-        hub_name = "pip",
         python_version = 3.10,
         requirements_lock = "//:requirements_lock_3_10.txt",
         requirements_windows = "//:requirements_windows_3_10.txt",
+    )
+    pip.parse(
+        hub_name = "pip",
+        python_version = 3.11,
+        requirements_lock = "//:requirements_lock_3_11.txt",
+        requirements_windows = "//:requirements_windows_3_11.txt",
     )
 
     For instance, we have a hub with the name of "pip".
@@ -572,8 +456,8 @@ def _pip_impl(module_ctx):
     Two different pip.parse statements exist in MODULE.bazel provide the hub_name "pip".
     These definitions create two different pip spoke repositories that are
     related to the hub "pip".
-    One spoke uses Python 3.9 and the other uses Python 3.10. This code automatically
-    determines the Python version and the interpreter.
+    One spoke uses Python 3.10 and the other uses Python 3.11. This code
+    automatically determines the Python version and the interpreter.
     Both of these pip spokes contain requirements files that includes websocket
     and its dependencies.
 
@@ -582,8 +466,8 @@ def _pip_impl(module_ctx):
     each pip spoke had a requirements file that contained websockets. We
     then create two different wheel repositories that are named the following.
 
-    - @@rules_python~override~pip~pip_39_websockets
     - @@rules_python~override~pip~pip_310_websockets
+    - @@rules_python~override~pip~pip_311_websockets
 
     And if the wheel has any other dependencies subsequent wheels are created in the same fashion.
 
@@ -593,10 +477,10 @@ def _pip_impl(module_ctx):
     Also we may have more than one hub as defined in a MODULES.bazel file.  So we could have multiple
     hubs pointing to various different pip spokes.
 
-    Some other business rules notes. A hub can only have one spoke per Python version.  We cannot
-    have a hub named "pip" that has two spokes that use the Python 3.9 interpreter.  Second
-    we cannot have the same hub name used in sub-modules.  The hub name has to be globally
-    unique.
+    Some other business rules notes. A hub can only have one spoke per Python
+    version. We cannot have a hub named "pip" that has two spokes that use the
+    Python 3.10 interpreter. Second we cannot have the same hub name used in
+    sub-modules. The hub name has to be globally unique.
 
     This implementation also handles the creation of whl_modification JSON files that are used
     during the creation of wheel libraries. These JSON files used via the annotations argument
@@ -614,14 +498,22 @@ def _pip_impl(module_ctx):
     # Build all of the wheel modifications if the tag class is called.
     _whl_mods_impl(mods.whl_mods)
 
-    for name, args in mods.whl_libraries.items():
+    repos = shared_whl_srcs(
+        mods.whl_libraries,
+        hub_whl_map = mods.hub_whl_map,
+        extra_aliases = mods.extra_aliases,
+    )
+    for name, args in repos.srcs.items():
+        whl_library(name = name, **args)
+    for name, args in repos.deps.items():
+        whl_deps_repo(name = name, **args)
+    for name, args in repos.whl_libraries.items():
         whl_library(name = name, **args)
 
     for hub_name, whl_map in mods.hub_whl_map.items():
         hub_repository(
             name = hub_name,
             repo_name = hub_name,
-            dep_graph = mods.dep_graph.get(hub_name, {}),
             extra_hub_aliases = mods.extra_aliases.get(hub_name, {}),
             whl_map = {
                 key: whl_config_settings_to_json(values)
@@ -756,6 +648,26 @@ This is designed to work with dependency management tools like Renovate.
 :::
 
 :::{versionadded} 2.3.0
+:::
+""",
+    ),
+    "unified_hub_requirements_bzl": attr.bool(
+        default = False,
+        doc = """\
+Generate a `requirements.bzl` in the [Unified @pypi Hub](unified-pypi-hub) with
+the per-package macros of a concrete hub's: `requirement`, `whl_requirement`,
+`data_requirement` and `dist_info_requirement`. The labels they return are in
+the unified hub, so they follow {flag}`--venv` like `@pypi//<pkg>`.
+
+This is a migration aid for a repository whose hub used to be named `pypi`:
+after renaming it, its existing `load("@pypi//:requirements.bzl", "requirement")`
+calls keep working and can move to `@pypi//<pkg>` labels one at a time. The
+`all_*` lists are not generated, since they are fixed at loading time and could
+only list one hub's packages; load those from a concrete hub.
+
+Only the root module's value is used.
+
+:::{versionadded} 2.5.0
 :::
 """,
     ),
@@ -1000,6 +912,13 @@ a string `"{os}_{arch}"` as the value here. You could also use `"{os}_{arch}_fre
 the uv.lock file will be used as the primary source for package metadata.
 
 :::{versionadded} 2.2.0
+:::
+
+:::{versionchanged} VERSION_NEXT_PATCH
+Package platforms follow dependency markers from virtual and editable workspace
+roots, including development dependency groups. All recorded optional extras
+remain enabled, and their dependency markers are respected. Locks without
+workspace roots use package-level resolution markers.
 :::
 """,
         ),

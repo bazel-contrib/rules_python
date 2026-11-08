@@ -10,7 +10,10 @@ param(
     [string]$TargetOs,
 
     [Parameter(Position=3, Mandatory=$true)]
-    [string]$DataDirBasename
+    [string]$DataDirBasename,
+
+    [Parameter(Position=4, ValueFromRemainingArguments=$true)]
+    [string[]]$RewrittenScripts
 )
 
 $ErrorActionPreference = "Stop"
@@ -30,6 +33,13 @@ if ($TargetOs -eq "windows") {
     $platlibRepl = ""
     $purelibRepl = ""
     $scriptsRepl = "../../../bin/"
+}
+
+$rewrittenSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+if ($RewrittenScripts) {
+    foreach ($s in $RewrittenScripts) {
+        $null = $rewrittenSet.Add($s)
+    }
 }
 
 $lines = Get-Content -Path $InFile
@@ -53,7 +63,24 @@ foreach ($line in $lines) {
     } elseif ($rest.StartsWith("platlib/")) {
         $outLines.Add($quote + $platlibRepl + $rest.Substring(8))
     } elseif ($rest.StartsWith("scripts/")) {
-        $outLines.Add($quote + $scriptsRepl + $rest.Substring(8))
+        $entry = $rest.Substring(8)
+        if ($TargetOs -eq "windows") {
+            if ($quote -eq "`"") {
+                $idx = $entry.IndexOf("`"")
+                $spath = $entry.Substring(0, $idx)
+                $suffix = $entry.Substring($idx)
+            } else {
+                $idx = $entry.IndexOf(",")
+                $spath = $entry.Substring(0, $idx)
+                $suffix = $entry.Substring($idx)
+            }
+            if ($rewrittenSet.Contains($spath)) {
+                $spath = "$spath.bat"
+            }
+            $outLines.Add($quote + $scriptsRepl + $spath + $suffix)
+        } else {
+            $outLines.Add($quote + $scriptsRepl + $entry)
+        }
     } elseif ($rest.StartsWith("headers/")) {
         $outLines.Add($quote + $headersRepl + $rest.Substring(8))
     } elseif ($rest.StartsWith("data/")) {

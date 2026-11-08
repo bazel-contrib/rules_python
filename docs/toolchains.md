@@ -200,9 +200,9 @@ folder.  Look for the examples that contain a `MODULE.bazel` file.
 
 The `python.toolchain()` call makes its contents available under a repo named
 `python_X_Y`, where X and Y are the major and minor versions. For example,
-`python.toolchain(python_version="3.11")` creates the repo `@python_3_11`.
+`python.toolchain(python_version="3.14")` creates the repo `@python_3_14`.
 Remember to call `use_repo()` to make repos visible to your module:
-`use_repo(python, "python_3_11")`.
+`use_repo(python, "python_3_14")`.
 
 
 :::{deprecated} 1.1.0
@@ -228,6 +228,35 @@ locations. These will be helpful if you need to set environment variables of bin
 while using [`--nolegacy_external_runfiles`](https://bazel.build/reference/command-line-reference#flag--legacy_external_runfiles).
 The original make variables still work in exec contexts such as genrules.
 
+(selecting-the-runtime-archive)=
+### Selecting the runtime archive
+
+python-build-standalone publishes each runtime as several kinds of archive. The
+{obj}`--@rules_python//python/config_settings:py_pbs_distribution`
+flag selects which one the hermetic toolchains use:
+
+* `auto` (default): let `rules_python` choose; currently `install_only`.
+* `install_only`: the runtime with debug symbols.
+* `install_only_stripped`: the runtime without debug symbols, which is
+  substantially smaller. This reduces the size of runtimes and
+  {obj}`py_zipapp_binary` outputs.
+* `full`: the runtime plus build artifacts.
+
+Because this is a build flag, a single workspace can build with different
+archives, for example keeping debug symbols in development builds and using
+stripped runtimes in production builds:
+
+```
+# File: .bazelrc
+build:prod --@rules_python//python/config_settings:py_pbs_distribution=install_only_stripped
+```
+
+A toolchain is registered for each archive kind, and only the archive a build
+selects is downloaded. If a Python version or platform has no archive of the
+selected kind, the `install_only` archive is used instead. For example,
+stripped archives are only available for runtimes released from `20240726`
+onward.
+
 ### Overriding toolchain defaults and adding more versions
 
 One can perform various overrides for the registered toolchains from the root
@@ -240,11 +269,21 @@ existing attributes:
   via {attr}`python.override.minor_mapping`.
 * Per-version control of the coverage tool used using
   {attr}`python.single_version_platform_override.coverage_tool`.
+* Control of shared `libpython` files using the `libpython` attribute on
+  {bzl:obj}`python.override`, {bzl:obj}`python.single_version_override`, or
+  {bzl:obj}`python.single_version_platform_override`.
 * Adding additional Python versions via {bzl:obj}`python.single_version_override` or
   {bzl:obj}`python.single_version_platform_override`.
 * Adding additional Python versions dynamically from a manifest file or URL
   via {attr}`python.override.add_runtime_manifest_files` or
   {attr}`python.override.add_runtime_manifest_urls`.
+
+The `libpython` attribute accepts `auto`, `include`, or `exclude`, and defaults
+to `auto`. In automatic mode, shared `libpython` files are excluded only for
+recognized Astral Python Standalone builds from `20250517` onward, which are
+known to statically link `libpython` into the interpreter. Unknown, custom, and
+older runtimes retain the shared libraries. Use `include` or `exclude` to
+override this behavior when mirroring or customizing a runtime.
 
 ### Registering custom runtimes
 
@@ -457,17 +496,17 @@ To register a hermetic Python toolchain rather than rely on a system-installed i
 load("@rules_python//python:repositories.bzl", "python_register_toolchains")
 
 python_register_toolchains(
-    name = "python_3_11",
+    name = "python_3_14",
     # Available versions are listed in @rules_python//python:versions.bzl.
     # We recommend using the same version your team is already standardized on.
-    python_version = "3.11",
+    python_version = "3.14",
 )
 
 load("@rules_python//python:pip.bzl", "pip_parse")
 
 pip_parse(
     ...
-    python_interpreter_target = "@python_3_11_host//:python",
+    python_interpreter_target = "@python_3_14_host//:python",
     ...
 )
 ```
@@ -865,6 +904,9 @@ Currently the following flags are used to influence toolchain selection:
 * {obj}`--@rules_python//python/config_settings:py_linux_libc` for selecting the Linux libc variant.
 * {obj}`--@rules_python//python/config_settings:py_freethreaded` for selecting
   the freethreaded experimental Python builds available from `3.13.0` onwards.
+* {obj}`--@rules_python//python/config_settings:py_pbs_distribution`
+  for selecting which python-build-standalone archive to use, e.g. stripped
+  runtimes.
 
 ## Running the underlying interpreter
 
@@ -874,7 +916,7 @@ the executable pointing at the `python3` binary plus its relevant runfiles.
 
 ```console
 $ bazel run @rules_python//python/bin:python
-Python 3.11.1 (main, Jan 16 2023, 22:41:20) [Clang 15.0.7 ] on linux
+Python 3.14.4 (main, Jan 16 2026, 22:41:20) [Clang 15.0.7 ] on linux
 Type "help", "copyright", "credits" or "license" for more information.
 >>>
 $ bazel run @rules_python//python/bin:python --@rules_python//python/config_settings:python_version=3.12
@@ -886,15 +928,15 @@ Type "help", "copyright", "credits" or "license" for more information.
 You can also access a specific binary's interpreter this way by using the
 `@rules_python//python/bin:python_src` target. In the example below, it is
 assumed that the `@rules_python//tools/publish:twine` binary is fixed at Python
-3.11.
+3.14.
 
 ```console
 $ bazel run @rules_python//python/bin:python --@rules_python//python/bin:interpreter_src=@rules_python//tools/publish:twine
-Python 3.11.1 (main, Jan 16 2023, 22:41:20) [Clang 15.0.7 ] on linux
+Python 3.14.4 (main, Jan 16 2026, 22:41:20) [Clang 15.0.7 ] on linux
 Type "help", "copyright", "credits" or "license" for more information.
 >>>
 $ bazel run @rules_python//python/bin:python --@rules_python//python/bin:interpreter_src=@rules_python//tools/publish:twine --@rules_python//python/config_settings:python_version=3.12
-Python 3.11.1 (main, Jan 16 2023, 22:41:20) [Clang 15.0.7 ] on linux
+Python 3.14.4 (main, Jan 16 2026, 22:41:20) [Clang 15.0.7 ] on linux
 Type "help", "copyright", "credits" or "license" for more information.
 >>>
 ```

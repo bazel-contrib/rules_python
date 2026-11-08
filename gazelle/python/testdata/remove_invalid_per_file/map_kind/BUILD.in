@@ -18,9 +18,21 @@ py_library(
     visibility = ["//:__subpackages__"],
 )
 
+py_library(
+    name = "deleted_lib_with_imports_attrib",
+    srcs = ["deleted.py"],
+    imports = [".."],
+    visibility = ["//:__subpackages__"],
+)
+
 # Stale mapped py_binary — deleted_bin.py does not exist, should be removed.
 my_py_binary(
     name = "deleted_bin",
+    srcs = ["deleted_bin.py"],
+)
+
+my_py_binary(
+    name = "deleted_bin_with_imports_attrib",
     srcs = ["deleted_bin.py"],
 )
 
@@ -34,4 +46,10 @@ my_py_test(
 my_py_test(
     name = "deleted_test",
     srcs = ["deleted_test.py"],
+)
+
+my_py_test(
+    name = "deleted_test_with_imports_attrib",
+    srcs = ["deleted_test.py"],
+    imports = [".."],
 )

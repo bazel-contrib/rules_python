@@ -1,0 +1,76 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("@bazel_skylib//lib:selects.bzl", "selects")
+load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+load("@rules_python_internal//:rules_python_config.bzl", "config")
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
+load("//python/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")
+
+package(default_visibility = ["//:__subpackages__"])
+
+licenses(["notice"])
+
+distribution_filegroup(
+    name = "distribution",
+)
+
+# Whether to use the unified Rust implementation (`shrubbery`) for
+# build tools.
+# * `yes`: use it.
+# * `no`: use the built-in Python or script implementations.
+# * `auto`: let rules_python decide. Currently `yes` when developing
+#   rules_python (TOOL_DEPS_DEV_ONLY = False), and `no` in releases.
+#
+# Enable with `--//python/private/toolchains:need_shrubbery=yes` or
+# disable with `--//python/private/toolchains:need_shrubbery=no`.
+string_flag(
+    name = "need_shrubbery",
+    build_setting_default = "auto",
+    values = [
+        "auto",
+        "no",
+        "yes",
+    ],
+    visibility = NOT_ACTUALLY_PUBLIC,
+)
+
+config_setting(
+    name = "is_need_shrubbery_auto",
+    flag_values = {":need_shrubbery": "auto"},
+    visibility = ["//visibility:private"],
+)
+
+config_setting(
+    name = "is_need_shrubbery_yes",
+    flag_values = {":need_shrubbery": "yes"},
+    visibility = ["//visibility:private"],
+)
+
+selects.config_setting_group(
+    name = "is_need_shrubbery_enabled",
+    match_any = [
+        ":is_need_shrubbery_yes",
+    ] + ([
+        ":is_need_shrubbery_auto",
+    ] if not config.tool_deps_dev_only else []),
+    visibility = NOT_ACTUALLY_PUBLIC,
+)
+
+bzl_library(
+    name = "repo",
+    srcs = ["repo.bzl"],
+    deps = [
+        "//python/private:artifacts_manifest",
+        "//python/private:bazel_tools",
+        "//python/private:text_util",
+        "//python/private:toolchain_types",
+    ],
+)
+
+bzl_library(
+    name = "shrubbery_toolchain",
+    srcs = ["shrubbery_toolchain.bzl"],
+    deps = [
+        "//python/private:sentinel_impl",
+        "//python/private:toolchain_types",
+    ],
+)

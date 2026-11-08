@@ -1,6 +1,6 @@
 import argparse
 
-from tools.private.release.create_release_branch import CreateReleaseBranch
+from dev.release.create_release_branch import CreateReleaseBranch
 
 pytest_plugins = ["tests.tools.private.release.release_test_helper"]
 

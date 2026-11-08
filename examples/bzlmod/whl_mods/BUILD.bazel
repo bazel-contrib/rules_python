@@ -8,8 +8,10 @@ exports_files(
 py_test(
     name = "pip_whl_mods_test",
     srcs = ["pip_whl_mods_test.py"],
+    data = ["@pip//requests:whl"],
     env = {
         "REQUESTS_PKG": "$(rlocationpaths @pip//requests:pkg)",
+        "REQUESTS_WHL": "$(rlocationpath @pip//requests:whl)",
         "WHEEL_PKG": "$(rlocationpaths @pip//wheel:pkg)",
     },
     main = "pip_whl_mods_test.py",

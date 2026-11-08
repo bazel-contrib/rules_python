@@ -18,8 +18,9 @@ load("//python/private:common_labels.bzl", "labels")
 load("//python/private:py_executable_info.bzl", "PyExecutableInfo")
 load("//python/private:py_internal.bzl", "py_internal")
 load("//python/private:py_runtime_info.bzl", "PyRuntimeInfo")
-load("//python/private:toolchain_types.bzl", "EXEC_TOOLS_TOOLCHAIN_TYPE", "LAUNCHER_MAKER_TOOLCHAIN_TYPE")
+load("//python/private:toolchain_types.bzl", "EXEC_TOOLS_TOOLCHAIN_TYPE", "LAUNCHER_MAKER_TOOLCHAIN_TYPE", "SHRUBBERY_TOOLCHAIN_TYPE")
 load("//python/private:transition_labels.bzl", "TRANSITION_LABELS")
+load("//python/private/toolchains:shrubbery_toolchain.bzl", "get_shrubbery_tool")
 
 def _is_symlink(f):
     if hasattr(f, "is_symlink"):
@@ -133,7 +134,8 @@ def _create_zip(ctx, py_runtime, py_executable, stage2_bootstrap):
 
     runfiles = builders.RunfilesBuilder()
 
-    runfiles.add(py_runtime.files)
+    if py_runtime.files != None:
+        runfiles.add(py_runtime.files)
     if py_executable.venv_python_exe:
         runfiles.add(py_executable.venv_python_exe)
 
@@ -175,10 +177,12 @@ def _create_zip(ctx, py_runtime, py_executable, stage2_bootstrap):
     is_windows = is_windows_platform(ctx)
     zipper_args.add("\\" if is_windows else "/", format = "--target-platform-pathsep=%s")
 
+    zipper = get_shrubbery_tool(ctx, "zipper", ctx.attr._zipper)
     actions_run(
         ctx,
-        executable = ctx.attr._zipper,
-        arguments = [manifest, zipper_args],
+        executable = zipper.executable,
+        toolchain = zipper.toolchain,
+        arguments = zipper.prefix_args + [manifest, zipper_args],
         inputs = inputs.build(),
         outputs = [output],
         mnemonic = "PyZipAppCreateZip",
@@ -224,10 +228,16 @@ def _create_self_executable_zip(ctx, preamble, zip_file):
     args.add(preamble)
     args.add(zip_file)
     args.add(pyz)
+    exe_zip_maker = get_shrubbery_tool(
+        ctx,
+        "exe_zip_maker",
+        ctx.attr._exe_zip_maker,
+    )
     actions_run(
         ctx,
-        executable = ctx.attr._exe_zip_maker,
-        arguments = [args],
+        executable = exe_zip_maker.executable,
+        toolchain = exe_zip_maker.toolchain,
+        arguments = exe_zip_maker.prefix_args + [args],
         inputs = depset([preamble, zip_file]),
         outputs = [pyz],
         mnemonic = "PyZipAppCreateExecutableZip",
@@ -361,7 +371,7 @@ Whether the output should be an executable zip file.
     ),
     "_exe_zip_maker": attr.label(
         cfg = "exec",
-        default = "//tools/private/zipapp:exe_zip_maker",
+        default = "//tools/zipapp:exe_zip_maker",
     ),
     "_launcher": attr.label(
         cfg = "target",
@@ -377,7 +387,7 @@ Whether the output should be an executable zip file.
     ),
     "_zip_main_maker": attr.label(
         cfg = "exec",
-        default = "//tools/private/zipapp:zip_main_maker",
+        default = "//tools/zipapp:zip_main_maker",
     ),
     "_zip_shell_template": attr.label(
         default = ":zip_shell_template",
@@ -385,7 +395,7 @@ Whether the output should be an executable zip file.
     ),
     "_zipper": attr.label(
         cfg = "exec",
-        default = "//tools/private/zipapp:zipper",
+        default = "//tools/zipapp:zipper",
     ),
 } | ({
     "_windows_launcher_maker": attr.label(
@@ -395,7 +405,10 @@ Whether the output should be an executable zip file.
     ),
 } if not rp_config.bazel_9_or_later else {})
 
-_TOOLCHAINS = [EXEC_TOOLS_TOOLCHAIN_TYPE] + ([LAUNCHER_MAKER_TOOLCHAIN_TYPE] if rp_config.bazel_9_or_later else [])
+_TOOLCHAINS = [
+    EXEC_TOOLS_TOOLCHAIN_TYPE,
+    config_common.toolchain_type(SHRUBBERY_TOOLCHAIN_TYPE, mandatory = False),
+] + ([LAUNCHER_MAKER_TOOLCHAIN_TYPE] if rp_config.bazel_9_or_later else [])
 
 _COMMON_RULE_DOC = """
 

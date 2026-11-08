@@ -13,12 +13,58 @@ class UnifiedPypiTest(runner.TestCase):
     def test_transitioned_hub(self):
         self.run_bazel("test", "//:test_a")
 
+    def test_requirement_macro_default_hub(self):
+        self.run_bazel("test", "//:test_requirement_default")
+
+    def test_requirement_macro_transitioned_hub(self):
+        self.run_bazel("test", "//:test_requirement_a")
+
+    def test_requirements_bzl_requires_opt_in(self):
+        module_bazel = self.repo_root / "MODULE.bazel"
+        without_opt_in = module_bazel.read_text().replace(
+            "pip.default(unified_hub_requirements_bzl = True)\n",
+            "",
+        )
+        with self._temp_modify_file(module_bazel, without_opt_in):
+            result = self.run_bazel(
+                "cquery", "//:test_requirement_default", check=False
+            )
+            self.assertNotEqual(
+                result.exit_code,
+                0,
+                "Expected loading @pypi//:requirements.bzl to fail without the opt-in",
+            )
+            self.assert_result_matches(
+                result, r"cannot load '[^']*//:requirements\.bzl': no such file"
+            )
+
     def test_cli_override(self):
         self.run_bazel(
             "run",
             "--@rules_python//python/config_settings:venv=pypi_a",
             "//:test_cli",
         )
+
+    def test_platform_specific_package(self):
+        for hub in ("auto", "pypi_b"):
+            with self.subTest(hub=hub):
+                self.run_bazel(
+                    "build",
+                    "--platforms=//:linux_x86_64",
+                    f"--@rules_python//python/config_settings:venv={hub}",
+                    "@pypi//six",
+                    "@pypi//six:whl",
+                )
+
+    def test_platform_specific_package_rejects_unsupported_platform(self):
+        result = self.run_bazel(
+            "cquery",
+            "--platforms=//:windows_x86_64",
+            "@pypi//six",
+            check=False,
+        )
+        self.assertNotEqual(result.exit_code, 0)
+        self.assert_result_matches(result, "No matching wheel")
 
     def test_disjoint_package_cquery_succeeds_but_build_fails(self):
         self.run_bazel("cquery", "//:bin_six_a")

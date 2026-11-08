@@ -1,0 +1,47 @@
+"""Build file for github.com/tree-sitter/go-tree-sitter."""
+
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "tree_sitter_sources",
+    hdrs = glob([
+        "include/**/*.h",
+        "src/**/*.h",
+        "src/**/*.c",
+    ]),
+    defines = [
+        "_DEFAULT_SOURCE",
+        "_POSIX_C_SOURCE=200112L",
+    ],
+    includes = [
+        "include",
+        "src",
+    ],
+    visibility = ["//visibility:private"],
+)
+
+go_library(
+    name = "go-tree-sitter",
+    srcs = glob(
+        ["*.go"],
+        exclude = ["*_test.go"],
+    ) + [
+        "allocator.c",
+        "allocator.h",
+    ],
+    cdeps = [":tree_sitter_sources"],
+    cgo = True,
+    copts = [
+        "-std=c11",
+    ],
+    importpath = "github.com/tree-sitter/go-tree-sitter",
+    visibility = ["//visibility:public"],
+    deps = ["@com_github_mattn_go_pointer//:go_default_library"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":go-tree-sitter",
+    visibility = ["//visibility:public"],
+)

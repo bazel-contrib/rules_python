@@ -8,7 +8,7 @@ local_path_override(
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.toolchain(
-    python_version = "3.9",
+    python_version = "3.11",
 )
 
 bazel_dep(name = "compile_pip_requirements", version = "0.0.0")
@@ -20,6 +20,6 @@ local_path_override(
 pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
 pip.parse(
     hub_name = "pypi_compile",
-    python_version = "3.9",
+    python_version = "3.11",
     requirements_lock = "@compile_pip_requirements//:requirements_lock.txt",
 )

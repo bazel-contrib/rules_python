@@ -1,0 +1,153 @@
+//! Library supporting creating self-executable zip files.
+
+// Errors must be returned, not panicked; see the `rust-lint` config in .bazelrc.
+#![deny(clippy::expect_used, clippy::unwrap_used)]
+
+use std::ffi::OsString;
+use std::fs::{self, File};
+use std::io::{self, BufReader, BufWriter, Read, Write};
+use std::path::{Path, PathBuf};
+
+use sha2::{Digest, Sha256};
+
+pub const BLOCK_SIZE: usize = 256 * 1024;
+pub const PLACEHOLDER: &[u8] = b"%ZIP_HASH%";
+
+/// Replaces all occurrences of `from` with `to` in `src`.
+pub fn replace_bytes(src: &[u8], from: &[u8], to: &[u8]) -> Vec<u8> {
+    if from.is_empty() {
+        return src.to_vec();
+    }
+    let mut result = Vec::new();
+    let mut i = 0;
+    while i < src.len() {
+        if src[i..].starts_with(from) {
+            result.extend_from_slice(to);
+            i += from.len();
+        } else {
+            result.push(src[i]);
+            i += 1;
+        }
+    }
+    result
+}
+
+/// Computes the SHA256 hex digest of the file at `path`.
+pub fn compute_file_sha256_hex(path: &Path) -> io::Result<String> {
+    let mut file = File::open(path)?;
+    let mut hasher = Sha256::new();
+    let mut buffer = [0u8; BLOCK_SIZE];
+    loop {
+        let n = file.read(&mut buffer)?;
+        if n == 0 {
+            break;
+        }
+        hasher.update(&buffer[..n]);
+    }
+    let digest = hasher.finalize();
+    Ok(digest.iter().map(|b| format!("{b:02x}")).collect())
+}
+
+/// Creates a self-executable zip archive by prepending a preamble to a zip archive
+/// and substituting `%ZIP_HASH%` with the SHA-256 hash of the zip archive.
+pub fn create_exe_zip(preamble_path: &Path, zip_path: &Path, output_path: &Path) -> io::Result<()> {
+    if let Some(parent) = output_path.parent()
+        && !parent.as_os_str().is_empty()
+    {
+        fs::create_dir_all(parent)?;
+    }
+
+    let zip_hash = compute_file_sha256_hex(zip_path)?;
+
+    let preamble_content = fs::read(preamble_path)?;
+    let modified_preamble = replace_bytes(&preamble_content, PLACEHOLDER, zip_hash.as_bytes());
+
+    let mut out_file = BufWriter::with_capacity(BLOCK_SIZE, File::create(output_path)?);
+    out_file.write_all(&modified_preamble)?;
+
+    let zip_file = File::open(zip_path)?;
+    let mut zip_reader = BufReader::with_capacity(BLOCK_SIZE, zip_file);
+    io::copy(&mut zip_reader, &mut out_file)?;
+    out_file.flush()?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let metadata = fs::metadata(output_path)?;
+        let mut perms = metadata.permissions();
+        perms.set_mode(perms.mode() | 0o111);
+        fs::set_permissions(output_path, perms)?;
+    }
+
+    Ok(())
+}
+
+/// Parses CLI arguments (excluding `argv[0]` and subcommand name) into [`Options`].
+pub fn parse_args<I, T>(args: I) -> Result<Options, String>
+where
+    I: IntoIterator<Item = T>,
+    T: Into<OsString>,
+{
+    use lexopt::prelude::*;
+
+    const USAGE: &str = "Usage: exe_zip_maker <preamble> <zip> <output>";
+    let mut positional = Vec::with_capacity(3);
+    let mut parser = lexopt::Parser::from_args(args);
+    while let Some(arg) = parser.next().map_err(|e| format!("{e}\n{USAGE}"))? {
+        match arg {
+            Short('h') | Long("help") => return Err(USAGE.to_string()),
+            Value(val) => {
+                positional.push(PathBuf::from(val));
+            }
+            _ => return Err(format!("{}\n{USAGE}", arg.unexpected())),
+        }
+    }
+
+    if positional.len() != 3 {
+        return Err(USAGE.to_string());
+    }
+
+    Ok(Options {
+        preamble_path: positional.remove(0),
+        zip_path: positional.remove(0),
+        output_path: positional.remove(0),
+    })
+}
+
+/// Parses subcommand arguments (`<preamble> <zip> <output>`) and creates a self-executable zip
+/// archive, returning the process exit code.
+pub fn run_cli<I, T>(args: I) -> i32
+where
+    I: IntoIterator<Item = T>,
+    T: Into<OsString>,
+{
+    let options = match parse_args(args) {
+        Ok(opts) => opts,
+        Err(msg) => {
+            eprintln!("exe_zip_maker: error: {msg}");
+            return 1;
+        }
+    };
+    if let Err(e) = create_exe_zip(
+        &options.preamble_path,
+        &options.zip_path,
+        &options.output_path,
+    ) {
+        eprintln!("exe_zip_maker: error: {e}");
+        return 1;
+    }
+    0
+}
+
+/// Parsed command-line options for `exe_zip_maker`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Options {
+    /// Path to the executable preamble file to prepend, relative to the current working directory
+    /// or absolute.
+    pub preamble_path: PathBuf,
+    /// Path to the input zip archive, relative to the current working directory or absolute.
+    pub zip_path: PathBuf,
+    /// Path to the output self-executable zip archive, relative to the current working directory
+    /// or absolute.
+    pub output_path: PathBuf,
+}

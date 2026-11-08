@@ -17,6 +17,7 @@
 
 load("//python:versions.bzl", "FREETHREADED", "INSTALL_ONLY")
 load(":auth.bzl", "get_auth")
+load(":pbs_manifest.bzl", "is_astral_static_libpython_build")
 load(":repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
 load(":text_util.bzl", "render")
 
@@ -59,44 +60,50 @@ def _get_pycache_root(rctx):
         {type}`path | None` The path to the pycache root, or None if it couldn't
         be created.
     """
+    res = rctx.getenv("RULES_PYTHON_PYCACHE_DIR")
+    if res and res.lower() in ("/dev/null", "nul"):
+        return None
+
     os_name = repo_utils.get_platforms_os_name(rctx)
     is_windows = os_name == "windows"
 
-    # 1. RULES_PYTHON_PYCACHE_DIR
-    res = rctx.getenv("RULES_PYTHON_PYCACHE_DIR")
+    # When Python uses mtime/size checking of pycs, the mtimes of files in a
+    # runtime are fixed once the repository is created. In addition, pyc
+    # content is a function of hash mode and optimization level, which can vary
+    # by workspace. Keying on both the workspace and runtime archive keeps
+    # workspaces and runtime versions from colliding on pyc files.
+    runtime_hash = rctx.attr.sha256 or rctx.attr.python_version
+    suffix = "{}/{}".format(
+        rctx.name,
+        hash("{}:{}".format(rctx.workspace_root, runtime_hash)),
+    )
+
     if res:
-        res = res + "/" + rctx.name
-        return repo_utils.mkdir(rctx, res)
+        return repo_utils.mkdir(rctx, rctx.path(res).get_child(suffix))
 
-    # Suffix for cases 2-4
-    # The first level directory is static and documented so that it is easy to
-    # use with e.g. --sandbox_add_mount_pair=/tmp/rules_python_pycache
-    suffix = "rules_python_pycache/{}/{}".format(hash(str(rctx.workspace_root)), rctx.name)
-
-    # 2. XDG_CACHE_HOME
+    # Global locations like /tmp or TMP/TEMP are intentionally not used:
+    # * Avoids cross-user contamination or prediction/interception of the pyc
+    #   cache.
+    # * Temporary directories get cleaned out while the fetched runtime
+    #   repository persists, leaving dangling symlinks.
     res = rctx.getenv("XDG_CACHE_HOME")
-    if res:
-        path = repo_utils.mkdir(rctx, rctx.path(res).get_child(suffix))
-        if path:
-            return path
+    if not res:
+        if is_windows:
+            res = rctx.getenv("LOCALAPPDATA")
+        else:
+            res = rctx.getenv("HOME")
+            if res:
+                res += "/.cache"
+    if not res:
+        return None
 
-    # 3. TMP or TEMP
-    res = rctx.getenv("TMP") or rctx.getenv("TEMP")
-    if res:
-        path = repo_utils.mkdir(rctx, rctx.path(res).get_child(suffix))
-        if path:
-            return path
-
-    # 4. /tmp or Windows equivalent
-    if is_windows:
-        path = rctx.path("C:/Temp").get_child(suffix)
-    else:
-        path = rctx.path("/tmp").get_child(suffix)
-
+    # The first level directory is static and documented so that it is easy to
+    # use with e.g. --sandbox_add_mount_pair=$HOME/.cache/rules_python_pycache
+    path = rctx.path(res).get_child("rules_python_pycache").get_child(suffix)
     return repo_utils.mkdir(rctx, path)
 
 def _create_pycache_symlinks(rctx, logger):
-    """Finds all directories with a .py file and creates __pycache__ symlinks.
+    """Finds all directories with a .py file and creates __pycache__ entries.
 
     Args:
         rctx: {type}`repository_ctx` The repository rule's context object.
@@ -105,9 +112,6 @@ def _create_pycache_symlinks(rctx, logger):
     pycache_root = _get_pycache_root(rctx)
     logger.info(lambda: "pycache root: {}".format(pycache_root))
     pycache_root_str = str(pycache_root) if pycache_root else None
-
-    os_name = repo_utils.get_platforms_os_name(rctx)
-    null_device = "NUL" if os_name == "windows" else "/dev/null"
 
     queue = [rctx.path(".")]
 
@@ -142,7 +146,13 @@ def _create_pycache_symlinks(rctx, logger):
                 rctx.symlink(target_dir, pycache_dir)
             else:
                 rctx.delete(pycache_dir)
-                rctx.symlink(null_device, pycache_dir)
+
+                # The intent is to disable pyc generation, which we can't
+                # entirely do directly. Symlinking to /dev/null makes it point
+                # to a character device, which can act weird when read or put
+                # into a zip. A regular file seems to make python skip local pyc
+                # generation, so use that.
+                rctx.file(pycache_dir, content = "", executable = False)
 
 def _python_repository_impl(rctx):
     if rctx.attr.distutils and rctx.attr.distutils_content:
@@ -162,6 +172,12 @@ def _python_repository_impl(rctx):
         *python_version_info
     )
     urls = rctx.attr.urls or [rctx.attr.url]
+    if rctx.attr.libpython == "include":
+        interpreter_has_static_libpython = False
+    elif rctx.attr.libpython == "exclude":
+        interpreter_has_static_libpython = True
+    else:
+        interpreter_has_static_libpython = is_astral_static_libpython_build(urls, release_filename)
     auth = get_auth(rctx, urls)
 
     if INSTALL_ONLY in release_filename:
@@ -245,9 +261,12 @@ def _python_repository_impl(rctx):
         # Exclude them from the glob because otherwise between the first time and second time a python toolchain is used,"
         # the definition of this filegroup will change, and depending rules will get invalidated."
         # See https://github.com/bazel-contrib/rules_python/issues/1008 for unconditionally adding these to toolchains so we can stop ignoring them."
-        # pyc* is ignored because pyc creation creates temporary .pyc.NNNN files
-        "**/__pycache__/*.pyc*",
-        "**/__pycache__/*.pyo*",
+        # The __pycache__ directories themselves are symlinks out of the
+        # repository.
+        "**/__pycache__",
+        # Also ignore everything under __pycache__, just in case pre-population
+        # of the directories misses one and a regular directory is created.
+        "**/__pycache__/**",
     ]
 
     if "windows" in platform:
@@ -277,16 +296,18 @@ load("@rules_python//python/private:hermetic_runtime_repo_setup.bzl", "define_he
 package(default_visibility = ["//visibility:public"])
 
 define_hermetic_runtime_toolchain_impl(
-  name = "define_runtime",
-  extra_files_glob_include = {extra_files_glob_include},
-  extra_files_glob_exclude = {extra_files_glob_exclude},
-  python_version = {python_version},
-  python_bin = {python_bin},
-  coverage_tool = {coverage_tool},
+    name = "define_runtime",
+    extra_files_glob_include = {extra_files_glob_include},
+    extra_files_glob_exclude = {extra_files_glob_exclude},
+    interpreter_has_static_libpython = {interpreter_has_static_libpython},
+    python_version = {python_version},
+    python_bin = {python_bin},
+    coverage_tool = {coverage_tool},
 )
 """.format(
         extra_files_glob_exclude = render.list(glob_exclude),
         extra_files_glob_include = render.list(glob_include),
+        interpreter_has_static_libpython = str(interpreter_has_static_libpython),
         python_bin = render.str(python_bin),
         python_version = render.str(rctx.attr.python_version),
         coverage_tool = render.str(coverage_tool),
@@ -301,6 +322,7 @@ define_hermetic_runtime_toolchain_impl(
         "coverage_tool": rctx.attr.coverage_tool,
         "distutils": rctx.attr.distutils,
         "distutils_content": rctx.attr.distutils_content,
+        "libpython": rctx.attr.libpython,
         "name": rctx.attr.name,
         "netrc": rctx.attr.netrc,
         "patch_strip": rctx.attr.patch_strip,
@@ -360,6 +382,11 @@ For more information see {attr}`py_runtime.coverage_tool`.
             default = True,
             doc = "Noop, will be removed in the next major release",
             mandatory = False,
+        ),
+        "libpython": attr.string(
+            default = "auto",
+            doc = "Whether to include shared libpython files: auto, include, or exclude.",
+            values = ["auto", "include", "exclude"],
         ),
         "netrc": attr.string(
             doc = ".netrc file to use for authentication; mirrors the eponymous attribute from http_archive",

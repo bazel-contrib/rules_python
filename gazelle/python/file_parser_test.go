@@ -383,3 +383,38 @@ from foo\
 		assert.ElementsMatch(t, expected, output.Modules)
 	})
 }
+
+func TestParsePEP758UnparenthesizedExcept(t *testing.T) {
+	t.Parallel()
+	code := []byte(`import os
+
+try:
+    pass
+except ValueError, OSError, OverflowError:
+    import sys
+
+if __name__ == "__main__":
+    pass
+`)
+	rootNode, err := ParseCode(code, "pep758.py")
+	assert.NoError(t, err)
+	assert.False(t, rootNode.HasError(), "expected PEP 758 except clause to parse without error")
+
+	p := NewFileParser()
+	p.SetCodeAndFile(code, "", "pep758.py")
+	output, err := p.Parse(context.Background())
+	assert.NoError(t, err)
+	assert.True(t, output.HasMain)
+	assert.Equal(t, []Module{
+		{
+			Name:       "os",
+			LineNumber: 1,
+			Filepath:   "pep758.py",
+		},
+		{
+			Name:       "sys",
+			LineNumber: 6,
+			Filepath:   "pep758.py",
+		},
+	}, output.Modules)
+}

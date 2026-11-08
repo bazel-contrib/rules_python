@@ -1,4 +1,5 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
 
 package(
     default_visibility = ["//:__subpackages__"],
@@ -6,9 +7,8 @@ package(
 
 licenses(["notice"])
 
-filegroup(
+distribution_filegroup(
     name = "distribution",
-    srcs = glob(["**"]),
 )
 
 filegroup(
@@ -42,6 +42,7 @@ bzl_library(
         "//python/private:py_runtime_info",
         "//python/private:toolchain_types",
         "//python/private:transition_labels",
+        "//python/private/toolchains:shrubbery_toolchain",
         "@bazel_skylib//lib:paths",
         "@rules_python_internal//:rules_python_config",
     ],

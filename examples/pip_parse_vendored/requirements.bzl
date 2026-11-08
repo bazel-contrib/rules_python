@@ -33,12 +33,34 @@ all_data_requirements = [
 ]
 
 _packages = [
-    ("my_project_pip_deps_vendored_certifi", "certifi==2023.7.22 --hash=sha256:539cc1d13202e33ca466e88b2807e29f4c13049d6d87031a3c110744495cb082 --hash=sha256:92d6037539857d8206b8f6ae472e8b77db8058fec5937a1ef3f54304089edbb9"),
-    ("my_project_pip_deps_vendored_charset_normalizer", "charset-normalizer==2.1.1 --hash=sha256:5a3d016c7c547f69d6f81fb0db9449ce888b418b5b9952cc5e6e66843e9dd845 --hash=sha256:83e9a75d1911279afd89352c68b45348559d1fc0506b054b346651b5e7fee29f"),
-    ("my_project_pip_deps_vendored_idna", "idna==3.4 --hash=sha256:814f528e8dead7d329833b91c5faa87d60bf71824cd12a7530b5526063d02cb4 --hash=sha256:90b77e79eaa3eba6de819a0c442c0b4ceefc341a7a2ab77d7562bf49f425c5c2"),
-    ("my_project_pip_deps_vendored_requests", "requests==2.28.1 --hash=sha256:7c5599b102feddaa661c826c56ab4fee28bfd17f5abca1ebbe3e7f19d7c97983 --hash=sha256:8fefa2a1a1365bf5520aac41836fbee479da67864514bdb821f31ce07ce65349"),
-    ("my_project_pip_deps_vendored_urllib3", "urllib3==1.26.13 --hash=sha256:47cc05d99aaa09c9e72ed5809b60e7ba354e64b59c9c173ac3018642d8bb41fc --hash=sha256:c083dd0dce68dbfbe1129d5271cb90f9447dea7d52097c6e0126120c521ddea8"),
+    ("my_project_pip_deps_vendored_certifi", "certifi==2026.10.23"),
+    ("my_project_pip_deps_vendored_charset_normalizer", "charset-normalizer==3.5.2 --hash=sha256:1c50fe28bbc2ced33386f298650d91218076c05420e6cbd790b913adc41659e7 --hash=sha256:4275811936e2f06feff5e598fb42a1b7ae852da8e39605211892b56b81a34efd --hash=sha256:8d86d6fc60743dc916eb79e2eb1ec4818e21e427731543af40a3021851174a13 --hash=sha256:b6b751274acb69d77b3323d6b7dbaa3c7fdfc1eb829b7eb61d262f32e1af9685 --hash=sha256:e4e81e09c1578b8df602e3db08b0b3ea0a6947ad612f52bf8dc5ea8d47691f0c"),
+    ("my_project_pip_deps_vendored_idna", "idna==3.20"),
+    ("my_project_pip_deps_vendored_requests", "requests==2.34.2"),
+    ("my_project_pip_deps_vendored_urllib3", "urllib3==2.8.0"),
 ]
+_package_srcs = {
+    "my_project_pip_deps_vendored_certifi": {
+        "filename": "certifi-2026.10.23-py3-none-any.whl",
+        "integrity": "sha256-6bVN525TC7bPDM0DZ4cQOstY/UK6kw6ov5SN26ovYdE=",
+        "urls": ["https://files.pythonhosted.org/packages/32/d1/a3652fe2c19134d0d15922177821d863cbd7e842d53a21bbe7e8e3a1b5ac/certifi-2026.10.23-py3-none-any.whl"],
+    },
+    "my_project_pip_deps_vendored_idna": {
+        "filename": "idna-3.20-py3-none-any.whl",
+        "integrity": "sha256-q3rnEil0VTNw8L25GeGpYLLNG8HvAnZBbYltuBwUWCw=",
+        "urls": ["https://files.pythonhosted.org/packages/58/a2/bb081bab032533a855d44de1d56f8e8426114ff1ba5d1f07a438a0a654f8/idna-3.20-py3-none-any.whl"],
+    },
+    "my_project_pip_deps_vendored_requests": {
+        "filename": "requests-2.34.2-py3-none-any.whl",
+        "integrity": "sha256-Kg1gwXL4OsarMeRVSQbA87NYjTe1y5ObHAYfSQfieOA=",
+        "urls": ["https://files.pythonhosted.org/packages/a0/f4/c67b0b3f1b9245e8d266f0f112c500d50e5b4e83cb6f3b71b6528104182a/requests-2.34.2-py3-none-any.whl"],
+    },
+    "my_project_pip_deps_vendored_urllib3": {
+        "filename": "urllib3-2.8.0-py3-none-any.whl",
+        "integrity": "sha256-DPPK5WjTaqlXayjfs18RMo8cuXTKdkfZR167hsdaxuM=",
+        "urls": ["https://files.pythonhosted.org/packages/92/9d/c4e665119135114480843e7ab388fa94d8480650450e6f8e26b70d323a4c/urllib3-2.8.0-py3-none-any.whl"],
+    },
+}
 _config = {
     "download_only": False,
     "enable_implicit_namespace_pkgs": False,
@@ -48,7 +70,7 @@ _config = {
     "isolated": True,
     "pip_data_exclude": [],
     "python_interpreter": "python3",
-    "python_interpreter_target": "@python39_host//:python",
+    "python_interpreter_target": "@python3_14_host//:python",
     "quiet": True,
     "repo": "my_project_pip_deps_vendored",
     "repo_prefix": "my_project_pip_deps_vendored_",
@@ -118,5 +140,5 @@ def install_deps(**whl_library_kwargs):
             group_deps = group_deps,
             annotation = _get_annotation(requirement),
             config_load = config_load,
-            **whl_config
+            **(whl_config | _package_srcs.get(name, {}))
         )

@@ -30,14 +30,20 @@ if [[ -z "$bin" ]]; then
   exit 1
 fi
 
-bin_link_layer_1=$TEST_TMPDIR/link1
+bin_link_layer_1="$TEST_TMPDIR/link with spaces 1"
 ln -s "$bin" "$bin_link_layer_1"
-bin_link_layer_2=$TEST_TMPDIR/link2
+bin_link_layer_2="$TEST_TMPDIR/link with spaces 2"
 ln -s "$bin_link_layer_1" "$bin_link_layer_2"
 
-result=$(RUNFILES_DIR='' RUNFILES_MANIFEST_FILE='' $bin)
-result_link_layer_1=$(RUNFILES_DIR='' RUNFILES_MANIFEST_FILE='' $bin_link_layer_1)
-result_link_layer_2=$(RUNFILES_DIR='' RUNFILES_MANIFEST_FILE='' $bin_link_layer_2)
+space_dir="$TEST_TMPDIR/dir with spaces"
+mkdir -p "$space_dir"
+runfiles_with_spaces="$space_dir/test.runfiles"
+ln -s "${bin%.runfiles*}.runfiles" "$runfiles_with_spaces"
+
+result=$(RUNFILES_DIR='' RUNFILES_MANIFEST_FILE='' "$bin")
+result_link_layer_1=$(RUNFILES_DIR='' RUNFILES_MANIFEST_FILE='' "$bin_link_layer_1")
+result_link_layer_2=$(RUNFILES_DIR='' RUNFILES_MANIFEST_FILE='' "$bin_link_layer_2")
+result_space_runfiles=$(RUNFILES_DIR="$runfiles_with_spaces" RUNFILES_MANIFEST_FILE='' "$bin_link_layer_2")
 
 if [[ "$result" != "$result_link_layer_1" ]]; then
     echo "Output from test does not match output when invoked via a link;"
@@ -53,6 +59,11 @@ if [[ "$result" != "$result_link_layer_2" ]]; then
     echo "$result"
     echo "Output when invoked via a link to a link:"
     echo "$result_link_layer_2"
+    exit 1
+fi
+if ! grep -q "^Hello$" <<<"$result_space_runfiles"; then
+    echo "Expected output when invoked with RUNFILES_DIR containing spaces, got:"
+    echo "$result_space_runfiles"
     exit 1
 fi
 

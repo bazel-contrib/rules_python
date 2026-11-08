@@ -338,7 +338,13 @@ def _pip_archive_impl(rctx):
     patch_and_extract_whl(rctx, whl_path = whl_path, logger = logger, sdist_filename = sdist_filename)
 
 # NOTE @aignas 2024-03-21: The usage of dict({}, **common) ensures that all args to `dict` are unique
-_attrs = whl_archive_attrs | {
+pip_archive_attrs = {
+    k: v
+    for k, v in whl_archive_attrs.items()
+    # Only the whl_file parameter is unusable in the pip_archive rule. the rest can be
+    # reused.
+    if k != "whl_file"
+} | {
     k: ATTRS[k]
     for k in [
         # used for pulling deps with pip
@@ -352,31 +358,30 @@ _attrs = whl_archive_attrs | {
         "quiet",
         "timeout",
     ]
-} | {
-    "_python_path_entries": attr.label_list(
-        # Get the root directory of these rules and keep them as a default attribute
-        # in order to avoid unnecessary repository fetching restarts.
-        #
-        # This is very similar to what was done in https://github.com/bazelbuild/rules_go/pull/3478
-        default = [
-            Label("//:BUILD.bazel"),
-        ] + [
-            # Includes all the external dependencies from repositories.bzl
-            Label("@" + repo + "//:BUILD.bazel")
-            for repo in all_repo_names
-        ],
-    ),
-    "_python_srcs": attr.label_list(
-        # Used as a default value in a rule to ensure we fetch the dependencies.
-        default = [
-            Label("//python/private/pypi/whl_installer:wheel_installer.py"),
-            Label("//python/private/pypi/whl_installer:arguments.py"),
-        ] + record_files.values(),
-    ),
 }
 
 pip_archive = repository_rule(
-    attrs = _attrs | {
+    attrs = pip_archive_attrs | {
+        "_python_path_entries": attr.label_list(
+            # Get the root directory of these rules and keep them as a default attribute
+            # in order to avoid unnecessary repository fetching restarts.
+            #
+            # This is very similar to what was done in https://github.com/bazelbuild/rules_go/pull/3478
+            default = [
+                Label("//:BUILD.bazel"),
+            ] + [
+                # Includes all the external dependencies from repositories.bzl
+                Label("@" + repo + "//:BUILD.bazel")
+                for repo in all_repo_names
+            ],
+        ),
+        "_python_srcs": attr.label_list(
+            # Used as a default value in a rule to ensure we fetch the dependencies.
+            default = [
+                Label("//python/private/pypi/whl_installer:wheel_installer.py"),
+                Label("//python/private/pypi/whl_installer:arguments.py"),
+            ] + record_files.values(),
+        ),
         "_rule_name": attr.string(default = "pip_archive"),
     },
     doc = """

@@ -1,0 +1,12 @@
+load("@bazel_skylib//rules:build_test.bzl", "build_test")
+load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
+
+# Builds the cross-compiled release files in test runs too, e.g. with
+# --build_tests_only.
+build_test(
+    name = "cross_compiled_artifacts_build_test",
+    # Under WORKSPACE, rules_rust is a stub, so the target can't build; see
+    # //dev/release_artifacts:artifacts_for_release.
+    tags = [] if BZLMOD_ENABLED else ["manual"],
+    targets = ["//dev/release_artifacts:cross_compiled_artifacts"],
+)

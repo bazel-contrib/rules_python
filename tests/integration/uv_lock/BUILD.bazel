@@ -4,7 +4,7 @@ load(":uv_runner.bzl", "uv_runner")
 
 lock(
     name = "requirements",
-    srcs = ["requirements.in"],
+    srcs = ["pyproject.toml"],
     out = "requirements.txt",
     tags = ["no-remote-exec"],
 )
@@ -23,4 +23,11 @@ diff_test(
     timeout = "short",
     file1 = ":requirements",
     file2 = ":requirements.txt",
+)
+
+lock(
+    name = "project_lock",
+    srcs = ["pyproject.toml"],
+    out = "uv.lock",
+    tags = ["no-remote-exec"],
 )

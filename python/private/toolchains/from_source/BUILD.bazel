@@ -1,0 +1,26 @@
+# Toolchain implementations built from source.
+#
+# These are kept in a separate package from the `toolchain()` declarations and
+# config settings so that toolchain resolution only needs to load this package
+# (and the tool's dependencies, such as rules_rust and @crates) when a
+# from-source toolchain is actually selected.
+
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
+load("//python/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")
+load("//python/private/toolchains:shrubbery_toolchain.bzl", "shrubbery_toolchain")
+
+package(default_visibility = ["//:__subpackages__"])
+
+licenses(["notice"])
+
+distribution_filegroup(
+    name = "distribution",
+)
+
+# Use the unified Rust `shrubbery` binary instead of the Python/script
+# tool implementations.
+shrubbery_toolchain(
+    name = "shrubbery",
+    shrubbery = "//crates/shrubbery",
+    visibility = NOT_ACTUALLY_PUBLIC,
+)

@@ -3,7 +3,7 @@
 import argparse
 import pathlib
 
-from tools.private.release import changelog_news
+from dev.release import changelog_news
 
 
 def main():

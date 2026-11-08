@@ -3,11 +3,19 @@ module(
 )
 
 bazel_dep(name = "bazel_skylib", version = "1.7.1")
+bazel_dep(name = "platforms", version = "0.0.11")
 bazel_dep(name = "rules_python", version = "0.0.0")
 local_path_override(
     module_name = "rules_python",
     path = "../..",
 )
+
+uv = use_extension(
+    "@rules_python//python/uv:uv.bzl",
+    "uv",
+    dev_dependency = True,
+)
+uv.configure(version = "0.13.5")
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.defaults(

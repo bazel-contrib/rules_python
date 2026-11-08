@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
 load("//python/private:runtime_env_toolchain.bzl", "define_runtime_env_toolchain")
 
 package(default_visibility = ["//:__subpackages__"])
 
 define_runtime_env_toolchain(name = "runtime_env_toolchain")
 
-filegroup(
+distribution_filegroup(
     name = "distribution",
-    srcs = glob(["**"]),
-    visibility = ["//python:__pkg__"],
 )

@@ -307,7 +307,8 @@ Dependencies providing type definitions the library needs.
 
 These are dependencies that satisfy imports guarded by `typing.TYPE_CHECKING`.
 These are build-time only dependencies and not included as part of a runnable
-program (packaging rules may include them, however).
+program (packaging rules may include them, however). Runtime inclusion can be
+configured using {obj}`--//python/config_settings:pyi_deps_to_runfiles`.
 
 :::{versionadded} 1.1.0
 :::
@@ -331,14 +332,29 @@ as part of a runnable program (packaging rules may include them, however).
             allow_files = True,
         ),
         "srcs": lambda: attrb.LabelList(
-            allow_files = [".py", ".py3"],
+            allow_files = True,
             # Necessary for --compile_one_dependency to work.
             flags = ["DIRECT_COMPILE_TIME_INPUT"],
             doc = """
 The list of Python source files that are processed to create the target. This
-includes all your checked-in code and may include generated source files.  The
-`.py` files belong in `srcs` and library targets belong in `deps`. Other binary
-files that may be needed at run time belong in `data`.
+includes all your checked-in code and may include generated source files.
+
+Allowed file types:
+* `.py`
+* `.pyc`
+* directories
+
+Library targets belong in `deps`. Other binary files that may be needed at run
+time belong in `data`.
+
+:::{versionchanged} 2.3.2
+As an exception, empty targets in `srcs` that provide {obj}`PyInfo` are
+allowed. Ordinary library dependencies should remain in `deps`.
+:::
+
+:::{versionchanged} 2.4.0
+Allowed `.pyc` and directory inputs in `srcs`.
+:::
 """,
         ),
         "srcs_version": lambda: attrb.String(
@@ -350,6 +366,10 @@ files that may be needed at run time belong in `data`.
         ),
         "_precompile_source_retention_flag": lambda: attrb.Label(
             default = labels.PRECOMPILE_SOURCE_RETENTION,
+            providers = [BuildSettingInfo],
+        ),
+        "_pyi_deps_to_runfiles_flag": lambda: attrb.Label(
+            default = labels.PYI_DEPS_TO_RUNFILES,
             providers = [BuildSettingInfo],
         ),
         # Force enabling auto exec groups, see

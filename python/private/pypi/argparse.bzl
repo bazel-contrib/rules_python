@@ -27,9 +27,9 @@ def _get_pip_args(args, *arg_names, value = None, repeated = False):
 
         if repeated:
             if val not in value:
-                value.append(val)
+                value.append(val.strip("\"\'"))
         else:
-            value = val
+            value = val.strip("\"\'")
 
     return value
 

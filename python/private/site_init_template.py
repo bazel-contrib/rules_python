@@ -29,6 +29,7 @@ _SELF_RUNFILES_RELATIVE_PATH = "%site_init_runfiles_path%"
 _COVERAGE_TOOL = "%coverage_tool%"
 # True if the runfiles root should be added to sys.path
 _ADD_RUNFILES_ROOT_TO_SYS_PATH = "%add_runfiles_root_to_sys_path%" == "1"
+_INTERPRETER_ACTUAL_PATH = "%interpreter_actual_path%"
 
 
 def _is_verbose():
@@ -52,6 +53,7 @@ _print_verbose("import_all:", _IMPORT_ALL)
 _print_verbose("workspace_name:", _WORKSPACE_NAME)
 _print_verbose("self_runfiles_path:", _SELF_RUNFILES_RELATIVE_PATH)
 _print_verbose("coverage_tool:", _COVERAGE_TOOL)
+_print_verbose("interpreter_actual_path:", _INTERPRETER_ACTUAL_PATH)
 
 
 def _find_runfiles_root():
@@ -93,35 +95,62 @@ def _get_windows_path_with_unc_prefix(path):
     if not _is_windows() or sys.version_info[0] < 3:
         return path
 
-    # Starting in Windows 10, version 1607(OS build 14393), MAX_PATH limitations have been
-    # removed from common Win32 file and directory functions.
-    # Related doc: https://docs.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=cmd#enable-long-paths-in-windows-10-version-1607-and-later
-    import platform
-
-    win32_version = None
-    # Windows 2022 with Python 3.12.8 gives flakey errors, so try a couple times.
-    for _ in range(3):
-        try:
-            win32_version = platform.win32_ver()[1]
-            break
-        except (ValueError, KeyError):
-            pass
-    if win32_version and win32_version >= "10.0.14393":
-        return path
-
     # import sysconfig only now to maintain python 2.6 compatibility
     import sysconfig
 
     if sysconfig.get_platform() == "mingw":
         return path
 
-    # Lets start the unicode fun
-    unicode_prefix = "\\\\?\\"
-    if path.startswith(unicode_prefix):
+    # Implicit long-path support is not universal across the Win32 API. For
+    # example, DLL loading still requires an explicit extended-length prefix.
+    extended_path_prefix = "\\\\?\\"
+    if path.startswith(extended_path_prefix):
         return path
 
     # os.path.abspath returns a normalized absolute path
-    return unicode_prefix + os.path.abspath(path)
+    path = os.path.abspath(path)
+    if path.startswith("\\\\"):
+        return extended_path_prefix + "UNC\\" + path[2:]
+    return extended_path_prefix + path
+
+
+def _install_windows_extension_finder():
+    """Use extended-length paths when loading long Windows extension paths."""
+    if not _is_windows() or sys.version_info[0] < 3:
+        return
+
+    # import these only now to maintain Python 2.6 compatibility
+    import importlib.machinery
+    import sysconfig
+
+    if sysconfig.get_platform() == "mingw":
+        return
+
+    class _WindowsExtensionPathFinder(importlib.machinery.PathFinder):
+        @classmethod
+        def find_spec(cls, fullname, path=None, target=None):
+            spec = super().find_spec(fullname, path, target)
+            if (
+                spec is None
+                or not isinstance(spec.loader, importlib.machinery.ExtensionFileLoader)
+                or len(os.path.abspath(spec.origin)) < 260
+            ):
+                return spec
+
+            # The registry opt-in for long paths only applies to documented
+            # file and directory APIs. It does not include DLL loading APIs,
+            # e.g. LoadLibraryExW. Prefix the actual extension filename instead
+            # of sys.path entries so other APIs continue to receive normal paths.
+            # https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation#functions-without-max_path-restrictions
+            extended_path = _get_windows_path_with_unc_prefix(spec.origin)
+            spec.origin = extended_path
+            spec.loader.path = extended_path
+            return spec
+
+    for index, finder in enumerate(sys.meta_path):
+        if finder is importlib.machinery.PathFinder:
+            sys.meta_path[index] = _WindowsExtensionPathFinder
+            return
 
 
 def _search_path(name):
@@ -143,7 +172,6 @@ def _setup_sys_path():
     def _maybe_add_path(path, reason):
         if path in seen:
             return
-        path = _get_windows_path_with_unc_prefix(path)
         if _is_windows():
             path = path.replace("/", os.sep)
 
@@ -238,7 +266,107 @@ def _fixup_sys_base_executable():
     sys._base_executable = exe
 
 
+def _fixup_stdlib_paths():
+    """Remap non-runfiles runtime paths to their runfiles locations.
+
+    Replaces non-runfiles sys prefix roots (e.g. sys.base_prefix) with the
+    runtime root inside runfiles across sys.path, sys prefixes, and
+    site.PREFIXES.
+    """
+    if (
+        not _INTERPRETER_ACTUAL_PATH
+        or os.path.isabs(_INTERPRETER_ACTUAL_PATH)
+        or "/" not in _INTERPRETER_ACTUAL_PATH
+    ):
+        return
+    if not _RUNFILES_ROOT:
+        return
+
+    def _norm_path(path_str):
+        return os.path.normcase(path_str).replace("\\", "/").rstrip("/")
+
+    abs_interpreter = os.path.join(_RUNFILES_ROOT, _INTERPRETER_ACTUAL_PATH)
+    parent = os.path.dirname(abs_interpreter)
+    if os.path.basename(parent).lower() in ("bin", "scripts"):
+        runtime_root = os.path.dirname(parent)
+    else:
+        runtime_root = parent
+
+    runfiles_norm = _norm_path(_RUNFILES_ROOT)
+    runfiles_prefix = runfiles_norm + "/"
+
+    def _in_runfiles(path_str):
+        norm = _norm_path(path_str)
+        return norm == runfiles_norm or norm.startswith(runfiles_prefix)
+
+    target_root = runtime_root
+    if _is_windows():
+        target_root = target_root.replace("/", os.sep)
+
+    # When running in a virtual environment (sys.prefix != sys.base_prefix),
+    # sys.prefix points to the .venv directory (which on Windows may reside
+    # outside the runfiles tree). Never overwrite sys.prefix / sys.exec_prefix
+    # with the base Python stdlib root in a venv.
+    in_venv = sys.prefix != sys.base_prefix
+    if in_venv:
+        attrs = ("base_prefix", "base_exec_prefix")
+    else:
+        attrs = ("base_prefix", "base_exec_prefix", "prefix", "exec_prefix")
+
+    candidate_prefixes = {}
+    for attr in attrs:
+        old_prefix = getattr(sys, attr)
+        if not _in_runfiles(old_prefix):
+            candidate_prefixes[attr] = old_prefix
+
+    if not candidate_prefixes:
+        return
+
+    # First, verify if any candidate prefix has matching paths that physically
+    # exist in the runfiles tree.
+    remapped_prefixes = set()
+    for p in sys.path:
+        norm_p = _norm_path(p)
+        for old_prefix in candidate_prefixes.values():
+            norm_old = _norm_path(old_prefix)
+            if norm_p == norm_old or norm_p.startswith(norm_old + "/"):
+                candidate = target_root + p[len(old_prefix) :]
+                if os.path.exists(candidate):
+                    remapped_prefixes.add(old_prefix)
+                    break
+
+    if not remapped_prefixes:
+        return
+
+    # Remap all sys.path entries under the verified prefixes (including default
+    # CPython virtual paths like pythonXY.zip that may not exist on disk).
+    for i, p in enumerate(sys.path):
+        norm_p = _norm_path(p)
+        for old_prefix in remapped_prefixes:
+            norm_old = _norm_path(old_prefix)
+            if norm_p == norm_old or norm_p.startswith(norm_old + "/"):
+                new_path = target_root + p[len(old_prefix) :]
+                _print_verbose("remap stdlib sys.path:", p, "->", new_path)
+                sys.path[i] = new_path
+                break
+
+    for attr, old_prefix in candidate_prefixes.items():
+        if old_prefix in remapped_prefixes:
+            _print_verbose(f"remap sys.{attr}:", old_prefix, "->", target_root)
+            setattr(sys, attr, target_root)
+
+    import site
+
+    if hasattr(site, "PREFIXES"):
+        for i, prefix in enumerate(site.PREFIXES):
+            if not _in_runfiles(prefix) and prefix in remapped_prefixes:
+                _print_verbose("remap site.PREFIXES:", prefix, "->", target_root)
+                site.PREFIXES[i] = target_root
+
+
 _fixup_sys_base_executable()
+_fixup_stdlib_paths()
 
 COVERAGE_SETUP = _setup_sys_path()
+_install_windows_extension_finder()
 _print_verbose("DONE")

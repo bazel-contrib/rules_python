@@ -1,0 +1,1011 @@
+"""GitHub CLI helper functions for the release tool."""
+
+import abc
+import enum
+import json
+import os
+import re
+import subprocess
+import tempfile
+from typing import (
+    TypedDict,
+    override,  # pyrefly: ignore[missing-module-attribute] -- override available in Python 3.12+
+)
+
+from dev.release.release_issue import BackportTask, is_release_complete
+from dev.release.shell import run_cmd
+
+# GitHub label types
+RELEASE_LABEL = "type: release"
+BACKPORT_LABEL = "type: backport-pr"
+RELEASE_PREPARED_LABEL = "release-prepared"
+SYNC_CHANGELOG_LABEL = "type: sync-changelog"
+
+# GitHub reaction types
+# See: https://docs.github.com/en/rest/reactions/reactions?apiVersion=2022-11-28#about-reactions
+GH_REACTION_THUMBS_UP = "+1"
+GH_REACTION_THUMBS_DOWN = "-1"
+GH_REACTION_LAUGH = "laugh"
+GH_REACTION_CONFUSED = "confused"
+GH_REACTION_HEART = "heart"
+GH_REACTION_HOORAY = "hooray"
+GH_REACTION_ROCKET = "rocket"
+GH_REACTION_EYES = "eyes"
+
+
+class BackportTaskStatus(str, enum.Enum):
+    """Status strings for backport tasks on a release tracking issue."""
+
+    PENDING = "pending"
+    DONE = "done"
+    RESOLVED = "resolved"
+    OPEN_PR = "open-pr"
+    DRAFT_PR = "draft-pr"
+    ERROR_NOT_FOUND = "error-not-found"
+    ERROR_CLOSED_PR = "error-closed-pr"
+    ERROR_NO_MERGE_COMMIT = "error-no-merge-commit"
+    ERROR_UNKNOWN = "error-unknown"
+    ERROR_RESOLUTION_FAILED = "error-resolution-failed"
+    ERROR_MERGE_CONFLICT = "error-merge-conflict"
+    ERROR_INVALID_PR = "error-invalid-pr"
+    IGNORE = "ignore"
+
+    def __str__(self) -> str:
+        return self.value
+
+
+class IssueDict(TypedDict, total=False):
+    """In-memory representation of a GitHub Issue object.
+
+    See GitHub API docs:
+    https://docs.github.com/en/rest/issues/issues#get-an-issue
+    """
+
+    number: int
+    title: str
+    body: str
+    labels: list[str]
+    url: str
+
+
+class AutoMergeDict(TypedDict, total=False):
+    """Representation of auto-merge status on a Pull Request.
+
+    See GitHub API docs:
+    https://docs.github.com/en/rest/pulls/pulls#get-a-pull-request
+    """
+
+    merge_method: str
+
+
+class PrFileDict(TypedDict, total=False):
+    """In-memory representation of a file in a GitHub Pull Request object.
+
+    See GitHub API docs:
+    https://docs.github.com/en/rest/pulls/pulls#list-pull-requests-files
+    """
+
+    path: str
+    additions: int
+    deletions: int
+    changeType: str
+
+
+class PrDict(TypedDict, total=False):
+    """In-memory representation of a GitHub Pull Request object.
+
+    See GitHub API docs:
+    https://docs.github.com/en/rest/pulls/pulls#get-a-pull-request
+    """
+
+    number: int
+    title: str
+    body: str
+    base: str
+    head: str
+    labels: list[str]
+    url: str
+    state: str
+    isDraft: bool
+    mergeCommit: dict[str, str]
+    auto_merge: AutoMergeDict
+    files: list[PrFileDict]
+
+
+class GitHubEventPullRequestDict(TypedDict, total=False):
+    """Pull request object in a GitHub Actions event payload.
+
+    See GitHub Webhook events docs:
+    https://docs.github.com/en/webhooks/webhook-events-and-payloads#pull_request
+    """
+
+    number: int
+
+
+class GitHubEventIssueDict(TypedDict, total=False):
+    """Issue object in a GitHub Actions event payload.
+
+    See GitHub Webhook events docs:
+    https://docs.github.com/en/webhooks/webhook-events-and-payloads#issues
+    """
+
+    number: int
+
+
+class GitHubEventDict(TypedDict, total=False):
+    """Representation of a GitHub Actions event payload JSON ($GITHUB_EVENT_PATH).
+
+    See GitHub Actions events docs:
+    https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows
+    """
+
+    inputs: dict[str, object]
+    pull_request: GitHubEventPullRequestDict
+    issue: GitHubEventIssueDict
+    number: int | None
+
+
+def get_github_event_data() -> GitHubEventDict:
+    """Loads JSON data from GITHUB_EVENT_PATH if set."""
+    event_path = os.environ.get("GITHUB_EVENT_PATH")
+    if not event_path or not os.path.isfile(event_path):
+        return {}
+    with open(event_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def get_github_event_pr_number() -> int | None:
+    """Extracts PR number from GITHUB_EVENT_PATH if available."""
+    data = get_github_event_data()
+    if not data:
+        return None
+    if (
+        "inputs" in data
+        and isinstance(data["inputs"], dict)
+        and data["inputs"].get("pr")
+    ):
+        pr_val = str(data["inputs"]["pr"]).lstrip("#")
+        if pr_val.isdigit():
+            return int(pr_val)
+    if (
+        "pull_request" in data
+        and isinstance(data["pull_request"], dict)
+        and data["pull_request"].get("number")
+    ):
+        return int(data["pull_request"]["number"])
+    if "number" in data and isinstance(data["number"], int):
+        return data["number"]
+    return None
+
+
+def get_github_event_issue_number() -> int | None:
+    """Extracts Issue number from GITHUB_EVENT_PATH if available."""
+    data = get_github_event_data()
+    if not data:
+        return None
+    if (
+        "inputs" in data
+        and isinstance(data["inputs"], dict)
+        and data["inputs"].get("issue")
+    ):
+        issue_val = str(data["inputs"]["issue"]).lstrip("#")
+        if issue_val.isdigit():
+            return int(issue_val)
+    if (
+        "issue" in data
+        and isinstance(data["issue"], dict)
+        and data["issue"].get("number")
+    ):
+        return int(data["issue"]["number"])
+    return None
+
+
+class MultipleTrackingIssuesError(ValueError):
+    """Raised when multiple open tracking issues are found for a version."""
+
+    pass
+
+
+class NoTrackingIssueError(ValueError):
+    """Raised when no open tracking issue is found for a version."""
+
+    pass
+
+
+class CreatePrError(Exception):
+    """Raised when creating a pull request fails."""
+
+    pass
+
+
+class GetPrError(ValueError):
+    """Raised when querying a pull request fails."""
+
+    pass
+
+
+class InvalidPrRefError(ValueError):
+    """Raised when a PR reference cannot be resolved."""
+
+    pass
+
+
+def format_complete_issue_warning(issue: IssueDict) -> str:
+    """Formats the warning for an open tracking issue whose release is complete.
+
+    Args:
+        issue: The open release tracking issue being ignored.
+
+    Returns:
+        A one-line message, without any `::warning::` prefix.
+    """
+    return (
+        f"Ignoring open release tracking issue #{issue['number']}"
+        f" ({issue['title']}): its 'Tag Final' task is done, so the release is"
+        " complete. Consider closing it."
+    )
+
+
+class GitHubInterface(abc.ABC):
+    """Abstract interface for GitHub operations."""
+
+    repo: str
+
+    @abc.abstractmethod
+    def post_issue_comment(self, issue_num: int, comment_body: str) -> None:
+        """Posts a comment on an issue or PR.
+
+        Args:
+            issue_num: The issue or PR number.
+            comment_body: The body content of the comment.
+        """
+
+    @abc.abstractmethod
+    def add_comment_reaction(self, comment_id: int, reaction: str) -> None:
+        """Adds a reaction to an issue or PR comment.
+
+        Args:
+            comment_id: The comment ID.
+            reaction: The reaction type (e.g., "+1", "-1", "rocket").
+        """
+
+    @abc.abstractmethod
+    def enable_auto_merge(self, pr_num: int, method: str = "squash") -> None:
+        """Enables auto-merge for a PR.
+
+        Args:
+            pr_num: The PR number.
+            method: The merge method ('squash', 'rebase', or 'merge').
+        """
+
+    @abc.abstractmethod
+    def create_issue(
+        self, title: str, body: str, labels: list[str] | None = None
+    ) -> int:
+        """Creates an issue.
+
+        Args:
+            title: Title of the issue.
+            body: Body text of the issue.
+            labels: Optional list of labels to add.
+
+        Returns:
+            The created issue number.
+        """
+
+    @abc.abstractmethod
+    def create_release_tracking_issue(self, version: str, template_content: str) -> int:
+        """Creates a release tracking issue from a template.
+
+        Args:
+            version: Release version string (e.g., "1.0.0").
+            template_content: Content of the issue template markdown file.
+
+        Returns:
+            The created issue number.
+        """
+
+    @abc.abstractmethod
+    def get_issue_body(self, issue_num: int) -> str:
+        """Gets the body content of an issue.
+
+        Args:
+            issue_num: The issue number.
+
+        Returns:
+            The body string of the issue.
+        """
+
+    @abc.abstractmethod
+    def get_issue_title(self, issue_num: int) -> str:
+        """Gets the title of an issue.
+
+        Args:
+            issue_num: The issue number.
+
+        Returns:
+            The title string of the issue.
+        """
+
+    @abc.abstractmethod
+    def update_issue_body(self, issue_num: int, body: str) -> None:
+        """Updates the body of an issue.
+
+        Args:
+            issue_num: The issue number.
+            body: The new body content.
+        """
+
+    @abc.abstractmethod
+    def resolve_pr_number(self, pr_ref: str) -> int:
+        """Resolves a PR reference (number, #number, or GitHub URL) to a PR number.
+
+        Args:
+            pr_ref: PR number string (e.g., "123", "#123") or URL.
+
+        Returns:
+            The integer PR number.
+
+        Raises:
+            InvalidPrRefError: If the PR reference cannot be resolved or is for
+                another repository.
+        """
+
+    @abc.abstractmethod
+    def get_release_tracking_issue(self, version: str) -> int:
+        """Finds the single open tracking issue for a given version.
+
+        Args:
+            version: Version string (e.g., "1.0.0").
+
+        Returns:
+            The issue number.
+
+        Raises:
+            NoTrackingIssueError: If no open tracking issue is found.
+            MultipleTrackingIssuesError: If multiple open tracking issues are
+                found.
+        """
+
+    @abc.abstractmethod
+    def create_pr(
+        self,
+        title: str,
+        body: str,
+        base: str = "main",
+        labels: list[str] | None = None,
+    ) -> str:
+        """Creates a pull request.
+
+        Args:
+            title: Title of the PR.
+            body: Body of the PR.
+            base: Base branch to merge into (default: "main").
+            labels: Optional list of labels to add.
+
+        Returns:
+            The URL of the created PR.
+        """
+
+    @abc.abstractmethod
+    def get_open_pr(self, branch_name: str) -> PrDict | None:
+        """Finds an open PR for the given branch.
+
+        Args:
+            branch_name: The head branch name to search for.
+
+        Returns:
+            Dictionary containing PR details if open, else None.
+        """
+
+    @abc.abstractmethod
+    def get_open_tracking_issues(self, version: str | None = None) -> list[IssueDict]:
+        """Finds open tracking issues for release.
+
+        Args:
+            version: Optional specific version to match (e.g., "1.0.0").
+
+        Returns:
+            List of matching open release tracking issue dictionaries.
+        """
+
+    def partition_open_tracking_issues(
+        self,
+    ) -> tuple[list[IssueDict], list[IssueDict]]:
+        """Splits open release tracking issues into active and complete ones.
+
+        An open tracking issue whose release has already been tagged (its
+        "Tag Final" task is done) is complete; it just hasn't been closed.
+        Commands looking for the release currently in progress should only
+        consider the active issues, and may want to warn about the complete
+        ones so someone closes them.
+
+        Returns:
+            A tuple of (active, complete) lists of open release tracking
+            issue dictionaries.
+        """
+        active: list[IssueDict] = []
+        complete: list[IssueDict] = []
+        for issue in self.get_open_tracking_issues():
+            body = self.get_issue_body(issue["number"])
+            if is_release_complete(body):
+                complete.append(issue)
+            else:
+                active.append(issue)
+        return active, complete
+
+    @abc.abstractmethod
+    def get_pr_info(self, pr_num: int) -> PrDict:
+        """Gets info about a PR.
+
+        Args:
+            pr_num: The PR number.
+
+        Returns:
+            Dictionary containing PR fields (state, isDraft, mergeCommit, etc.).
+
+        Raises:
+            GetPrError: If querying the PR fails.
+        """
+
+    @abc.abstractmethod
+    def get_pr_files(self, pr_num: int) -> list[str]:
+        """Gets the list of file paths touched by a PR.
+
+        Args:
+            pr_num: The PR number.
+
+        Returns:
+            A list of file paths.
+
+        Raises:
+            GetPrError: If querying the PR fails.
+        """
+
+    @abc.abstractmethod
+    def get_pr_comments(self, pr_num: int) -> list[dict]:
+        """Gets all comments for a PR.
+
+        Args:
+            pr_num: The PR number.
+
+        Returns:
+            List of comment objects.
+
+        Raises:
+            GetPrError: If querying the PR fails.
+        """
+
+    @abc.abstractmethod
+    def get_merge_commits_for_prs(
+        self, pending_items: list[BackportTask]
+    ) -> list[BackportTask]:
+        """Resolves PR references in pending backports to their merge commit SHAs.
+
+        Args:
+            pending_items: A list of BackportTask items to resolve.
+
+        Returns:
+            The list of resolved BackportTask items.
+        """
+
+
+class GitHub(GitHubInterface):
+    """GitHub CLI helper class for the release tool."""
+
+    def __init__(self, repo: str = "bazel-contrib/rules_python"):
+        """Initializes the GitHub helper.
+
+        Args:
+            repo: The GitHub repository to operate on.
+        """
+        self.repo = repo
+
+    def _run_gh(
+        self, *args: str, check: bool = True, capture_output: bool = True
+    ) -> str | None:
+        """Runs a 'gh' command.
+
+        Args:
+            *args: Arguments for 'gh' (excluding 'gh').
+            check: If True, raises CalledProcessError on failure.
+            capture_output: If True, captures and returns stdout.
+
+        Returns:
+            The stdout of the command, stripped, or None.
+        """
+        return run_cmd("gh", *args, check=check, capture_output=capture_output)
+
+    def _gh_issue(
+        self, *args: str, check: bool = True, capture_output: bool = True
+    ) -> str | None:
+        """Runs a 'gh issue' command."""
+        return self._run_gh(
+            "issue",
+            *args,
+            f"--repo={self.repo}",
+            check=check,
+            capture_output=capture_output,
+        )
+
+    def _gh_pr(
+        self, *args: str, check: bool = True, capture_output: bool = True
+    ) -> str | None:
+        """Runs a 'gh pr' command."""
+        return self._run_gh(
+            "pr",
+            *args,
+            f"--repo={self.repo}",
+            check=check,
+            capture_output=capture_output,
+        )
+
+    def list_issues(
+        self,
+        *,
+        fields: str,
+        label: str | None = None,
+        state: str | None = None,
+        search: str | None = None,
+    ) -> list[IssueDict]:
+        """Helper to list issues using gh CLI.
+
+        Args:
+            fields: Comma-separated list of fields to return.
+            label: Filter by label.
+            state: Filter by state ('open', 'closed', 'all').
+            search: Search query.
+
+        Returns:
+            A list of issue dictionaries.
+        """
+        cmd = ["list", f"--json={fields}"]
+        if label:
+            cmd.append(f"--label={label}")
+        if state:
+            cmd.append(f"--state={state}")
+        if search:
+            cmd.append(f"--search={search}")
+
+        output = self._gh_issue(*cmd)
+        return json.loads(output) if output else []
+
+    @override
+    def get_open_tracking_issues(self, version: str | None = None) -> list[IssueDict]:
+        """Finds open tracking issues for release.
+
+        Args:
+            version: Optional specific version to match (e.g., "1.0.0").
+
+        Returns:
+            List of matching open release tracking issue dictionaries.
+        """
+        search = f"Release {version}" if version else None
+        return self.list_issues(
+            fields="number,title,url",
+            label=RELEASE_LABEL,
+            state="open",
+            search=search,
+        )
+
+    @override
+    def get_release_tracking_issue(self, version: str) -> int:
+        """Finds the single open tracking issue for a given version.
+
+        Args:
+            version: Version string (e.g. "1.0.0").
+
+        Returns:
+            The issue number.
+
+        Raises:
+            NoTrackingIssueError: If no open tracking issue is found.
+            MultipleTrackingIssuesError: If multiple open tracking issues are found.
+        """
+        issues = self.get_open_tracking_issues(version)
+        matching = [i for i in issues if i["title"] == f"Release {version}"]
+        if not matching:
+            raise NoTrackingIssueError(
+                f"No open tracking issue found for Release {version}"
+            )
+        if len(matching) > 1:
+            raise MultipleTrackingIssuesError(
+                f"Multiple open tracking issues found for Release {version}: "
+                + ", ".join(str(i["number"]) for i in matching)
+            )
+        return matching[0]["number"]
+
+    @override
+    def create_issue(
+        self, title: str, body: str, labels: list[str] | None = None
+    ) -> int:
+        """Creates an issue using gh CLI.
+
+        Args:
+            title: Title of the issue.
+            body: Body of the issue.
+            labels: List of labels to add.
+
+        Returns:
+            The issue number.
+        """
+        cmd = ["create", f"--title={title}", f"--body={body}"]
+        if labels:
+            for label in labels:
+                cmd.append(f"--label={label}")
+
+        output = self._gh_issue(*cmd)
+        if not output:
+            raise RuntimeError("gh issue create returned no output")
+        # output is URL: https://github.com/owner/repo/issues/123
+        return int(output.rstrip("/").split("/")[-1])
+
+    @override
+    def create_release_tracking_issue(self, version: str, template_content: str) -> int:
+        """Creates a release tracking issue from a template.
+
+        Args:
+            version: Release version string (e.g., "1.0.0").
+            template_content: Content of the issue template markdown file.
+
+        Returns:
+            The created issue number.
+        """
+        title = f"Release {version}"
+        # Strip YAML frontmatter if present
+        issue_body = template_content
+        if template_content.startswith("---"):
+            parts = template_content.split("---", 2)
+            if len(parts) >= 3:
+                issue_body = parts[2].strip()
+
+        return self.create_issue(title=title, body=issue_body, labels=[RELEASE_LABEL])
+
+    @override
+    def get_issue_body(self, issue_num: int) -> str:
+        """Gets the body content of an issue.
+
+        Args:
+            issue_num: The issue number.
+
+        Returns:
+            The body string of the issue.
+        """
+        output = self._gh_issue("view", str(issue_num), "--json=body")
+        if not output:
+            return ""
+        data = json.loads(output)
+        return data.get("body", "")
+
+    @override
+    def get_issue_title(self, issue_num: int) -> str:
+        """Gets the title of an issue.
+
+        Args:
+            issue_num: The issue number.
+
+        Returns:
+            The title string of the issue.
+        """
+        output = self._gh_issue("view", str(issue_num), "--json=title")
+        if not output:
+            return ""
+        data = json.loads(output)
+        return data.get("title", "")
+
+    @override
+    def update_issue_body(self, issue_num: int, body: str) -> None:
+        """Updates the body of an issue.
+
+        Args:
+            issue_num: The issue number.
+            body: The new body content.
+        """
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, encoding="utf-8") as f:
+            f.write(body)
+            f.flush()
+            temp_path = f.name
+
+        try:
+            self._gh_issue(
+                "edit", str(issue_num), f"--body-file={temp_path}", capture_output=False
+            )
+        finally:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
+    @override
+    def resolve_pr_number(self, pr_ref: str) -> int:
+        """Resolves a PR reference (number, #number, or GitHub URL) to a PR number.
+
+        Args:
+            pr_ref: PR number string (e.g., "123", "#123") or URL.
+
+        Returns:
+            The integer PR number.
+
+        Raises:
+            InvalidPrRefError: If the PR reference cannot be resolved or is for another repo.
+        """
+        clean_ref = pr_ref.lstrip("#")
+        if clean_ref.isdigit():
+            return int(clean_ref)
+
+        if pr_ref.startswith("http"):
+            pattern = rf"github\.com/{re.escape(self.repo)}/pull/(\d+)(/|\?|\Z)"
+            match = re.search(pattern, pr_ref, re.IGNORECASE)
+            if match:
+                return int(match.group(1))
+            raise InvalidPrRefError(
+                f"URL is not for the configured repository ({self.repo}): {pr_ref}"
+            )
+
+        raise InvalidPrRefError(f"Could not resolve PR reference: {pr_ref}")
+
+    def _gh_pr_view(self, pr_num: int, *fields: str) -> str:
+        """Helper to run `gh pr view` with specified JSON fields.
+
+        Args:
+            pr_num: The PR number.
+            *fields: JSON fields to request (e.g., "state", "files").
+
+        Returns:
+            The raw JSON output string from gh.
+
+        Raises:
+            GetPrError: If querying the PR fails.
+        """
+        args = ["view", str(pr_num)]
+        if fields:
+            args.append(f"--json={','.join(fields)}")
+        try:
+            output = self._gh_pr(*args)
+            return output or ""
+        except subprocess.CalledProcessError as e:
+            raise GetPrError(f"Failed to get PR #{pr_num} on {self.repo}: {e}") from e
+
+    @override
+    def get_pr_info(self, pr_num: int) -> PrDict:
+        """Gets info about a PR using gh CLI.
+
+        Args:
+            pr_num: The PR number.
+
+        Returns:
+            Dictionary containing PR fields (state, isDraft, mergeCommit, body, etc.).
+        """
+        output = self._gh_pr_view(pr_num, "state", "isDraft", "mergeCommit", "body")
+        return json.loads(output) if output else {}
+
+    @override
+    def get_pr_files(self, pr_num: int) -> list[str]:
+        """Gets the list of file paths touched by a PR using gh CLI.
+
+        Args:
+            pr_num: The PR number.
+
+        Returns:
+            A list of file paths.
+
+        Raises:
+            GetPrError: If querying the PR fails.
+        """
+        output = self._gh_pr_view(pr_num, "files")
+        if not output:
+            return []
+        data: PrDict = json.loads(output)
+        files = data.get("files", [])
+        return [f["path"] for f in files]
+
+    @override
+    def get_pr_comments(self, pr_num: int) -> list[dict]:
+        """Gets all comments for a PR using gh CLI.
+
+        Args:
+            pr_num: The PR number.
+
+        Returns:
+            List of comment objects (with body, author, etc.).
+        """
+        output = self._gh_pr_view(pr_num, "comments")
+        if not output:
+            return []
+        data = json.loads(output)
+        return data.get("comments", [])
+
+    @override
+    def create_pr(
+        self,
+        title: str,
+        body: str,
+        base: str = "main",
+        labels: list[str] | None = None,
+    ) -> str:
+        """Creates a pull request.
+
+        Args:
+            title: Title of the PR.
+            body: Body of the PR.
+            base: Base branch to merge into (default: "main").
+            labels: Optional list of labels to add.
+
+        Returns:
+            The URL of the created PR.
+
+        Raises:
+            CreatePrError: If creating the pull request fails.
+        """
+        cmd = [
+            "create",
+            f"--title={title}",
+            f"--body={body}",
+            f"--base={base}",
+        ]
+        if labels:
+            for label in labels:
+                cmd.append(f"--label={label}")
+        try:
+            output = self._gh_pr(*cmd)
+        except subprocess.CalledProcessError as e:
+            msg = f"Failed to create PR '{title}': {e}"
+            if e.stdout:
+                msg += (
+                    f"\n{'=' * 20} STDOUT BEGIN {'=' * 20}\n"
+                    f"{e.stdout}\n"
+                    f"{'=' * 20} STDOUT END {'=' * 20}"
+                )
+            if e.stderr:
+                msg += (
+                    f"\n{'=' * 20} STDERR BEGIN {'=' * 20}\n"
+                    f"{e.stderr}\n"
+                    f"{'=' * 20} STDERR END {'=' * 20}"
+                )
+            raise CreatePrError(msg) from e
+        except Exception as e:
+            raise CreatePrError(f"Failed to create PR '{title}': {e}") from e
+        if not output:
+            raise CreatePrError(
+                f"Failed to create PR '{title}': gh pr create returned no output"
+            )
+        return output
+
+    @override
+    def enable_auto_merge(self, pr_num: int, method: str = "squash") -> None:
+        """Enables auto-merge for a PR.
+
+        Args:
+            pr_num: The PR number.
+            method: The merge method ('squash', 'rebase', or 'merge').
+        """
+        cmd = ["merge", str(pr_num), "--auto"]
+        if method == "squash":
+            cmd.append("--squash")
+        elif method == "rebase":
+            cmd.append("--rebase")
+        elif method == "merge":
+            cmd.append("--merge")
+        self._gh_pr(*cmd, capture_output=False)
+
+    @override
+    def get_open_pr(self, branch_name: str) -> PrDict | None:
+        """Finds an open PR for the given branch.
+
+        Args:
+            branch_name: The head branch name to search for.
+
+        Returns:
+            Dictionary with 'number' and 'url' if an open PR exists, else None.
+        """
+        cmd = [
+            "list",
+            f"--head={branch_name}",
+            "--state=open",
+            "--json=number,url",
+        ]
+        output = self._gh_pr(*cmd)
+        prs = json.loads(output) if output else []
+        return prs[0] if prs else None
+
+    @override
+    def post_issue_comment(self, issue_num: int, comment_body: str) -> None:
+        """Posts a comment on an issue or PR.
+
+        Args:
+            issue_num: The issue or PR number.
+            comment_body: The body content of the comment.
+        """
+        self._gh_issue(
+            "comment",
+            str(issue_num),
+            f"--body={comment_body}",
+            capture_output=False,
+        )
+
+    @override
+    def add_comment_reaction(self, comment_id: int, reaction: str) -> None:
+        """Adds a reaction to an issue or PR comment.
+
+        Args:
+            comment_id: The comment ID (note: gh api endpoint needed for comment reactions).
+            reaction: The reaction type (e.g., "+1", "-1", "rocket").
+        """
+        self._run_gh(
+            "api",
+            f"repos/{self.repo}/issues/comments/{comment_id}/reactions",
+            "-f",
+            f"content={reaction}",
+            capture_output=False,
+        )
+
+    @override
+    def get_merge_commits_for_prs(
+        self, pending_items: list[BackportTask]
+    ) -> list[BackportTask]:
+        """Resolves PR references in pending backports to their merge commit SHAs.
+
+        Updates item.status based on PR state if it cannot be resolved.
+
+        Args:
+            pending_items: A list of BackportTask items to resolve.
+
+        Returns:
+            The list of resolved BackportTask items.
+        """
+        return resolve_merge_commits_for_prs(self, pending_items)
+
+
+def resolve_merge_commits_for_prs(
+    gh_client: GitHubInterface, pending_items: list[BackportTask]
+) -> list[BackportTask]:
+    """Resolves PR references in pending backports to their merge commit SHAs.
+
+    Updates item.status based on PR state if it cannot be resolved.
+
+    Args:
+        gh_client: The GitHub client.
+        pending_items: A list of BackportTask items to resolve.
+
+    Returns:
+        The list of resolved BackportTask items.
+    """
+    resolved_items = []
+    for item in pending_items:
+        pr_num = int(item.pr_ref.lstrip("#"))
+        print(f"Resolving PR #{pr_num} to merge commit...")
+        try:
+            pr_info = gh_client.get_pr_info(pr_num)
+            if not pr_info:
+                print(f"PR #{pr_num} not found. Gating.")
+                item.status = BackportTaskStatus.ERROR_NOT_FOUND
+            else:
+                state = pr_info.get("state")
+                is_draft = pr_info.get("isDraft", False)
+                if state == "OPEN" or is_draft:
+                    print(
+                        f"PR #{pr_num} is open or draft (state: {state},"
+                        f" draft: {is_draft}). Ignoring."
+                    )
+                    item.status = (
+                        BackportTaskStatus.OPEN_PR
+                        if not is_draft
+                        else BackportTaskStatus.DRAFT_PR
+                    )
+                elif state == "CLOSED":
+                    print(f"PR #{pr_num} is closed but not merged. Gating.")
+                    item.status = BackportTaskStatus.ERROR_CLOSED_PR
+                elif state == "MERGED":
+                    merge_commit = pr_info.get("mergeCommit")
+                    if merge_commit and "oid" in merge_commit:
+                        item.commit = merge_commit["oid"]
+                        item.status = BackportTaskStatus.RESOLVED
+                    else:
+                        print(f"PR #{pr_num} has no merge commit SHA. Gating.")
+                        item.status = BackportTaskStatus.ERROR_NO_MERGE_COMMIT
+                else:
+                    print(f"PR #{pr_num} has unknown state: {state}. Gating.")
+                    item.status = BackportTaskStatus.ERROR_UNKNOWN
+        except Exception as e:
+            print(f"Error resolving PR #{pr_num}: {e}. Gating.")
+            item.status = BackportTaskStatus.ERROR_RESOLUTION_FAILED
+        resolved_items.append(item)
+    return resolved_items

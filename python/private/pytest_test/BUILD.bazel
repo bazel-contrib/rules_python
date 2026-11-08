@@ -1,0 +1,49 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
+load("//python/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")
+
+package(default_visibility = ["//:__subpackages__"])
+
+filegroup(
+    name = "bootstrap_template",
+    srcs = ["pytest_bootstrap_template.py"],
+    visibility = NOT_ACTUALLY_PUBLIC,
+)
+
+# keep
+bzl_library(
+    name = "pytest_test",
+    srcs = ["pytest_test.bzl"],
+    deps = [
+        "//python:py_test",
+    ],
+)
+
+distribution_filegroup(
+    name = "distribution",
+)
+
+# These aliases are used to avoid duplicate targets in the deps list
+alias(
+    name = "default_pytest",
+    actual = "@pypi//pytest",
+    visibility = NOT_ACTUALLY_PUBLIC,
+)
+
+alias(
+    name = "default_pytest_bazel",
+    actual = "@pypi//pytest_bazel",
+    visibility = NOT_ACTUALLY_PUBLIC,
+)
+
+alias(
+    name = "default_pytest_shard",
+    actual = "@pypi//pytest_shard",
+    visibility = NOT_ACTUALLY_PUBLIC,
+)
+
+alias(
+    name = "default_pytest_randomly",
+    actual = "@pypi//pytest_randomly",
+    visibility = NOT_ACTUALLY_PUBLIC,
+)

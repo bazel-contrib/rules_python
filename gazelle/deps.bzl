@@ -31,11 +31,49 @@ def python_stdlib_list_deps():
         url = "https://files.pythonhosted.org/packages/8c/25/f1540879c8815387980e56f973e54605bd924612399ace31487f7444171c/stdlib_list-0.12.0.tar.gz",
     )
 
+def tree_sitter_deps():
+    "Fetch tree-sitter dependencies with custom BUILD files"
+    if "com_github_tree_sitter_go_tree_sitter" not in native.existing_rules():
+        http_archive(
+            name = "com_github_tree_sitter_go_tree_sitter",
+            build_file = Label("//:internal/go_tree_sitter_BUILD.bazel"),
+            integrity = "sha256-rAsyh/Kydqt24TBaA6H14obQlkaQWwj1QNec3xza6NM=",
+            strip_prefix = "go-tree-sitter-c9492002f76ed75037e3fe6d3bbabb54ed3e1ff5",
+            url = "https://github.com/tree-sitter/go-tree-sitter/archive/c9492002f76ed75037e3fe6d3bbabb54ed3e1ff5.zip",
+        )
+    if "com_github_tree_sitter_tree_sitter_python" not in native.existing_rules():
+        http_archive(
+            name = "com_github_tree_sitter_tree_sitter_python",
+            build_file = Label("//:internal/tree_sitter_python_BUILD.bazel"),
+            integrity = "sha256-e86IfrLzPpS/dKaWRc9RONQJZyDlT9MmmmEkwGuTxYQ=",
+            url = "https://github.com/tree-sitter/tree-sitter-python/releases/download/v0.25.0/tree-sitter-python.tar.gz",
+        )
+
 def gazelle_deps():
+    tree_sitter_deps()
     go_deps()
     python_stdlib_list_deps()
 
 def go_deps():
+    # Prevent `bazel run //:gazelle_update_repos` from generating `go_repository`
+    # entries for the repos managed by `tree_sitter_deps()` or for the 11 other
+    # language grammars required by upstream `go-tree-sitter/go.mod` for its own
+    # internal unit tests. Without these directives, `gazelle update-repos` sees
+    # those modules in `go list -m all` and re-adds them here; declaring
+    # `# gazelle:repository` directives tells `update-repos` to skip them.
+    # gazelle:repository http_archive name=com_github_tree_sitter_go_tree_sitter
+    # gazelle:repository http_archive name=com_github_tree_sitter_tree_sitter_c
+    # gazelle:repository http_archive name=com_github_tree_sitter_tree_sitter_cpp
+    # gazelle:repository http_archive name=com_github_tree_sitter_tree_sitter_embedded_template
+    # gazelle:repository http_archive name=com_github_tree_sitter_tree_sitter_go
+    # gazelle:repository http_archive name=com_github_tree_sitter_tree_sitter_html
+    # gazelle:repository http_archive name=com_github_tree_sitter_tree_sitter_java
+    # gazelle:repository http_archive name=com_github_tree_sitter_tree_sitter_javascript
+    # gazelle:repository http_archive name=com_github_tree_sitter_tree_sitter_json
+    # gazelle:repository http_archive name=com_github_tree_sitter_tree_sitter_php
+    # gazelle:repository http_archive name=com_github_tree_sitter_tree_sitter_python
+    # gazelle:repository http_archive name=com_github_tree_sitter_tree_sitter_ruby
+    # gazelle:repository http_archive name=com_github_tree_sitter_tree_sitter_rust
     "Fetch go dependencies"
     go_repository(
         name = "com_github_bazelbuild_bazel_gazelle",
@@ -111,16 +149,16 @@ def go_deps():
         version = "v0.6.0",
     )
     go_repository(
+        name = "com_github_mattn_go_pointer",
+        importpath = "github.com/mattn/go-pointer",
+        sum = "h1:n+XhsuGeVO6MEAp7xyEukFINEa+Quek5psIR/ylA6o0=",
+        version = "v0.0.1",
+    )
+    go_repository(
         name = "com_github_pmezard_go_difflib",
         importpath = "github.com/pmezard/go-difflib",
         sum = "h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=",
         version = "v1.0.0",
-    )
-    go_repository(
-        name = "com_github_smacker_go_tree_sitter",
-        importpath = "github.com/smacker/go-tree-sitter",
-        sum = "h1:6C8qej6f1bStuePVkLSFxoU22XBS165D3klxlzRg8F4=",
-        version = "v0.0.0-20240827094217-dd81d9e9be82",
     )
     go_repository(
         name = "com_github_stretchr_objx",
@@ -131,8 +169,8 @@ def go_deps():
     go_repository(
         name = "com_github_stretchr_testify",
         importpath = "github.com/stretchr/testify",
-        sum = "h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsTg=",
-        version = "v1.9.0",
+        sum = "h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOfJA=",
+        version = "v1.10.0",
     )
     go_repository(
         name = "in_gopkg_check_v1",

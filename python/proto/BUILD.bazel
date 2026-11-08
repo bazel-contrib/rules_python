@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
+
 package(default_visibility = ["//visibility:public"])
 
 # Deprecated; use @com_google_protobuf//bazel/private:python_toolchain_type instead.
@@ -21,4 +23,8 @@ alias(
     name = "toolchain_type",
     actual = "@com_google_protobuf//bazel/private:python_toolchain_type",
     deprecation = "Use @com_google_protobuf//bazel/private:python_toolchain_type instead",
+)
+
+distribution_filegroup(
+    name = "distribution",
 )

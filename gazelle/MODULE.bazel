@@ -23,10 +23,27 @@ use_repo(
     "com_github_bmatcuk_doublestar_v4",
     "com_github_emirpasic_gods",
     "com_github_ghodss_yaml",
-    "com_github_smacker_go_tree_sitter",
+    "com_github_mattn_go_pointer",
     "com_github_stretchr_testify",
     "in_gopkg_yaml_v2",
     "org_golang_x_sync",
+)
+
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "com_github_tree_sitter_go_tree_sitter",
+    build_file = "//:internal/go_tree_sitter_BUILD.bazel",
+    integrity = "sha256-rAsyh/Kydqt24TBaA6H14obQlkaQWwj1QNec3xza6NM=",
+    strip_prefix = "go-tree-sitter-c9492002f76ed75037e3fe6d3bbabb54ed3e1ff5",
+    url = "https://github.com/tree-sitter/go-tree-sitter/archive/c9492002f76ed75037e3fe6d3bbabb54ed3e1ff5.zip",
+)
+
+http_archive(
+    name = "com_github_tree_sitter_tree_sitter_python",
+    build_file = "//:internal/tree_sitter_python_BUILD.bazel",
+    integrity = "sha256-e86IfrLzPpS/dKaWRc9RONQJZyDlT9MmmmEkwGuTxYQ=",
+    url = "https://github.com/tree-sitter/tree-sitter-python/releases/download/v0.25.0/tree-sitter-python.tar.gz",
 )
 
 python_stdlib_list = use_extension("//python:extensions.bzl", "python_stdlib_list")

@@ -19,15 +19,15 @@ py_console_script_binary(
     visibility = ["//entry_points:__subpackages__"],
     deps = [
         # One can add extra dependencies to the entry point.
-        "@pip//pylint_print",
+        "@pip//pylint_per_file_ignores",
     ],
 )
 
 # A specific Python version can be forced by passing `python_version`
-# attribute, e.g. to force Python 3.9:
+# attribute, e.g. to force Python 3.14:
 py_console_script_binary(
     name = "yamllint",
     pkg = "@pip//yamllint:pkg",
-    python_version = "3.9",
+    python_version = "3.14",
     visibility = ["//entry_points:__subpackages__"],
 )

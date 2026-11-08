@@ -6,11 +6,26 @@ import argparse
 import sys
 from pathlib import Path
 
+_BZL_MARKER = 'MANIFEST_TEXT = """\n'
+_BZL_SUFFIX = '"""\n'
+
 
 def sort_manifest(manifest_path: Path) -> bool:
     """Sorts a manifest file in place by filename. Returns True if modified."""
-    # Read using pathlib.Path
-    lines = manifest_path.read_text(encoding="utf-8").splitlines(keepends=True)
+    text = manifest_path.read_text(encoding="utf-8")
+    if _BZL_MARKER in text:
+        header_prefix, rest = text.split(_BZL_MARKER, 1)
+        if not rest.endswith(_BZL_SUFFIX):
+            raise ValueError(f"Expected {manifest_path} to end with {_BZL_SUFFIX!r}")
+        prefix = header_prefix + _BZL_MARKER
+        body = rest[: -len(_BZL_SUFFIX)]
+        suffix = _BZL_SUFFIX
+    else:
+        prefix = ""
+        body = text
+        suffix = ""
+
+    lines = body.splitlines(keepends=True)
 
     if not lines:
         return False
@@ -82,7 +97,8 @@ def sort_manifest(manifest_path: Path) -> bool:
     if new_lines == lines:
         return False
 
-    manifest_path.write_text("".join(new_lines), encoding="utf-8")
+    with manifest_path.open("w", encoding="utf-8", newline="\n") as f:
+        f.write(prefix + "".join(new_lines) + suffix)
     return True
 
 
@@ -99,7 +115,7 @@ def main():
     manifests = args.manifests
     if not manifests:
         repo_root = Path(__file__).resolve().parent.parent.parent.parent
-        default_manifest = repo_root / "python" / "private" / "runtimes_manifest.txt"
+        default_manifest = repo_root / "python" / "private" / "runtimes_manifest.bzl"
         if default_manifest.exists():
             manifests = [default_manifest]
         else:

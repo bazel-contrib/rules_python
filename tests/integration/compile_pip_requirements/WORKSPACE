@@ -13,6 +13,6 @@ load("@rules_python//python:repositories.bzl", "py_repositories", "python_regist
 py_repositories()
 
 python_register_toolchains(
-    name = "python39",
-    python_version = "3.9",
+    name = "python3_11",
+    python_version = "3.11",
 )

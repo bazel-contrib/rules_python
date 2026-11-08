@@ -19,4 +19,11 @@ build --@rules_python//python/config_settings:incompatible_default_to_explicit_i
 # Windows makes use of runfiles for some rules
 build --enable_runfiles
 
+# Bazel 10 enables --incompatible_no_implicit_file_export by default, which
+# breaks @io_bazel_rules_go//go/private:context: its bzl_library depends on
+# @bazel_tools//tools/cpp:toolchain_utils.bzl, which bazel_tools doesn't
+# export. rules_go v0.61.0+ drops that dep; remove this once rules_go is
+# upgraded.
+common --noincompatible_no_implicit_file_export
+
 common:bazel7.x --incompatible_python_disallow_native_rules

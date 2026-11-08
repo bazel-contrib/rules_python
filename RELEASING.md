@@ -67,6 +67,16 @@ you can set the `publish_to_pypi` input to `false`:
 gh workflow run release_publish.yaml --ref <TAG> -f publish_to_pypi=false
 ```
 
+### Release artifacts
+
+The release workflow also builds `//dev/release_artifacts:artifacts_for_release`
+for each platform and uploads the built artifacts, `artifacts_manifest.json`,
+and `SHA256SUMS` to the GitHub release. For now, build failures only emit a
+warning rather than failing the release.
+
+Presubmit builds it for every platform too: natively on each CI host, and
+through `//dev/release_artifacts:cross_compiled_artifacts` for the others.
+
 ### Manually publishing to PyPI
 
 If PyPI publishing failed or was skipped during the main release, the PyPI
@@ -74,7 +84,7 @@ publishing workflow can be triggered manually using the GitHub CLI (`gh`) or
 via the [GitHub Actions UI](https://github.com/bazel-contrib/rules_python/actions/workflows/publish_pypi.yaml):
 
 ```shell
-gh workflow run publish_pypi.yaml --ref <TAG> -f tag_name=<TAG>
+gh workflow run publish_pypi.yaml --ref <TAG>
 ```
 
 ### Determining Semantic Version
@@ -123,13 +133,67 @@ automatically add the PRs to the checklist and trigger processing.
 ### Method D: Release Tool CLI
 You can use the release tool to add backports from your local checkout:
 ```shell
-bazel run //tools/private/release -- add-backports <PR_REF> [<PR_REF> ...]
+bazel run //dev/release -- add-backports <PR_REF> [<PR_REF> ...]
 ```
 The `<PR_REF>` can be:
 *   A PR number (e.g., `124` or `#124`)
 *   A PR URL (e.g., `https://github.com/bazel-contrib/rules_python/pull/124`
     or `https://github.com/bazel-contrib/rules_python/pull/124/files`)
 *   Only URLs for the configured repository are accepted.
+
+### Processing News Files and PR Changes for Backports
+
+To process and merge news files into an existing release in `CHANGELOG.md`
+(e.g. after backporting a PR) and update any `VERSION_NEXT_*` markers added by
+the PR:
+
+```shell
+bazel run //dev/release -- \
+    process-news <VERSION> <TARGET> [<TARGET> ...]
+```
+
+The `<TARGET>` can be:
+*   A news file path (e.g., `news/3997.added.md`).
+*   A PR number (e.g., `3997` or `#3997`).
+*   A PR URL (e.g., `https://github.com/bazel-contrib/rules_python/pull/3997`).
+
+When a PR reference is passed, `process-news` resolves the files touched by the
+PR, merges its news file(s) into `CHANGELOG.md`, deletes the processed news
+file(s), and updates any `VERSION_NEXT_FEATURE` / `VERSION_NEXT_PATCH`
+placeholders in the PR's files to `<VERSION>`.
+
+Examples:
+
+```shell
+# Process a single news file
+bazel run //dev/release -- process-news 2.3.0 news/3997.added.md
+
+# Process all news files and update version markers for a PR
+bazel run //dev/release -- process-news 2.3.0 3997
+```
+
+### Syncing Changelog to Main
+
+When backports are processed, a separate workflow and job creates a sync PR to
+`main` to merge news entries into `CHANGELOG.md` and update `VERSION_NEXT_*`
+placeholders.
+
+You can also manually trigger changelog syncing using the GitHub CLI or Actions
+UI:
+
+```shell
+gh workflow run release_sync_changelog.yaml \
+    --repo bazel-contrib/rules_python \
+    --raw-field issue=<ISSUE>
+```
+
+Or comment `/sync-changelog` on the release tracking issue, or run via the
+release tool CLI:
+
+```shell
+bazel run //dev/release -- \
+    sync-changelog --issue <ISSUE> --remote origin
+```
 
 ### Failure Behavior
 If a backport fails to process (e.g., due to cherry-pick conflicts):
@@ -138,6 +202,11 @@ If a backport fails to process (e.g., due to cherry-pick conflicts):
 *   You must resolve the conflict manually: checkout the release branch,
     cherry-pick the PR, resolve conflicts, push to remote, and manually check
     the box on the tracking issue checklist with `status=done` metadata.
+
+If changelog syncing fails (or if you need to retrigger syncing to `main`):
+*   Comment `/sync-changelog` on the release tracking issue.
+*   Or trigger the `release_sync_changelog.yaml` workflow manually with the
+    issue number.
 
 ## Automated patch releases to multiple versions
 
@@ -262,6 +331,8 @@ The checklist items use metadata suffix: `| key=value key2=value2`.
     issue (or on the preparation PR) to mark the preparation task as done.
 *   **Create Release Branch**: Comment `/create-release-branch` on the tracking
     issue to cut and push the release branch.
+*   **Retry Changelog Sync**: Comment `/sync-changelog` on the tracking issue to
+    retrigger creating the sync PR to `main` for backports.
 *   **Force Task Done**: Check the box `- [x]` and add appropriate metadata (e.g. `status=done`).
 
 ## Secrets

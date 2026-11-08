@@ -16,8 +16,9 @@
 
 load("//python:versions.bzl", "PLATFORMS")
 load(":pbs_manifest.bzl", "parse_runtime_manifest")
+load(":runtimes_manifest.bzl", "MANIFEST_TEXT")
 load(":text_util.bzl", "render")
-load(":toolchains_repo.bzl", "toolchain_suite_content")
+load(":toolchains_repo.bzl", "toolchain_suites_content")
 
 def _have_same_length(*lists):
     if not lists:
@@ -69,7 +70,7 @@ def _hub_build_file_content(rctx):
         else:
             flag_values = {}
 
-        toolchains.append(toolchain_suite_content(
+        toolchains.append(struct(
             prefix = "_{}_{}".format(render.left_pad_zero(i, pad_length), base_name),
             user_repository_name = rctx.attr.toolchain_repo_names[key],
             target_compatible_with = rctx.attr.toolchain_target_compatible_with_map[key],
@@ -80,7 +81,7 @@ def _hub_build_file_content(rctx):
         ))
 
     return _HUB_BUILD_FILE_TEMPLATE.format(
-        toolchains = "\n".join(toolchains),
+        toolchains = toolchain_suites_content(toolchains),
         rules_python = rctx.attr._rules_python_workspace.repo_name,
     )
 
@@ -121,8 +122,9 @@ def _hub_repo_impl(rctx):
 
     python_versions = rctx.attr.python_versions
     if not python_versions and not rctx.attr.toolchain_python_versions:
-        content = rctx.read(rctx.path(Label("//python/private:runtimes_manifest.txt")))
-        entries = parse_runtime_manifest(content)
+        # Loaded rather than read by Label, so the remote repo contents cache
+        # does not have to materialize this repo.
+        entries = parse_runtime_manifest(MANIFEST_TEXT)
         python_versions_str = render.list(sorted({getattr(e, "python_version", ""): None for e in entries if getattr(e, "python_version", "")}))
 
     else:

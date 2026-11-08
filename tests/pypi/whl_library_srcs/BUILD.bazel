@@ -1,0 +1,5 @@
+load(":whl_library_srcs_tests.bzl", "whl_library_srcs_test_suite")
+
+whl_library_srcs_test_suite(
+    name = "whl_library_srcs_tests",
+)

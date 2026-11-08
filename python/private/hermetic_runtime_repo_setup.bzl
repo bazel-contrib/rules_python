@@ -29,6 +29,7 @@ def define_hermetic_runtime_toolchain_impl(
         name,
         extra_files_glob_include,
         extra_files_glob_exclude,
+        interpreter_has_static_libpython = False,
         python_version,
         python_bin,
         coverage_tool):
@@ -45,6 +46,8 @@ def define_hermetic_runtime_toolchain_impl(
             binaries).
         extra_files_glob_exclude: {type}`list[str]` additional glob exclude
             patterns for the target runtime files.
+        interpreter_has_static_libpython: {type}`bool` whether the interpreter
+            includes libpython statically.
         python_version: {type}`str` The Python version, in `major.minor.micro`
             format.
         python_bin: {type}`str` The path to the Python binary within the
@@ -78,6 +81,8 @@ def define_hermetic_runtime_toolchain_impl(
         # During pyc creation, temp files named *.pyc.NNN are created
         "**/__pycache__/*.pyc.*",
     ]
+    if interpreter_has_static_libpython:
+        files_exclude.append("lib/libpython*.so*")
     files_exclude += extra_files_glob_exclude
 
     native.filegroup(

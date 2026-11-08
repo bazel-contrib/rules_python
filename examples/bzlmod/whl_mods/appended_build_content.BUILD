@@ -7,10 +7,8 @@ write_file(
 )
 
 filegroup(
-    name = "whl_orig",
-    srcs = glob(
-        ["*.whl"],
-        allow_empty = False,
-        exclude = ["*-patched-*.whl"],
-    ),
+    name = "whl_archive",
+    # The archive may live in a separate repository. Use the wheel target
+    # instead of assuming that the archive is beside the extracted files.
+    srcs = [":whl_file"],
 )

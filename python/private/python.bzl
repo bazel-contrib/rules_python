@@ -18,12 +18,19 @@ load("@bazel_features//:features.bzl", "bazel_features")
 load("//python:versions.bzl", "DEFAULT_RELEASE_BASE_URLS", "PLATFORMS")
 load(":auth.bzl", "AUTH_ATTRS")
 load(":full_version.bzl", "full_version")
-load(":pbs_manifest.bzl", "parse_runtime_manifest")
+load(
+    ":pbs_manifest.bzl",
+    "ARCHIVE_FLAVORS",
+    "manifest_entry_platform_keys",
+    "manifest_entry_sort_key",
+    "parse_runtime_manifest",
+)
 load(":platform_info.bzl", "platform_info")
 load(":pyproject_utils.bzl", "read_pyproject", "version_from_requires_python")
 load(":python_register_toolchains.bzl", "python_register_toolchains")
 load(":pythons_hub.bzl", "hub_repo")
 load(":repo_utils.bzl", "repo_utils")
+load(":runtimes_manifest.bzl", "MANIFEST_TEXT")
 load(
     ":toolchains_repo.bzl",
     "host_compatible_python_repo",
@@ -33,13 +40,20 @@ load(
 )
 load(":version.bzl", "version")
 
-def parse_modules(*, module_ctx, logger = None, _fail = fail):
+def parse_modules(
+        *,
+        module_ctx,
+        logger = None,
+        _fail = fail,
+        _default_runtime_manifest = MANIFEST_TEXT):
     """Parse the modules and return a struct for registrations.
 
     Args:
         module_ctx: {type}`module_ctx` module context.
         logger: {type}`repo_utils.logger` A logger to use.
         _fail: {type}`function` the failure function, mainly for testing.
+        _default_runtime_manifest: {type}`str` the built-in runtimes manifest,
+            only overridden for testing.
 
     Returns:
         A struct with the following attributes:
@@ -78,7 +92,12 @@ def parse_modules(*, module_ctx, logger = None, _fail = fail):
     # Map of string Major.Minor or Major.Minor.Patch to the toolchain_info struct
     global_toolchain_versions = {}
 
-    config = _get_toolchain_config(mctx = module_ctx, modules = module_ctx.modules, _fail = _fail)
+    config = _get_toolchain_config(
+        mctx = module_ctx,
+        modules = module_ctx.modules,
+        default_runtime_manifest = _default_runtime_manifest,
+        _fail = _fail,
+    )
 
     default_python_version = _compute_default_python_version(module_ctx)
 
@@ -256,7 +275,8 @@ def _python_impl(module_ctx):
             minor_mapping = py.config.minor_mapping,
             fail_on_err = False,
         )
-        if not full_python_version:
+        if (not full_python_version or
+            full_python_version not in py.config.default["tool_versions"]):
             logger.info(lambda: (
                 "The actual toolchain for python_version '{version}' " +
                 "has not been registered, but was requested, please configure a toolchain " +
@@ -570,6 +590,14 @@ def _process_single_version_overrides(*, tag, _fail = fail, default):
     available_versions = default["tool_versions"]
     kwargs = default.setdefault("kwargs", {})
 
+    if tag.python_version not in available_versions:
+        if not (tag.sha256 and tag.urls):
+            _fail((
+                "When introducing a new python_version '{}', 'sha256' and " +
+                "'urls' must be specified"
+            ).format(tag.python_version))
+            return
+
     if tag.sha256 or tag.urls:
         if not (tag.sha256 and tag.urls):
             _fail("Both `sha256` and `urls` overrides need to be provided together")
@@ -612,6 +640,8 @@ def _process_single_version_overrides(*, tag, _fail = fail, default):
         kwargs.setdefault(tag.python_version, {})["distutils_content"] = tag.distutils_content
     if tag.distutils:
         kwargs.setdefault(tag.python_version, {})["distutils"] = tag.distutils
+    if tag.libpython and tag.libpython != "auto":
+        kwargs.setdefault(tag.python_version, {})["libpython"] = tag.libpython
 
 def _process_single_version_platform_overrides(*, tag, _fail = fail, default):
     if not _validate_version(tag.python_version, _fail = _fail):
@@ -626,7 +656,10 @@ def _process_single_version_platform_overrides(*, tag, _fail = fail, default):
         available_versions[tag.python_version] = {}
 
     if tag.coverage_tool:
-        available_versions[tag.python_version].setdefault("coverage_tool", {})[tag.platform] = tag.coverage_tool
+        # NOTE: tag.coverage_tool is a Label (so that it is resolved relative to the
+        # calling module), but downstream (python_repository.coverage_tool) it is
+        # consumed as a string, so convert it to its canonical string form here.
+        available_versions[tag.python_version].setdefault("coverage_tool", {})[tag.platform] = str(tag.coverage_tool)
     if tag.patch_strip:
         available_versions[tag.python_version].setdefault("patch_strip", {})[tag.platform] = tag.patch_strip
     if tag.patches:
@@ -638,6 +671,8 @@ def _process_single_version_platform_overrides(*, tag, _fail = fail, default):
 
     if tag.urls:
         available_versions[tag.python_version].setdefault("url", {})[tag.platform] = tag.urls
+    if tag.libpython and tag.libpython != "auto":
+        available_versions[tag.python_version].setdefault("libpython", {})[tag.platform] = tag.libpython
 
     # If platform is customized, or doesn't exist, (re)define one.
     if ((tag.target_compatible_with or tag.target_settings or tag.os_name or tag.arch) or
@@ -716,6 +751,7 @@ def _process_global_overrides(*, tag, default, _fail = fail):
 
     forwarded_attrs = sorted(AUTH_ATTRS) + [
         "base_urls",
+        "libpython",
         "register_all_versions",
     ]
     for key in forwarded_attrs:
@@ -743,27 +779,17 @@ def _override_defaults(*overrides, modules, _fail = fail, default):
 
             override.fn(tag = tag, _fail = _fail, default = default)
 
-def _manifest_entry_sort_key(entry):
-    flavor_rank = {"full": 3, "install_only": 1, "install_only_stripped": 2}.get(entry.archive_flavor, 4)
-    microarch = entry.microarch
-    if not microarch:
-        microarch_rank = 0
-    elif microarch.startswith("v") and microarch[1:].isdigit():
-        microarch_rank = int(microarch[1:])
-    else:
-        microarch_rank = 999
-    return (flavor_rank, microarch_rank)
-
 def _populate_from_pbs_manifest(
         *,
         mctx,
         add_runtime_manifest_urls = [],
         add_runtime_manifest_files = [],
+        add_runtime_manifest_contents = [],
         runtime_manifest_sha = "",
         base_urls = [],
         available_versions,
         _fail):
-    manifest_contents = []
+    manifest_contents = list(add_runtime_manifest_contents)
 
     if add_runtime_manifest_urls:
         manifest_path = mctx.path("runtime_manifest")
@@ -791,11 +817,9 @@ def _populate_from_pbs_manifest(
     for content in manifest_contents:
         entries.extend(parse_runtime_manifest(content))
 
-    # We don't model archive_flavor via flags yet, so have to pick one.
-    # Preference is given to install_only because its smaller
     entries = sorted(
         entries,
-        key = _manifest_entry_sort_key,
+        key = manifest_entry_sort_key,
     )
 
     for entry in entries:
@@ -814,30 +838,48 @@ def _populate_from_pbs_manifest(
         if matched_platform not in PLATFORMS:
             continue
 
-        if entry.archive_flavor not in ["install_only", "install_only_stripped", "full"]:
+        if entry.archive_flavor not in ARCHIVE_FLAVORS:
             continue
 
         v_dict = available_versions.setdefault(py_version, {})
-        if matched_platform in v_dict.get("sha256", {}):
-            continue
-
         if "://" in location:
             urls = [location]
         else:
-            urls = ["{}/{}".format(b_url, location) for b_url in base_download_urls]
+            urls = []
+            for b_url in base_download_urls:
+                if ("/" not in location and
+                    entry.build_version and
+                    b_url in DEFAULT_RELEASE_BASE_URLS):
+                    urls.append(
+                        "{}/{}/{}".format(b_url, entry.build_version, location),
+                    )
+                else:
+                    urls.append("{}/{}".format(b_url, location))
 
         strip_prefix = "python/install" if entry.archive_flavor == "full" else "python"
 
-        v_dict.setdefault("sha256", {})[matched_platform] = sha256
-        v_dict.setdefault("url", {})[matched_platform] = urls
-        v_dict.setdefault("strip_prefix", {})[matched_platform] = strip_prefix
+        # The plain platform key gets the preferred archive; the flavor
+        # specific key (if any) gets the archive of that flavor.
+        for platform_key in manifest_entry_platform_keys(entry, matched_platform):
+            if platform_key in v_dict.get("sha256", {}):
+                continue
+            v_dict.setdefault("sha256", {})[platform_key] = sha256
+            v_dict.setdefault("url", {})[platform_key] = urls
+            v_dict.setdefault("strip_prefix", {})[platform_key] = strip_prefix
 
-def _get_toolchain_config(*, mctx, modules, _fail = fail):
+def _get_toolchain_config(
+        *,
+        mctx,
+        modules,
+        default_runtime_manifest,
+        _fail = fail):
     """Computes the configs for toolchains.
 
     Args:
         mctx: The module context.
         modules: The modules from module_ctx
+        default_runtime_manifest: The contents of the built-in runtimes
+            manifest.
         _fail: Function to call for failing; only used for testing.
 
     Returns:
@@ -856,43 +898,30 @@ def _get_toolchain_config(*, mctx, modules, _fail = fail):
 
     # Items that can be overridden
     available_versions = {}
+    root_module = modules[0] if modules else None
+    root_overrides = root_module.tags.override if root_module and root_module.is_root else []
+
     _populate_from_pbs_manifest(
         mctx = mctx,
-        add_runtime_manifest_files = [Label("//python/private:runtimes_manifest.txt")],
+        # Loaded rather than read by Label, so the remote repo contents cache
+        # does not have to materialize this repo.
+        add_runtime_manifest_contents = [default_runtime_manifest],
         base_urls = DEFAULT_RELEASE_BASE_URLS,
         available_versions = available_versions,
         _fail = _fail,
     )
 
-    # Check for add_runtime_manifest_urls or add_runtime_manifest_files in override tags in root module
-    root_module = modules[0] if modules else None
-    if root_module and root_module.is_root:
-        for tag in root_module.tags.override:
-            if tag.add_runtime_manifest_urls or tag.add_runtime_manifest_files:
-                _populate_from_pbs_manifest(
-                    mctx = mctx,
-                    add_runtime_manifest_urls = tag.add_runtime_manifest_urls,
-                    add_runtime_manifest_files = tag.add_runtime_manifest_files,
-                    runtime_manifest_sha = tag.runtime_manifest_sha,
-                    base_urls = tag.base_urls,
-                    available_versions = available_versions,
-                    _fail = _fail,
-                )
-
-    # Check for add_runtime_manifest_urls or add_runtime_manifest_files in override tags in root module
-    root_module = modules[0] if modules else None
-    if root_module and root_module.is_root:
-        for tag in root_module.tags.override:
-            if tag.add_runtime_manifest_urls or tag.add_runtime_manifest_files:
-                _populate_from_pbs_manifest(
-                    mctx = mctx,
-                    add_runtime_manifest_urls = tag.add_runtime_manifest_urls,
-                    add_runtime_manifest_files = tag.add_runtime_manifest_files,
-                    runtime_manifest_sha = tag.runtime_manifest_sha,
-                    base_urls = tag.base_urls,
-                    available_versions = available_versions,
-                    _fail = _fail,
-                )
+    for tag in root_overrides:
+        if tag.add_runtime_manifest_urls or tag.add_runtime_manifest_files:
+            _populate_from_pbs_manifest(
+                mctx = mctx,
+                add_runtime_manifest_urls = tag.add_runtime_manifest_urls,
+                add_runtime_manifest_files = tag.add_runtime_manifest_files,
+                runtime_manifest_sha = tag.runtime_manifest_sha,
+                base_urls = tag.base_urls,
+                available_versions = available_versions,
+                _fail = _fail,
+            )
 
     default = {
         "base_urls": DEFAULT_RELEASE_BASE_URLS,
@@ -1210,10 +1239,10 @@ In order to use a different name than the above, you can use the following `MODU
 syntax:
 ```starlark
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
-python.defaults(python_version = "3.11")
-python.toolchain(python_version = "3.11")
+python.defaults(python_version = "3.14")
+python.toolchain(python_version = "3.14")
 
-use_repo(python, my_python_name = "python_3_11")
+use_repo(python, my_python_name = "python_3_14")
 ```
 
 Then the python interpreter will be available as `my_python_name`.
@@ -1345,6 +1374,19 @@ dependencies are introduced.
             doc = """Deprecated; do not use. This attribute has no effect.""",
             mandatory = False,
         ),
+        "libpython": attr.string(
+            default = "auto",
+            doc = """Whether to include shared libpython files.
+
+Valid values are `auto`, `include`, and `exclude`. With `auto`, recognized
+Astral Python Standalone builds from 20250517 onward exclude the shared
+libraries; other runtimes retain them.
+
+:::{versionadded} 2.4.0
+:::
+""",
+            values = ["auto", "include", "exclude"],
+        ),
         "minor_mapping": attr.string_dict(
             mandatory = False,
             doc = """\
@@ -1421,6 +1463,19 @@ class.
                   "Either {attr}`distutils` or {attr}`distutils_content` can be specified, but not both.",
             mandatory = False,
         ),
+        "libpython": attr.string(
+            default = "auto",
+            doc = """Whether to include shared libpython files.
+
+Valid values are `auto`, `include`, and `exclude`. With `auto`, recognized
+Astral Python Standalone builds from 20250517 onward exclude the shared
+libraries; other runtimes retain them.
+
+:::{versionadded} 2.4.0
+:::
+""",
+            values = ["auto", "include", "exclude"],
+        ),
         "patch_strip": attr.int(
             mandatory = False,
             doc = "Same as the --strip argument of Unix patch.",
@@ -1489,6 +1544,19 @@ Docs for [Registering custom runtimes]
 The coverage tool to be used for a particular Python interpreter. This can override
 `rules_python` defaults.
 """,
+        ),
+        "libpython": attr.string(
+            default = "auto",
+            doc = """Whether to include shared libpython files.
+
+Valid values are `auto`, `include`, and `exclude`. With `auto`, recognized
+Astral Python Standalone builds from 20250517 onward exclude the shared
+libraries; other runtimes retain them.
+
+:::{versionadded} 2.4.0
+:::
+""",
+            values = ["auto", "include", "exclude"],
         ),
         "os_name": attr.string(
             doc = """
@@ -1597,6 +1665,8 @@ python = module_extension(
         "toolchain": _toolchain,
     },
     environ = ["RULES_PYTHON_BZLMOD_DEBUG"],
+    os_dependent = True,
+    arch_dependent = True,
 )
 
 _DEBUG_BUILD_CONTENT = """

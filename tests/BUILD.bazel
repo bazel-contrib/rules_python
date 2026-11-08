@@ -20,6 +20,7 @@ build_test(
         "//python:py_runtime_info_bzl",
         "//python:py_runtime_pair_bzl",
         "//python:py_test_bzl",
+        "//python:pytest_test",
         "//python/cc:py_cc_toolchain_bzl",
         "//python/cc:py_cc_toolchain_info_bzl",
         "//python/cc:py_extension",

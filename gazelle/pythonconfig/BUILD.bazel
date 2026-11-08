@@ -11,7 +11,7 @@ go_library(
     deps = [
         "//manifest",
         "@bazel_gazelle//label",
-        "@com_github_emirpasic_gods//lists/singlylinkedlist:go_default_library",
+        "@com_github_emirpasic_gods//lists/singlylinkedlist",
     ],
 )
 

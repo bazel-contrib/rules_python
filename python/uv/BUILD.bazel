@@ -12,19 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# EXPERIMENTAL: This is experimental and may be removed without notice
-
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
 load("//python/uv/private:current_toolchain.bzl", "current_toolchain")
 
 package(default_visibility = ["//:__subpackages__"])
 
-filegroup(
+distribution_filegroup(
     name = "distribution",
-    srcs = glob(["**"]) + [
-        "//python/uv/private:distribution",
-    ],
-    visibility = ["//:__subpackages__"],
 )
 
 toolchain_type(
@@ -37,17 +32,22 @@ current_toolchain(
     # Marked manual so that `bazel test //...` passes
     # even if no toolchain is registered.
     tags = ["manual"],
-    # EXPERIMENTAL: Visibility is restricted to allow for changes.
-    visibility = [
-        "//:__subpackages__",
-        "@rules_python//examples:__subpackages__",
-    ],
+    visibility = ["//visibility:public"],
 )
 
 bzl_library(
     name = "lock",
     srcs = ["lock.bzl"],
     deps = ["//python/uv/private:lock"],
+)
+
+bzl_library(
+    name = "repositories",
+    srcs = ["repositories.bzl"],
+    deps = [
+        "//python/uv/private:uv_register_toolchains",
+        "//python/uv/private:uv_toolchains_manifest",
+    ],
 )
 
 bzl_library(

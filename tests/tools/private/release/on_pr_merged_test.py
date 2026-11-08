@@ -1,7 +1,7 @@
 import argparse
 from unittest.mock import MagicMock
 
-from tools.private.release.on_pr_merged import OnPrMerged
+from dev.release.on_pr_merged import OnPrMerged
 
 pytest_plugins = ["tests.tools.private.release.release_test_helper"]
 
@@ -15,7 +15,7 @@ def test_on_pr_merged_no_comment(mocker, mock_git, mock_gh):
         ]
     }
 
-    mock_pb = mocker.patch("tools.private.release.on_pr_merged.ProcessBackports")
+    mock_pb = mocker.patch("dev.release.on_pr_merged.ProcessBackports")
     result = OnPrMerged(args, mock_git, mock_gh).run()
 
     assert result == 1
@@ -26,7 +26,7 @@ def test_on_pr_merged_has_comment_no_active_release(mocker, mock_git, mock_gh):
     args = argparse.Namespace(pr=124, remote="origin", dry_run=True)
     mock_gh.pr_comments = {124: [{"body": "/backport"}]}
 
-    mock_pb = mocker.patch("tools.private.release.on_pr_merged.ProcessBackports")
+    mock_pb = mocker.patch("dev.release.on_pr_merged.ProcessBackports")
     result = OnPrMerged(args, mock_git, mock_gh).run()
 
     assert result == 1
@@ -48,7 +48,7 @@ def test_on_pr_merged_has_comment_not_in_backports(mocker, mock_git, mock_gh):
         labels=["type: release"],
     )
 
-    mock_pb = mocker.patch("tools.private.release.on_pr_merged.ProcessBackports")
+    mock_pb = mocker.patch("dev.release.on_pr_merged.ProcessBackports")
     result = OnPrMerged(args, mock_git, mock_gh).run()
 
     assert result == 1
@@ -70,7 +70,7 @@ def test_on_pr_merged_success(mocker, mock_git, mock_gh):
         labels=["type: release"],
     )
 
-    mock_pb_class = mocker.patch("tools.private.release.on_pr_merged.ProcessBackports")
+    mock_pb_class = mocker.patch("dev.release.on_pr_merged.ProcessBackports")
     mock_pb_instance = MagicMock()
     mock_pb_instance.run.return_value = 0
     mock_pb_class.return_value = mock_pb_instance

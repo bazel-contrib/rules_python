@@ -1,0 +1,7 @@
+load(":distribution_filegroup_tests.bzl", "distribution_filegroup_test_suite")
+
+package(default_visibility = ["//:__subpackages__"])
+
+distribution_filegroup_test_suite(
+    name = "distribution_filegroup_tests",
+)

@@ -34,7 +34,11 @@ def _create_parser() -> "argparse.Namespace":
 
     parser.add_argument("--persistent_worker", action="store_true")
     parser.add_argument("--log_level", default="ERROR")
-    parser.add_argument("--worker_impl", default="async")
+    # Bazel workers use anonymous pipes for stdio, which don't support
+    # overlapped I/O required by asyncio on Windows.
+    parser.add_argument(
+        "--worker_impl", default="serial" if sys.platform == "win32" else "async"
+    )
     return parser
 
 
@@ -167,7 +171,9 @@ class _AsyncPersistentWorker:
         outstream: "typing.TextIO",  # noqa: F821
     ) -> "tuple[asyncio.StreamReader, asyncio.StreamWriter]":
         loop = asyncio.get_event_loop()
-        reader = asyncio.StreamReader()
+        # Cap reader at 4 MiB, leaving enough headroom over the default 64 KiB
+        # for request lines with numerous inputs (~470 KiB as of CPython 3.11).
+        reader = asyncio.StreamReader(limit=1 << 22)
         protocol = asyncio.StreamReaderProtocol(reader)
         await loop.connect_read_pipe(lambda: protocol, instream)
 

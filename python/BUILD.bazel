@@ -29,31 +29,15 @@ that @rules_python//python is only concerned with the core rules.
 # gazelle:resolve starlark //python:current_py_toolchain.bzl //python:current_py_toolchain_bzl
 
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
 load(":current_py_toolchain.bzl", "current_py_toolchain")
 
 package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])
 
-filegroup(
+distribution_filegroup(
     name = "distribution",
-    srcs = glob(["**"]) + [
-        "//python/api:distribution",
-        "//python/bin:distribution",
-        "//python/cc:distribution",
-        "//python/config_settings:distribution",
-        "//python/constraints:distribution",
-        "//python/entry_points:distribution",
-        "//python/extensions:distribution",
-        "//python/local_toolchains:distribution",
-        "//python/pip_install:distribution",
-        "//python/private:distribution",
-        "//python/runfiles:distribution",
-        "//python/runtime_env_toolchains:distribution",
-        "//python/uv:distribution",
-        "//python/zipapp:distribution",
-    ],
-    visibility = ["//:__pkg__"],
 )
 
 # ========= bzl_library targets end =========
@@ -68,6 +52,7 @@ filegroup(
         "defs.bzl",
         "packaging.bzl",
         "pip.bzl",
+        "pytest_test.bzl",
         "repositories.bzl",
         "versions.bzl",
         "//python/pip_install:bzl",
@@ -80,6 +65,7 @@ filegroup(
 
 exports_files([
     "defs.bzl",
+    "pytest_test.bzl",
     "python.bzl",  # Deprecated, please use defs.bzl
 ])
 
@@ -411,6 +397,13 @@ alias(
     deprecation = "Use //python:py_test instead",
 )
 
+# keep
+bzl_library(
+    name = "pytest_test",
+    srcs = ["pytest_test.bzl"],
+    deps = ["//python/private/pytest_test"],
+)
+
 alias(
     name = "python_bzl",
     actual = ":python",
@@ -441,7 +434,7 @@ bzl_library(
     deps = [
         "//python/private:pbs_manifest",
         "//python/private:platform_info",
-        "//python/private:runtimes_manifest_workspace",
+        "//python/private:runtimes_manifest",
     ],
 )
 

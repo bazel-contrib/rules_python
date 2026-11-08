@@ -15,7 +15,7 @@
 """A simple macro to lock the requirements for twine
 """
 
-load("//python/uv/private:lock.bzl", "lock")  # buildifier: disable=bzl-visibility
+load("//python/uv:lock.bzl", "lock")
 
 def publish_deps(*, name, args, outs, **kwargs):
     """Generate all of the requirements files for all platforms.
@@ -27,9 +27,9 @@ def publish_deps(*, name, args, outs, **kwargs):
             for each requirement file to be generated.
         **kwargs: Extra args passed to the {rule}`lock` rule.
     """
-    all_args = args
+    all_args = list(args or [])
     for out, platform in outs.items():
-        args = [] + all_args
+        args = list(all_args)
         if platform:
             args.append("--python-platform=" + platform)
         else:

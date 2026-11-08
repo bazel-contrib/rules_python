@@ -14,6 +14,7 @@
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
 load("//python:py_test.bzl", "py_test")
+load("//python:pytest_test.bzl", "pytest_test")
 load("//tests/support:py_reconfig.bzl", "py_reconfig_binary", "py_reconfig_test")
 load("//tests/support:sh_py_run_test.bzl", "sh_py_run_test")
 load("//tests/support:support.bzl", "SUPPORTS_BOOTSTRAP_SCRIPT")
@@ -127,6 +128,26 @@ py_reconfig_test(
     target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
 )
 
+pytest_test(
+    name = "stdlib_symlink_syspath_bootstrap_script_test",
+    srcs = ["stdlib_symlink_syspath_test.py"],
+    config_settings = {
+        "//python/config_settings:bootstrap_impl": "script",
+    },
+    target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
+    deps = [
+        "//python/runfiles",
+    ],
+)
+
+py_test(
+    name = "cached_venv_replaces_dangling_package_symlink_test",
+    srcs = ["cached_venv_dangling_symlink_test.py"],
+    data = ["//python/private:python_bootstrap_template.txt"],
+    main = "cached_venv_dangling_symlink_test.py",
+    deps = ["//python/runfiles"],
+)
+
 py_reconfig_test(
     name = "sys_path_order_bootstrap_system_python_test",
     srcs = ["sys_path_order_test.py"],
@@ -168,6 +189,17 @@ py_reconfig_test(
     bootstrap_impl = "script",
     imports = ["."],
     main_module = "tests.bootstrap_impls.main_module",
+    target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
+)
+
+py_reconfig_test(
+    name = "main_module_precompiled_test",
+    srcs = ["main_module.py"],
+    bootstrap_impl = "script",
+    imports = ["."],
+    main_module = "tests.bootstrap_impls.main_module",
+    precompile = "enabled",
+    pyc_collection = "include_pyc",
     target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
 )
 

@@ -48,8 +48,8 @@ function expect_match() {
 expect_match "sys.executable:.*tmp.*python3" "$actual"
 
 # Now test that using a custom location for the bootstrap files works
-venvs_root=$(mktemp -d)
-actual=$(RULES_PYTHON_EXTRACT_ROOT=$venvs_root $bin)
+venvs_root=$(mktemp -d "$TEST_TMPDIR/venvs root.XXXXXX")
+actual=$(RULES_PYTHON_EXTRACT_ROOT="$venvs_root" "$bin")
 expect_match "sys.executable:.*$venvs_root" "$actual"
 
 # Exit if any of the expects failed

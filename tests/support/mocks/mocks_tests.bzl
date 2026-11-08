@@ -124,6 +124,15 @@ def _test_module_and_tags(env):
 
 _tests.append(_test_module_and_tags)
 
+def _test_repo(env):
+    r = mocks.repo()
+    r.rule(name = "my_repo", urls = ["https://example.com"])
+    env.expect.that_collection(r.calls).contains_exactly([
+        {"name": "my_repo", "urls": ["https://example.com"]},
+    ])
+
+_tests.append(_test_repo)
+
 def _test_select(env):
     res = mocks.select({"//conditions:default": "val"})
     env.expect.that_dict(res).contains_exactly({"//conditions:default": "val"})

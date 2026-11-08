@@ -6,7 +6,9 @@ load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 # gazelle:prefix github.com/bazel-contrib/rules_python/gazelle
 # gazelle:exclude bazel-out
 # gazelle:exclude deps.bzl
+# gazelle:exclude internal
 # gazelle:exclude internal_dev_deps.bzl
+# gazelle:resolve go github.com/tree-sitter/tree-sitter-python/bindings/go @com_github_tree_sitter_tree_sitter_python//:go_default_library
 gazelle(
     name = "gazelle",
 )
@@ -36,7 +38,7 @@ filegroup(
         "//modules_mapping:distribution",
         "//python:distribution",
         "//pythonconfig:distribution",
-    ],
+    ] + glob(["internal/**"]),
     visibility = ["@rules_python//:__pkg__"],
 )
 

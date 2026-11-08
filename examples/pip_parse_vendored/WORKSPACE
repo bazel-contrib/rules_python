@@ -10,9 +10,17 @@ load("@rules_python//python:repositories.bzl", "py_repositories", "python_regist
 py_repositories()
 
 python_register_toolchains(
-    name = "python39",
-    python_version = "3.9",
+    name = "python3_14",
+    python_version = "3.14",
 )
+
+load("@rules_python//python/uv:repositories.bzl", "uv_toolchains_manifest")
+
+uv_toolchains_manifest(name = "uv_manifest")
+
+load("@uv_manifest//:dist_manifest.bzl", "uv_register_toolchains")
+
+uv_register_toolchains(name = "uv")
 
 load("@rules_python//python:pip.bzl", "pip_parse")
 
@@ -27,8 +35,8 @@ pip_parse(
     name = "pip_deps_to_be_vendored",
     envsubst = ["PIP_RETRIES"],
     extra_pip_args = ["--retries=${PIP_RETRIES:-5}"],
-    python_interpreter_target = "@python39_host//:python",
-    requirements_lock = "//:requirements.txt",
+    python_interpreter_target = "@python3_14_host//:python",
+    uv_lock = "//:uv.lock",
 )
 
 # This example vendors the file produced by `pip_parse` above into the repo.

@@ -53,7 +53,7 @@ my_rule(
 ```
 
 When you build this target, it will generate a file named
-`show_python_version.txt` containing the Python version (e.g., `3.9`).
+`show_python_version.txt` containing the Python version (e.g., `3.14`).
 
 ```starlark
 bazel build :show_python_version

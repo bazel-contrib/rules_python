@@ -18,8 +18,8 @@ def version_label(version, *, sep = ""):
     """A version fragment derived from python minor version
 
     Examples:
-        version_label("3.9") == "39"
-        version_label("3.9.12", sep="_") == "3_9"
+        version_label("3.10") == "310"
+        version_label("3.10.12", sep = "_") == "3_10"
         version_label("3.11") == "311"
 
     Args:

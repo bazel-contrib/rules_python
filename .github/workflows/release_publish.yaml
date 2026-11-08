@@ -30,6 +30,14 @@ on:
         required: true
         type: boolean
         default: true
+      author_name:
+        description: 'Commit author name for the BCR entry (optional)'
+        required: false
+        type: string
+      author_email:
+        description: 'Commit author email for the BCR entry (optional)'
+        required: false
+        type: string
     secrets:
       publish_token:
         required: false
@@ -44,27 +52,71 @@ on:
         required: false
         type: boolean
         default: true
+      author_name:
+        description: 'Commit author name for the BCR entry (optional)'
+        required: false
+        type: string
+      author_email:
+        description: 'Commit author email for the BCR entry (optional)'
+        required: false
+        type: string
+
+permissions: {}
 
 jobs:
+  build_artifacts:
+    # Builds the release archive, release notes, runfiles wheel, and platform
+    # binaries. A failed platform binary build only adds a warning to this run,
+    # since releases don't require those binaries yet. The run fails if a build
+    # hangs past the job timeout, the built files fail their checks, the wheel
+    # or archive fails to build, or the ref's dev/platforms lacks a job's
+    # platform.
+    name: Build artifacts
+    uses: ./.github/workflows/release_build_artifacts.yaml
+    with:
+      ref: ${{ inputs.tag_name || github.ref_name }}
+    permissions:
+      contents: read
+    secrets: inherit
+
   release:
     name: Release
+    needs: build_artifacts
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
+      - name: Download release archive and notes
+        uses: actions/download-artifact@v8
         with:
-          ref: ${{ inputs.tag_name || github.ref_name }}
-      - name: Create release archive and notes
-        run: .github/workflows/create_archive_and_notes.sh ${{ inputs.tag_name || github.ref_name }}
+          name: release-archive
+
+      - name: Download artifacts manifest
+        uses: actions/download-artifact@v8
+        with:
+          name: release-manifest
+
+      - name: Download built artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: release-artifacts-*
+          path: release-artifacts
+          merge-multiple: true
+
       - name: Release
         uses: softprops/action-gh-release@v3
         with:
           # Use GH feature to populate the changelog automatically
           generate_release_notes: true
           body_path: release_notes.txt
+          draft: false
           prerelease: ${{ contains( (inputs.tag_name || github.ref), '-rc') }}
           fail_on_unmatched_files: true
-          files: rules_python-*.tar.gz
+          files: |
+            rules_python-*.tar.gz
+            release-artifacts/*
+            artifacts_manifest.json
+            SHA256SUMS
           tag_name: ${{ inputs.tag_name || github.ref_name }}
 
   publish_bcr:
@@ -72,6 +124,10 @@ jobs:
     uses: ./.github/workflows/publish.yml
     with:
       tag_name: ${{ inputs.tag_name || github.ref_name }}
+      author_name: ${{ inputs.author_name }}
+      author_email: ${{ inputs.author_email }}
+    permissions:
+      contents: write
     secrets:
       publish_token: ${{ secrets.publish_token || secrets.BCR_PUBLISH_TOKEN }}
 
@@ -82,4 +138,6 @@ jobs:
     uses: ./.github/workflows/publish_pypi.yaml
     with:
       tag_name: ${{ inputs.tag_name || github.ref_name }}
+    permissions:
+      contents: read
     secrets: inherit
