@@ -18,12 +18,30 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load(":common_labels.bzl", "labels")
 load(":flags.bzl", "FreeThreadedFlag")
+load(":py_info.bzl", "PyInfo")
 load(":py_internal.bzl", "py_internal")
 load(":py_runtime_info.bzl", "DEFAULT_STUB_SHEBANG", "PyRuntimeInfo")
 load(":reexports.bzl", "BuiltinPyRuntimeInfo")
 load(":version.bzl", "version")
 
 _py_builtins = py_internal
+
+_COVERAGE_MAIN = "coverage/__main__.py"
+
+def _coverage_main(py_info):
+    """Return the `coverage/__main__.py` entry point of a `coverage` py_library.
+
+    Args:
+        py_info: {type}`PyInfo` of the `coverage` library, e.g. `@pypi//coverage`.
+
+    Returns:
+        {type}`File` the entry point of the coverage tool.
+    """
+    for src in py_info.transitive_sources.to_list():
+        if src.short_path == _COVERAGE_MAIN or src.short_path.endswith("/" + _COVERAGE_MAIN):
+            return src
+
+    fail("coverage_tool is a py_library, but it does not contain '{}'.".format(_COVERAGE_MAIN))
 
 def coverage_tool_missing_message(*, coverage_enabled, coverage_tool, label):
     """Build the warning for a selected runtime that cannot produce coverage.
@@ -132,8 +150,10 @@ def _py_runtime_impl(ctx):
             coverage_tool = coverage_di.files.to_list()[0]
         elif coverage_di.files_to_run and coverage_di.files_to_run.executable:
             coverage_tool = coverage_di.files_to_run.executable
+        elif PyInfo in ctx.attr.coverage_tool:
+            coverage_tool = _coverage_main(ctx.attr.coverage_tool[PyInfo])
         else:
-            fail("coverage_tool must be an executable target or must produce exactly one file.")
+            fail("coverage_tool must be an executable target, a py_library or must produce exactly one file.")
 
         coverage_files = depset(transitive = [
             coverage_di.files,
@@ -311,6 +331,13 @@ The entry point for the tool must be loadable by a Python interpreter (e.g. a
 `.py` or `.pyc` file).  It must accept the command line arguments
 of [`coverage.py`](https://coverage.readthedocs.io), at least including
 the `run` and `lcov` subcommands.
+
+If the target is a `py_library` of `coverage.py`, e.g. `@pypi//coverage`, then
+its `coverage/__main__.py` file is used as the entry point.
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+A `py_library` of `coverage.py` can be used.
+:::
 """,
             ),
             "files": attr.label_list(
