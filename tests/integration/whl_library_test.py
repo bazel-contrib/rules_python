@@ -131,9 +131,11 @@ wheels = [
 
     def test_uv_lock_lazy_archive(self):
         self.assert_runs("uv_locked", patched=False)
+        # The downloaded wheels are extracted in a repository that is shared
+        # between the hubs and is named after the wheel filename.
         repositories = [
             path
-            for path in self.external.glob("*uv_pip_*")
+            for path in self.external.glob("*whl_storage_pkg_*")
             if path.is_dir() and not path.name.endswith("_whl")
         ]
         self.assertEqual(len(repositories), 1, repositories)

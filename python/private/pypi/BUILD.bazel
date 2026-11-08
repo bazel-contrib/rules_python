@@ -135,8 +135,10 @@ bzl_library(
         ":pip_repository_attrs",
         ":platform",
         ":pypi_cache",
+        ":shared_whl_srcs",
         ":simpleapi_download",
         ":unified_hub_repo",
+        ":whl_deps_repo",
         ":whl_library",
         "//python/private:auth",
         "//python/private:normalize_name",
@@ -407,6 +409,18 @@ bzl_library(
         ":parse_whl_name",
         ":python_tag",
         "//python/private:version",
+    ],
+)
+
+bzl_library(
+    name = "shared_whl_srcs",
+    srcs = ["shared_whl_srcs.bzl"],
+    deps = [
+        ":pep508_requirement",
+        ":urllib",
+        ":whl_archive",
+        ":whl_repo_name",
+        "//python/private:normalize_name",
     ],
 )
 

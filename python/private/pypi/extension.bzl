@@ -30,8 +30,10 @@ load(":pep508_env.bzl", "env")
 load(":pip_repository_attrs.bzl", "ATTRS")
 load(":platform.bzl", _plat = "platform")
 load(":pypi_cache.bzl", "pypi_cache")
+load(":shared_whl_srcs.bzl", "shared_whl_srcs")
 load(":simpleapi_download.bzl", "simpleapi_download")
 load(":unified_hub_repo.bzl", "unified_hub_repo")
+load(":whl_deps_repo.bzl", "whl_deps_repo")
 load(":whl_library.bzl", "whl_library")
 
 def _whl_mods_impl(whl_mods_dict):
@@ -496,7 +498,16 @@ def _pip_impl(module_ctx):
     # Build all of the wheel modifications if the tag class is called.
     _whl_mods_impl(mods.whl_mods)
 
-    for name, args in mods.whl_libraries.items():
+    repos = shared_whl_srcs(
+        mods.whl_libraries,
+        hub_whl_map = mods.hub_whl_map,
+        extra_aliases = mods.extra_aliases,
+    )
+    for name, args in repos.srcs.items():
+        whl_library(name = name, **args)
+    for name, args in repos.deps.items():
+        whl_deps_repo(name = name, **args)
+    for name, args in repos.whl_libraries.items():
         whl_library(name = name, **args)
 
     for hub_name, whl_map in mods.hub_whl_map.items():

@@ -73,6 +73,8 @@ def whl_library_deps_targets(
             EXTRACTED_WHEEL_FILES: repo_label(EXTRACTED_WHEEL_FILES),
             DIST_INFO_LABEL: repo_label(DIST_INFO_LABEL),
             DATA_LABEL: repo_label(DATA_LABEL),
+            PY_SRCS_LABEL: repo_label(PY_SRCS_LABEL),
+            WHEEL_FILE: repo_label(WHEEL_FILE),
         }
 
     # If this library is a member of a group, its public label aliases need to
