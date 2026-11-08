@@ -48,24 +48,21 @@ fn test_creates_zip_main() {
         sp
     };
 
-    let raw_lines = vec![
+    let manifest = [
         format!("rf-file|0|file1.txt|{}", file1_path.display()),
         format!("rf-file|0|file2.txt|{}", file2_path.display()),
         "rf-empty|empty_file.txt".to_string(),
-    ];
-    // Rebind rather than conditionally pushing so clippy's `unused_mut` stays quiet on Windows.
+    ]
+    .join("\n");
+    // Rebinding (rather than `Vec::push` under `#[cfg(unix)]`) keeps clippy's
+    // `useless_vec`/`unused_mut` lints quiet on Windows.
     #[cfg(unix)]
-    let raw_lines = {
-        let mut lines = raw_lines;
-        lines.push(format!(
-            "rf-symlink|1|symlink.txt|{}",
-            symlink_path.display()
-        ));
-        lines
-    };
+    let manifest = format!(
+        "{manifest}\nrf-symlink|1|symlink.txt|{}",
+        symlink_path.display()
+    );
 
-    fs::write(&manifest_path, format!("{}\n", raw_lines.join("\n")))
-        .expect("manifest should be writable");
+    fs::write(&manifest_path, format!("{manifest}\n")).expect("manifest should be writable");
 
     let args: Vec<OsString> = vec![
         "--template".into(),
