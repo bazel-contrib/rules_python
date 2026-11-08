@@ -119,6 +119,20 @@ file from `.agents/skills/review-code/`:
       crate legitimacy and latest `crates.io` versions, feature pruning for
       cross-compilation, library crate structure, and `rustfmt`).
 
+14. Comment Readability Sub-Agent (`Role: "Comment Readability Editor"`):
+    - Prompt file:
+      `.agents/skills/review-code/review-comment-readability-prompt.md`
+    - Focus: Polishes `Problem`, `Draft Comment`, and `Draft Reply` text for
+      rendered readability—enforcing the mechanical `Draft Comment` structure
+      (`<brief/concise description of issue>`, bounded `Suggested fix:`, and
+      optional `Where:` when multiple locations are affected), cutting dense
+      "wall of text" paragraphs down to 1–2 short, direct sentences, ensuring
+      suggested error/message wording is explicitly included in `Draft Comment`
+      (not left only in `Proposed Fix`), removing excessive inline backticks
+      when listing multiple identifiers (such as `UPPER_SNAKE_CASE` constants)
+      so text does not jump repeatedly into and out of code formatting, and
+      stripping outer backtick wrappers.
+
 ### Action Instructions
 - Immediately create a user-facing review artifact named
   `code-review-results.md` in the conversation artifact directory so progress
@@ -126,15 +140,24 @@ file from `.agents/skills/review-code/`:
 - Have sub-agents run `git diff $(git merge-base HEAD upstream/main)` to audit
   committed and uncommitted branch changes without newer `upstream/main`
   commits.
-- Launch all sub-agents concurrently using `invoke_subagent`.
+- Launch all domain sub-agents concurrently using `invoke_subagent`.
+- Pass candidate findings from the domain sub-agents through the
+  `Comment Readability Sub-Agent` (`Role: "Comment Readability Editor"`, prompt
+  `.agents/skills/review-code/review-comment-readability-prompt.md`) to
+  eliminate jarring backtick-switching across identifier lists and polish prose
+  readability as results stream into `code-review-results.md`.
 - Update `code-review-results.md` as sub-agent responses come in, applying the
-  Synthesis & Anti-Noise Gate (below) and omitting all passing-check prose. Do
-  not use bold for the introduction or lead-in of a bulleted list or bullet
-  item; use **bold** for any questions the user needs to answer. Structure
+  Synthesis & Anti-Noise Gate (below), including a clickable link to the PR (or
+  branch name for local unpushed changes) and a brief 2-sentence overview of
+  what the PR does, and omitting all passing-check prose. Do not use bold for
+  the introduction or lead-in of a bulleted list or bullet item; use **bold**
+  for any questions the user needs to answer. Structure
   `code-review-results.md` as follows:
 
   ````markdown
-  # Code Review: <Target / PR>
+  # Code Review: [<PR #N: Title>](<PR_URL>)
+
+  <Brief 2-sentence overview of what the PR does and why.>
 
   Verdict: `<PASS | NEEDS_FIXES | NEEDS_HUMAN_SIGN_OFF>` (<N> open, <H>
   needing human sign-off, <M> resolved)
@@ -158,7 +181,7 @@ file from `.agents/skills/review-code/`:
     ```
   * Author Response: <If the author replied to this comment thread, quote or
     summarize their response here, bolding any question to answer.>
-  * Draft Reply: `<proposed reply in user's voice, if applicable>`
+  * Draft Reply: <proposed reply in user's voice, if applicable>
 
   ## Resolved Issues
 
