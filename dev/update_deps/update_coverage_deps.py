@@ -33,25 +33,20 @@ from dev.update_deps.update_file import update_file
 
 @dataclass
 class Whl:
-    filename: str
     url: str
     sha256: str
     marker: str
 
     def __repr__(self):
-        lines = [
-            "struct(",
-            f'    url = "{self.url}",',
-            f'    hash = "sha256:{self.sha256}",',
-        ]
-        if self.marker:
-            if '"' in self.marker and "'" not in self.marker:
-                marker = f"'{self.marker}'"
-            else:
-                marker = json.dumps(self.marker)
-            lines.append(f"    marker = {marker},")
-        lines.append("),")
-        return "\n".join(lines)
+        return "\n".join(
+            [
+                "struct(",
+                f'    url = "{self.url}",',
+                f'    hash = "sha256:{self.sha256}",',
+                f"    marker = {json.dumps(self.marker)},",
+                "),",
+            ]
+        )
 
 
 @dataclass
@@ -66,11 +61,8 @@ class Whls:
         return "[\n{}\n]".format(inner)
 
 
-def _whl(
-    filename: str, url: str, digests: dict[str, str], marker: str, **kwargs: Any
-) -> Whl:
+def _whl(url: str, digests: dict[str, str], marker: str, **kwargs: Any) -> Whl:
     return Whl(
-        filename=filename,
         url=url,
         sha256=digests["sha256"],
         marker=marker,
@@ -150,7 +142,7 @@ def main():
 
             whls.append(_whl(marker=spec.marker, **u))
 
-    whls.sort(key=lambda x: x.filename)
+    whls.sort(key=lambda x: x.url.rpartition("/")[2])
 
     # Update the coverage wheels, the compatible wheel is selected in Starlark
     update_file(
