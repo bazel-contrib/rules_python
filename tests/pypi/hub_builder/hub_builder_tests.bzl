@@ -108,6 +108,7 @@ def hub_builder(
                 whl_map = subjects.dict,
                 whl_libraries = subjects.dict,
                 extra_aliases = subjects.dict,
+                requires_dist = subjects.dict,
             ),
         ),
         pip_parse = builder.pip_parse,
@@ -149,6 +150,7 @@ def _test_simple(env):
         },
     })
     pypi.extra_aliases().contains_exactly({})
+    pypi.requires_dist().contains_exactly({})
 
 _tests.append(_test_simple)
 
@@ -175,6 +177,105 @@ def _test_uv_lock_only(env):
     pypi.group_map().contains_exactly({})
 
 _tests.append(_test_uv_lock_only)
+
+def _uv_lock(*packages):
+    """Return the uv.lock contents with a workspace root depending on all packages."""
+    root = {
+        "dependencies": [{"name": pkg["name"]} for pkg in packages],
+        "name": "root",
+        "source": {"virtual": "."},
+        "version": "0.0.0",
+    }
+    return json.encode({"package": [root] + list(packages)})
+
+def _uv_lock_package(name, dependencies = [], platform = "py3-none-any"):
+    return {
+        "dependencies": dependencies,
+        "name": name,
+        "source": {"registry": "https://pypi.org/simple"},
+        "version": "0.0.1",
+        "wheels": [{
+            "hash": "sha256:deadbeef",
+            "url": "https://files.pythonhosted.org/packages/{}-0.0.1-{}.whl".format(name, platform),
+        }],
+    }
+
+def _test_uv_lock_requires_dist(env):
+    builder = hub_builder(env)
+    builder.pip_parse(
+        _mock_mctx(
+            os_name = "osx",
+            arch_name = "aarch64",
+            mock_files = {
+                "uv.lock": _uv_lock(
+                    _uv_lock_package("foo", dependencies = [
+                        {"extra": ["baz"], "name": "bar"},
+                        {"marker": "sys_platform == 'win32'", "name": "win-only"},
+                    ]),
+                    _uv_lock_package("bar"),
+                    # Has no wheel for the target platform, so it is not in the hub.
+                    _uv_lock_package("win-only", platform = "cp315-cp315-win_amd64"),
+                ),
+            },
+        ),
+        _parse(
+            hub_name = "pypi",
+            python_version = "3.15",
+            requirements_lock = None,
+            uv_lock = "uv.lock",
+        ),
+    )
+    pypi = builder.build()
+
+    pypi.exposed_packages().contains_exactly(["bar", "foo"])
+    pypi.requires_dist().contains_exactly({
+        "foo": ["bar[baz]"],
+    })
+
+_tests.append(_test_uv_lock_requires_dist)
+
+def _test_uv_lock_requires_dist_multiple_python_versions(env):
+    builder = hub_builder(
+        env,
+        available_interpreters = {
+            "python_3_15_host": "unit_test_interpreter_target",
+            "python_3_16_host": "unit_test_interpreter_target",
+        },
+        minor_mapping = {
+            "3.15": "3.15.19",
+            "3.16": "3.16.9",
+        },
+    )
+    for python_version, foo_dep in [("3.15", "bar"), ("3.16", "baz")]:
+        builder.pip_parse(
+            _mock_mctx(
+                os_name = "osx",
+                arch_name = "aarch64",
+                mock_files = {
+                    "uv.lock": _uv_lock(
+                        _uv_lock_package("foo", dependencies = [{"name": foo_dep}]),
+                        _uv_lock_package("same", dependencies = [{"name": "bar"}]),
+                        _uv_lock_package("bar"),
+                        _uv_lock_package("baz"),
+                    ),
+                },
+            ),
+            _parse(
+                hub_name = "pypi",
+                python_version = python_version,
+                requirements_lock = None,
+                uv_lock = "uv.lock",
+            ),
+        )
+    pypi = builder.build()
+
+    # The deps of `foo` differ between the python versions, so the wheel
+    # METADATA is used instead.
+    pypi.requires_dist().contains_exactly({
+        "same": ["bar"],
+    })
+
+_tests.append(_test_uv_lock_requires_dist_multiple_python_versions)
 
 def _test_simple_multiple_requirements(env):
     sub_tests = {

@@ -12,6 +12,7 @@ load(":hash.bzl", "hash")
 load(":parse_requirements.bzl", "parse_requirements")
 load(":pep508_env.bzl", "env")
 load(":pep508_evaluate.bzl", "evaluate")
+load(":pep508_requirement.bzl", "requirement")
 load(":python_tag.bzl", "python_tag")
 load(":requirements_files_by_platform.bzl", "requirements_files_by_platform")
 load(":whl_config_setting.bzl", "whl_config_setting")
@@ -71,6 +72,10 @@ def hub_builder(
         _extra_aliases = {},  # modified by _add_extra_aliases
         # dict[str group_name, list[str]]
         _group_map = {},  # modified by _add_group_map
+        # The dependencies of each package from the uv.lock file, `None` if
+        # they are unknown or differ between the python versions.
+        # dict[str whl_name, list[str] | None]
+        _requires_dist = {},  # modified by _add_requires_dist
         # Mapping of whl_library repo names and their kwargs.
         # dict[str repo_name, dict[str, object] kwargs]
         _whl_libraries = {},  # modified by _add_whl_library
@@ -116,6 +121,7 @@ def _build(self):
         extra_aliases = {},
         exposed_packages = [],
         whl_libraries = {},
+        requires_dist = {},
     )
     if self._logger.failed():
         return ret
@@ -145,7 +151,33 @@ def _build(self):
         # Mapping of whl_library repo names and their kwargs.
         # dict[str repo_name, dict[str, object] kwargs]
         whl_libraries = self._whl_libraries,
+        # The dependencies to wire in the hub instead of using the wheel
+        # METADATA.
+        # dict[str package, list[str]]
+        requires_dist = _hub_requires_dist(self._requires_dist, whl_map),
     )
+
+def _hub_requires_dist(requires_dist, whl_map):
+    """Return the known non-empty dependencies of the packages in the hub.
+
+    Args:
+        requires_dist: {type}`dict[str, list[str] | None]` The dependencies of
+            each package.
+        whl_map: {type}`dict[str, object]` The packages in the hub.
+
+    Returns:
+        {type}`dict[str, list[str]]` The dependencies without the packages
+        that are not in the hub, e.g. because they are only used on the
+        platforms that the hub does not target.
+    """
+    ret = {}
+    for name, reqs in requires_dist.items():
+        if not reqs or name not in whl_map:
+            continue
+        reqs = [r for r in reqs if requirement(r).name_ in whl_map]
+        if reqs:
+            ret[name] = reqs
+    return ret
 
 def _pip_parse(self, module_ctx, pip_attr, python_version = None):
     python_version = python_version or pip_attr.python_version
@@ -272,6 +304,21 @@ def _add_group_map(self, group_map):
         for group_name, group_whls in self._group_map.items()
         for whl_name in group_whls
     })
+
+def _add_requires_dist(self, name, requires_dist):
+    """Add the dependencies of a package for a python version.
+
+    Args:
+        self: implicitly added.
+        name: {type}`str` the normalized package name.
+        requires_dist: {type}`list[str] | None` the dependencies of the
+            package, `None` if they are unknown.
+    """
+    if name in self._requires_dist and self._requires_dist[name] != requires_dist:
+        # The hub has a single dep graph for all python versions, so use the
+        # wheel METADATA instead.
+        requires_dist = None
+    self._requires_dist[name] = requires_dist
 
 def _add_extra_aliases(self, extra_hub_aliases):
     """Adds per-package aliases to the hub.
@@ -588,6 +635,9 @@ def _create_whl_repos(
         for whl in requirements_by_platform
         if whl.is_exposed
     })
+    for whl in requirements_by_platform:
+        if whl.srcs:
+            _add_requires_dist(self, whl.name, whl.requires_dist)
 
     whl_modifications = {}
     if pip_attr.whl_modifications != None:
