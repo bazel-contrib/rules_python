@@ -42,7 +42,7 @@ py_test(
 py_reconfig_test(
     name = "instrumented_pypi",
     srcs = ["instrumented.py"],
-    collect_code_coverage = "true",
+    collect_code_coverage = True,
     main = "instrumented.py",
     python_version = "3.13.13",
     tags = ["manual"],
@@ -53,10 +53,7 @@ py_reconfig_test(
 py_test(
     name = "coverage_from_pypi_test",
     srcs = ["coverage_collection_test.py"],
-    data = [
-        "lib.py",
-        ":instrumented_pypi",
-    ],
+    data = [":instrumented_pypi"],
     env = {
         "INSTRUMENTED": "$(rlocationpath :instrumented_pypi)",
     },
