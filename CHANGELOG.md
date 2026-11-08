@@ -147,6 +147,9 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
   {obj}`--@rules_python//python/config_settings:venv`. The `all_*` lists are not
   provided, since they could only list one hub's packages; load them from a
   concrete hub.
+* (pypi) Added {attr}`pip.default.envsubst` to expand environment variables in
+  {attr}`pip.default.index_url`
+  ([#4123](https://github.com/bazel-contrib/rules_python/issues/4123)).
 * (rules) Added {obj}`PyInfo.direct_implicit_pyc_files` and
   {obj}`PyExecutableInfo.venv_runfiles`.
 * (rules) Added {obj}`pytest_test`, which facilitates running of pytest tests.
@@ -169,6 +172,7 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
   toolchains with the new {obj}`uv_toolchains_manifest` repository rule and
   {obj}`uv_register_toolchains` macro.
   ([#1975](https://github.com/bazel-contrib/rules_python/issues/1975))
+
 
 
 
