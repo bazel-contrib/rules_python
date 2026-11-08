@@ -32,8 +32,10 @@ setting maps to and their precedence, refer to documentation on that page.
 """
 
 load("@bazel_skylib//lib:selects.bzl", "selects")
+load("//python:py_library.bzl", "py_library")
 load("//python/private:common_labels.bzl", "labels")
 load("//python/private:text_util.bzl", "render")
+load(":env_marker_setting.bzl", "env_marker_setting")
 load(
     ":labels.bzl",
     "DATA_LABEL",
@@ -111,6 +113,8 @@ def pkg_aliases(
     """
     _native = kwargs.pop("native", native)
     rules = kwargs.pop("rules", struct(
+        env_marker_setting = env_marker_setting,
+        py_library = py_library,
         whl_library_deps_targets = whl_library_deps_targets,
     ))
     select = kwargs.pop("select", selects.with_or)
