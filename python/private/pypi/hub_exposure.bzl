@@ -115,6 +115,9 @@ def hub_exposure(module_ctx, *, hubs, default_pyproject = None, _fail = fail):
 def _venv_error(venv, hub, *, hubs, configured, testonly):
     if venv in hubs:
         return "pip.configure() venv '{}' conflicts with the hub of the same name".format(venv)
+
+    # `pypi` is the unified hub and `auto` is the default value of the
+    # `//python/config_settings:venv` flag.
     if venv in ("pypi", "auto"):
         return "pip.configure() venv name '{}' is reserved".format(venv)
     if venv in configured and configured[venv].hub != hub:

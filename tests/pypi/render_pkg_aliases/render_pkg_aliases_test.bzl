@@ -151,6 +151,32 @@ pkg_aliases(
 
 _tests.append(_test_hidden_aliases_in_groups)
 
+def _test_hidden_aliases_extra_internal_visibility(env):
+    actual = render_pkg_aliases(
+        aliases = {
+            "bar": "pypi_bar",
+            "foo": "pypi_foo",
+        },
+        exposed_packages = ["foo"],
+        extra_internal_visibility = ["@pypi//:__subpackages__"],
+    )
+
+    env.expect.that_str(actual["bar/BUILD.bazel"]).equals("""\
+load("@rules_python//python/private/pypi:pkg_aliases.bzl", "pkg_aliases")
+
+package(default_visibility = [
+    "@pypi_bar//:__pkg__",
+    "@pypi_foo//:__pkg__",
+    "@pypi//:__subpackages__",
+])
+
+pkg_aliases(
+    name = "bar",
+    actual = "pypi_bar",
+)""")
+
+_tests.append(_test_hidden_aliases_extra_internal_visibility)
+
 def _test_bzlmod_aliases(env):
     # Use this function as it is used in pip_repository
     actual = render_multiplatform_pkg_aliases(

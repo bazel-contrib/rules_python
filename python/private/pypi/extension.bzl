@@ -556,7 +556,12 @@ def _pip_impl(module_ctx):
     for name, args in mods.whl_libraries.items():
         whl_library(name = name, **args)
 
+    # The venvs may select the packages that their hub does not expose.
+    venv_hubs = {info.hub: None for info in mods.venvs.values()}
     for hub_name, whl_map in mods.hub_whl_map.items():
+        extra_internal_visibility = []
+        if hub_name in venv_hubs:
+            extra_internal_visibility = ["@pypi//:__subpackages__"]
         hub_repository(
             name = hub_name,
             repo_name = hub_name,
@@ -570,8 +575,7 @@ def _pip_impl(module_ctx):
             groups = mods.hub_group_map.get(hub_name),
             # The hubs configured with `pip.configure` hide the other packages.
             hide_unexposed_packages = hub_name in mods.configured_hubs,
-            # The venvs may select the packages that the hub does not expose.
-            extra_internal_visibility = ["@pypi//:__subpackages__"] if hub_name in [v.hub for v in mods.venvs.values()] else [],
+            extra_internal_visibility = extra_internal_visibility,
             testonly_packages = mods.testonly_packages.get(hub_name, []),
         )
 
