@@ -139,6 +139,36 @@ def _test_whl_library_deps_targets_no_deps(env):
 
 _tests.append(_test_whl_library_deps_targets_no_deps)
 
+def _test_whl_library_deps_targets_repo_aliases(env):
+    alias_calls = []
+
+    whl_library_deps_targets(
+        name = "foo-0-py3-none-any.whl",
+        metadata_name = "Foo",
+        dep_template = "@pypi//{name}:{target}",
+        requires_dist = [],
+        repo = "@@srcs//:BUILD.bazel",
+        native = struct(
+            alias = lambda **kwargs: alias_calls.append(kwargs),
+        ),
+        rules = struct(),
+    )
+
+    env.expect.that_dict({
+        call["name"]: str(call["actual"])
+        for call in alias_calls
+    }).contains_exactly({
+        "data": "@@srcs//:data",
+        "dist_info": "@@srcs//:dist_info",
+        "extracted_whl_files": "@@srcs//:extracted_whl_files",
+        "pkg": "@@srcs//:srcs",
+        "srcs": "@@srcs//:srcs",
+        "whl": "@@srcs//:whl_file",
+        "whl_file": "@@srcs//:whl_file",
+    })
+
+_tests.append(_test_whl_library_deps_targets_repo_aliases)
+
 def whl_library_deps_targets_test_suite(name):
     """create the test suite.
 
