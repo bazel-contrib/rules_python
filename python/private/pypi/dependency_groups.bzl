@@ -1,5 +1,6 @@
 """Select PyPI packages using pyproject.toml dependency groups."""
 
+load("@bazel_skylib//lib:types.bzl", "types")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load(":pep508_requirement.bzl", "requirement")
 
@@ -59,16 +60,12 @@ def select_dependency_groups(pyproject, specs, _fail = fail):
     for key in selected:
         for req in groups[key]:
             req = requirement(req)
-            names = [req.name_]
-            if req.name_ == project:
-                names = [
-                    requirement(r).name_
-                    for extra in req.extras
-                    for r in groups.get("optional:" + extra, [])
-                ]
-            for name in names:
-                if name:
-                    packages[name] = None
+            if req.name_ != project:
+                packages[req.name_] = None
+                continue
+            for extra in req.extras:
+                for r in groups.get("optional:" + extra, []):
+                    packages[requirement(r).name_] = None
 
     return struct(packages = sorted(packages), all = False)
 
@@ -119,7 +116,7 @@ def _expand_dependency_groups(dependency_groups, _fail):
 
             reqs = []
             for item in items:
-                if type(item) == type(""):
+                if types.is_string(item):
                     reqs.append(item)
                     continue
 

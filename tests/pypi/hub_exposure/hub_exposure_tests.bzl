@@ -20,7 +20,6 @@ def _hub(*, module_name = "root", pyproject = None):
         module_name = module_name,
         pyproject = pyproject,
         packages = ["other_pkg", "simple", "transitive_pkg"],
-        exposed_packages = ["other_pkg", "simple", "transitive_pkg"],
     )
 
 def _configure(hub_name = "hub", dependency_groups = ["*"], pyproject_toml = None, testonly = False, venv = ""):
@@ -68,13 +67,24 @@ def _test_configure(env):
         (["dev"], ["other_pkg"]),
         # `not-in-hub` is ignored
         (["group:test"], ["simple"]),
-        (["*", "transitive"], ["other_pkg", "simple", "transitive_pkg"]),
     ]:
         got, failures = _exposure(_module(configure = [_configure(dependency_groups = groups)]))
         env.expect.where(groups = groups).that_collection(failures).contains_exactly([])
         env.expect.where(groups = groups).that_dict(_packages(got)).contains_exactly({"hub": want})
 
 _tests.append(_test_configure)
+
+def _test_configure_all_packages(env):
+    # Exposing all of the packages is the same as not configuring the hub, so
+    # that e.g. the platform-specific packages stay public.
+    got, failures = _exposure(_module(configure = [
+        _configure(dependency_groups = ["default"]),
+        _configure(dependency_groups = ["*", "transitive"]),
+    ]))
+    env.expect.that_collection(failures).contains_exactly([])
+    env.expect.that_dict(got).contains_exactly({})
+
+_tests.append(_test_configure_all_packages)
 
 def _test_configure_combines_tags(env):
     got, failures = _exposure(_module(configure = [
@@ -165,6 +175,15 @@ def _test_configure_testonly(env):
     ]))
     env.expect.that_collection(got["hub"].testonly_packages).contains_exactly(["other_pkg", "simple"])
 
+    # The hub that exposes all of the packages behaves as if it was not
+    # configured, so the packages can't be made testonly.
+    got, failures = _exposure(_module(configure = [
+        _configure(dependency_groups = ["*", "transitive"], testonly = True),
+    ]))
+    env.expect.that_collection(failures).contains_exactly([
+        "pip.configure() for hub 'hub' cannot use `testonly` when exposing all of the packages with [\"*\", \"transitive\"]",
+    ])
+
 _tests.append(_test_configure_testonly)
 
 def _test_configure_venvs(env):
@@ -172,11 +191,14 @@ def _test_configure_venvs(env):
         _configure(venv = "dev", dependency_groups = ["dev"]),
         _configure(venv = "dev", dependency_groups = ["default"]),
         _configure(venv = "main", dependency_groups = ["default"]),
+        _configure(venv = "all", dependency_groups = ["*", "transitive"]),
     ]))
     env.expect.that_collection(failures).contains_exactly([])
 
     # The hub itself is not configured.
     env.expect.that_dict(_packages(got)).contains_exactly({
+        # A venv with all of the packages includes the transitive ones.
+        "all": ["other_pkg", "simple", "transitive_pkg"],
         "dev": ["other_pkg", "simple"],
         "main": ["simple"],
     })

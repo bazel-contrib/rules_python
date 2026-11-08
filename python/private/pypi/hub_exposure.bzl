@@ -13,8 +13,6 @@ def hub_exposure(module_ctx, *, hubs, default_pyproject = None, _fail = fail):
             * `pyproject`: {type}`Label | None` from `pip.parse`.
             * `packages`: {type}`list[str]` the normalized names of all
               packages in the hub.
-            * `exposed_packages`: {type}`list[str]` the packages that the hub
-              exposes when it is not configured.
         default_pyproject: {type}`Label | None` from `pip.default`, only used
             for the hubs of the root module.
         _fail: {type}`callable` the failure function, mainly for testing.
@@ -30,7 +28,8 @@ def hub_exposure(module_ctx, *, hubs, default_pyproject = None, _fail = fail):
             aliases are testonly. A package is testonly only if all of the
             tags that select it are testonly.
 
-        The hubs that are not configured are not included. Returns `None` on
+        The hubs that are not configured or that expose all of their packages
+        are not included, so that they behave the same. Returns `None` on
         failure.
 
         A venv is a named selection of the packages of a hub that is used
@@ -40,14 +39,14 @@ def hub_exposure(module_ctx, *, hubs, default_pyproject = None, _fail = fail):
     # The root module wins over the owner of the hub when both configure it.
     root_modules = [mod for mod in module_ctx.modules if mod.is_root]
     root_name = root_modules[0].name if root_modules else None
-    root_configured = {
-        tag.hub_name: None
-        for mod in root_modules
-        for tag in mod.tags.configure
-        if tag.venv in ("", tag.hub_name)
-    }
+    root_configured = {}
+    for mod in root_modules:
+        for tag in mod.tags.configure:
+            if tag.venv in ("", tag.hub_name):
+                root_configured[tag.hub_name] = None
 
     configured = {}
+    exposes_all = {}
     for mod in module_ctx.modules:
         for tag in mod.tags.configure:
             hub = tag.hub_name
@@ -86,10 +85,14 @@ def hub_exposure(module_ctx, *, hubs, default_pyproject = None, _fail = fail):
                 tag.dependency_groups,
                 _fail = _fail,
             )
-            if selection.all:
-                packages = info.exposed_packages
-            else:
-                packages = selection.packages
+            packages = selection.packages
+            if selection.all and venv != hub:
+                packages = info.packages
+            elif selection.all:
+                if tag.testonly:
+                    _fail("pip.configure() for hub '{}' cannot use `testonly` when exposing all of the packages with {}".format(hub, tag.dependency_groups))
+                    return None
+                exposes_all[hub] = None
 
             # Multiple tags for the same hub or venv are combined.
             exposed = configured.setdefault(venv, struct(hub = hub, packages = {})).packages
@@ -106,6 +109,7 @@ def hub_exposure(module_ctx, *, hubs, default_pyproject = None, _fail = fail):
             testonly_packages = sorted([pkg for pkg, testonly in info.packages.items() if testonly]),
         )
         for name, info in configured.items()
+        if name not in exposes_all
     }
 
 def _venv_error(venv, hub, *, hubs, configured, testonly):

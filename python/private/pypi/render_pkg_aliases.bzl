@@ -149,18 +149,21 @@ def render_pkg_aliases(
         exposed_packages = {normalize_name(name): None for name in exposed_packages}
     internal_visibility = _internal_visibility(aliases, has_groups = bool(requirement_cycles)) + extra_internal_visibility
 
-    files = {
-        "{}/BUILD.bazel".format(normalize_name(name)): _render_common_aliases(
-            name = normalize_name(name),
+    files = {}
+    for name, pkg_aliases in aliases.items():
+        name = normalize_name(name)
+        visibility = public
+        if exposed_packages != None and name not in exposed_packages:
+            visibility = internal_visibility
+        files["{}/BUILD.bazel".format(name)] = _render_common_aliases(
+            name = name,
             aliases = pkg_aliases,
-            extra_aliases = extra_hub_aliases.get(normalize_name(name), []),
-            group_name = whl_group_mapping.get(normalize_name(name)),
-            visibility = public if exposed_packages == None or normalize_name(name) in exposed_packages else internal_visibility,
-            testonly = normalize_name(name) in testonly_packages,
+            extra_aliases = extra_hub_aliases.get(name, []),
+            group_name = whl_group_mapping.get(name),
+            visibility = visibility,
+            testonly = name in testonly_packages,
             **kwargs
         ).strip()
-        for name, pkg_aliases in aliases.items()
-    }
 
     if requirement_cycles:
         files["_groups/BUILD.bazel"] = generate_group_library_build_bazel("", requirement_cycles)
