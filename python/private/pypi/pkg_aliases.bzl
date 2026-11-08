@@ -124,13 +124,10 @@ def pkg_aliases(
     _native.alias(
         name = name,
         actual = ":" + PY_LIBRARY_PUBLIC_LABEL,
-        **({"testonly": True} if testonly else {})
+        testonly = testonly,
     )
 
     if requires_dist:
-        if testonly:
-            fail("testonly is not supported together with requires_dist")
-
         # if it has a group_name set, then it will create the impl label target in the
         # current macro, we still need to do the aliases to the actual groups package as
         # per below
