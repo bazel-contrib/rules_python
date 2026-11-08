@@ -132,8 +132,8 @@ def main():
     update_file(
         path=args.update_file,
         snippet="_coverage_wheels = {}\n".format(repr(Whls(whls))),
-        start_marker="# START: maintained by 'bazel run //dev/update_deps:update_coverage_deps <version>'",
-        end_marker="# END: maintained by 'bazel run //dev/update_deps:update_coverage_deps <version>'",
+        start_marker="# START: maintained by 'bazel run //dev/update_deps:update_coverage_deps'",
+        end_marker="# END: maintained by 'bazel run //dev/update_deps:update_coverage_deps'",
         dry_run=args.dry_run,
     )
 

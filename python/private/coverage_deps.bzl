@@ -27,7 +27,7 @@ load("//python/private/pypi:select_whl.bzl", "select_whl")
 #
 # Newer coverage versions do not support older python versions, so each version
 # has a `python_full_version` marker for when it should be used.
-# START: maintained by 'bazel run //dev/update_deps:update_coverage_deps <version>'
+# START: maintained by 'bazel run //dev/update_deps:update_coverage_deps'
 _coverage_wheels = [
     struct(
         url = "https://files.pythonhosted.org/packages/e5/6c/3a3f7a46888e69d18abe3ccc6fe4cb16cccb1e6a2f99698931dafca489e6/coverage-7.10.7-cp310-cp310-macosx_10_9_x86_64.whl",
@@ -1135,7 +1135,7 @@ _coverage_wheels = [
         marker = "python_full_version >= '3.15'",
     ),
 ]
-# END: maintained by 'bazel run //dev/update_deps:update_coverage_deps <version>'
+# END: maintained by 'bazel run //dev/update_deps:update_coverage_deps'
 
 _coverage_patch = Label("//python/private:coverage.patch")
 
