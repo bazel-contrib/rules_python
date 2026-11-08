@@ -76,6 +76,7 @@ important behaviors of the target are:
     file is treated as the coverage entry point. This allows using the files
     of an extracted `coverage` wheel.
 
+(coverage-from-pypi)=
 ### Using `coverage` from PyPI
 
 To use the version of `coverage` that is locked in your requirements instead of
@@ -90,8 +91,8 @@ python.single_version_platform_override(
 )
 ```
 
-Or set `py_runtime.coverage_tool = "@pypi//coverage:extracted_whl_files"` when
-defining your own runtime.
+Or set {attr}`py_runtime.coverage_tool` to
+`@pypi//coverage:extracted_whl_files` when defining your own runtime.
 
 :::{note}
 Use the `extracted_whl_files` target and not `@pypi//coverage`: the

@@ -264,6 +264,33 @@ def _test_coverage_tool_extracted_whl_files_impl(env, target):
 
 _tests.append(_test_coverage_tool_extracted_whl_files)
 
+def _test_coverage_tool_multiple_files_without_main(name):
+    rt_util.helper_target(
+        py_runtime,
+        name = name + "_subject",
+        python_version = "PY3",
+        interpreter_path = "/bogus",
+        coverage_tool = name + "_files",
+    )
+    rt_util.helper_target(
+        native.filegroup,
+        name = name + "_files",
+        srcs = ["coverage_file1.txt", "coverage_file2.txt"],
+    )
+    analysis_test(
+        name = name,
+        target = name + "_subject",
+        impl = _test_coverage_tool_multiple_files_without_main_impl,
+        expect_failure = True,
+    )
+
+def _test_coverage_tool_multiple_files_without_main_impl(env, target):
+    env.expect.that_target(target).failures().contains_predicate(
+        matching.str_matches("coverage_tool must*contain 'coverage/__main__.py'"),
+    )
+
+_tests.append(_test_coverage_tool_multiple_files_without_main)
+
 def _test_in_build_interpreter(name):
     rt_util.helper_target(
         py_runtime,
