@@ -1177,18 +1177,13 @@ def select_coverage_whl(*, python_version, platform):
 
     whls = []
     for whl in _coverage_wheels:
-        marker = getattr(whl, "marker", "")
-        if marker and not evaluate(marker, env = marker_env):
+        if whl.marker and not evaluate(whl.marker, env = marker_env):
             continue
-
-        algo, _, digest = whl.hash.partition(":")
-        if algo != "sha256":
-            fail("BUG: unsupported hash algorithm '{}' for {}".format(algo, whl.url))
 
         whls.append(struct(
             filename = whl.url.rpartition("/")[2],
             url = whl.url,
-            sha256 = digest,
+            sha256 = whl.hash.removeprefix("sha256:"),
         ))
 
     whl = select_whl(
@@ -1222,8 +1217,9 @@ def coverage_dep(name, python_version, platform, visibility):
 
     whl = select_coverage_whl(python_version = python_version, platform = platform)
 
-    # NOTE @aignas 2026-07-27: if the default is matched, then the same file may be extracted
-    # multiple times. The wheel is small enough to not matter in most cases.
+    # NOTE @aignas 2026-07-27: if the `py3-none-any` wheel is selected, then the
+    # same file may be extracted multiple times. The wheel is small enough to
+    # not matter in most cases.
 
     maybe(
         http_archive,
