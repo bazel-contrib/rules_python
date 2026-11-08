@@ -131,6 +131,7 @@ def build_config(
             _configure(
                 defaults,
                 override = mod.is_root,
+                envsubst = tag.envsubst,
                 index_url = tag.index_url,
                 # extra values that we just add
                 auth_patterns = tag.auth_patterns,
@@ -143,6 +144,7 @@ def build_config(
     return struct(
         auth_patterns = defaults.get("auth_patterns", {}),
         default_hub = default_hub,
+        envsubst = defaults.get("envsubst", []),
         index_url = defaults.get("index_url", "https://pypi.org/simple").rstrip("/"),
         netrc = defaults.get("netrc", None),
         python_version = defaults.get("python_version", None),
@@ -322,6 +324,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
             builder.pip_parse(
                 module_ctx,
                 pip_attr = pip_attr,
+                default_envsubst = config.envsubst,
                 python_version = python_version,
             )
 
@@ -565,14 +568,29 @@ Supported keys:
 * `sys_platform`, defaults to a value inferred from the {attr}`os_name`.
 """,
     ),
+    "envsubst": attr.string_list(
+        mandatory = False,
+        doc = """\
+A list of environment variables to substitute (e.g. `["PIP_INDEX_URL",
+"PIP_RETRIES"]`). The corresponding variables are expanded in `index_url`
+using the syntax `$VARNAME` or `${VARNAME}` (expanding to empty string if unset)
+or `${VARNAME:-default}` (expanding to default if the variable is unset or empty
+in the environment). Note: On Bazel 7 changes to the variables named here do
+not cause packages to be re-fetched. Don't fetch different things based on the
+value of these variables.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+    ),
     "index_url": attr.string(
         doc = """\
 The index URL to use as a default when downloading packages from PyPI. This is used if nothing is
 specified via `--index-url` or `--extra-index-url` parameters in the `requirements.txt` file or via
 the {attr}`pip.parse.extra_pip_args`.
 
-This value is going to be subject to `envsubst` substitutions if necessary, look at the
-{attr}`pip.parse.envsubst` documentation for more information..
+This value is subject to `envsubst` substitutions if necessary, look at the
+{attr}`pip.default.envsubst` documentation for more information.
 
 The indexes must support Simple API as described here:
 <https://packaging.python.org/en/latest/specifications/simple-repository-api/>
