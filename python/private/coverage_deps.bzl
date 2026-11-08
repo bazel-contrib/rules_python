@@ -1172,7 +1172,6 @@ def select_coverage_whl(*, python_version, platform):
     whl = select_whl(
         whls = whls,
         python_version = python_version,
-        implementation_name = target_platform.env["implementation_name"],
         whl_platform_tags = target_platform.whl_platform_tags,
         whl_abi_tags = target_platform.whl_abi_tags,
         logger = repo_utils.logger(name = "coverage_dep", verbosity_level = "WARN"),
