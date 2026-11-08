@@ -1041,6 +1041,13 @@ the uv.lock file will be used as the primary source for package metadata.
 
 :::{versionadded} 2.2.0
 :::
+
+:::{versionchanged} 2.5.0
+Package platforms follow dependency markers from virtual and editable workspace
+roots, including development dependency groups. All recorded optional extras
+remain enabled, and their dependency markers are respected. Locks without
+workspace roots use package-level resolution markers.
+:::
 """,
         ),
         "whl_modifications": attr.label_keyed_string_dict(
