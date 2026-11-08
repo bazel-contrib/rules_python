@@ -688,6 +688,7 @@ bzl_library(
     deps = [
         ":common_labels",
         ":flags",
+        ":py_info",
         ":py_internal",
         ":py_runtime_info",
         ":reexports",

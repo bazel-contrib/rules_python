@@ -147,7 +147,15 @@ file from `.agents/skills/review-code/`:
     ```<lang>
     <replacement snippet or diff>
     ```
-  * Draft Comment: `<comment text in user's voice>`
+  * Draft Comment (in user's voice):
+    ```markdown
+    <brief/concise description of issue>
+
+    Suggested fix: <fix, under 20 lines / 10 sentences>
+
+    Where: <other locations where this is applicable, if more than just the
+    commented location>
+    ```
   * Author Response: <If the author replied to this comment thread, quote or
     summarize their response here, bolding any question to answer.>
   * Draft Reply: `<proposed reply in user's voice, if applicable>`

@@ -81,3 +81,23 @@ important behaviors of the target are:
 *   It provides a single output file OR it provides an executable output; this
     output is treated as the coverage entry point.
 *   If it provides runfiles, then `runfiles.files` are included into `py_test`.
+*   It can also be a `py_library` of `coverage.py`, e.g. `@pypi//coverage` from
+    your {obj}`pip.parse` hub. Then its `coverage/__main__.py` file is used as
+    the coverage entry point.
+
+### Using `coverage` from PyPI
+
+To use the version of `coverage` that is locked in your requirements instead of
+the one bundled with `rules_python`, point the toolchain to the `coverage`
+package of your hub:
+
+```starlark
+python.single_version_platform_override(
+    coverage_tool = "@pypi//coverage",
+    platform = "x86_64-unknown-linux-gnu",
+    python_version = "3.13.2",
+)
+```
+
+Or set `py_runtime.coverage_tool = "@pypi//coverage"` when defining your own
+runtime.

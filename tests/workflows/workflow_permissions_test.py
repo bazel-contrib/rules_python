@@ -208,3 +208,55 @@ def test_release_workflows_dispatch_on_target_ref():
             steps[0]["env"]["BRANCH"]
             == "${{ needs.parse_comment.outputs.release_branch }}"
         )
+
+
+def test_bcr_author_forwarded_across_release_workflows():
+    """Validates that the triggering actor's name and email reach publish.yml."""
+    rf = runfiles.CreateOrRaise()
+    workflows_dir = rf.root() / "rules_python/.github/workflows"
+
+    on_comment = yaml.safe_load(
+        (workflows_dir / "on_comment.yaml").read_text(encoding="utf-8")
+    )
+    for job_name in ("call_create_rc", "call_promote"):
+        step = on_comment["jobs"][job_name]["steps"][0]
+        assert step["env"]["AUTHOR_NAME"] == "${{ github.actor }}"
+        assert (
+            step["env"]["AUTHOR_EMAIL"]
+            == "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+        )
+        assert '--raw-field "author_name=$AUTHOR_NAME"' in step["run"]
+        assert '--raw-field "author_email=$AUTHOR_EMAIL"' in step["run"]
+
+    for wf_name, call_job in (
+        ("release_create_rc.yaml", "call_release"),
+        ("release_promote.yaml", "publish"),
+        ("release_publish.yaml", "publish_bcr"),
+    ):
+        wf = yaml.safe_load((workflows_dir / wf_name).read_text(encoding="utf-8"))
+        triggers = wf.get("on") or wf.get(True, {})
+        for trigger in ("workflow_dispatch", "workflow_call"):
+            inputs = triggers[trigger]["inputs"]
+            assert "author_name" in inputs, f"{wf_name} {trigger} missing author_name"
+            assert "author_email" in inputs, f"{wf_name} {trigger} missing author_email"
+        with_cfg = wf["jobs"][call_job]["with"]
+        assert with_cfg["author_name"] == "${{ inputs.author_name }}"
+        assert with_cfg["author_email"] == "${{ inputs.author_email }}"
+
+    publish_wf = yaml.safe_load(
+        (workflows_dir / "publish.yml").read_text(encoding="utf-8")
+    )
+    publish_triggers = publish_wf.get("on") or publish_wf.get(True, {})
+    for trigger in ("workflow_dispatch", "workflow_call"):
+        inputs = publish_triggers[trigger]["inputs"]
+        assert "author_name" in inputs
+        assert "author_email" in inputs
+    for job_name, job in publish_wf["jobs"].items():
+        with_cfg = job["with"]
+        assert with_cfg["author_name"] == "${{ inputs.author_name || github.actor }}", (
+            f"publish.yml {job_name} missing author_name fallback"
+        )
+        assert (
+            with_cfg["author_email"]
+            == "${{ inputs.author_email || format('{0}+{1}@users.noreply.github.com', github.actor_id, github.actor) }}"
+        ), f"publish.yml {job_name} missing author_email fallback"
