@@ -30,6 +30,14 @@ on:
         required: true
         type: boolean
         default: true
+      author_name:
+        description: 'Commit author name for the BCR entry (optional)'
+        required: false
+        type: string
+      author_email:
+        description: 'Commit author email for the BCR entry (optional)'
+        required: false
+        type: string
     secrets:
       publish_token:
         required: false
@@ -44,6 +52,14 @@ on:
         required: false
         type: boolean
         default: true
+      author_name:
+        description: 'Commit author name for the BCR entry (optional)'
+        required: false
+        type: string
+      author_email:
+        description: 'Commit author email for the BCR entry (optional)'
+        required: false
+        type: string
 
 permissions: {}
 
@@ -108,6 +124,8 @@ jobs:
     uses: ./.github/workflows/publish.yml
     with:
       tag_name: ${{ inputs.tag_name || github.ref_name }}
+      author_name: ${{ inputs.author_name }}
+      author_email: ${{ inputs.author_email }}
     permissions:
       contents: write
     secrets:

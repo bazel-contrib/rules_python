@@ -11,6 +11,14 @@ on:
         description: 'The tracking issue number'
         required: false
         type: string
+      author_name:
+        description: 'Commit author name for the BCR entry (optional)'
+        required: false
+        type: string
+      author_email:
+        description: 'Commit author email for the BCR entry (optional)'
+        required: false
+        type: string
   workflow_call:
     inputs:
       version:
@@ -20,6 +28,14 @@ on:
       issue:
         description: 'The tracking issue number'
         required: true
+        type: string
+      author_name:
+        description: 'Commit author name for the BCR entry (optional)'
+        required: false
+        type: string
+      author_email:
+        description: 'Commit author email for the BCR entry (optional)'
+        required: false
         type: string
 
 permissions:
@@ -72,4 +88,6 @@ jobs:
     with:
       tag_name: ${{ needs.promote.outputs.version }}
       publish_to_pypi: true
+      author_name: ${{ inputs.author_name }}
+      author_email: ${{ inputs.author_email }}
     secrets: inherit
