@@ -928,7 +928,7 @@ def _test_configure_venvs(env):
         env,
         _mod(
             name = "rules_python",
-            parse = [_configure_parse()],
+            parse = [_configure_parse(pyproject_toml = "pyproject.toml")],
             configure = [
                 _configure(hub_name = "pypi_a", venv = "venv_dev", dependency_groups = ["dev"]),
             ],
