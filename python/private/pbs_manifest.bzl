@@ -39,8 +39,12 @@ def manifest_entry_platform_keys(entry, platform):
 
     Returns:
       A list of platform keys: the plain key, plus the key for the entry's
-      archive flavor if it has one.
+      archive flavor if it has one. Empty for debug (`Py_DEBUG`) builds,
+      whose layout the runtime repo does not support (e.g. `python_d.exe`,
+      `include/python3.Yd`).
     """
+    if "debug" in entry.build_flavor.split("+"):
+        return []
     keys = [platform]
     if entry.archive_flavor in PBS_DISTRIBUTION_SUFFIXES:
         keys.append(platform + PBS_DISTRIBUTION_SUFFIXES[entry.archive_flavor])

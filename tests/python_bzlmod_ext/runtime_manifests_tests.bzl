@@ -167,6 +167,96 @@ def _test_dynamic_manifest_files_impl(env, target):
 
 _tests.append(_test_dynamic_manifest_files)
 
+def _test_dynamic_manifest_skips_debug_builds(name):
+    rt_util.helper_target(
+        native.filegroup,
+        name = name + "_subject",
+    )
+    analysis_test(
+        name = name,
+        target = name + "_subject",
+        impl = _test_dynamic_manifest_skips_debug_builds_impl,
+    )
+
+def _test_dynamic_manifest_skips_debug_builds_impl(env, target):
+    _ = target  # @unused
+
+    root_module = python_ext.module(
+        name = "runtime_manifests",
+        override = [
+            python_ext.override(
+                add_runtime_manifest_files = [
+                    Label("//:SHA256SUMS"),
+                ],
+                base_urls = ["https://example.com/dl"],
+                register_all_versions = True,
+            ),
+        ],
+        defaults = [
+            python_ext.defaults(
+                python_version = "3.14.99",
+            ),
+        ],
+    )
+
+    # SHA256SUMS is sorted by name, so the debug builds come first.
+    mock_mctx = python_ext.mctx(
+        modules = [root_module],
+        mock_files = {
+            str(Label("//:SHA256SUMS")): """
+1111111111111111111111111111111111111111111111111111111111111111  cpython-3.14.99+20261026-x86_64-unknown-linux-gnu-debug-full.tar.zst
+2222222222222222222222222222222222222222222222222222222222222222  cpython-3.14.99+20261026-x86_64-unknown-linux-gnu-freethreaded+debug-full.tar.zst
+3333333333333333333333333333333333333333333333333333333333333333  cpython-3.14.99+20261026-x86_64-unknown-linux-gnu-freethreaded+pgo+lto-full.tar.zst
+4444444444444444444444444444444444444444444444444444444444444444  cpython-3.14.99+20261026-x86_64-unknown-linux-gnu-pgo+lto-full.tar.zst
+5555555555555555555555555555555555555555555555555555555555555555  cpython-3.14.99+20261026-x86_64-unknown-linux-musl-debug+static-full.tar.zst
+""",
+        },
+    )
+
+    res = parse_modules(
+        module_ctx = mock_mctx,
+        logger = _mock_logger,
+    )
+
+    tool_versions = res.config.default["tool_versions"]
+    env.expect.that_bool("3.14.99" in tool_versions).equals(True)
+
+    version_info = tool_versions["3.14.99"]
+
+    # Debug builds fill no key, so the optimized full archives are used for
+    # both the plain and the full keys, and the debug-only musl platform is
+    # not registered.
+    env.expect.that_dict(version_info).contains_exactly({
+        "sha256": {
+            "x86_64-unknown-linux-gnu": "4444444444444444444444444444444444444444444444444444444444444444",
+            "x86_64-unknown-linux-gnu-freethreaded": "3333333333333333333333333333333333333333333333333333333333333333",
+            "x86_64-unknown-linux-gnu-freethreaded-full": "3333333333333333333333333333333333333333333333333333333333333333",
+            "x86_64-unknown-linux-gnu-full": "4444444444444444444444444444444444444444444444444444444444444444",
+        },
+        "strip_prefix": {
+            "x86_64-unknown-linux-gnu": "python/install",
+            "x86_64-unknown-linux-gnu-freethreaded": "python/install",
+            "x86_64-unknown-linux-gnu-freethreaded-full": "python/install",
+            "x86_64-unknown-linux-gnu-full": "python/install",
+        },
+        "url": {
+            "x86_64-unknown-linux-gnu": [
+                "https://example.com/dl/cpython-3.14.99+20261026-x86_64-unknown-linux-gnu-pgo+lto-full.tar.zst",
+            ],
+            "x86_64-unknown-linux-gnu-freethreaded": [
+                "https://example.com/dl/cpython-3.14.99+20261026-x86_64-unknown-linux-gnu-freethreaded+pgo+lto-full.tar.zst",
+            ],
+            "x86_64-unknown-linux-gnu-freethreaded-full": [
+                "https://example.com/dl/cpython-3.14.99+20261026-x86_64-unknown-linux-gnu-freethreaded+pgo+lto-full.tar.zst",
+            ],
+            "x86_64-unknown-linux-gnu-full": [
+                "https://example.com/dl/cpython-3.14.99+20261026-x86_64-unknown-linux-gnu-pgo+lto-full.tar.zst",
+            ],
+        },
+    })
+
+_tests.append(_test_dynamic_manifest_skips_debug_builds)
+
 def _test_dynamic_manifest_files_default_base_urls(name):
     rt_util.helper_target(
         native.filegroup,
