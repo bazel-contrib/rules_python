@@ -1,6 +1,5 @@
 """Helper functions for setting up targets within the Unified PyPI Hub repository."""
 
-load("@bazel_skylib//lib:selects.bzl", "selects")
 load(
     "@rules_python//python/private/pypi:labels.bzl",
     "DATA_LABEL",
@@ -43,8 +42,7 @@ def define_pypi_package_targets(name, pkg_hubs, extra_aliases, hubs, default_hub
         default_hub: the hub to use by default.
         testonly: whether all targets should be marked as testonly.
         venvs: dict mapping the venv names to the hubs that provide their
-            packages. The hubs and venvs that resolve to the same target
-            share a `config_setting_group`.
+            packages.
     """
     pkg_name = name
 
@@ -57,11 +55,9 @@ def define_pypi_package_targets(name, pkg_hubs, extra_aliases, hubs, default_hub
 
     all_aliases = _STANDARD_ALIASES + sorted(extra_aliases.keys())
     missing_errors = {}
-    groups = {}
 
     for alias_name in all_aliases:
-        # The target mapped to the hubs and venvs that resolve to it.
-        targets = {}
+        select_map = {}
         for hub in hubs:
             is_supported = (
                 (alias_name in _STANDARD_ALIASES and hub in pkg_hubs) or
@@ -69,7 +65,7 @@ def define_pypi_package_targets(name, pkg_hubs, extra_aliases, hubs, default_hub
             )
 
             if is_supported:
-                target = "@{hub}//{pkg}:{alias}".format(
+                select_map["//:_is_venv_" + hub] = "@{hub}//{pkg}:{alias}".format(
                     hub = venvs.get(hub, hub),
                     pkg = pkg_name,
                     alias = alias_name,
@@ -81,18 +77,7 @@ def define_pypi_package_targets(name, pkg_hubs, extra_aliases, hubs, default_hub
                         "hub_name": hub,
                         "package_name": pkg_name if alias_name in _STANDARD_ALIASES else (pkg_name + ":" + alias_name),
                     }
-                target = ":{}".format(err_target)
-            targets.setdefault(target, []).append(hub)
-
-        select_map = {}
-        for target, target_hubs in targets.items():
-            if len(target_hubs) == 1:
-                select_map["//:_is_venv_" + target_hubs[0]] = target
-                continue
-
-            group = "_is_venv_" + "_or_".join(target_hubs)
-            groups[group] = target_hubs
-            select_map[":" + group] = target
+                select_map["//:_is_venv_" + hub] = ":{}".format(err_target)
 
         # //conditions:default fallback
         default_supported = (
@@ -120,13 +105,6 @@ def define_pypi_package_targets(name, pkg_hubs, extra_aliases, hubs, default_hub
             name = alias_name,
             actual = select(select_map),
             testonly = testonly,
-        )
-
-    for group, group_hubs in groups.items():
-        selects.config_setting_group(
-            name = group,
-            match_any = ["//:_is_venv_" + hub for hub in group_hubs],
-            visibility = ["//visibility:private"],
         )
 
     # Generate missing package error targets

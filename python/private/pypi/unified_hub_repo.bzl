@@ -25,7 +25,8 @@ define_pypi_package_targets(
     extra_aliases = {extra_aliases},
     hubs = {hubs},
     pkg_hubs = {pkg_hubs},
-    testonly = {testonly},{venvs}
+    testonly = {testonly},
+    venvs = {venvs},
 )
 """
 
@@ -61,7 +62,7 @@ def dist_info_requirement(name):
 def _unified_hub_repo_impl(rctx):
     # The venvs are selected with the same flag as the hubs.
     venvs = rctx.attr.venvs
-    hubs = rctx.attr.hubs + [venv for venv in sorted(venvs) if venv not in rctx.attr.hubs]
+    hubs = rctx.attr.hubs + sorted(venvs)
     default_hub = rctx.attr.default_hub or None
 
     # 1. Generate Root BUILD.bazel with shared config settings
@@ -97,7 +98,7 @@ def _unified_hub_repo_impl(rctx):
                 pkg_hubs = pkg_hubs,
                 pkg_name = pkg_name,
                 testonly = pkg_name in testonly_packages,
-                venvs = "\n    venvs = {},".format(render.dict(dict(sorted(venvs.items())), key_repr = repr).replace("\n", "\n    ")) if venvs else "",
+                venvs = dict(sorted(venvs.items())),
             ),
         )
 
