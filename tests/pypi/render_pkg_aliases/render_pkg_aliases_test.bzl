@@ -188,6 +188,77 @@ def _test_aliases_with_groups(env):
 
 _tests.append(_test_aliases_with_groups)
 
+def _test_aliases_with_requires_dist(env):
+    actual = render_pkg_aliases(
+        aliases = {
+            "bar": "pypi_bar",
+            "foo": "pypi_foo",
+        },
+        requires_dist = {
+            "foo": ["bar[baz]; sys_platform == 'linux'"],
+        },
+    )
+
+    env.expect.that_dict(actual).contains_exactly({
+        # The packages without known deps keep using the ones from METADATA.
+        "bar/BUILD.bazel": """\
+load("@rules_python//python/private/pypi:pkg_aliases.bzl", "pkg_aliases")
+
+package(default_visibility = ["//visibility:public"])
+
+pkg_aliases(
+    name = "bar",
+    actual = "pypi_bar",
+)""",
+        "foo/BUILD.bazel": """\
+load("@rules_python//python/private/pypi:pkg_aliases.bzl", "pkg_aliases")
+
+package(default_visibility = ["//visibility:public"])
+
+pkg_aliases(
+    name = "foo",
+    actual = "pypi_foo",
+    requires_dist = ["bar[baz]; sys_platform == 'linux'"],
+)""",
+    })
+
+_tests.append(_test_aliases_with_requires_dist)
+
+def _test_aliases_with_requires_dist_and_groups(env):
+    actual = render_pkg_aliases(
+        aliases = {
+            "bar": "pypi_bar",
+            "baz": "pypi_baz",
+            "foo": "pypi_foo",
+        },
+        requirement_cycles = {
+            "my_group": ["Bar", "baz"],
+        },
+        requires_dist = {
+            "bar": ["baz", "foo"],
+            "foo": ["bar"],
+        },
+    )
+
+    env.expect.that_str(actual["bar/BUILD.bazel"]).contains("""\
+pkg_aliases(
+    name = "bar",
+    actual = "pypi_bar",
+    group_name = "my_group",
+    group_deps = ["bar", "baz"],
+    requires_dist = ["baz", "foo"],
+)""")
+
+    # Not in a group, so there are no group deps.
+    env.expect.that_str(actual["foo/BUILD.bazel"]).contains("""\
+pkg_aliases(
+    name = "foo",
+    actual = "pypi_foo",
+    requires_dist = ["bar"],
+)""")
+
+_tests.append(_test_aliases_with_requires_dist_and_groups)
+
 def _test_empty_flag_versions(env):
     got = get_whl_flag_versions(
         settings = [],

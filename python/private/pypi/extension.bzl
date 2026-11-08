@@ -341,6 +341,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
     # Where hub, whl, and pip are the repo names
     hub_whl_map = {}
     hub_group_map = {}
+    hub_requires_dist = {}
     exposed_packages = {}
     extra_aliases = {}
     whl_libraries = {}
@@ -357,6 +358,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
         extra_aliases[hub.name] = out.extra_aliases
         hub_group_map[hub.name] = out.group_map
         hub_whl_map[hub.name] = out.whl_map
+        hub_requires_dist[hub.name] = out.requires_dist
 
     return struct(
         config = config,
@@ -366,6 +368,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
         extra_aliases = extra_aliases,
         facts = simpleapi_cache.get_facts(),
         hub_group_map = hub_group_map,
+        hub_requires_dist = hub_requires_dist,
         hub_whl_map = hub_whl_map,
         unified_hub_requirements_bzl = config.unified_hub_requirements_bzl,
         whl_libraries = whl_libraries,
@@ -522,6 +525,7 @@ def _pip_impl(module_ctx):
             packages = mods.exposed_packages.get(hub_name, []),
             platform_config_settings = mods.platform_config_settings.get(hub_name, {}),
             groups = mods.hub_group_map.get(hub_name),
+            requires_dist = mods.hub_requires_dist.get(hub_name, {}),
         )
 
     _create_unified_hub_repo(mods)

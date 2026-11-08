@@ -87,7 +87,7 @@ package(default_visibility = ["//visibility:public"])
         extra_loads = extra_loads,
     )
 
-def render_pkg_aliases(*, aliases, requirement_cycles = None, extra_hub_aliases = {}, **kwargs):
+def render_pkg_aliases(*, aliases, requirement_cycles = None, extra_hub_aliases = {}, requires_dist = {}, **kwargs):
     """Create alias declarations for each PyPI package.
 
     The aliases should be appended to the pip_repository BUILD.bazel file. These aliases
@@ -100,6 +100,9 @@ def render_pkg_aliases(*, aliases, requirement_cycles = None, extra_hub_aliases 
         requirement_cycles: any package groups to also add.
         extra_hub_aliases: The list of extra aliases for each whl to be added
           in addition to the default ones.
+        requires_dist: {type}`dict[str, list[str]]` The dependencies of each
+          package to wire in the hub instead of using the ones from the wheel
+          `METADATA`.
         **kwargs: Extra kwargs to pass to the rules.
 
     Returns:
@@ -130,7 +133,11 @@ def render_pkg_aliases(*, aliases, requirement_cycles = None, extra_hub_aliases 
             aliases = pkg_aliases,
             extra_aliases = extra_hub_aliases.get(normalize_name(name), []),
             group_name = whl_group_mapping.get(normalize_name(name)),
-            **kwargs
+            **(kwargs | _deps_kwargs(
+                requires_dist = requires_dist.get(normalize_name(name), []),
+                group_name = whl_group_mapping.get(normalize_name(name)),
+                requirement_cycles = requirement_cycles or {},
+            ))
         ).strip()
         for name, pkg_aliases in aliases.items()
     }
@@ -138,6 +145,28 @@ def render_pkg_aliases(*, aliases, requirement_cycles = None, extra_hub_aliases 
     if requirement_cycles:
         files["_groups/BUILD.bazel"] = generate_group_library_build_bazel("", requirement_cycles)
     return files
+
+def _deps_kwargs(*, requires_dist, group_name, requirement_cycles):
+    """Return the {obj}`pkg_aliases` kwargs to wire the deps in the hub.
+
+    Args:
+        requires_dist: {type}`list[str]` The dependencies of the package.
+        group_name: {type}`str | None` The dependency group of the package.
+        requirement_cycles: {type}`dict[str, list[str]]` The members of each
+            dependency group.
+
+    Returns:
+        {type}`dict[str, list[str]]` The kwargs, empty if the deps of the
+        package are not known.
+    """
+    if not requires_dist:
+        return {}
+
+    return {
+        # The group members are not deps, the group library depends on them.
+        "group_deps": requirement_cycles.get(group_name, []),
+        "requires_dist": requires_dist,
+    }
 
 def _major_minor(python_version):
     major, _, tail = python_version.partition(".")

@@ -35,6 +35,7 @@ def _impl(rctx):
         extra_hub_aliases = rctx.attr.extra_hub_aliases,
         requirement_cycles = rctx.attr.groups,
         platform_config_settings = rctx.attr.platform_config_settings,
+        requires_dist = rctx.attr.requires_dist,
     )
     for path, contents in aliases.items():
         rctx.file(path, contents)
@@ -91,6 +92,12 @@ The list of packages that will be exposed via all_*requirements macros. Defaults
         "repo_name": attr.string(
             mandatory = True,
             doc = "The apparent name of the repo. This is needed because in bzlmod, the name attribute becomes the canonical name.",
+        ),
+        "requires_dist": attr.string_list_dict(
+            doc = """\
+The dependencies of each package, e.g. from the `uv.lock` file, to wire in the
+hub instead of using the ones from the wheel `METADATA`.
+""",
         ),
         "whl_map": attr.string_dict(
             mandatory = True,
