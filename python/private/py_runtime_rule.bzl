@@ -333,11 +333,8 @@ of [`coverage.py`](https://coverage.readthedocs.io), at least including
 the `run` and `lcov` subcommands.
 
 If the target produces multiple files and one of them is
-`coverage/__main__.py`, then it is used as the entry point. This allows using
-the extracted `coverage` wheel from a {obj}`pip.parse` hub, e.g.
-`@pypi//coverage:extracted_whl_files`. Note, that `@pypi//coverage` cannot be
-used, because a `py_library` depends on the Python toolchain, which would
-create a dependency cycle.
+`coverage/__main__.py`, then it is used as the entry point, e.g.
+`@pypi//coverage:extracted_whl_files`. See {ref}`coverage-from-pypi`.
 
 :::{versionchanged} VERSION_NEXT_FEATURE
 The extracted files of the `coverage` wheel can be used.
