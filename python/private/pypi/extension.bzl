@@ -30,9 +30,9 @@ load(":pep508_env.bzl", "env")
 load(":pip_repository_attrs.bzl", "ATTRS")
 load(":platform.bzl", _plat = "platform")
 load(":pypi_cache.bzl", "pypi_cache")
-load(":register_whl_libraries.bzl", "register_whl_libraries")
 load(":simpleapi_download.bzl", "simpleapi_download")
 load(":unified_hub_repo.bzl", "unified_hub_repo")
+load(":whl_library.bzl", "whl_library")
 
 def _whl_mods_impl(whl_mods_dict):
     """Implementation of the pip.whl_mods tag class.
@@ -448,7 +448,7 @@ def _pip_impl(module_ctx):
     A repository named the following is created. It is actually called last when
     all of the pip spokes are collected.
 
-    - ~pip~pip
+    - @@rules_python~override~pip~pip
 
     As shown in the example code above we have the following.
     Two different pip.parse statements exist in MODULE.bazel provide the hub_name "pip".
@@ -464,8 +464,8 @@ def _pip_impl(module_ctx):
     each pip spoke had a requirements file that contained websockets. We
     then create two different wheel repositories that are named the following.
 
-    - ~pip~pip_310_websockets
-    - ~pip~pip_311_websockets
+    - @@rules_python~override~pip~pip_310_websockets
+    - @@rules_python~override~pip~pip_311_websockets
 
     And if the wheel has any other dependencies subsequent wheels are created in the same fashion.
 
@@ -496,7 +496,8 @@ def _pip_impl(module_ctx):
     # Build all of the wheel modifications if the tag class is called.
     _whl_mods_impl(mods.whl_mods)
 
-    register_whl_libraries(registrations = mods.whl_libraries)
+    for name, args in mods.whl_libraries.items():
+        whl_library(name = name, **args)
 
     for hub_name, whl_map in mods.hub_whl_map.items():
         hub_repository(

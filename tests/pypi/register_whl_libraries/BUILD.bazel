@@ -1,5 +1,0 @@
-load(":register_whl_libraries_tests.bzl", "register_whl_libraries_test_suite")
-
-register_whl_libraries_test_suite(
-    name = "register_whl_libraries_tests",
-)

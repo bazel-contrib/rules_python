@@ -175,6 +175,8 @@ def whl_library_deps_targets(
                 package_deps = package_deps,
                 tmpl = dep_template.format(name = "{}", target = PY_LIBRARY_PUBLIC_LABEL),
             ),
+            # Disable precompilation on this wrapper target to prevent duplicate
+            # pyc generation; the underlying PY_SRCS_LABEL target handles it.
             precompile = "disabled",
             tags = tags,
             visibility = impl_vis,
