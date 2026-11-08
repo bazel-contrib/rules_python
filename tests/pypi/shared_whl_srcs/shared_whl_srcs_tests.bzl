@@ -177,15 +177,15 @@ def _test_different_extraction_args(env):
         extra_aliases = {},
     )
 
-    env.expect.that_collection(got.srcs.keys()).contains_exactly([
-        "whl_foo_0_0_1_py3_none_any",
-    ])
-    env.expect.that_collection(got.deps.keys()).contains_exactly([
-        "other_312_foo",
-    ])
-    env.expect.that_dict(got.whl_libraries).contains_exactly({
-        "pypi_312_foo": _whl(),
+    # The wheel is extracted once for each set of extraction args.
+    env.expect.that_dict({
+        name: args["metadata_file"]
+        for name, args in got.deps.items()
+    }).contains_exactly({
+        "other_312_foo": "@whl_foo_0_0_1_py3_none_any//:metadata.json",
+        "pypi_312_foo": "@whl_foo_0_0_1_py3_none_any_2//:metadata.json",
     })
+    env.expect.that_dict(got.whl_libraries).contains_exactly({})
 
 _tests.append(_test_different_extraction_args)
 

@@ -85,17 +85,12 @@ def shared_whl_srcs(whl_libraries, *, hub_whl_map, extra_aliases):
             continue
 
         srcs_args = _srcs_args(args)
-        key = _srcs_key(args)
+        key = _srcs_key(args, srcs_args)
         srcs_name = srcs_name_by_key.get(key)
         if srcs_name == None:
             srcs_name = _srcs_name(args["filename"], srcs, whl_libraries)
             srcs_name_by_key[key] = srcs_name
             srcs[srcs_name] = srcs_args
-        elif _extract_args(srcs[srcs_name]) != _extract_args(srcs_args):
-            # The wheel is extracted differently, e.g. the `pip_data_exclude`
-            # is different between the hubs.
-            libraries[name] = args
-            continue
 
         deps[name] = _deps_args(args, srcs_name)
 
@@ -123,24 +118,31 @@ def _is_shareable(args):
         if arg in args:
             return False
 
-    filename = args.get("filename", "")
-
     # The integrity is empty if the digest cannot be represented as SRI, then
     # we cannot ensure that the URLs point to the same file.
-    return bool(args.get("urls")) and filename.endswith(".whl") and bool(args.get("integrity"))
+    if not args.get("urls") or not args.get("integrity"):
+        return False
 
-def _srcs_key(args):
-    """Return the key identifying the downloaded wheel.
+    return args.get("filename", "").endswith(".whl")
+
+def _srcs_key(args, srcs_args):
+    """Return the key identifying the downloaded and extracted wheel.
 
     The URLs are not resolved using `envsubst`, so that credentials do not end
-    up in the key.
+    up in the key. The other args that only influence the download, e.g. the
+    `index_url`, are not part of the key, so the first registration wins.
     """
     index_url = args.get("index_url", "")
     urls = tuple([
         urllib.absolute_url(index_url, url)
         for url in args["urls"]
     ])
-    return (urls, args["filename"], args["integrity"])
+    extract_args = {
+        k: srcs_args[k]
+        for k in sorted(srcs_args)
+        if k not in _DOWNLOAD_ARGS
+    }
+    return (urls, json.encode(extract_args))
 
 def _srcs_args(args):
     """Return the args for the `whl_library` that only extracts the wheel."""
@@ -157,14 +159,6 @@ def _srcs_args(args):
     # Do not create the dependency targets in the extracted repo.
     srcs_args["dep_template"] = ""
     return srcs_args
-
-def _extract_args(srcs_args):
-    """Return the args that influence how the wheel is extracted."""
-    return {
-        k: v
-        for k, v in srcs_args.items()
-        if k not in _DOWNLOAD_ARGS
-    }
 
 def _deps_args(args, srcs_name):
     """Return the args for the `whl_deps_repo`."""
