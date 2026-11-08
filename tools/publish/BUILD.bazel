@@ -1,6 +1,6 @@
 load("//python/entry_points:py_console_script_binary.bzl", "py_console_script_binary")
 load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")  # buildifier: disable=bzl-visibility
-load("//tools/private:publish_deps.bzl", "publish_deps")
+load("//python/uv:lock.bzl", "lock")
 
 package(default_visibility = ["//:__subpackages__"])
 
@@ -18,18 +18,12 @@ distribution_filegroup(
     name = "distribution",
 )
 
-# Run bazel run //private:requirements.update to update the outs
-publish_deps(
+# Run bazel run //tools/publish:requirements.update to update uv.lock
+lock(
     name = "requirements",
     srcs = ["pyproject.toml"],
-    outs = {
-        "requirements_darwin.txt": "macos",
-        "requirements_linux.txt": "linux",
-        "requirements_universal.txt": "",  # universal
-        "requirements_windows.txt": "windows",
-    },
+    out = "uv.lock",
     args = [
-        "--emit-index-url",
         "--upgrade",  # always upgrade
     ],
     visibility = ["//:__subpackages__"],
