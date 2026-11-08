@@ -369,7 +369,6 @@ You cannot use both the additive_build_content and additive_build_content_file a
             module_name = hub.module_name,
             pyproject = hub_pyproject.get(hub.name),
             packages = out.whl_map.keys(),
-            exposed_packages = out.exposed_packages,
         )
 
     configured_hubs = hub_exposure(
@@ -1124,7 +1123,8 @@ The `pyproject.toml` file that defines the dependency groups. Defaults to the
             default = False,
             doc = """\
 Make the aliases of the selected packages testonly. A package that is also
-selected by a `pip.configure` tag without `testonly` is not testonly.
+selected by a `pip.configure` tag without `testonly` is not testonly. It can't
+be used with `["*", "transitive"]`, which exposes all of the packages.
 
 The testonly packages are left out of the `all_requirements`,
 `all_whl_requirements` and `all_data_requirements` lists in the hub's
