@@ -160,7 +160,3 @@ class CoverageCollectionTest(unittest.TestCase):
         self.assertIn(lineno, branches, f"branches: {branches}")
         # Only the `True` branch of the `if` was taken.
         self.assertEqual(sorted(b > 0 for b in branches[lineno]), [False, True])
-
-
-if __name__ == "__main__":
-    unittest.main()
