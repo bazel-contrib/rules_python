@@ -8,7 +8,6 @@ import glob
 import os
 import pathlib
 import subprocess
-import tempfile
 import unittest
 
 from python.runfiles import runfiles
@@ -57,9 +56,7 @@ class CoverageCollectionTest(unittest.TestCase):
         assert lib_path is not None
         cls.lib_lines = pathlib.Path(lib_path).read_text().splitlines()
 
-        tmp = pathlib.Path(
-            tempfile.mkdtemp(dir=os.environ.get("TEST_TMPDIR")),
-        )
+        tmp = pathlib.Path(os.environ["TEST_TMPDIR"])
         coverage_dir = tmp / "coverage"
         coverage_dir.mkdir()
         manifest = tmp / "coverage_manifest.txt"
@@ -78,10 +75,8 @@ class CoverageCollectionTest(unittest.TestCase):
         env["COVERAGE_DIR"] = str(coverage_dir)
         env["COVERAGE_MANIFEST"] = str(manifest)
 
-        workspace_dir = os.path.dirname(os.path.dirname(os.path.dirname(program)))
         cls.result = subprocess.run(
             [program],
-            cwd=workspace_dir,
             env=env,
             capture_output=True,
             text=True,
