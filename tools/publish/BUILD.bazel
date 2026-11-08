@@ -1,27 +1,21 @@
 load("//python/entry_points:py_console_script_binary.bzl", "py_console_script_binary")
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")  # buildifier: disable=bzl-visibility
 load("//tools/private:publish_deps.bzl", "publish_deps")
+
+package(default_visibility = ["//:__subpackages__"])
 
 py_console_script_binary(
     name = "twine",
     # We transition to a specific python version in order to ensure that we
     # don't rely on the default version configured by the root module.
     pkg = "@rules_python_publish_deps//twine",
-    python_version = "3.11",
+    python_version = "3.14",
     script = "twine",
     visibility = ["//visibility:public"],
 )
 
-filegroup(
+distribution_filegroup(
     name = "distribution",
-    srcs = [
-        "BUILD.bazel",
-        "pyproject.toml",
-        "requirements_darwin.txt",
-        "requirements_linux.txt",
-        "requirements_universal.txt",
-        "requirements_windows.txt",
-    ],
-    visibility = ["//tools:__subpackages__"],
 )
 
 # Run bazel run //private:requirements.update to update the outs
@@ -38,5 +32,5 @@ publish_deps(
         "--emit-index-url",
         "--upgrade",  # always upgrade
     ],
-    visibility = ["//private:__pkg__"],
+    visibility = ["//:__subpackages__"],
 )

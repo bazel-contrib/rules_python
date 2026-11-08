@@ -1,10 +1,11 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("//python:py_binary.bzl", "py_binary")
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
 
-filegroup(
+package(default_visibility = ["//:__subpackages__"])
+
+distribution_filegroup(
     name = "distribution",
-    srcs = glob(["**"]),
-    visibility = ["//python/private:__pkg__"],
 )
 
 py_binary(
@@ -16,5 +17,4 @@ py_binary(
 bzl_library(
     name = "whl_filegroup",
     srcs = ["whl_filegroup.bzl"],
-    visibility = ["//python:__subpackages__"],
 )

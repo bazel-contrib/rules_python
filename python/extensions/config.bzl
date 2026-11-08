@@ -3,6 +3,7 @@
 load("@bazel_features//:features.bzl", "bazel_features")
 load("//python/private:internal_config_repo.bzl", "internal_config_repo")
 load("//python/private/pypi:deps.bzl", "pypi_deps")
+load("//python/private/toolchains:repo.bzl", "configure_tool_toolchains")
 
 _add_transition_setting = tag_class(
     doc = """
@@ -55,11 +56,27 @@ In the future, this will be enabled by default.
     },
 )
 
+_internal_configure = tag_class(
+    doc = "Internal configuration for rules_python itself. Not for public use.",
+    attrs = {
+        "tool_deps_dev_only": attr.bool(
+            doc = """
+Internal: value of TOOL_DEPS_DEV_ONLY from rules_python's MODULE.bazel.
+""",
+            mandatory = True,
+        ),
+    },
+)
+
 def _config_impl(module_ctx):
     transition_setting_generators = {}
     transition_settings = []
     explicit_init_py_modules = {}
+    tool_deps_dev_only = True
     for mod in module_ctx.modules:
+        if mod.name == "rules_python":
+            for tag in mod.tags.internal_configure:
+                tool_deps_dev_only = tag.tool_deps_dev_only
         for tag in mod.tags.add_transition_setting:
             setting = str(tag.setting)
             if setting not in transition_setting_generators:
@@ -71,11 +88,13 @@ def _config_impl(module_ctx):
             if mod.is_root:
                 explicit_init_py_modules[""] = str(tag.default)
 
+    configure_tool_toolchains()
     internal_config_repo(
         name = "rules_python_internal",
         transition_setting_generators = transition_setting_generators,
         transition_settings = transition_settings,
         explicit_init_py_modules = explicit_init_py_modules,
+        tool_deps_dev_only = tool_deps_dev_only,
     )
 
     pypi_deps()
@@ -95,5 +114,6 @@ config = module_extension(
     tag_classes = {
         "add_transition_setting": _add_transition_setting,
         "explicit_init_py": _explicit_init_py,
+        "internal_configure": _internal_configure,
     },
 )

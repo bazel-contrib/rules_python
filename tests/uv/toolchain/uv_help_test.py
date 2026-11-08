@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -20,7 +21,27 @@ class TestUV(unittest.TestCase):
 
         uv_help = Path(uv_help_path).read_text()
 
-        self.assertIn("Usage: uv [OPTIONS] <COMMAND>", uv_help)
+        self.assertRegex(uv_help, r"Usage: uv(\.exe)? \[OPTIONS\] <COMMAND>")
+
+    def test_uv_bin(self):
+        root = runfiles.CreateOrRaise().root()
+
+        for env_var in (
+            "UV_BIN",
+            "UV_CURRENT_TOOLCHAIN",
+            "UV_RULES_PYTHON_UV",
+        ):
+            with self.subTest(env_var=env_var):
+                uv_bin_path = root / os.environ[env_var]
+                result = subprocess.run(
+                    [uv_bin_path, "--python-fetch", "manual", "--help"],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                self.assertRegex(
+                    result.stdout, r"Usage: uv(\.exe)? \[OPTIONS\] <COMMAND>"
+                )
 
 
 if __name__ == "__main__":

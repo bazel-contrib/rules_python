@@ -9,7 +9,7 @@ for your code.
 Start the REPL with the following command:
 ```console
 $ bazel run @rules_python//python/bin:repl
-Python 3.11.11 (main, Mar 17 2025, 21:02:09) [Clang 20.1.0 ] on linux
+Python 3.14.4 (main, Mar 17 2026, 21:02:09) [Clang 20.1.0 ] on linux
 Type "help", "copyright", "credits" or "license" for more information.
 >>>
 ```
@@ -33,7 +33,7 @@ that provides the {bzl:obj}`PyInfo` provider.
 
 ```console
 $ bazel run @rules_python//python/bin:repl --@rules_python//python/bin:repl_dep=@rules_python//tools:wheelmaker
-Python 3.11.11 (main, Mar 17 2025, 21:02:09) [Clang 20.1.0 ] on linux
+Python 3.14.4 (main, Mar 17 2026, 21:02:09) [Clang 20.1.0 ] on linux
 Type "help", "copyright", "credits" or "license" for more information.
 >>> import tools.wheelmaker
 >>>

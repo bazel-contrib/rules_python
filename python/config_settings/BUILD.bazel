@@ -1,6 +1,7 @@
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
 load("@pythons_hub//:versions.bzl", "DEFAULT_PYTHON_VERSION", "MINOR_MAPPING", "PYTHON_VERSIONS")
 load("@rules_python_internal//:rules_python_config.bzl", "config")
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
 load(
     "//python/private:flags.bzl",
     "AddSrcsToRunfilesFlag",
@@ -8,28 +9,29 @@ load(
     "ExecToolsToolchainFlag",
     "FreeThreadedFlag",
     "LibcFlag",
+    "PbsDistributionFlag",
     "PrecompileFlag",
     "PrecompileSourceRetentionFlag",
+    "PyiDepsToRunfilesFlag",
     "ValidateTestMainFlag",
     "VenvsSitePackages",
     "VenvsUseDeclareSymlinkFlag",
+    "pbs_distribution_flag",
     rp_string_flag = "string_flag",
 )
 load("//python/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:flags.bzl", "define_pypi_internal_flags")
 load(":config_settings.bzl", "construct_config_settings")
 
+package(default_visibility = ["//:__subpackages__"])
+
 # We don't generate bzl_library for these because they aren't public targets
 # and should be moved
 # gazelle:exclude config_settings.bzl
 # gazelle:exclude transition.bzl
 
-filegroup(
+distribution_filegroup(
     name = "distribution",
-    srcs = glob(["**"]) + [
-        "//python/config_settings/private:distribution",
-    ],
-    visibility = ["//python:__pkg__"],
 )
 
 construct_config_settings(
@@ -39,6 +41,7 @@ construct_config_settings(
         ":pip_whl_osx_version",
         ":py_freethreaded",
         ":py_linux_libc",
+        ":py_pbs_distribution",
     ],
     minor_mapping = MINOR_MAPPING,
     versions = PYTHON_VERSIONS,
@@ -84,6 +87,14 @@ string_flag(
     build_setting_default = ValidateTestMainFlag.AUTO,
     values = ValidateTestMainFlag.flag_values(),
     # NOTE: Only public because it's an implicit dependency of py_test.
+    visibility = NOT_ACTUALLY_PUBLIC,
+)
+
+string_flag(
+    name = "pyi_deps_to_runfiles",
+    build_setting_default = PyiDepsToRunfilesFlag.AUTO,
+    values = PyiDepsToRunfilesFlag.flag_values(),
+    # NOTE: Only public because it's an implicit dependency
     visibility = NOT_ACTUALLY_PUBLIC,
 )
 
@@ -138,6 +149,12 @@ string_flag(
     visibility = ["//visibility:public"],
 )
 
+pbs_distribution_flag(
+    name = "py_pbs_distribution",
+    build_setting_default = PbsDistributionFlag.AUTO,
+    visibility = ["//visibility:public"],
+)
+
 alias(
     name = "is_py_freethreaded",
     actual = ":_is_py_freethreaded_yes",
@@ -157,6 +174,7 @@ alias(
 string_flag(
     name = "venvs_use_declare_symlink",
     build_setting_default = VenvsUseDeclareSymlinkFlag.YES,
+    scope = "universal",
     values = VenvsUseDeclareSymlinkFlag.flag_values(),
     visibility = ["//visibility:public"],
 )

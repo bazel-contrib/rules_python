@@ -71,17 +71,23 @@ def _test_dynamic_manifest_toolchains_impl(env, target):
 
     version_info = tool_versions["3.11.99"]
 
-    # Assert on the entire dictionary at once!
+    # Assert on the entire dictionary at once! The plain platform key prefers
+    # install_only, while the full archive is also available under its own key.
     env.expect.that_dict(version_info).contains_exactly({
         "sha256": {
             "x86_64-unknown-linux-gnu": "8b14030dd3af9ea7f7c51b4c90feb04afd8a8f45435727e67b875270bd08f3bc",
+            "x86_64-unknown-linux-gnu-full": "01e607cf764b97d4d5d6f69fd1ff3d8a9a162513dde5c39e98260fce40fe220a",
         },
         "strip_prefix": {
             "x86_64-unknown-linux-gnu": "python",
+            "x86_64-unknown-linux-gnu-full": "python/install",
         },
         "url": {
             "x86_64-unknown-linux-gnu": [
                 "https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.11.99+20260414-x86_64-unknown-linux-gnu-install_only.tar.gz",
+            ],
+            "x86_64-unknown-linux-gnu-full": [
+                "https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.11.99+20260414-x86_64-unknown-linux-gnu-pgo+lto-full.tar.zst",
             ],
         },
     })
@@ -139,21 +145,92 @@ def _test_dynamic_manifest_files_impl(env, target):
 
     version_info = tool_versions["3.12.99"]
 
+    # With only a full archive, it's used for the plain platform key too.
     env.expect.that_dict(version_info).contains_exactly({
         "sha256": {
             "x86_64-unknown-linux-gnu": "01e607cf764b97d4d5d6f69fd1ff3d8a9a162513dde5c39e98260fce40fe220a",
+            "x86_64-unknown-linux-gnu-full": "01e607cf764b97d4d5d6f69fd1ff3d8a9a162513dde5c39e98260fce40fe220a",
         },
         "strip_prefix": {
             "x86_64-unknown-linux-gnu": "python/install",
+            "x86_64-unknown-linux-gnu-full": "python/install",
         },
         "url": {
             "x86_64-unknown-linux-gnu": [
+                "https://example.com/dl/cpython-3.12.99+20260414-x86_64-unknown-linux-gnu-pgo+lto-full.tar.zst",
+            ],
+            "x86_64-unknown-linux-gnu-full": [
                 "https://example.com/dl/cpython-3.12.99+20260414-x86_64-unknown-linux-gnu-pgo+lto-full.tar.zst",
             ],
         },
     })
 
 _tests.append(_test_dynamic_manifest_files)
+
+def _test_dynamic_manifest_files_default_base_urls(name):
+    rt_util.helper_target(
+        native.filegroup,
+        name = name + "_subject",
+    )
+    analysis_test(
+        name = name,
+        target = name + "_subject",
+        impl = _test_dynamic_manifest_files_default_base_urls_impl,
+    )
+
+def _test_dynamic_manifest_files_default_base_urls_impl(env, target):
+    _ = target  # @unused
+
+    root_module = python_ext.module(
+        name = "runtime_manifests",
+        override = [
+            python_ext.override(
+                add_runtime_manifest_files = [
+                    Label("//:SHA256SUMS"),
+                ],
+            ),
+        ],
+        toolchain = [
+            python_ext.toolchain(
+                python_version = "3.13",
+            ),
+        ],
+    )
+
+    mock_mctx = python_ext.mctx(
+        modules = [root_module],
+        mock_files = {
+            str(Label("//:SHA256SUMS")): """
+cba3455e11ee12f8cb085a27e96ae8aa5492e153263e6577ad89213a46646427  cpython-3.13.99+20261026-x86_64-unknown-linux-gnu-install_only.tar.gz
+""",
+        },
+    )
+
+    res = parse_modules(
+        module_ctx = mock_mctx,
+        logger = _mock_logger,
+    )
+
+    tool_versions = res.config.default["tool_versions"]
+    env.expect.that_bool("3.13.99" in tool_versions).equals(True)
+    env.expect.that_str(res.config.minor_mapping["3.13"]).equals("3.13.99")
+
+    version_info = tool_versions["3.13.99"]
+    env.expect.that_dict(version_info).contains_exactly({
+        "sha256": {
+            "x86_64-unknown-linux-gnu": "cba3455e11ee12f8cb085a27e96ae8aa5492e153263e6577ad89213a46646427",
+        },
+        "strip_prefix": {
+            "x86_64-unknown-linux-gnu": "python",
+        },
+        "url": {
+            "x86_64-unknown-linux-gnu": [
+                "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.13.99+20261026-x86_64-unknown-linux-gnu-install_only.tar.gz",
+            ],
+        },
+    })
+
+_tests.append(_test_dynamic_manifest_files_default_base_urls)
 
 def runtime_manifests_test_suite(name):
     test_suite(

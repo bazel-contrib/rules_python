@@ -4,6 +4,7 @@ load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")
 load("//python/private:current_py_cc_headers.bzl", "current_py_cc_headers", "current_py_cc_headers_abi3")
 load("//python/private:current_py_cc_libs.bzl", "current_py_cc_libs")
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
 
 package(
     default_visibility = ["//:__subpackages__"],
@@ -47,9 +48,8 @@ toolchain_type(
     visibility = ["//visibility:public"],
 )
 
-filegroup(
+distribution_filegroup(
     name = "distribution",
-    srcs = glob(["**"]),
 )
 
 bzl_library(

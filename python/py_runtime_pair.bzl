@@ -23,20 +23,21 @@ def py_runtime_pair(name, py2_runtime = None, py3_runtime = None, **attrs):
 
     This is a macro around the underlying {rule}`py_runtime_pair` rule.
 
-    This used to wrap up to two Python runtimes, one for Python 2 and one for Python 3.
-    However, Python 2 is no longer supported, so it now only wraps a single Python 3
-    runtime.
+    This used to wrap up to two Python runtimes, one for Python 2 and one for
+    Python 3. However, Python 2 is no longer supported, so it now only wraps a
+    single Python 3 runtime.
 
-    Usually the wrapped runtimes are declared using the `py_runtime` rule, but any
-    rule returning a `PyRuntimeInfo` provider may be used.
+    Usually the wrapped runtimes are declared using the `py_runtime` rule, but
+    any rule returning a `PyRuntimeInfo` provider may be used.
 
-    This rule returns a `platform_common.ToolchainInfo` provider with the following
-    schema:
+    This rule returns a `platform_common.ToolchainInfo` provider with the
+    following schema:
 
     ```python
     platform_common.ToolchainInfo(
         py2_runtime = None,
         py3_runtime = <PyRuntimeInfo or None>,
+        template_vars = <TemplateVariableInfo>,
     )
     ```
 

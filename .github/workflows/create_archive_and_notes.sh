@@ -19,22 +19,38 @@ set -o errexit
 
 set -x
 
-TAG=$1
-if [ -z "$TAG" ]; then
-  echo "ERROR: TAG env var must be set"
-  exit 1
+TAG=${1:-}
+if [ -n "$TAG" ]; then
+  # If the workflow checks out one commit, but is releasing another
+  git fetch origin tag "$TAG"
+  git checkout "$TAG"
+else
+  TAG=$(git rev-parse HEAD)
 fi
-# If the workflow checks out one commit, but is releasing another
-git fetch origin tag "$TAG"
-
-# Update our local state so that check_version_markers searches what we expect
-git checkout "$TAG"
-$(dirname $0)/check_version_markers.sh
 
 # A prefix is added to better match the GitHub generated archives.
 PREFIX="rules_python-${TAG}"
 ARCHIVE="rules_python-$TAG.tar.gz"
-git archive --format=tar "--prefix=${PREFIX}/" "$TAG" | gzip > "$ARCHIVE"
+sed --in-place 's/^TOOL_DEPS_DEV_ONLY = False$/TOOL_DEPS_DEV_ONLY = True/' MODULE.bazel
+# Verify that sed actually matched and modified the line (sed exits 0 even if no
+# substitution occurred).
+grep -q '^TOOL_DEPS_DEV_ONLY = True$' MODULE.bazel
+# --add-file appends extra files to the archive without replacing tracked files
+# from $TAG, so pathspec ":!..." excludes the committed files to avoid duplicate
+# tar entries (where the committed ones would overwrite the modified ones on
+# extraction).
+git archive \
+  --format=tar \
+  "--prefix=${PREFIX}/" \
+  "--add-file=MODULE.bazel" \
+  "--prefix=${PREFIX}/python/private/" \
+  "--add-file=artifacts_manifest.bzl" \
+  "--prefix=${PREFIX}/" \
+  "$TAG" \
+  . \
+  ":!MODULE.bazel" \
+  ":!python/private/artifacts_manifest.bzl" |
+  gzip > "$ARCHIVE"
 SHA=$(shasum -a 256 "$ARCHIVE" | awk '{print $1}')
 
 cat > release_notes.txt << EOF
@@ -52,13 +68,13 @@ bazel_dep(name = "rules_python", version = "${TAG}")
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.toolchain(
-    python_version = "3.13",
+    python_version = "3.14",
 )
 
 pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
 pip.parse(
     hub_name = "pypi",
-    python_version = "3.13",
+    python_version = "3.14",
     requirements_lock = "//:requirements_lock.txt",
 )
 

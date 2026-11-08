@@ -4,12 +4,20 @@
     {
       "name": "Richard Levasseur",
       "email": "richardlev@gmail.com",
-      "github": "rickeylev"
+      "github": "rickeylev",
+      "github_user_id": 34175098
     },
     {
       "name": "Ignas Anikevicius",
       "email": "bcr-ignas@use.startmail.com",
-      "github": "aignas"
+      "github": "aignas",
+      "github_user_id": 240938
+    },
+    {
+      "name": "Jeremy Volkman",
+      "email": "jeremy@jvolkman.com",
+      "github": "jvolkman",
+      "github_user_id": 124501
     }
   ],
   "repository": [

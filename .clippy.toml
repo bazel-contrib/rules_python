@@ -1,0 +1,12 @@
+# Clippy configuration, applied via the `rust-lint` config in .bazelrc.
+#
+# Tests may panic freely. Production crates deny unwrap/expect themselves via
+# `#![deny(clippy::expect_used, clippy::unwrap_used)]`. Note these settings only
+# recognize `#[test]` functions and `#[cfg(test)]` items, not helper functions
+# in integration-test crates, which is why unwrap/expect lints are not enabled
+# globally.
+allow-dbg-in-tests = true
+allow-expect-in-tests = true
+allow-indexing-slicing-in-tests = true
+allow-panic-in-tests = true
+allow-unwrap-in-tests = true

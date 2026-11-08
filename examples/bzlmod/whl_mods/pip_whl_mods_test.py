@@ -19,6 +19,7 @@ import platform
 import subprocess
 import sys
 import unittest
+import zipfile
 from pathlib import Path
 
 from python.runfiles import runfiles
@@ -95,7 +96,7 @@ class PipWhlModsTest(unittest.TestCase):
         self.assertEqual(stdout, "Hello world from copied executable")
 
     def test_data_exclude_glob(self):
-        current_wheel_version = "0.46.2"
+        current_wheel_version = "0.48.0"
 
         r = runfiles.Create()
         dist_info_dir = "{}/site-packages/wheel-{}.dist-info".format(
@@ -145,6 +146,14 @@ class PipWhlModsTest(unittest.TestCase):
             "Summary: Python HTTP for Humans. Patched.",
             metadata.read_text().splitlines(),
         )
+        # The public wheel target must expose the same patches as the library,
+        # even when its archive is stored outside the extracted repository.
+        archive = Path(r.Rlocation(os.environ["REQUESTS_WHL"]))
+        with zipfile.ZipFile(archive) as wheel:
+            self.assertEqual(
+                wheel.read(f"requests-{current_wheel_version}.dist-info/METADATA"),
+                metadata.read_bytes(),
+            )
 
 
 if __name__ == "__main__":

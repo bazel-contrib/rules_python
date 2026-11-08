@@ -29,6 +29,7 @@ _SELF_RUNFILES_RELATIVE_PATH = "%site_init_runfiles_path%"
 _COVERAGE_TOOL = "%coverage_tool%"
 # True if the runfiles root should be added to sys.path
 _ADD_RUNFILES_ROOT_TO_SYS_PATH = "%add_runfiles_root_to_sys_path%" == "1"
+_INTERPRETER_ACTUAL_PATH = "%interpreter_actual_path%"
 
 
 def _is_verbose():
@@ -52,6 +53,7 @@ _print_verbose("import_all:", _IMPORT_ALL)
 _print_verbose("workspace_name:", _WORKSPACE_NAME)
 _print_verbose("self_runfiles_path:", _SELF_RUNFILES_RELATIVE_PATH)
 _print_verbose("coverage_tool:", _COVERAGE_TOOL)
+_print_verbose("interpreter_actual_path:", _INTERPRETER_ACTUAL_PATH)
 
 
 def _find_runfiles_root():
@@ -264,7 +266,106 @@ def _fixup_sys_base_executable():
     sys._base_executable = exe
 
 
+def _fixup_stdlib_paths():
+    """Remap non-runfiles runtime paths to their runfiles locations.
+
+    Replaces non-runfiles sys prefix roots (e.g. sys.base_prefix) with the
+    runtime root inside runfiles across sys.path, sys prefixes, and
+    site.PREFIXES.
+    """
+    if (
+        not _INTERPRETER_ACTUAL_PATH
+        or os.path.isabs(_INTERPRETER_ACTUAL_PATH)
+        or "/" not in _INTERPRETER_ACTUAL_PATH
+    ):
+        return
+    if not _RUNFILES_ROOT:
+        return
+
+    def _norm_path(path_str):
+        return os.path.normcase(path_str).replace("\\", "/").rstrip("/")
+
+    abs_interpreter = os.path.join(_RUNFILES_ROOT, _INTERPRETER_ACTUAL_PATH)
+    parent = os.path.dirname(abs_interpreter)
+    if os.path.basename(parent).lower() in ("bin", "scripts"):
+        runtime_root = os.path.dirname(parent)
+    else:
+        runtime_root = parent
+
+    runfiles_norm = _norm_path(_RUNFILES_ROOT)
+    runfiles_prefix = runfiles_norm + "/"
+
+    def _in_runfiles(path_str):
+        norm = _norm_path(path_str)
+        return norm == runfiles_norm or norm.startswith(runfiles_prefix)
+
+    target_root = runtime_root
+    if _is_windows():
+        target_root = target_root.replace("/", os.sep)
+
+    # When running in a virtual environment (sys.prefix != sys.base_prefix),
+    # sys.prefix points to the .venv directory (which on Windows may reside
+    # outside the runfiles tree). Never overwrite sys.prefix / sys.exec_prefix
+    # with the base Python stdlib root in a venv.
+    in_venv = sys.prefix != sys.base_prefix
+    if in_venv:
+        attrs = ("base_prefix", "base_exec_prefix")
+    else:
+        attrs = ("base_prefix", "base_exec_prefix", "prefix", "exec_prefix")
+
+    candidate_prefixes = {}
+    for attr in attrs:
+        old_prefix = getattr(sys, attr)
+        if not _in_runfiles(old_prefix):
+            candidate_prefixes[attr] = old_prefix
+
+    if not candidate_prefixes:
+        return
+
+    # First, verify if any candidate prefix has matching paths that physically
+    # exist in the runfiles tree.
+    remapped_prefixes = set()
+    for p in sys.path:
+        norm_p = _norm_path(p)
+        for old_prefix in candidate_prefixes.values():
+            norm_old = _norm_path(old_prefix)
+            if norm_p == norm_old or norm_p.startswith(norm_old + "/"):
+                candidate = target_root + p[len(old_prefix) :]
+                if os.path.exists(candidate):
+                    remapped_prefixes.add(old_prefix)
+                    break
+
+    if not remapped_prefixes:
+        return
+
+    # Remap all sys.path entries under the verified prefixes (including default
+    # CPython virtual paths like pythonXY.zip that may not exist on disk).
+    for i, p in enumerate(sys.path):
+        norm_p = _norm_path(p)
+        for old_prefix in remapped_prefixes:
+            norm_old = _norm_path(old_prefix)
+            if norm_p == norm_old or norm_p.startswith(norm_old + "/"):
+                new_path = target_root + p[len(old_prefix) :]
+                _print_verbose("remap stdlib sys.path:", p, "->", new_path)
+                sys.path[i] = new_path
+                break
+
+    for attr, old_prefix in candidate_prefixes.items():
+        if old_prefix in remapped_prefixes:
+            _print_verbose(f"remap sys.{attr}:", old_prefix, "->", target_root)
+            setattr(sys, attr, target_root)
+
+    import site
+
+    if hasattr(site, "PREFIXES"):
+        for i, prefix in enumerate(site.PREFIXES):
+            if not _in_runfiles(prefix) and prefix in remapped_prefixes:
+                _print_verbose("remap site.PREFIXES:", prefix, "->", target_root)
+                site.PREFIXES[i] = target_root
+
+
 _fixup_sys_base_executable()
+_fixup_stdlib_paths()
 
 COVERAGE_SETUP = _setup_sys_path()
 _install_windows_extension_finder()

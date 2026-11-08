@@ -1,35 +1,68 @@
 ---
 name: merge-pr
-description: Merge a pull request into main, monitoring the merge queue, retrying CI flakes, and re-enqueuing if necessary
+description: Merge a pull request into main, monitoring the merge queue,
+  retrying CI flakes, and re-enqueuing if necessary
 ---
 
-When the user asks to merge a pull request (e.g., "merge PR <number>", "merge this PR", or monitor its merge):
+When the user asks to merge a pull request (e.g., "merge PR <number>", "merge
+this PR", or monitor its merge):
 
-1. **Enqueue for Merge**: Run `gh pr merge <pr_number> --auto --squash` to enable auto-merge or add the pull request to the merge queue.
-   - **Force / Admin Merge**: **CRITICAL**: Passing `--admin` to bypass the
-     merge queue or required checks requires explicit user permission or
-     consent. Only pass `--admin` (e.g., `gh pr merge <pr_number> --admin
-     --squash`) if the user has explicitly requested or approved a force/admin
-     merge. Never invoke `--admin` autonomously.
-2. **Invoke a Background Shepherd**: Launch a background subagent with the role `Merge PR Shepherd` to continuously watch the PR until it merges.
-3. **Leverage Existing CI Skills**: 
+1. **Enqueue for Merge**: Run
+   `gh pr merge <pr_number> --repo bazel-contrib/rules_python --auto --squash`.
+   - **Draft PRs**: If the PR is a draft (`isDraft: true`), mark it ready for
+     review first via `gh pr ready <pr_number> --repo
+     bazel-contrib/rules_python` (otherwise `gh pr merge` fails with
+     `Pull Request is still a draft`).
+   - **Force / Admin Merge**: **CRITICAL**: Only pass `--admin` (e.g.,
+     `gh pr merge <pr_number> --repo bazel-contrib/rules_python --admin
+     --squash`) with explicit user consent ("force merge", "admin merge", or
+     "merge immediately" once CI passes and only `REVIEW_REQUIRED` blocks).
+     Never pass `--admin` while CI is pending or failing unless told to bypass
+     CI.
+   - **No `--delete-branch` (`-d`)**: Never pass `-d` or `--delete-branch` to
+     `gh pr merge`; it fails when a merge queue is enabled on the repository.
+2. **Invoke a Background Shepherd**: Launch a background subagent with the role
+   `Merge PR Shepherd` to continuously watch the PR until it merges.
+   - If a `monitor_remote_ci.py <pr_number>` background task is currently
+     running in the parent conversation, stop it via `manage_task` first so
+     `Merge PR Shepherd` can acquire `.monitored_pr_<pr_number>.lock` and
+     receive CI failure notifications directly.
+3. **Leverage Existing CI Skills**:
    - Have the subagent use the **`monitor-ci-results`** skill to watch for CI
      check failures and generate analysis reports.
-   - Have the subagent use the **`buildkite-retry-job`** skill
-     (`retry_buildkite_jobs.py <pr_number>`) to automatically retry any
+   - Have the subagent use the **`retry-ci-job`** skill
+     (`retry_ci_jobs.py --pr <pr_number>`) to automatically retry any
      transient network flakes (e.g., HTTP 504 gateway timeouts, downloader
-     errors).
+     errors, `setup-bazel` `Unable to find Bazelisk version` errors) and
+     unblock manual approval steps.
+   - **Blocked Builds (CI Config Approval)**: When the PR changes a file under
+     `.bazelci/` or a `.yml` file outside `.github/`, Buildkite blocks the
+     build until manually approved. Approve and unblock it immediately via
+     `./.agents/skills/retry-ci-job/scripts/retry_ci_jobs.py
+     --pr <pr_number> --unblock` (or `bk job unblock <job_id> --no-input`) so CI
+     does not sit blocked indefinitely.
    - **Soft-Failing Jobs**: Experimental Buildkite jobs (e.g. `*rolling*`
      Bazel) are non-blocking soft failures; do not treat them as merge blockers.
    - When the PR is queued, actively discover the merge queue branch via
-     `gh api repos/:owner/:repo/branches --jq '.[].name | select(test("gh-readonly-queue/.*/pr-<pr_number>-"))'`
+     `gh api repos/:owner/:repo/branches --jq` with
+     `'.[].name | select(test("gh-readonly-queue/.*/pr-<pr_number>-"))'`
      and monitor commit statuses/Buildkite builds running on that temporary
      branch.
-4. **Queue Shepherding**: Periodically check `gh pr view <pr_number> --json
+   - **Blocked Merge Queue Builds**: If the PR changes a file under
+     `.bazelci/` or a `.yml` file outside `.github/`, the merge queue build
+     is blocked again, even with the `presubmit-auto-run` label, and
+     `monitor_remote_ci.py` doesn't watch it. Find it with `bk build list
+     --pipeline bazel/rules-python-python --branch <queue_branch> --json |
+     jq '.[] | {number, state, blocked}'`, then unblock it with
+     `./.agents/skills/retry-ci-job/scripts/retry_ci_jobs.py
+     --buildkite-build bazel/rules-python-python/<build_number> --unblock`.
+     `--pr <pr_number>` resolves to the PR's build, not the queue build.
+4. **Queue Shepherding**: Periodically check
+   `gh pr view <pr_number> --repo bazel-contrib/rules_python --json
    state,autoMergeRequest,mergeStateStatus,mergeable`. While `state` is
-   `"OPEN"`, ensure auto-merge is enabled / queued by running `gh pr merge
-   <pr_number> --auto --squash`. If `autoMergeRequest` is null (e.g., ejected
-   from the merge queue due to a CI flake in the temporary queue branch),
-   re-enqueue it for merge by running `gh pr merge <pr_number> --auto --squash`
-   once checks are retried or green.
-5. **Completion Notification**: Once `state` becomes `"MERGED"`, send a high-priority message back to the parent conversation.
+   `"OPEN"`, if `autoMergeRequest` is `null` and no
+   `gh-readonly-queue/.*/pr-<pr_number>-` branch exists, re-enqueue with
+   `gh pr merge <pr_number> --repo bazel-contrib/rules_python --auto --squash`
+   once checks are green.
+5. **Completion Notification**: Once `state` becomes `"MERGED"`, send a
+   high-priority message back to the parent conversation.

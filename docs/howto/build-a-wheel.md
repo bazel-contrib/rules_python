@@ -85,3 +85,86 @@ It's highly recommended to disable this behavior by setting a flag in your
 # .bazelrc
 build --incompatible_default_to_explicit_init_py=true
 ```
+
+## Setting wheel filename tags from the Python version
+
+To automatically generate the wheel filename and `Requires-Python` metadata for
+the active Python version, use make variable syntax in `abi`, `platform`,
+`python_requires`, `python_tag`, and `version`:
+
+```starlark
+# BUILD.bazel
+load("@rules_python//python:packaging.bzl", "py_wheel")
+
+py_wheel(
+    name = "my_project_wheel",
+    abi = "$(PY_WHEEL_ABI_TAG)",
+    distribution = "my-project",
+    python_requires = ">=$(PY_MAJOR_DOT_MINOR)",
+    python_tag = "$(PY_WHEEL_PYTHON_TAG)",
+    version = "0.1.0",
+    deps = [":my_project_lib"],
+)
+```
+
+When built with CPython 3.12, this produces
+`my_project-0.1.0-cp312-cp312-any.whl` and sets `Requires-Python: >=3.12` in the
+wheel `METADATA`. With freethreaded CPython 3.13, `$(PY_WHEEL_ABI_TAG)` expands
+to `cp313t`.
+
+### Available Python version variables
+
+The Python toolchain provides the following make variables by default:
+
+| Variable | Description | Example |
+| :--- | :--- | :--- |
+| `$(PY_WHEEL_PYTHON_TAG)` | Wheel Python tag | `cp312` |
+| `$(PY_WHEEL_ABI_TAG)` | Wheel ABI tag | `cp312`, `cp313t` |
+| `$(PY_WHEEL_IMPLEMENTATION_TAG)` | Wheel implementation prefix | `cp` |
+| `$(PY_MAJOR_DOT_MINOR)` | Dotted `major.minor` version | `3.12` |
+| `$(PY_MAJOR_MINOR_NODOT)` | Dotless `majorminor` version | `312` |
+| `$(PY_MAJOR)` | Major version | `3` |
+| `$(PY_MINOR)` | Minor version | `12` |
+| `$(PY_ABI_FLAGS)` | Runtime ABI flags (`sys.abiflags`) | `""`, `"t"` |
+| `$(PY_IMPLEMENTATION_NAME)` | Implementation name | `cpython` |
+
+See {rule}`py_runtime_pair` for the full list of variables.
+
+### Adding custom make variables
+
+To define custom make variables (for example, to compute the package version or
+platform tag in Starlark), write a rule that returns
+`platform_common.TemplateVariableInfo` and pass it in the `toolchains` attribute
+of {obj}`py_wheel`:
+
+```starlark
+# wheel_vars.bzl
+def _wheel_vars_impl(ctx):
+    return [platform_common.TemplateVariableInfo({
+        "MY_VERSION": "1.2.3",
+    })]
+
+wheel_vars = rule(
+    implementation = _wheel_vars_impl,
+)
+```
+
+```starlark
+# BUILD.bazel
+load("@rules_python//python:packaging.bzl", "py_wheel")
+load(":wheel_vars.bzl", "wheel_vars")
+
+wheel_vars(
+    name = "vars",
+)
+
+py_wheel(
+    name = "my_project_wheel",
+    abi = "$(PY_WHEEL_ABI_TAG)",
+    distribution = "my-project",
+    python_tag = "$(PY_WHEEL_PYTHON_TAG)",
+    toolchains = [":vars"],
+    version = "$(MY_VERSION)",
+    deps = [":my_project_lib"],
+)
+```

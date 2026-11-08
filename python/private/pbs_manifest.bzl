@@ -1,5 +1,74 @@
 """Helper functions to parse python-build-standalone manifests."""
 
+_ASTRAL_STATIC_LIBPYTHON_RELEASE = 20250517
+_ASTRAL_RELEASE_URL_PREFIXES = [
+    "https://github.com/astral-sh/python-build-standalone/releases/download/",
+    "https://releases.astral.sh/github/python-build-standalone/releases/download/",
+]
+
+ARCHIVE_FLAVORS = ["install_only", "install_only_stripped", "full"]
+
+# Platform key suffixes for the non-default archive flavors. Runtimes for the
+# default flavor use the plain platform key (e.g. `x86_64-unknown-linux-gnu`).
+PBS_DISTRIBUTION_SUFFIXES = {
+    "full": "-full",
+    "install_only_stripped": "-install_only_stripped",
+}
+
+def split_pbs_distribution(platform):
+    """Splits a platform key into its base platform and distribution suffix.
+
+    Args:
+      platform: A platform key, e.g. `x86_64-unknown-linux-gnu-full`.
+
+    Returns:
+      A tuple of `(base_platform, suffix)`, where `suffix` is empty for the
+      plain platform key.
+    """
+    for suffix in PBS_DISTRIBUTION_SUFFIXES.values():
+        if platform.endswith(suffix):
+            return platform.removesuffix(suffix), suffix
+    return platform, ""
+
+def manifest_entry_platform_keys(entry, platform):
+    """Returns the platform keys a manifest entry can provide a runtime for.
+
+    Args:
+      entry: A parsed manifest entry struct.
+      platform: The plain platform key for the entry.
+
+    Returns:
+      A list of platform keys: the plain key, plus the key for the entry's
+      archive flavor if it has one.
+    """
+    keys = [platform]
+    if entry.archive_flavor in PBS_DISTRIBUTION_SUFFIXES:
+        keys.append(platform + PBS_DISTRIBUTION_SUFFIXES[entry.archive_flavor])
+    return keys
+
+def manifest_entry_sort_key(entry):
+    """Sort key that ranks manifest entries by archive preference.
+
+    Args:
+      entry: A parsed manifest entry struct.
+
+    Returns:
+      A sortable tuple where lower values are preferred.
+    """
+    flavor_rank = {
+        "full": 3,
+        "install_only": 1,
+        "install_only_stripped": 2,
+    }.get(entry.archive_flavor, 4)
+    microarch = entry.microarch
+    if not microarch:
+        microarch_rank = 0
+    elif microarch.startswith("v") and microarch[1:].isdigit():
+        microarch_rank = int(microarch[1:])
+    else:
+        microarch_rank = 999
+    return (flavor_rank, microarch_rank)
+
 def parse_filename(filename):
     """Parses a python-build-standalone filename (or URL) into its components.
 
@@ -111,6 +180,28 @@ def parse_filename(filename):
         "python_version": python_version,
         "vendor": vendor,
     }
+
+# buildifier: disable=function-docstring-args
+# buildifier: disable=function-docstring-return
+# urls: list[str], release_filename: str -> bool
+def is_astral_static_libpython_build(urls, release_filename):
+    """Whether an Astral build includes libpython statically in its interpreter."""
+    parsed = parse_filename(release_filename)
+    if not parsed:
+        return False
+
+    build_version = parsed["build_version"]
+    if (
+        not build_version.isdigit() or
+        int(build_version) < _ASTRAL_STATIC_LIBPYTHON_RELEASE
+    ):
+        return False
+
+    return any([
+        url.startswith(prefix)
+        for url in urls
+        for prefix in _ASTRAL_RELEASE_URL_PREFIXES
+    ])
 
 def parse_runtime_manifest(content):
     """Parses the SHA256SUMS file content into a list of structs.

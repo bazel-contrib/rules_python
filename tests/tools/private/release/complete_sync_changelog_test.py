@@ -1,6 +1,6 @@
 import argparse
 
-from tools.private.release.complete_sync_changelog import CompleteSyncChangelog
+from dev.release.complete_sync_changelog import CompleteSyncChangelog
 
 pytest_plugins = ["tests.tools.private.release.release_test_helper"]
 

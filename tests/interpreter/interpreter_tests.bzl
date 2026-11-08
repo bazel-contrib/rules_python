@@ -21,6 +21,8 @@ PYTHON_VERSIONS_TO_TEST = (
     "3.10",
     "3.11",
     "3.12",
+    "3.13",
+    "3.14",
 )
 
 def py_reconfig_interpreter_tests(name, python_versions, env = {}, **kwargs):

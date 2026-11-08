@@ -1,6 +1,7 @@
 ---
 name: rule-creator
-description: Create and format agent rules with proper front matter in the workspace
+description: Create and format agent rules with proper front matter in the
+  workspace
 ---
 
 Use this skill when you need to create a new rule for the agent in the
@@ -31,14 +32,24 @@ trigger: <trigger-condition>
 
 #### Trigger Conditions
 *   `always_on`: The rule is always active and must be followed for all tasks.
-*   Custom triggers: You can specify other trigger conditions if the rule only
-    applies in certain contexts.
+*   `model_decision`: The agent loads the rule based on its `description` when
+    relevant. Prefer `model_decision` for conceptual, architectural, or
+    cross-cutting rules (e.g., `pr.md`, `rules_python.md`).
+*   `glob`: The rule activates when matching files (`globs:`) are accessed.
+    Use for syntax/formatting rules tied to specific file types. `globs` must
+    be a quoted, comma-separated string (e.g., `globs: "*.bzl,BUILD.bazel"`),
+    never a YAML list/sequence.
+
+### Domain Separation
+*   Keep language and tool rule files (`starlark.md`, `bzl.md`, `python.md`,
+    `docs.md`) general to those domains.
+*   Place `rules_python`-specific Bzlmod, PyPI, and rule API invariants in
+    `.agents/rules/rules_python.md`.
 
 ### Formatting Guidelines
-*   **Line Wrapping:** Always wrap all text in the rule file (including the
-    title and description) to **80 columns** to ensure readability and
-    compatibility.
-*   **Clarity:** Write clear, actionable directives.
+*   **Line Wrapping:** Wrap all text to 80 columns.
+*   **Prose Style (Strunk & White):** Omit needless words. Do not use mannered
+    prose or verbose phrasing; state directives directly in active voice.
 
 ### Example
 

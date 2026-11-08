@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
+
 package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])
 
-filegroup(
+distribution_filegroup(
     name = "distribution",
-    srcs = glob(["**"]),
-    visibility = ["//python:__pkg__"],
 )
 
 # A constraint_setting to use for constraints related to the location of the

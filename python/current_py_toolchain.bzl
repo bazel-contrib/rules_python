@@ -41,10 +41,15 @@ def _current_py_toolchain_impl(ctx):
         vars["PYTHON2"] = toolchain.py2_runtime.interpreter_path
         vars["PYTHON2_ROOTPATH"] = toolchain.py2_runtime.interpreter_path
 
+    if getattr(toolchain, "template_vars", None):
+        template_vars = toolchain.template_vars
+    else:
+        template_vars = platform_common.TemplateVariableInfo(vars)
+
     files = depset(direct, transitive = transitive)
     return [
         toolchain,
-        platform_common.TemplateVariableInfo(vars),
+        template_vars,
         DefaultInfo(
             runfiles = ctx.runfiles(transitive_files = files),
             files = files,
@@ -53,14 +58,21 @@ def _current_py_toolchain_impl(ctx):
 
 current_py_toolchain = rule(
     doc = """
-    This rule exists so that the current python toolchain can be used in the `toolchains` attribute of
-    other rules, such as genrule. It allows exposing a python toolchain after toolchain resolution has
-    happened, to a rule which expects a concrete implementation of a toolchain, rather than a
+    This rule exists so that the current python toolchain can be used in the
+    `toolchains` attribute of other rules, such as genrule. It allows exposing a
+    python toolchain after toolchain resolution has happened, to a rule which
+    expects a concrete implementation of a toolchain, rather than a
     toolchain_type which could be resolved to that toolchain.
 
     :::{versionchanged} 1.4.0
-    From now on, we also expose `$(PYTHON2_ROOTPATH)` and `$(PYTHON3_ROOTPATH)` which are runfiles
-    locations equivalents of `$(PYTHON2)` and `$(PYTHON3) respectively.
+    From now on, we also expose `$(PYTHON2_ROOTPATH)` and `$(PYTHON3_ROOTPATH)`
+    which are runfiles locations equivalents of `$(PYTHON2)` and `$(PYTHON3)`
+    respectively.
+    :::
+
+    :::{versionchanged} 2.5.0
+    Exposes make variables from the underlying toolchain's `template_vars`
+    (see {rule}`py_runtime_pair`).
     :::
     """,
     implementation = _current_py_toolchain_impl,

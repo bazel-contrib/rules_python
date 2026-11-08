@@ -21,6 +21,7 @@ load("//python/private:py_interpreter_program.bzl", "PyInterpreterProgramInfo")
 load("//python/private:toolchain_types.bzl", "EXEC_TOOLS_TOOLCHAIN_TYPE", "LAUNCHER_MAKER_TOOLCHAIN_TYPE")
 load(":builders.bzl", "builders")
 load(":cc_helper.bzl", "cc_helper")
+load(":flags.bzl", "PyiDepsToRunfilesFlag")
 load(":py_cc_link_params_info.bzl", "PyCcLinkParamsInfo")
 load(":py_info.bzl", "PyInfo", "PyInfoBuilder")
 load(":py_internal.bzl", "py_internal")
@@ -198,13 +199,21 @@ def csv(values):
     """Convert a list of strings to comma separated value string."""
     return ", ".join(sorted(values))
 
+def is_py_source(f):
+    """Whether the given file is considered a Python source file."""
+    return f.extension == "py"
+
 def filter_to_py_srcs(srcs):
     """Filters .py files from the given list of files"""
+    return [f for f in srcs if is_py_source(f)]
 
-    # TODO(b/203567235): Get the set of recognized extensions from
-    # elsewhere, as there may be others. e.g. Bazel recognizes .py3
-    # as a valid extension.
-    return [f for f in srcs if f.extension == "py"]
+def filter_to_direct_sources(srcs):
+    """Filters Python sources, pyc files, and directory artifacts from srcs."""
+    return [
+        f
+        for f in srcs
+        if f.is_directory or is_py_source(f) or f.extension == "pyc"
+    ]
 
 def collect_cc_info(ctx, extra_deps = []):
     """Collect C++ information from dependencies for Bazel.
@@ -273,6 +282,28 @@ def get_imports(ctx):
             ))
         result.append(import_path)
     return result
+
+def py_info_runfiles_files(info, pyc_collection_enabled):
+    """The files a binary puts into its runfiles for a dependency's PyInfo.
+
+    Args:
+        info: {type}`PyInfo | BuiltinPyInfo` of a dependency.
+        pyc_collection_enabled: {type}`bool` whether the binary includes
+            implicit pyc files instead of their sources.
+
+    Returns:
+        {type}`list[depset[File]]`
+    """
+    files = [info.transitive_sources]
+
+    # BuiltinPyInfo doesn't have the pyc fields
+    if hasattr(info, "transitive_pyc_files"):
+        files.append(info.transitive_pyc_files)
+        if pyc_collection_enabled:
+            files.append(info.transitive_implicit_pyc_files)
+        else:
+            files.append(info.transitive_implicit_pyc_source_files)
+    return files
 
 def collect_runfiles(ctx, files = depset()):
     """Collects the necessary files from the rule's context.
@@ -383,6 +414,7 @@ def create_py_info(
     py_info.transitive_original_sources.add(original_sources)
     py_info.transitive_pyc_files.add(required_pyc_files)
     py_info.transitive_pyi_files.add(ctx.files.pyi_srcs)
+    py_info.direct_implicit_pyc_files.add(implicit_pyc_files)
     py_info.transitive_implicit_pyc_files.add(implicit_pyc_files)
     py_info.transitive_implicit_pyc_source_files.add(implicit_pyc_source_files)
     py_info.imports.add(imports)
@@ -398,13 +430,21 @@ def create_py_info(
             # longer supported in `deps`.
             files = target[DefaultInfo].files.to_list()
             for f in files:
-                if f.extension == "py":
+                if is_py_source(f):
                     py_info.transitive_sources.add(f)
                 py_info.merge_uses_shared_libraries(cc_helper.is_valid_shared_library_artifact(f))
+    propagate_pyi_deps = (
+        hasattr(ctx.attr, "_pyi_deps_to_runfiles_flag") and
+        PyiDepsToRunfilesFlag.is_enabled(ctx)
+    )
     for target in ctx.attr.pyi_deps:
         # PyInfo may not be present e.g. cc_library rules.
         if PyInfo in target or (BuiltinPyInfo != None and BuiltinPyInfo in target):
-            py_info.merge(_get_py_info(target))
+            target_py_info = _get_py_info(target)
+            if propagate_pyi_deps:
+                py_info.merge(target_py_info)
+            else:
+                py_info.merge_type_checking(target_py_info)
 
     py_info.transitive_sources.add(required_py_files)
 
@@ -606,7 +646,8 @@ def actions_run(
             provides `testing.ExecutionInfo`, the requirements will be added to
             the execution requirements.
         toolchain: The toolchain type to use. Must be None or
-            `//python:exec_tools_toolchain_type`.
+            `//python:exec_tools_toolchain_type` when `executable` provides
+            `PyInterpreterProgramInfo`.
         **kwargs: Additional arguments to pass to `ctx.actions.run()`.
             `mnemonic` and `progress_message` are required.
     """

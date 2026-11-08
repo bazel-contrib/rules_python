@@ -94,7 +94,7 @@ def main():
     print("Wheel: {}".format(wheel_path), flush=True)
     print("SHA256: {}".format(sha256), flush=True)
 
-    password = uuid.uuid4().hex
+    mock_token = uuid.uuid4().hex
     username = "testuser"
 
     if args.no_auth:
@@ -108,7 +108,7 @@ def main():
         host=args.host,
         authenticate=authenticate,
         password_file=None,
-        auther=lambda u, p: u == username and p == password,
+        auther=lambda u, p: u == username and p == mock_token,
         disable_fallback=True,
         fallback_url="",
         server_method="wsgiref",
@@ -122,16 +122,20 @@ def main():
     port = server.server_address[1]
 
     base_url = "http://{}:{}".format(args.host, port)
-    auth_url = "http://{}:{}@{}:{}".format(username, password, args.host, port)
+    auth_url = "http://{}:{}@{}:{}".format(username, mock_token, args.host, port)
 
     print("\npypiserver listening on:\n", flush=True)
     print("  URL (no auth):  {}".format(base_url), flush=True)
+    # Safe for test server: printing ephemeral local mock credentials for manual testing.
+    # codeql[py/clear-text-logging-sensitive-data]
     print("  URL (auth):     {}".format(auth_url), flush=True)
     print("\nRequired dependency in requirements.in:", flush=True)
     print("  my-local-pkg==1.0.0", flush=True)
     print("\nTo use from the uv_lock test workspace, run:", flush=True)
     print("  cd tests/integration/uv_lock", flush=True)
     print("  bazel run //:requirements.update \\", flush=True)
+    # Safe for test server: printing ephemeral local mock credentials for manual testing.
+    # codeql[py/clear-text-logging-sensitive-data]
     print('    --action_env=UV_EXTRA_INDEX_URL="{}" \\'.format(auth_url), flush=True)
     print("    --action_env=UV_CREDENTIALS_DIR=<creds-dir>", flush=True)
     print("\nPress Ctrl+C to stop the server.\n", flush=True)

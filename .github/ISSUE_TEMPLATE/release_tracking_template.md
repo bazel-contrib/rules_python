@@ -36,6 +36,7 @@ Comment commands:
 - `/create-release-branch`: Cuts and pushes the release branch.
 - `/create-rc`: Tags and publishes a new release candidate (RC).
 - `/process-backports`: Cherry-picks pending backports.
+- `/sync-changelog`: Processes sync changelog tasks.
 - `/backport <PRs>`: Adds PRs to the backports and processes backports.
 - `/promote`: Promotes the latest RC to final release.
  

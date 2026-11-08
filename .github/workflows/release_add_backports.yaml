@@ -24,6 +24,7 @@ on:
 
 permissions:
   issues: write
+  pull-requests: write
 
 jobs:
   add_backports:
@@ -35,9 +36,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Bazel
-        uses: bazel-contrib/setup-bazel@0.19.0
-        with:
-          bazelisk-version: 1.20.0
+        uses: ./.github/actions/setup-bazel
 
       - name: Add Backports to Tracking Issue
         env:
@@ -53,6 +52,9 @@ jobs:
           # Convert CSV to array
           IFS=',' read -r -a pr_array <<< "$PRS"
           
-          bazel run //tools/private/release -- add-backports \
-            "${pr_array[@]}" \
-            "${ARGS[@]}"
+          bazel run \
+            --//python/config_settings:py_pbs_distribution=install_only_stripped \
+            //dev/release -- add-backports \
+            "${ARGS[@]}" \
+            -- \
+            "${pr_array[@]}"

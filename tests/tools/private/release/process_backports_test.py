@@ -3,7 +3,7 @@ import datetime
 import logging
 from unittest.mock import call
 
-from tools.private.release.process_backports import ProcessBackports
+from dev.release.process_backports import ProcessBackports
 
 pytest_plugins = ["tests.tools.private.release.release_test_helper"]
 
@@ -25,13 +25,9 @@ def test_process_backports_no_pending(mock_git, mock_gh):
 
 
 def test_process_backports_success(mocker, mock_git, mock_gh):
-    mock_changelog = mocker.patch(
-        "tools.private.release.process_backports.changelog_news"
-    )
-    mock_replace = mocker.patch(
-        "tools.private.release.process_backports.replace_version_next"
-    )
-    mock_datetime = mocker.patch("tools.private.release.process_backports.datetime")
+    mock_changelog = mocker.patch("dev.release.process_backports.changelog_news")
+    mock_replace = mocker.patch("dev.release.process_backports.replace_version_next")
+    mock_datetime = mocker.patch("dev.release.process_backports.datetime")
     mock_datetime.date.today.return_value = datetime.date(2026, 7, 1)
 
     args = argparse.Namespace(
@@ -69,7 +65,13 @@ def test_process_backports_success(mocker, mock_git, mock_gh):
             call("origin"),
         ]
     )
-    mock_git.checkout.assert_called_once_with("release/2.0", track_remote="origin")
+    mock_git.checkout.assert_has_calls(
+        [
+            call("release/2.0", track_remote="origin"),
+            call().__enter__(),
+            call().__exit__(None, None, None),
+        ]
+    )
     mock_git.cherry_pick.assert_called_once_with("abcdef12")
     mock_changelog.update_changelog.assert_called_once_with("2.0.0", "2026-07-01")
     mock_git.add_modified_and_deleted.assert_called_once()
@@ -86,9 +88,9 @@ def test_process_backports_success(mocker, mock_git, mock_gh):
 
 
 def test_process_backports_dry_run(mocker, mock_git, mock_gh):
-    mocker.patch("tools.private.release.process_backports.changelog_news")
-    mocker.patch("tools.private.release.process_backports.replace_version_next")
-    mock_datetime = mocker.patch("tools.private.release.process_backports.datetime")
+    mocker.patch("dev.release.process_backports.changelog_news")
+    mocker.patch("dev.release.process_backports.replace_version_next")
+    mock_datetime = mocker.patch("dev.release.process_backports.datetime")
     mock_datetime.date.today.return_value = datetime.date(2026, 7, 1)
 
     args = argparse.Namespace(
@@ -182,7 +184,7 @@ def test_process_backports_ignored_error_status(mock_git, mock_gh):
 
 
 def test_process_backports_cherry_pick_failed(mocker, mock_git, mock_gh):
-    mock_datetime = mocker.patch("tools.private.release.process_backports.datetime")
+    mock_datetime = mocker.patch("dev.release.process_backports.datetime")
     mock_datetime.date.today.return_value = datetime.date(2026, 7, 1)
     args = argparse.Namespace(
         issue=123, remote="origin", dry_run=False, add=None, triggering_comment=None
@@ -210,7 +212,13 @@ def test_process_backports_cherry_pick_failed(mocker, mock_git, mock_gh):
     result = ProcessBackports(args, mock_git, mock_gh).run()
 
     assert result == 1
-    mock_git.checkout.assert_called_once_with("release/2.0", track_remote="origin")
+    mock_git.checkout.assert_has_calls(
+        [
+            call("release/2.0", track_remote="origin"),
+            call().__enter__(),
+            call().__exit__(None, None, None),
+        ]
+    )
     mock_git.cherry_pick.assert_called_once_with("abcdef12")
     mock_git.cherry_pick_abort.assert_called_once()
 
@@ -223,9 +231,9 @@ def test_process_backports_cherry_pick_failed(mocker, mock_git, mock_gh):
 def test_process_backports_add_backports_and_auto_add_rc_task(
     mocker, mock_git, mock_gh
 ):
-    mocker.patch("tools.private.release.process_backports.changelog_news")
-    mocker.patch("tools.private.release.process_backports.replace_version_next")
-    mock_datetime = mocker.patch("tools.private.release.process_backports.datetime")
+    mocker.patch("dev.release.process_backports.changelog_news")
+    mocker.patch("dev.release.process_backports.replace_version_next")
+    mock_datetime = mocker.patch("dev.release.process_backports.datetime")
     mock_datetime.date.today.return_value = datetime.date(2026, 7, 1)
     args = argparse.Namespace(
         issue=123,
@@ -265,9 +273,9 @@ def test_process_backports_add_backports_and_auto_add_rc_task(
 
 
 def test_process_backports_add_backports_marks_invalid(mocker, mock_git, mock_gh):
-    mocker.patch("tools.private.release.process_backports.changelog_news")
-    mocker.patch("tools.private.release.process_backports.replace_version_next")
-    mock_datetime = mocker.patch("tools.private.release.process_backports.datetime")
+    mocker.patch("dev.release.process_backports.changelog_news")
+    mocker.patch("dev.release.process_backports.replace_version_next")
+    mock_datetime = mocker.patch("dev.release.process_backports.datetime")
     mock_datetime.date.today.return_value = datetime.date(2026, 7, 1)
     args = argparse.Namespace(
         issue=123,

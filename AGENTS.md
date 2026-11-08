@@ -19,7 +19,9 @@ Ask for user input and provide a justificaiton if trying to violate them.
 
 ## Style and conventions
 
-Read `.editorconfig` for line length wrapping
+Read `.editorconfig` for line length wrapping. Do not line-break long string
+literals (such as URLs or hashes) to fit line length limits; allow them to
+exceed the limit.
 
 Read `CONTRIBUTING.md` for additional style rules and conventions.
 
@@ -32,6 +34,11 @@ into the sentence, not verbatim.
 When adding `{versionadded}` or `{versionchanged}` sections, add them add the
 end of the documentation text.
 
+Factor non-trivial scripts (such as multi-line shell or Python logic) into
+standalone files (e.g. `.sh` or `.py` files) instead of inlining them via
+heredocs (`<< 'EOF'`), `-c` flags (`bash -c`, `python3 -c`), or multi-line
+workflow `run:` blocks.
+
 ### PR Updates
 
 Once a PR is created, create new commits and merges. Don't use rebase or amend
@@ -40,7 +47,33 @@ because it interferes with code review comments.
 ### PR descriptions
 
 Follow the advice in `CONTRIBUTING.md` for PR descriptions. PR descriptions
-become the commit message upon merge.
+become the commit message upon merge. Keep the PR description clean and
+suitable for use as the commit message; do not put AI disclosures, test
+execution logs, or check checklists in the PR description.
+
+### GitHub PR interaction and AI disclosure
+
+* **Run local checks before pushing:** Run `bazel test --config=fast-tests`
+  and `buildifier` locally before opening or updating a PR.
+* **Post AI disclosure when creating a PR or posting comments:**
+  * When initially creating a new PR, post a single comment right after
+    creation so maintainers understand who/what they are interacting with:
+    explain how comments on the PR will be handled (e.g., whether an agent
+    automatically monitors and replies to review comments, whether a human
+    reviews and approves agent responses/changes before posting, or whether the
+    human author handles comments directly). Do not post a standalone AI
+    disclosure comment merely for pushing commits to an existing PR (such as
+    updating a Dependabot PR).
+  * When posting a PR comment or review reply, end the comment with an
+    italicized line identifying it as an agent-generated comment and stating
+    whether it was automatically generated or reviewed/approved by the user.
+* **No CI status spam or commit narration:** Do not post comments for every CI
+  run, and do not narrate build IDs, commit SHAs, patch line/file counts, or
+  trivial diff details (e.g., stating a push is "comment-only"). GitHub
+  already displays commits and check statuses.
+* **Comment only when actionable:** Only post a PR comment to answer a
+  reviewer's question, ask a clarifying question, or briefly indicate the PR
+  is ready for re-review (e.g., `PTAL`) once CI is passing.
 
 ### Python pytest conventions
 
@@ -120,25 +153,23 @@ The `repository_ctx` API docs are at: https://bazel.build/rules/lib/builtins/rep
 
 * A `bzl_library` target should be defined for every `.bzl` file outside
   of the `tests/` directory.
-* They should have a single `srcs` file and be named after the file with `_bzl`
-  appended.
+* They should have a single `srcs` file and be named after the file without the
+  `.bzl` extension.
 * Their deps should be based on the `load()` statements in the source file
-  and refer to the `bzl_library` target containing the loaded file.
-  * For files in rules_python: replace `.bzl` with `_bzl`.
-    e.g. given `load("//foo:bar.bzl", ...)`, the target is `//foo:bar_bzl`.
-  * For files outside rules_python: remove the `.bzl` suffix. e.g. given
-    `load("@foo//foo:bar.bzl", ...)`, the target is `@foo//foo:bar`.
+  and refer to the `bzl_library` target containing the loaded file (remove the
+  `.bzl` suffix; e.g. `load("//foo:bar.bzl", ...)` becomes `//foo:bar`, and
+  `load("@foo//foo:bar.bzl", ...)` becomes `@foo//foo:bar`).
 
 Example:
 
 ```
 bzl_library(
-    name = "alpha_bzl",
+    name = "alpha",
     srcs = ["alpha.bzl"],
-    deps = [":beta_bzl"],
+    deps = [":beta"],
 )
 bzl_library(
-    name = "beta_bzl",
+    name = "beta",
     srcs = ["beta.bzl"]
 )
 ```
@@ -170,6 +201,9 @@ This repository contains 3 Bazel bzlmod modules.
 `python/config_settings/BUILD.bazel` contains build flags that are part of the
 public API. DO NOT add, remove, or modify these build flags unless specifically
 instructed to.
+
+`version.bzl` defines `MINIMUM_BAZEL_VERSION`. Do not add compatibility logic
+or feature guards for Bazel versions older than `MINIMUM_BAZEL_VERSION`.
 
 `bazel query --output=build` can be used to inspect target definitions.
 

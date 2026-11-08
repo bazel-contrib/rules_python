@@ -1,8 +1,9 @@
 import subprocess
+from unittest.mock import call
 
 import pytest
 
-from tools.private.release.git import Git
+from dev.release.git import Git
 
 pytest_plugins = ["tests.tools.private.release.release_test_helper"]
 
@@ -14,39 +15,73 @@ def fixture_git_obj(mocker):
     return git
 
 
-def test_checkout_simple(git_obj):
-    git_obj.checkout("my-branch")
-    git_obj.mock_run_git.assert_called_once_with(
-        "checkout", "my-branch", capture_output=False
+def test_checkout_simple(mocker, git_obj):
+    mocker.patch.object(git_obj, "get_current_branch", return_value="main")
+    with git_obj.checkout("my-branch"):
+        git_obj.mock_run_git.assert_called_once_with(
+            "checkout", "my-branch", capture_output=False
+        )
+    git_obj.mock_run_git.assert_has_calls(
+        [
+            call("checkout", "my-branch", capture_output=False),
+            call("checkout", "main", capture_output=False),
+        ]
+    )
+
+
+def test_checkout_restores_branch_on_exception(mocker, git_obj):
+    mocker.patch.object(git_obj, "get_current_branch", return_value="main")
+    with pytest.raises(RuntimeError, match="boom"):
+        with git_obj.checkout("my-branch"):
+            raise RuntimeError("boom")
+    git_obj.mock_run_git.assert_has_calls(
+        [
+            call("checkout", "my-branch", capture_output=False),
+            call("checkout", "main", capture_output=False),
+        ]
     )
 
 
 def test_checkout_track_remote_new_branch(mocker, git_obj):
+    mocker.patch.object(git_obj, "get_current_branch", return_value="main")
     mock_branch_exists = mocker.patch(
-        "tools.private.release.git.Git.branch_exists", return_value=False
+        "dev.release.git.Git.branch_exists", return_value=False
     )
 
-    git_obj.checkout("my-branch", track_remote="origin")
+    with git_obj.checkout("my-branch", track_remote="origin"):
+        mock_branch_exists.assert_called_once_with("my-branch")
+        git_obj.mock_run_git.assert_called_once_with(
+            "checkout", "--track", "origin/my-branch", capture_output=False
+        )
 
-    mock_branch_exists.assert_called_once_with("my-branch")
-    git_obj.mock_run_git.assert_called_once_with(
-        "checkout", "--track", "origin/my-branch", capture_output=False
+    git_obj.mock_run_git.assert_has_calls(
+        [
+            call("checkout", "--track", "origin/my-branch", capture_output=False),
+            call("checkout", "main", capture_output=False),
+        ]
     )
 
 
 def test_checkout_track_remote_existing_branch(mocker, git_obj):
+    mocker.patch.object(git_obj, "get_current_branch", return_value="main")
     mock_branch_exists = mocker.patch(
-        "tools.private.release.git.Git.branch_exists", return_value=True
+        "dev.release.git.Git.branch_exists", return_value=True
     )
-    mock_reset_hard = mocker.patch("tools.private.release.git.Git.reset_hard")
+    mock_reset_hard = mocker.patch("dev.release.git.Git.reset_hard")
 
-    git_obj.checkout("my-branch", track_remote="origin")
+    with git_obj.checkout("my-branch", track_remote="origin"):
+        mock_branch_exists.assert_called_once_with("my-branch")
+        git_obj.mock_run_git.assert_called_once_with(
+            "checkout", "my-branch", capture_output=False
+        )
+        mock_reset_hard.assert_called_once_with(reset_to="origin/my-branch")
 
-    mock_branch_exists.assert_called_once_with("my-branch")
-    git_obj.mock_run_git.assert_called_once_with(
-        "checkout", "my-branch", capture_output=False
+    git_obj.mock_run_git.assert_has_calls(
+        [
+            call("checkout", "my-branch", capture_output=False),
+            call("checkout", "main", capture_output=False),
+        ]
     )
-    mock_reset_hard.assert_called_once_with(reset_to="origin/my-branch")
 
 
 def test_fetch_default(git_obj):

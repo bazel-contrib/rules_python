@@ -19,6 +19,14 @@ my_py_library(
     visibility = ["//:__subpackages__"],
 )
 
+# TODO: Known limitation: not fully deleted until gazelle is bumped to include
+# https://github.com/bazel-contrib/bazel-gazelle/pull/2362
+my_py_library(
+    name = "deleted_lib_with_imports_attrib",
+    imports = ["."],
+    visibility = ["//:__subpackages__"],
+)
+
 # Valid aliased py_test — bar_test.py exists on disk, should be kept.
 my_py_test(
     name = "bar_test",

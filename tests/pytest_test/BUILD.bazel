@@ -1,8 +1,5 @@
+load("//python:pytest_test.bzl", "pytest_test")
 load("//tests/support:support.bzl", "SUPPORTS_BZLMOD")
-load(
-    "//tests/support/pytest_test:pytest_test.bzl",
-    "pytest_test",
-)
 load(":pytest_test_tests.bzl", "pytest_test_test_suite")
 
 pytest_test_test_suite(name = "pytest_test_tests")
@@ -24,6 +21,21 @@ pytest_test(
     srcs = [
         "basic_test.py",
     ],
+    shard_count = 2,
+    target_compatible_with = SUPPORTS_BZLMOD,
+    # Verify that pytest_test handles select() expressions in deps when
+    # appending default and sharding dependencies.
+    deps = select({
+        "//conditions:default": [],
+    }),
+)
+
+pytest_test(
+    name = "pytest_no_randomly_test",
+    srcs = [
+        "basic_test.py",
+    ],
+    pytest_randomly = "//python:none",
     target_compatible_with = SUPPORTS_BZLMOD,
 )
 

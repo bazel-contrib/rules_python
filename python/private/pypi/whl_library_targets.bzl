@@ -23,6 +23,7 @@ whl_library_srcs = _whl_library_srcs
 def whl_library_targets(
         *,
         name,
+        whl_file = None,
         metadata_name = "",
         requires_dist = [],
         extras = [],
@@ -46,6 +47,7 @@ def whl_library_targets(
 
     Args:
         name: {type}`str` The wheel filename
+        whl_file: {type}`str | None` The label of a wheel stored in another repository.
         metadata_name: {type}`str` The package name as written in wheel `METADATA`.
         group_deps: {type}`list[str]` names of fellow members of the group (if
             any). These will be excluded from generated deps lists so as to avoid
@@ -72,6 +74,7 @@ def whl_library_targets(
     """
     whl_library_srcs(
         name = name,
+        whl_file = whl_file,
         sdist_filename = sdist_filename,
         data_exclude = data_exclude,
         srcs_exclude = srcs_exclude,

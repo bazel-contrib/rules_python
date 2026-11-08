@@ -1,0 +1,9 @@
+import sys
+
+# Ignored because template files are type-checked standalone without pytest_bazel in deps.
+import pytest_bazel  # pyrefly: ignore[missing-import]
+
+TEST_FILES = """%TEST_FILES%""".splitlines()
+
+args = sys.argv[1:] + TEST_FILES
+sys.exit(pytest_bazel.main(args))

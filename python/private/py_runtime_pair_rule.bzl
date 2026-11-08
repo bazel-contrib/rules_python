@@ -16,8 +16,52 @@
 
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("//python:py_runtime_info.bzl", "PyRuntimeInfo")
+load("//python/private/pypi:python_tag.bzl", "python_tag")
 load(":common_labels.bzl", "labels")
 load(":reexports.bzl", "BuiltinPyRuntimeInfo")
+
+def _get_template_vars(py3_runtime):
+    vars = {}
+    if py3_runtime.interpreter:
+        vars["PYTHON3"] = py3_runtime.interpreter.path
+        vars["PYTHON3_ROOTPATH"] = py3_runtime.interpreter.short_path
+    elif py3_runtime.interpreter_path:
+        vars["PYTHON3"] = py3_runtime.interpreter_path
+        vars["PYTHON3_ROOTPATH"] = py3_runtime.interpreter_path
+
+    # BuiltinPyRuntimeInfo (used in Bazel 7) lacks rules_python-specific
+    # fields like abi_flags, implementation_name, and
+    # interpreter_version_info.
+    if hasattr(py3_runtime, "abi_flags"):
+        abi_flags = py3_runtime.abi_flags
+        vars["PY_ABI_FLAGS"] = abi_flags
+
+        impl_name = py3_runtime.implementation_name
+        impl_tag = None
+        if impl_name:
+            impl_tag = python_tag(impl_name)
+            vars["PY_IMPLEMENTATION_NAME"] = impl_name
+            vars["PY_WHEEL_IMPLEMENTATION_TAG"] = impl_tag
+
+        version_info = py3_runtime.interpreter_version_info
+        if (
+            version_info and
+            version_info.major != None and
+            version_info.minor != None
+        ):
+            major = str(version_info.major)
+            minor = str(version_info.minor)
+            major_minor_nodot = "{}{}".format(major, minor)
+            vars["PY_MAJOR"] = major
+            vars["PY_MINOR"] = minor
+            vars["PY_MAJOR_DOT_MINOR"] = "{}.{}".format(major, minor)
+            vars["PY_MAJOR_MINOR_NODOT"] = major_minor_nodot
+            if impl_tag:
+                py_tag = "{}{}".format(impl_tag, major_minor_nodot)
+                vars["PY_WHEEL_PYTHON_TAG"] = py_tag
+                vars["PY_WHEEL_ABI_TAG"] = "{}{}".format(py_tag, abi_flags)
+
+    return platform_common.TemplateVariableInfo(vars)
 
 def _py_runtime_pair_impl(ctx):
     if ctx.attr.py2_runtime != None:
@@ -44,11 +88,17 @@ def _py_runtime_pair_impl(ctx):
     if ctx.attr._visible_for_testing[BuildSettingInfo].value:
         extra_kwargs["toolchain_label"] = ctx.label
 
-    return [platform_common.ToolchainInfo(
-        py2_runtime = py2_runtime,
-        py3_runtime = py3_runtime,
-        **extra_kwargs
-    )]
+    template_vars = _get_template_vars(py3_runtime)
+
+    return [
+        platform_common.ToolchainInfo(
+            py2_runtime = py2_runtime,
+            py3_runtime = py3_runtime,
+            template_vars = template_vars,
+            **extra_kwargs
+        ),
+        template_vars,
+    ]
 
 def _get_py_runtime_info(target):
     # Prior to Bazel 7, the builtin PyRuntimeInfo object must be used because
@@ -70,7 +120,7 @@ py_runtime_pair = rule(
         "py2_runtime": attr.label(
             providers = [[PyRuntimeInfo]] + _MaybeBuiltinPyRuntimeInfo,
             cfg = "target",
-            doc = """\
+            doc = """
 The runtime to use for Python 2 targets. Must have `python_version` set to
 `PY2`.
 """,
@@ -78,7 +128,7 @@ The runtime to use for Python 2 targets. Must have `python_version` set to
         "py3_runtime": attr.label(
             providers = [[PyRuntimeInfo]] + _MaybeBuiltinPyRuntimeInfo,
             cfg = "target",
-            doc = """\
+            doc = """
 The runtime to use for Python 3 targets. Must have `python_version` set to
 `PY3`.
 """,
@@ -88,7 +138,7 @@ The runtime to use for Python 3 targets. Must have `python_version` set to
         ),
     },
     fragments = ["py"],
-    doc = """\
+    doc = """
 A toolchain rule for Python.
 
 This wraps up to two Python runtimes, one for Python 2 and one for Python 3.
@@ -103,8 +153,26 @@ This rule returns a {obj}`ToolchainInfo` provider with fields:
 
 * `py2_runtime`: {type}`PyRuntimeInfo | None`, runtime information for a
   Python 2 runtime.
-* `py3_runtime`: {type}`PyRuntimeInfo | None`. runtime information for a
+* `py3_runtime`: {type}`PyRuntimeInfo | None`, runtime information for a
   Python 3 runtime.
+* `template_vars`: {type}`TemplateVariableInfo`, make variables exposed by this
+  toolchain.
+
+It also returns a `TemplateVariableInfo` provider with these make variables
+(when the corresponding runtime values are set):
+
+* `$(PYTHON3)`: Python 3 interpreter path.
+* `$(PYTHON3_ROOTPATH)`: Python 3 interpreter runfiles path.
+* `$(PY_ABI_FLAGS)`: Runtime ABI flags (`sys.abiflags`), e.g. `""` or `"t"`.
+* `$(PY_IMPLEMENTATION_NAME)`: Implementation name (`sys.implementation.name`),
+  e.g. `cpython`.
+* `$(PY_MAJOR)`: Major version, e.g. `3`.
+* `$(PY_MINOR)`: Minor version, e.g. `12`.
+* `$(PY_MAJOR_DOT_MINOR)`: Dotted major and minor version, e.g. `3.12`.
+* `$(PY_MAJOR_MINOR_NODOT)`: Dotless major and minor version, e.g. `312`.
+* `$(PY_WHEEL_ABI_TAG)`: Wheel ABI tag, e.g. `cp312` or `cp313t`.
+* `$(PY_WHEEL_IMPLEMENTATION_TAG)`: Wheel implementation tag, e.g. `cp`.
+* `$(PY_WHEEL_PYTHON_TAG)`: Wheel Python tag, e.g. `cp312`.
 
 Example usage:
 
@@ -145,5 +213,9 @@ toolchain(
 
 register_toolchains("//my_pkg:my_toolchain")
 ```
+
+:::{versionchanged} 2.5.0
+Provides `TemplateVariableInfo` and `ToolchainInfo.template_vars`.
+:::
 """,
 )

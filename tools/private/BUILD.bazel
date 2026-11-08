@@ -6,13 +6,11 @@ package(
 
 filegroup(
     name = "distribution",
-    srcs = glob(["**"]) + [
-        "//tools/private/zipapp:distribution",
-    ],
+    srcs = glob(["**"]),
 )
 
 bzl_library(
     name = "publish_deps",
     srcs = ["publish_deps.bzl"],
-    deps = ["//python/uv/private:lock"],
+    deps = ["//python/uv:lock"],
 )

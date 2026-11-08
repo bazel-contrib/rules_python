@@ -30,16 +30,16 @@ load(
     "PLATFORMS",
     "WINDOWS_NAME",
 )
+load(":pbs_manifest.bzl", "split_pbs_distribution")
 load(":repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
 load(":text_util.bzl", "render")
 
 _SUITE_TEMPLATE = """
 py_toolchain_suite(
-    flag_values = {flag_values},
+    version_settings = {version_settings},
     target_settings = {target_settings},
     prefix = {prefix},
     python_version = {python_version},
-    set_python_version_constraint = {set_python_version_constraint},
     target_compatible_with = {target_compatible_with},
     user_repository_name = {user_repository_name},
 )
@@ -172,11 +172,10 @@ _MULTI_TOOLCHAIN_ALIASES_PIP_TEMPLATE = """
 
 load("@@{rules_python}//python:pip.bzl", "pip_parse", _multi_pip_parse = "multi_pip_parse")
 
-def multi_pip_parse(name, requirements_lock, **kwargs):
+def multi_pip_parse(name, **kwargs):
     return _multi_pip_parse(
         name = name,
         python_versions = {python_versions},
-        requirements_lock = requirements_lock,
         minor_mapping = {minor_mapping},
         **kwargs
     )
@@ -205,9 +204,9 @@ def python_toolchain_build_file_content(
         build_content: Text containing toolchain definitions
     """
 
-    entries = []
+    suites = []
     for platform, meta in loaded_platforms.items():
-        entries.append(toolchain_suite_content(
+        suites.append(struct(
             target_compatible_with = meta.compatible_with,
             flag_values = meta.flag_values,
             prefix = "{}{}".format(prefix, platform),
@@ -216,29 +215,55 @@ def python_toolchain_build_file_content(
             set_python_version_constraint = set_python_version_constraint,
             target_settings = meta.target_settings,
         ))
-    return "\n\n".join(entries)
+    return toolchain_suites_content(suites)
 
-def toolchain_suite_content(
-        *,
-        flag_values,
-        prefix,
-        python_version,
-        set_python_version_constraint,
-        target_compatible_with,
-        target_settings,
-        user_repository_name):
-    return _SUITE_TEMPLATE.format(
-        prefix = render.str(prefix),
-        user_repository_name = render.str(user_repository_name),
-        target_compatible_with = render.indent(render.list(target_compatible_with)).lstrip(),
-        flag_values = render.indent(render.dict(
-            flag_values,
-            key_repr = lambda x: repr(str(x)),  # this is to correctly display labels
-        )).lstrip(),
-        target_settings = render.list(target_settings, hanging_indent = "    "),
-        set_python_version_constraint = render.str(set_python_version_constraint),
-        python_version = render.str(python_version),
-    )
+def toolchain_suites_content(suites):
+    """Render shared version predicates followed by their toolchain suites.
+
+    Args:
+        suites: Toolchain suite data with version and platform settings.
+
+    Returns:
+        BUILD file content with shared config_setting predicates and suites.
+    """
+    suite_settings = []
+    for suite in suites:
+        if suite.set_python_version_constraint not in ["True", "False"]:
+            fail("set_python_version_constraint must be the string 'True' or 'False'")
+        major_minor, _, _ = suite.python_version.rpartition(".")
+        versions = [major_minor, suite.python_version]
+        if suite.set_python_version_constraint == "False":
+            versions.append("")
+        values_list = []
+        for version in versions:
+            values = suite.flag_values | {
+                Label("//python/config_settings:python_version"): version,
+            }
+            values_list.append(tuple(sorted([(str(label), value) for label, value in values.items()])))
+        suite_settings.append(values_list)
+
+    # Assign names before rendering either the predicates or their consumers.
+    settings = {values: None for values_list in suite_settings for values in values_list}
+    settings = {values: "_python_version_{}".format(i) for i, values in enumerate(settings)}
+    entries = [
+        render.call(
+            "config_setting",
+            name = render.str(name),
+            flag_values = render.dict(dict(values)),
+            visibility = render.list(["//visibility:private"]),
+        )
+        for values, name in settings.items()
+    ]
+    for suite, values in zip(suites, suite_settings):
+        entries.append(_SUITE_TEMPLATE.format(
+            prefix = render.str(suite.prefix),
+            user_repository_name = render.str(suite.user_repository_name),
+            target_compatible_with = render.indent(render.list(suite.target_compatible_with)).lstrip(),
+            version_settings = render.list([settings[value] for value in values], hanging_indent = "    "),
+            target_settings = render.list(suite.target_settings, hanging_indent = "    "),
+            python_version = render.str(suite.python_version),
+        ))
+    return "\n\n".join(entries)
 
 def _toolchains_repo_impl(rctx):
     build_content = _WORKSPACE_TOOLCHAINS_BUILD_TEMPLATE.format(
@@ -498,6 +523,7 @@ def sorted_host_platform_names(platform_names):
     * Regular platforms
     * The "-freethreaded" suffix
     * The "-musl" suffix
+    * The python-build-standalone distribution suffixes (e.g. "-full")
 
     Here, we formalize that so it isn't subtly encoded in the ordering of keys
     in a dict that autoformatters like to clobber and whose only documentation
@@ -513,6 +539,7 @@ def sorted_host_platform_names(platform_names):
     def platform_keyer(name):
         # Ascending sort: lower is higher precedence
         return (
+            1 if split_pbs_distribution(name)[1] else 0,
             1 if MUSL in name else 0,
             1 if FREETHREADED in name else 0,
         )

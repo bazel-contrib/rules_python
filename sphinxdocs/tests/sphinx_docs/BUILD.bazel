@@ -89,6 +89,9 @@ build_test(
 py_test(
     name = "sphinx_docs_output_test",
     srcs = ["sphinx_docs_output_test.py"],
-    data = [":docs"],
+    data = [
+        ":docs",
+        ":docs.run",
+    ],
     deps = ["@pypi//absl_py"],
 )

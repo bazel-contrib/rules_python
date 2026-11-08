@@ -24,6 +24,14 @@ python_register_multi_toolchains(
     register_coverage_tool = True,
 )
 
+load("@rules_python//python/uv:repositories.bzl", "uv_toolchains_manifest")
+
+uv_toolchains_manifest(name = "uv_manifest")
+
+load("@uv_manifest//:dist_manifest.bzl", "uv_register_toolchains")
+
+uv_register_toolchains(name = "uv")
+
 load("@python//:pip.bzl", "multi_pip_parse")
 
 multi_pip_parse(

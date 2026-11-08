@@ -42,7 +42,7 @@ py_binary(
     srcs = ["merge_changelog.py"],
     target_compatible_with = _TARGET_COMPATIBLE_WITH,
     deps = [
-        "//tools/private/release:changelog_news",
+        "//dev/release:changelog_news",
     ],
 )
 
@@ -120,6 +120,7 @@ sphinx_stardocs(
         "//python:py_runtime",
         "//python:py_runtime_info",
         "//python:py_test",
+        "//python:pytest_test",
         "//python:repositories",
         "//python/api",
         "//python/api:attr_builders",
@@ -154,6 +155,7 @@ sphinx_stardocs(
         "//python/private/zipapp:py_zipapp_rule",
         "//python/uv",
         "//python/uv:lock",
+        "//python/uv:repositories",
         "//python/uv:uv_toolchain",
         "//python/uv:uv_toolchain_info",
         "//python/zipapp:py_zipapp_binary",

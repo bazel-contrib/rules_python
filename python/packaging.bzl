@@ -97,7 +97,8 @@ def py_wheel(
     Wheels are Python distribution format defined in {pep}`PEP 427`.
 
     This macro packages a set of targets into a single wheel.
-    It wraps the [py_wheel rule](#py_wheel_rule).
+    It wraps the [py_wheel rule](#py_wheel_rule). See
+    {doc}`/howto/build-a-wheel` for a usage guide.
 
     Currently only pure-python wheels are supported.
 

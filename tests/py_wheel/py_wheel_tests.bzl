@@ -206,6 +206,113 @@ def _test_config_settings_impl(env, target):
 
 _tests.append(_test_config_settings)
 
+def _test_default_make_variables(name):
+    rt_util.helper_target(
+        py_wheel,
+        name = name + "_subject",
+        abi = "$(PY_WHEEL_ABI_TAG)",
+        config_settings = {
+            labels.PY_FREETHREADED: "yes",
+            labels.PYTHON_VERSION: "3.13",
+        },
+        distribution = "mydist_" + name,
+        platform = "linux_$(PY_IMPLEMENTATION_NAME)_$(PY_ABI_FLAGS)",
+        python_requires = "==$(PY_MAJOR_DOT_MINOR).*",
+        python_tag = (
+            "$(PY_WHEEL_PYTHON_TAG)." +
+            "$(PY_WHEEL_IMPLEMENTATION_TAG)$(PY_MAJOR)$(PY_MINOR)." +
+            "py$(PY_MAJOR_MINOR_NODOT)"
+        ),
+        version = "1.0.0",
+    )
+    analysis_test(
+        name = name,
+        impl = _test_default_make_variables_impl,
+        target = name + "_subject",
+    )
+
+def _test_default_make_variables_impl(env, target):
+    env.expect.that_target(target).default_outputs().contains_exactly([
+        "{package}/mydist_{test_name}-1.0.0-" +
+        "cp313.cp313.py313-cp313t-linux_cpython_t.whl",
+    ])
+    action = env.expect.that_target(target).action_named("PyWheel")
+    action.contains_at_least_args([
+        "--version",
+        "1.0.0",
+        "--python_tag",
+        "cp313.cp313.py313",
+        "--abi",
+        "cp313t",
+        "--platform",
+        "linux_cpython_t",
+    ])
+    metadata_action = env.expect.that_target(target).action_generating(
+        "{package}/{name}.metadata.txt",
+    )
+    metadata_action.content().split("\n").contains(
+        "Requires-Python: ==3.13.*",
+    )
+
+_tests.append(_test_default_make_variables)
+
+def _make_vars_impl(ctx):
+    return [platform_common.TemplateVariableInfo(ctx.attr.vars)]
+
+_make_vars = rule(
+    implementation = _make_vars_impl,
+    attrs = {
+        "vars": attr.string_dict(),
+    },
+)
+
+def _test_custom_make_variables(name):
+    rt_util.helper_target(
+        _make_vars,
+        name = name + "_vars",
+        vars = {
+            "PLATFORM": "manylinux2014_x86_64",
+            "VERSION": "1.2.3",
+        },
+    )
+    rt_util.helper_target(
+        py_wheel,
+        name = name + "_subject",
+        abi = "$(PY_WHEEL_ABI_TAG)",
+        config_settings = {
+            labels.PYTHON_VERSION: "3.12",
+        },
+        distribution = "mydist_" + name,
+        platform = "$(PLATFORM)",
+        python_tag = "$(PY_WHEEL_PYTHON_TAG)",
+        toolchains = [name + "_vars"],
+        version = "$(VERSION)",
+    )
+    analysis_test(
+        name = name,
+        impl = _test_custom_make_variables_impl,
+        target = name + "_subject",
+    )
+
+def _test_custom_make_variables_impl(env, target):
+    env.expect.that_target(target).default_outputs().contains_exactly([
+        "{package}/mydist_{test_name}-1.2.3-cp312-cp312-" +
+        "manylinux2014_x86_64.whl",
+    ])
+    action = env.expect.that_target(target).action_named("PyWheel")
+    action.contains_at_least_args([
+        "--version",
+        "1.2.3",
+        "--python_tag",
+        "cp312",
+        "--abi",
+        "cp312",
+        "--platform",
+        "manylinux2014_x86_64",
+    ])
+
+_tests.append(_test_custom_make_variables)
+
 def py_wheel_test_suite(name):
     test_suite(
         name = name,

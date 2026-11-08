@@ -2,14 +2,15 @@ import subprocess
 
 import pytest
 
-from tools.private.release import shell
-from tools.private.release.gh import (
+from dev.release import shell
+from dev.release.gh import (
     CreatePrError,
     GetPrError,
     GitHub,
     InvalidPrRefError,
+    format_complete_issue_warning,
 )
-from tools.private.release.git import Git
+from dev.release.git import Git
 
 pytest_plugins = ["tests.tools.private.release.release_test_helper"]
 
@@ -20,7 +21,7 @@ def fixture_gh():
 
 
 def test_resolve_pr_number_digit(mocker, gh):
-    mock_run_cmd = mocker.patch("tools.private.release.gh.run_cmd")
+    mock_run_cmd = mocker.patch("dev.release.gh.run_cmd")
     # 124 and #125 should resolve immediately without running command
     assert gh.resolve_pr_number("124") == 124
     assert gh.resolve_pr_number("#125") == 125
@@ -28,7 +29,7 @@ def test_resolve_pr_number_digit(mocker, gh):
 
 
 def test_resolve_pr_number_url_simple(mocker, gh):
-    mock_run_cmd = mocker.patch("tools.private.release.gh.run_cmd")
+    mock_run_cmd = mocker.patch("dev.release.gh.run_cmd")
     url = "https://github.com/my-owner/my-repo/pull/126"
     # Should resolve via regex without calling gh
     result = gh.resolve_pr_number(url)
@@ -37,7 +38,7 @@ def test_resolve_pr_number_url_simple(mocker, gh):
 
 
 def test_resolve_pr_number_url_with_subpath(mocker, gh):
-    mock_run_cmd = mocker.patch("tools.private.release.gh.run_cmd")
+    mock_run_cmd = mocker.patch("dev.release.gh.run_cmd")
     url = "https://github.com/my-owner/my-repo/pull/126/files"
     # Should resolve via regex without calling gh
     result = gh.resolve_pr_number(url)
@@ -46,7 +47,7 @@ def test_resolve_pr_number_url_with_subpath(mocker, gh):
 
 
 def test_resolve_pr_number_url_with_query(mocker, gh):
-    mock_run_cmd = mocker.patch("tools.private.release.gh.run_cmd")
+    mock_run_cmd = mocker.patch("dev.release.gh.run_cmd")
     url = "https://github.com/my-owner/my-repo/pull/126/files?w=1"
     # Should resolve via regex without calling gh
     result = gh.resolve_pr_number(url)
@@ -55,7 +56,7 @@ def test_resolve_pr_number_url_with_query(mocker, gh):
 
 
 def test_resolve_pr_number_url_other_repo(mocker, gh):
-    mock_run_cmd = mocker.patch("tools.private.release.gh.run_cmd")
+    mock_run_cmd = mocker.patch("dev.release.gh.run_cmd")
     # URL for a different repo should fail immediately without calling gh
     url = "https://github.com/other-owner/other-repo/pull/126"
     with pytest.raises(
@@ -66,7 +67,7 @@ def test_resolve_pr_number_url_other_repo(mocker, gh):
 
 
 def test_resolve_pr_number_invalid(mocker, gh):
-    mock_run_cmd = mocker.patch("tools.private.release.gh.run_cmd")
+    mock_run_cmd = mocker.patch("dev.release.gh.run_cmd")
     with pytest.raises(InvalidPrRefError, match="Could not resolve PR reference"):
         gh.resolve_pr_number("invalid-ref")
     mock_run_cmd.assert_not_called()
@@ -116,6 +117,29 @@ def test_get_pr_files(gh, auto_patch_cmd_helpers):
         "view",
         "123",
         "--json=files",
+        "--repo=my-owner/my-repo",
+        check=True,
+        capture_output=True,
+    )
+
+
+def test_get_pr_info(gh, auto_patch_cmd_helpers):
+    auto_patch_cmd_helpers.run_gh.return_value = (
+        '{"state": "MERGED", "isDraft": false, '
+        '"mergeCommit": {"oid": "abc1234"}, "body": "Work towards #4175"}'
+    )
+    info = gh.get_pr_info(123)
+    assert info == {
+        "state": "MERGED",
+        "isDraft": False,
+        "mergeCommit": {"oid": "abc1234"},
+        "body": "Work towards #4175",
+    }
+    auto_patch_cmd_helpers.run_gh.assert_called_with(
+        "pr",
+        "view",
+        "123",
+        "--json=state,isDraft,mergeCommit,body",
         "--repo=my-owner/my-repo",
         check=True,
         capture_output=True,
@@ -198,3 +222,41 @@ def test_create_pr_generic_exception_raises_create_pr_error(gh, auto_patch_cmd_h
         exc_info.value
     )
     assert exc_info.value.__cause__ is err
+
+
+def test_partition_open_tracking_issues(mock_gh):
+    active_num = mock_gh.create_issue(
+        title="Release 2.1.0",
+        body="## Checklist\n- [ ] Prepare Release\n- [ ] Tag Final\n",
+        labels=["type: release"],
+    )
+    complete_num = mock_gh.create_issue(
+        title="Release 2.0.1",
+        body="- [x] Tag Final | status=done tag=2.0.1 commit= abcdef12\n",
+        labels=["type: release"],
+    )
+    # Not a release tracking issue; must be ignored entirely.
+    mock_gh.create_issue(
+        title="Backport #42",
+        body="- [x] Tag Final\n",
+        labels=["type: backport-pr"],
+    )
+
+    active, complete = mock_gh.partition_open_tracking_issues()
+
+    assert [i["number"] for i in active] == [active_num]
+    assert [i["number"] for i in complete] == [complete_num]
+
+
+def test_partition_open_tracking_issues_none_open(mock_gh):
+    assert mock_gh.partition_open_tracking_issues() == ([], [])
+
+
+def test_format_complete_issue_warning():
+    msg = format_complete_issue_warning({"number": 123, "title": "Release 2.0.1"})
+    assert msg == (
+        "Ignoring open release tracking issue #123 (Release 2.0.1): its 'Tag"
+        " Final' task is done, so the release is complete. Consider closing it."
+    )
+    # Callers add the annotation prefix themselves.
+    assert not msg.startswith("::")

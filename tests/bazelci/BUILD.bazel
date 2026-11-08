@@ -1,0 +1,11 @@
+load("//python:pytest_test.bzl", "pytest_test")
+
+pytest_test(
+    name = "presubmit_test",
+    srcs = ["presubmit_test.py"],
+    data = ["//.bazelci:presubmit_yml"],
+    deps = [
+        "//dev/bazelci:presubmit_flags",
+        "//python/runfiles",
+    ],
+)

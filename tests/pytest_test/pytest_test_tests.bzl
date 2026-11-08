@@ -2,9 +2,9 @@
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load(
-    "//tests/support/pytest_test:pytest_test.bzl",
+    "//python/private/pytest_test:pytest_test.bzl",
     "get_version_test_name",
-)
+)  # buildifier: disable=bzl-visibility
 
 _tests = []
 

@@ -12,6 +12,8 @@ def _test_index_url(env):
     env.expect.that_str(argparse.index_url(["-i", "https://example.com/simple"], "default")).equals("https://example.com/simple")
     env.expect.that_str(argparse.index_url(["--index-url", "https://example.com/simple"], "default")).equals("https://example.com/simple")
     env.expect.that_str(argparse.index_url(["--index-url=https://example.com/simple"], "default")).equals("https://example.com/simple")
+    env.expect.that_str(argparse.index_url(["--index-url=\"https://example.com/simple\""], "default")).equals("https://example.com/simple")
+    env.expect.that_str(argparse.index_url(["--index-url='https://example.com/simple'"], "default")).equals("https://example.com/simple")
 
     env.expect.that_str(argparse.index_url(["--extra-index-url", "https://extra.com", "-i", "https://index.com"], "default")).equals("https://index.com")
 
@@ -23,6 +25,8 @@ def _test_extra_index_url(env):
 
     env.expect.that_collection(argparse.extra_index_url(["--extra-index-url", "https://extra.com/simple"], [])).contains_exactly(["https://extra.com/simple"])
     env.expect.that_collection(argparse.extra_index_url(["--extra-index-url=https://extra.com/simple"], [])).contains_exactly(["https://extra.com/simple"])
+    env.expect.that_collection(argparse.extra_index_url(["--extra-index-url=\"https://extra.com/simple\""], [])).contains_exactly(["https://extra.com/simple"])
+    env.expect.that_collection(argparse.extra_index_url(["--extra-index-url='https://extra.com/simple'"], [])).contains_exactly(["https://extra.com/simple"])
 
     env.expect.that_collection(argparse.extra_index_url(["--extra-index-url", "https://first.com", "--extra-index-url", "https://second.com"], [])).contains_exactly(["https://first.com", "https://second.com"])
 

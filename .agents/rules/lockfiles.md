@@ -1,13 +1,8 @@
 ---
 trigger: glob
 description: Rules for updating uv.lock and requirements.txt files
-globs:
-  - "*requirements*.txt"
-  - "*requirements*.in"
-  - "uv.lock"
-  - "pyproject.toml"
-  - "*constraints*.txt"
-  - "*gazelle_python*.yaml"
+globs: "*requirements*.txt,*requirements*.in,uv.lock,pyproject.toml,\
+  *constraints*.txt,*gazelle_python*.yaml"
 ---
 
 # Lockfile & Dependency Rules

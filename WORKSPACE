@@ -72,10 +72,18 @@ py_repositories()
 
 python_register_multi_toolchains(
     name = "python",
-    default_version = "3.11",
+    default_version = "3.14",
     # Integration tests verify each version, so register all of them.
     python_versions = PYTHON_VERSIONS,
 )
+
+load("//python/uv:repositories.bzl", "uv_toolchains_manifest")
+
+uv_toolchains_manifest(name = "uv_manifest")
+
+load("@uv_manifest//:dist_manifest.bzl", "uv_register_toolchains")
+
+uv_register_toolchains(name = "uv")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
@@ -112,7 +120,7 @@ load("@rules_python_gazelle_plugin//:deps.bzl", _py_gazelle_deps = "gazelle_deps
 _py_gazelle_deps()
 
 # This interpreter is used for various rules_python dev-time tools
-interpreter = "@python_3_11_9_host//:python"
+interpreter = "@python_3_14_4_host//:python"
 
 #####################
 # Install twine for our own runfiles wheel publishing.

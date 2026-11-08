@@ -19,6 +19,12 @@ load("//python/private:text_util.bzl", "render")
 _TEMPLATE = """\
 load("@rules_python//python/uv/private:toolchains_hub.bzl", "toolchains_hub")
 
+alias(
+    name = "uv",
+    actual = "@rules_python//python/uv:current_toolchain",
+    visibility = ["//visibility:public"],
+)
+
 {}
 """
 

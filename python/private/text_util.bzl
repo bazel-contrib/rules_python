@@ -198,6 +198,43 @@ def _render_struct(value):
     fields = {k: repr(getattr(value, k)) for k in sorted(dir(value)) if k not in ["to_json", "to_proto"]}
     return _render_call("struct", **fields)
 
+def _render_toolchain(
+        name,
+        *,
+        toolchain,
+        toolchain_type,
+        exec_compatible_with = [],
+        target_compatible_with = [],
+        target_settings = []):
+    """Render a toolchain() rule call.
+
+    Args:
+        name: str, the name of the toolchain target.
+        toolchain: str, the label of the underlying toolchain implementation
+            target.
+        toolchain_type: str, the label of the toolchain_type target.
+        exec_compatible_with: list[str], execution platform constraints.
+        target_compatible_with: list[str], target platform constraints.
+        target_settings: list[str], config_setting labels the target must match.
+
+    Returns:
+        str, the formatted toolchain() call.
+    """
+    kwargs = {}
+    if exec_compatible_with:
+        kwargs["exec_compatible_with"] = _render_list(exec_compatible_with)
+    if target_compatible_with:
+        kwargs["target_compatible_with"] = _render_list(target_compatible_with)
+    if target_settings:
+        kwargs["target_settings"] = _render_list(target_settings)
+    return _render_call(
+        "toolchain",
+        name = _render_str(name),
+        toolchain = _render_str(toolchain),
+        toolchain_type = _render_str(toolchain_type),
+        **kwargs
+    )
+
 render = struct(
     alias = _render_alias,
     dict = _render_dict,
@@ -211,6 +248,7 @@ render = struct(
     select = _render_select,
     str = _render_str,
     struct = _render_struct,
+    toolchain = _render_toolchain,
     toolchain_prefix = _toolchain_prefix,
     tuple = _render_tuple,
     string_list_dict = _render_string_list_dict,

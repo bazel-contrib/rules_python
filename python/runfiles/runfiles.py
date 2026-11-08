@@ -835,7 +835,7 @@ class Runfiles:
         Raises:
           RuntimeError: if runfiles cannot be found.
 
-        :::{versionadded} VERSION_NEXT_FEATURE
+        :::{versionadded} 2.4.0
         :::
         """
         runfiles = Runfiles.Create(env=env)
@@ -865,7 +865,7 @@ def Create(env: dict[str, str] | None = None) -> Runfiles | None:
 def CreateOrRaise(env: dict[str, str] | None = None) -> Runfiles:
     """Refer to `Runfiles.CreateOrRaise`.
 
-    :::{versionadded} VERSION_NEXT_FEATURE
+    :::{versionadded} 2.4.0
     :::
     """
     return Runfiles.CreateOrRaise(env)

@@ -20,9 +20,9 @@ The simplest way to configure the toolchain with `rules_python` is as follows.
 
 ```starlark
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
-python.defaults(python_version = "3.11")
-python.toolchain(python_version = "3.11")
-use_repo(python, "python_3_11")
+python.defaults(python_version = "3.14")
+python.toolchain(python_version = "3.14")
+use_repo(python, "python_3_14")
 ```
 
 :::{seealso}

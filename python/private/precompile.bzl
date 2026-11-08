@@ -15,8 +15,8 @@
 
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load(":attributes.bzl", "PrecompileAttr", "PrecompileInvalidationModeAttr", "PrecompileSourceRetentionAttr")
-load(":common.bzl", "actions_run")
-load(":flags.bzl", "PrecompileFlag")
+load(":common.bzl", "actions_run", "is_py_source")
+load(":flags.bzl", "CompilationMode", "PrecompileFlag")
 load(":py_interpreter_program.bzl", "PyInterpreterProgramInfo")
 load(":toolchain_types.bzl", "EXEC_TOOLS_TOOLCHAIN_TYPE", "TARGET_TOOLCHAIN_TYPE")
 
@@ -98,12 +98,18 @@ def _precompile(ctx, src, *, use_pycache):
             file.
 
     Returns:
-        File of the generated pyc file.
+        File of the generated pyc file, or None if the source file was skipped.
     """
 
     # Generating a file in another package is an error, so we have to skip
     # such cases.
     if ctx.label.package != src.owner.package:
+        return None
+
+    if src.is_directory:
+        return None
+
+    if not is_py_source(src):
         return None
 
     exec_tools_info = ctx.toolchains[EXEC_TOOLS_TOOLCHAIN_TYPE].exec_tools
@@ -138,7 +144,7 @@ def _precompile(ctx, src, *, use_pycache):
 
     invalidation_mode = ctx.attr.precompile_invalidation_mode
     if invalidation_mode == PrecompileInvalidationModeAttr.AUTO:
-        if ctx.var["COMPILATION_MODE"] == "opt":
+        if ctx.var.get("COMPILATION_MODE") == CompilationMode.OPT:
             invalidation_mode = PrecompileInvalidationModeAttr.UNCHECKED_HASH
         else:
             invalidation_mode = PrecompileInvalidationModeAttr.CHECKED_HASH

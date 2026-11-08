@@ -47,6 +47,7 @@ def _gen_wheel_record_impl(ctx):
         action_args.add(out_file)
         action_args.add("windows" if is_windows else "unix")
         action_args.add(data_dir_basename)
+        action_args.add_all(ctx.attr.rewritten_scripts)
 
         ctx.actions.run(
             inputs = inputs,
@@ -65,6 +66,10 @@ def _gen_wheel_record_impl(ctx):
 gen_wheel_record = rule(
     implementation = _gen_wheel_record_impl,
     attrs = WINDOWS_CONSTRAINTS_PLAIN_ATTRS | {
+        "rewritten_scripts": attr.string_list(
+            doc = "List of script names that had shebang rewriting applied.",
+            default = [],
+        ),
         "srcs": attr.label_list(
             doc = "The original RECORD files to rewrite.",
             mandatory = True,

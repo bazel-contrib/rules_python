@@ -101,19 +101,28 @@ class TestCase(unittest.TestCase):
             # If not present, it can't find some bash helpers in @bazel_tools
             "RUNFILES_DIR": os.environ["TEST_SRCDIR"],
         }
+        # Always set by `rules_python_integration_test()` for Python runners;
+        # "0" runs the inner Bazel in WORKSPACE mode.
+        self.bzlmod = os.environ["RULES_PYTHON_INTEGRATION_TEST_BZLMOD"] == "1"
+        # Flags inserted after the command of every Bazel invocation.
+        self.bazel_flags = (
+            [] if self.bzlmod else ["--noenable_bzlmod", "--enable_workspace"]
+        )
 
     def run_bazel(self, *args: str, check: bool = True) -> ExecuteResult:
         """Run a bazel invocation.
 
         Args:
             *args: The args to pass to bazel; the leading `bazel` command is
-                added automatically
+                added automatically. The first value must be the Bazel command
+                (e.g. `build`), after which `self.bazel_flags` are inserted.
             check: True if the execution must succeed, False if failure
-                should raise an error.
+                should not raise an error.
         Returns:
             An `ExecuteResult` from running Bazel
         """
-        cmd_args = [*self.bazel_cmd, *args]
+        command, *command_args = args
+        cmd_args = [*self.bazel_cmd, command, *self.bazel_flags, *command_args]
         env = self.bazel_env
         _logger.info("executing: %s", shlex.join(cmd_args))
         cwd = self.repo_root

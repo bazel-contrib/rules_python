@@ -12,11 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-EXPERIMENTAL: This is experimental and may be removed without notice
-
-This module implements the uv toolchain rule
-"""
+"""This module implements the uv toolchain rule"""
 
 load(":uv_toolchain_info.bzl", "UvToolchainInfo")
 
@@ -49,9 +45,21 @@ uv_toolchain = rule(
     implementation = _uv_toolchain_impl,
     attrs = {
         "uv": attr.label(
-            doc = "A static uv binary.",
+            doc = """
+The `uv` executable or a wrapper that forwards its arguments to `uv`.
+Runtime dependencies belong in the executable target's runfiles.
+
+:::{versionchanged} 2.5.0
+Executable targets with multiple output files are supported. Lock actions
+and runnable targets include the executable target's runfiles.
+:::
+""",
             mandatory = True,
-            allow_single_file = True,
+            # allow_files = True is used instead of allow_single_file = True
+            # because executable rules like py_binary include additional files
+            # (e.g. srcs) in DefaultInfo.files. executable = True still enforces
+            # a single executable.
+            allow_files = True,
             executable = True,
             cfg = "exec",
         ),

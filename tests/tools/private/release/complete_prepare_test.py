@@ -1,6 +1,6 @@
 import argparse
 
-from tools.private.release.complete_prepare import CompletePrepare
+from dev.release.complete_prepare import CompletePrepare
 
 pytest_plugins = ["tests.tools.private.release.release_test_helper"]
 

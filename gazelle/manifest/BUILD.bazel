@@ -12,8 +12,8 @@ go_library(
     importpath = "github.com/bazel-contrib/rules_python/gazelle/manifest",
     visibility = ["//visibility:public"],
     deps = [
-        "@com_github_emirpasic_gods//sets/treeset:go_default_library",
-        "@in_gopkg_yaml_v2//:go_default_library",
+        "@com_github_emirpasic_gods//sets/treeset",
+        "@in_gopkg_yaml_v2//:yaml_v2",
     ],
 )
 

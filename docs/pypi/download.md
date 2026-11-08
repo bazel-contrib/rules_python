@@ -19,6 +19,8 @@ pip.parse(
     hub_name = "my_deps",
     python_version = "3.13",
     requirements_lock = "//:requirements_lock_3_11.txt",
+    # Or use a uv.lock file:
+    # uv_lock = "//:uv.lock",
 )
 
 use_repo(pip, "my_deps")
@@ -120,6 +122,17 @@ bazel build --@rules_python//python/config_settings:venv=pypi_a //my:binary
 Shared library targets can simply depend on the unified hub (e.g.,
 `@pypi//numpy`), and the dependency will automatically resolve to the correct
 wheel version from the active hub during the build.
+
+To migrate a hub that used to be named `pypi`, the root module can opt into a
+`requirements.bzl` in the unified hub with
+`pip.default(unified_hub_requirements_bzl = True)`. It has the per-package
+macros of a concrete hub's (`requirement`, `whl_requirement`, `data_requirement`
+and `dist_info_requirement`), so existing
+`load("@pypi//:requirements.bzl", "requirement")` calls keep working after the
+rename, and `requirement("numpy")` routes through the active hub like
+`@pypi//numpy`. It has no `all_requirements` or other `all_*` lists: those are
+fixed at loading time, before the active hub is known, so load them from a
+concrete hub instead. Prefer `@pypi//<pkg>` labels in new code.
 
 ### Declaring Abstract Dependencies (pip.dep)
 

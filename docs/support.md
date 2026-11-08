@@ -69,8 +69,8 @@ guideline for different platform tiers:
   What is more, `windows_x86_64` is in this list, as we run tests in CI, but
   developing for Windows is more challenging, and features may come later to
   this platform.
-* Tier 2 - The rest of the platforms that may have a varying level of support, e.g.,
-  `linux_s390x`, `linux_ppc64le`, `windows_arm64`.
+* Tier 2 - Other platforms have varying levels of support, e.g.,
+  `linux_s390x`, `linux_ppc64le`, `windows_arm64`, `nix`.
 
 :::{note}
 Code to support Tier 2 platforms is allowed, but regressions will be fixed on a

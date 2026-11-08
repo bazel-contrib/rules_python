@@ -1,7 +1,7 @@
 ---
 trigger: glob
 description: Starlark / Bazel .bzl file coding style rules
-globs: *.bzl
+globs: "*.bzl"
 ---
 
 # Starlark Rules

@@ -1,0 +1,18 @@
+load("//python:py_binary.bzl", "py_binary")
+load("//python:py_library.bzl", "py_library")
+
+package(default_visibility = ["//:__subpackages__"])
+
+py_library(
+    name = "presubmit_flags",
+    srcs = ["presubmit_flags.py"],
+    imports = ["../.."],
+    deps = ["@pypi//pyyaml"],
+)
+
+py_binary(
+    name = "diff_presubmit_flags",
+    srcs = ["diff_presubmit_flags.py"],
+    imports = ["../.."],
+    deps = [":presubmit_flags"],
+)

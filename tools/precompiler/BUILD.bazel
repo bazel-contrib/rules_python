@@ -13,13 +13,14 @@
 # limitations under the License.
 
 load("@bazel_skylib//rules:common_settings.bzl", "string_list_flag")
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")  # buildifier: disable=bzl-visibility
 load("//python/private:py_interpreter_program.bzl", "py_interpreter_program")  # buildifier: disable=bzl-visibility
 load("//python/private:visibility.bzl", "NOT_ACTUALLY_PUBLIC")  # buildifier: disable=bzl-visibility
 
-filegroup(
+package(default_visibility = ["//:__subpackages__"])
+
+distribution_filegroup(
     name = "distribution",
-    srcs = glob(["**"]),
-    visibility = ["//:__subpackages__"],
 )
 
 py_interpreter_program(

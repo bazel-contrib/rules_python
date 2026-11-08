@@ -49,9 +49,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Bazel
-        uses: bazel-contrib/setup-bazel@0.19.0
-        with:
-          bazelisk-version: 1.20.0
+        uses: ./.github/actions/setup-bazel
 
       - name: Configure Git Identity
         run: |
@@ -63,10 +61,13 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ needs.parse_pr.outputs.pr_number }}
         run: |
-          bazel run //tools/private/release -- on-pr-merged \
-            "$PR_NUMBER" \
+          bazel run \
+            --//python/config_settings:py_pbs_distribution=install_only_stripped \
+            //dev/release -- on-pr-merged \
             --remote origin \
-            --no-dry-run
+            --no-dry-run \
+            -- \
+            "$PR_NUMBER"
 
   call_complete_sync_changelog:
     needs: parse_pr

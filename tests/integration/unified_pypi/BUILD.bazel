@@ -1,7 +1,27 @@
+load("@pypi//:requirements.bzl", "requirement")
 load("@rules_python//python:py_binary.bzl", "py_binary")
 load("@rules_python//python:py_test.bzl", "py_test")
 
 package(default_visibility = ["//visibility:public"])
+
+# `requirement()` from the unified hub normalizes the name and resolves
+# through the venv flag like a plain `@pypi//<pkg>` label.
+py_test(
+    name = "test_requirement_default",
+    srcs = ["test_default.py"],
+    main = "test_default.py",
+    deps = [requirement("Colorama")],
+)
+
+py_test(
+    name = "test_requirement_a",
+    srcs = ["test_a.py"],
+    config_settings = {
+        "@rules_python//python/config_settings:venv": "pypi_a",
+    },
+    main = "test_a.py",
+    deps = [requirement("colorama")],
+)
 
 py_test(
     name = "test_default",
@@ -58,4 +78,20 @@ py_binary(
     srcs = ["bin_declared_only.py"],
     main = "bin_declared_only.py",
     deps = ["@pypi//declared_only_pkg:declared-only-alias"],
+)
+
+platform(
+    name = "linux_x86_64",
+    constraint_values = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+    ],
+)
+
+platform(
+    name = "windows_x86_64",
+    constraint_values = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:windows",
+    ],
 )

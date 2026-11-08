@@ -1,5 +1,0 @@
-filegroup(
-    name = "distribution",
-    srcs = glob(["**"]),
-    visibility = ["//python/config_settings:__pkg__"],
-)

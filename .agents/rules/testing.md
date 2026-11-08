@@ -1,3 +1,8 @@
+---
+trigger: model_decision
+description: Bazel test execution, integration test flags, and lockfiles
+---
+
 # Testing & Validation Guardrails
 
 ## `--config=fast-tests` for Test Targets
@@ -24,11 +29,17 @@
   modified or bumped by Dependabot, update the integration lockfile by running
   `bazel mod deps --lockfile_mode=update` in `tests/integration/bzlmod_lockfile`
   and verify with
-  `bazel test //tests/integration:bzlmod_lockfile_test_bazel_9.1.0`.
+  `bazel test //tests/integration:bzlmod_lockfile_test_bazel_9.3.1`.
 
 ## Documentation Flake Handling
 * When building `//docs:docs` fails with exit code 2, treat it as a known
   Sphinx/Bazel flake and retry the build.
+
+## Local vs. Remote Execution Consistency
+* Do not pass `--strategy=Rustc=local` (or per-mnemonic local overrides for
+  compiled binaries) while leaving test runners or downstream build actions on
+  remote execution; host `glibc` mismatches cause `GLIBC_2.xx not found` on RBE
+  containers. Use `--spawn_strategy=local` when running locally.
 
 ## Test Organization
 * **Domain Placement**: Place tests by the feature tested (e.g.,
@@ -41,3 +52,6 @@
   Bzlmod with `target_compatible_with = SUPPORTS_BZLMOD`
   (`//tests/support:support.bzl`). WORKSPACE mode resolves pip dependencies for
   only the host Python version.
+* **Non-Obvious Test Constructs**: Add an inline comment when a test target
+  uses an intentionally unusual construct (e.g., a `select()` with only
+  `//conditions:default` to verify macro `select()` handling).

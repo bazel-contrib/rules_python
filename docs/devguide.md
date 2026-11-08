@@ -95,27 +95,27 @@ integration test.
 
 1. Modify the `./python/private/pypi/requirements.txt` file and run:
    ```
-   bazel run //private:whl_library_requirements.update
+   bazel run //dev/update_deps:update_pip_deps
    ```
 1. Run the following target to update `twine` dependencies:
    ```
-   bazel run //private:requirements.update
+   bazel run //dev:all_requirements.update
    ```
 1. Bump the coverage dependencies using the script using:
    ```
-   bazel run //tools/private/update_deps:update_coverage_deps <VERSION>
+   bazel run //dev/update_deps:update_coverage_deps <VERSION>
    # for example:
-   # bazel run //tools/private/update_deps:update_coverage_deps 7.10.7
+   # bazel run //dev/update_deps:update_coverage_deps 7.10.7
    ```
 
 ## Updating tool dependencies
 
 It's suggested to routinely update the tool versions within our repo. Some of the
-tools are using requirement files compiled by `uv`, and others use other means. In order
-to have everything self-documented, we have a special target,
-`//private:requirements.update`, which uses `rules_multirun` to run all
-of the requirement-updating scripts in sequence in one go. This can be done once per release as
-we prepare for releases.
+tools are using requirement files compiled by `uv`, and others use other means.
+In order to have everything self-documented, we have a special target,
+`//dev:all_requirements.update`, which uses `rules_multirun` to run all of the
+requirement-updating scripts in sequence in one go. This can be done once per
+release as we prepare for releases.
 
 (creating-backport-prs)=
 ## Creating Backport PRs
@@ -134,7 +134,7 @@ The steps to create a backport PR are:
 4.  Update the release's `CHANGELOG.md` file using the release tool's
     `process-news` command:
     ```shell
-    bazel run //tools/private/release -- process-news <VERSION> <PR_NUMBER>
+    bazel run //dev/release -- process-news <VERSION> <PR_NUMBER>
     ```
     This merges the PR's news entries into `CHANGELOG.md`, deletes the news
     files, and updates any `VERSION_NEXT_*` markers.
@@ -158,7 +158,7 @@ The steps to create a backport PR are:
     * Checkout the `main` branch.
     * Run the `process-news` command as before:
       ```shell
-      bazel run //tools/private/release -- process-news <VERSION> <PR_NUMBER>
+      bazel run //dev/release -- process-news <VERSION> <PR_NUMBER>
       ```
 
 [backport-issue]: https://github.com/bazel-contrib/rules_python/issues/new?template=release_tracking_template.md

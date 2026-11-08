@@ -31,6 +31,7 @@ _VENV_SITE_PACKAGES_FLAG = Label("//python/config_settings:venvs_site_packages")
 def whl_library_srcs(
         *,
         name,
+        whl_file = None,
         sdist_filename = None,
         data_exclude = [],
         srcs_exclude = [],
@@ -57,6 +58,7 @@ def whl_library_srcs(
     Args:
         name: {type}`str` The file to match for including it into the `whl`
             filegroup. This may be also parsed to generate extra metadata.
+        whl_file: {type}`str | None` The label of an externally stored wheel.
         sdist_filename: {type}`str | None` If the wheel was built from an sdist,
             the filename of the sdist.
         visibility: {type}`list[str]` The visibility of the source targets.
@@ -100,6 +102,7 @@ def whl_library_srcs(
     for p in native.glob(["bin/*"], allow_empty = True):
         existing_bin_names[p[len("bin/"):].lower()] = None
 
+    rewritten_script_names = []
     for src_path in native.glob(["rewrite-bin/*"], allow_empty = True):
         script_name = src_path[len("rewrite-bin/"):]
         if script_name.lower() in existing_bin_names:
@@ -112,6 +115,7 @@ def whl_library_srcs(
         )
         bins_for_data_label.append(rewrite_target_name)
         data.append(rewrite_target_name)
+        rewritten_script_names.append(script_name)
 
     record_srcs = native.glob(["rewrite-record/*/RECORD"], allow_empty = True)
     record_target_name = "record"
@@ -119,6 +123,7 @@ def whl_library_srcs(
         rules.gen_wheel_record(
             name = record_target_name,
             srcs = record_srcs,
+            rewritten_scripts = rewritten_script_names,
             tags = ["manual"],
         )
         data.append(record_target_name)
@@ -175,7 +180,7 @@ def whl_library_srcs(
     if hasattr(native, "filegroup"):
         native.filegroup(
             name = WHEEL_FILE,
-            srcs = [name],
+            srcs = [whl_file or name],
             visibility = visibility,
         )
 
@@ -209,7 +214,7 @@ def whl_library_srcs(
         )
 
         pyi_srcs = native.glob(
-            ["site-packages/**/*.pyi"],
+            ["site-packages/**/*.pyi", "site-packages/**/py.typed"],
             allow_empty = True,
         )
 

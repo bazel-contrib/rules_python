@@ -15,6 +15,31 @@
 
 load("@rules_testing//lib:truth.bzl", "subjects")
 
+def _new_py_info_subject(info, *, meta):
+    # buildifier: disable=uninitialized
+    public = struct(
+        # go/keep-sorted start
+        direct_implicit_pyc_files = lambda *a, **k: _py_info_subject_direct_implicit_pyc_files(self, *a, **k),
+        direct_original_sources = lambda *a, **k: _py_info_subject_direct_original_sources(self, *a, **k),
+        direct_pyc_files = lambda *a, **k: _py_info_subject_direct_pyc_files(self, *a, **k),
+        direct_pyi_files = lambda *a, **k: _py_info_subject_direct_pyi_files(self, *a, **k),
+        has_py2_only_sources = lambda *a, **k: _py_info_subject_has_py2_only_sources(self, *a, **k),
+        has_py3_only_sources = lambda *a, **k: _py_info_subject_has_py3_only_sources(self, *a, **k),
+        imports = lambda *a, **k: _py_info_subject_imports(self, *a, **k),
+        transitive_original_sources = lambda *a, **k: _py_info_subject_transitive_original_sources(self, *a, **k),
+        transitive_pyc_files = lambda *a, **k: _py_info_subject_transitive_pyc_files(self, *a, **k),
+        transitive_pyi_files = lambda *a, **k: _py_info_subject_transitive_pyi_files(self, *a, **k),
+        transitive_sources = lambda *a, **k: _py_info_subject_transitive_sources(self, *a, **k),
+        type_checking_info = lambda *a, **k: _py_info_subject_type_checking_info(self, *a, **k),
+        uses_shared_libraries = lambda *a, **k: _py_info_subject_uses_shared_libraries(self, *a, **k),
+        # go/keep-sorted end
+    )
+    self = struct(
+        actual = info,
+        meta = meta,
+    )
+    return public
+
 def py_info_subject(info, *, meta):
     """Creates a new `PyInfoSubject` for a PyInfo provider instance.
 
@@ -27,28 +52,17 @@ def py_info_subject(info, *, meta):
     Returns:
         A `PyInfoSubject` struct
     """
+    return _new_py_info_subject(info, meta = meta)
 
-    # buildifier: disable=uninitialized
-    public = struct(
-        # go/keep-sorted start
-        direct_original_sources = lambda *a, **k: _py_info_subject_direct_original_sources(self, *a, **k),
-        direct_pyc_files = lambda *a, **k: _py_info_subject_direct_pyc_files(self, *a, **k),
-        direct_pyi_files = lambda *a, **k: _py_info_subject_direct_pyi_files(self, *a, **k),
-        has_py2_only_sources = lambda *a, **k: _py_info_subject_has_py2_only_sources(self, *a, **k),
-        has_py3_only_sources = lambda *a, **k: _py_info_subject_has_py3_only_sources(self, *a, **k),
-        imports = lambda *a, **k: _py_info_subject_imports(self, *a, **k),
-        transitive_original_sources = lambda *a, **k: _py_info_subject_transitive_original_sources(self, *a, **k),
-        transitive_pyc_files = lambda *a, **k: _py_info_subject_transitive_pyc_files(self, *a, **k),
-        transitive_pyi_files = lambda *a, **k: _py_info_subject_transitive_pyi_files(self, *a, **k),
-        transitive_sources = lambda *a, **k: _py_info_subject_transitive_sources(self, *a, **k),
-        uses_shared_libraries = lambda *a, **k: _py_info_subject_uses_shared_libraries(self, *a, **k),
-        # go/keep-sorted end
+def _py_info_subject_direct_implicit_pyc_files(self):
+    """Returns a `DepsetFileSubject` for the `direct_implicit_pyc_files` attribute.
+
+    Method: PyInfoSubject.direct_implicit_pyc_files
+    """
+    return subjects.depset_file(
+        self.actual.direct_implicit_pyc_files,
+        meta = self.meta.derive("direct_implicit_pyc_files()"),
     )
-    self = struct(
-        actual = info,
-        meta = meta,
-    )
-    return public
 
 def _py_info_subject_direct_original_sources(self):
     """Returns a `DepsetFileSubject` for the `direct_original_sources` attribute.
@@ -142,6 +156,16 @@ def _py_info_subject_transitive_sources(self):
     return subjects.depset_file(
         self.actual.transitive_sources,
         meta = self.meta.derive("transitive_sources()"),
+    )
+
+def _py_info_subject_type_checking_info(self):
+    """Returns a `PyInfoSubject` for the `type_checking_info` attribute.
+
+    Method: PyInfoSubject.type_checking_info
+    """
+    return _new_py_info_subject(
+        self.actual.type_checking_info,
+        meta = self.meta.derive("type_checking_info()"),
     )
 
 def _py_info_subject_uses_shared_libraries(self):

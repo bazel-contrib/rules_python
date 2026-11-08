@@ -13,6 +13,8 @@
 # limitations under the License.
 
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("//python:py_binary.bzl", "py_binary")
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
 
 package(default_visibility = ["//:__subpackages__"])
 
@@ -32,55 +34,58 @@ alias(
     visibility = ["//visibility:public"],
 )
 
+py_binary(
+    name = "venv_shebang_rewriter_py",
+    srcs = ["venv_shebang_rewriter.py"],
+    legacy_create_init = False,
+    main = "venv_shebang_rewriter.py",
+)
+
 alias(
     name = "venv_shebang_rewriter",
     actual = select({
         "@platforms//os:windows": "venv_shebang_rewriter.ps1",
-        "//conditions:default": "venv_shebang_rewriter.sh",
+        "//conditions:default": "venv_shebang_rewriter_py",
     }),
     visibility = ["//visibility:public"],
+)
+
+py_binary(
+    name = "wheel_record_rewriter_py",
+    srcs = ["wheel_record_rewriter.py"],
+    legacy_create_init = False,
+    main = "wheel_record_rewriter.py",
 )
 
 alias(
     name = "wheel_record_rewriter",
     actual = select({
         "@platforms//os:windows": "wheel_record_rewriter.ps1",
-        "//conditions:default": "wheel_record_rewriter.sh",
+        "//conditions:default": "wheel_record_rewriter_py",
     }),
     visibility = ["//visibility:public"],
 )
 
 exports_files(
     srcs = ["deps.bzl"],
-    visibility = ["//tools/private/update_deps:__pkg__"],
+    visibility = ["//:__subpackages__"],
 )
 
-filegroup(
+distribution_filegroup(
     name = "distribution",
-    srcs = glob(
-        ["**"],
-        exclude = ["requirements.txt"],
-    ) + [
-        "//python/private/pypi/dependency_resolver:distribution",
-        "//python/private/pypi/whl_installer:distribution",
-    ],
-    visibility = ["//python/private:__pkg__"],
 )
 
 # Filegroup of bzl files that can be used by downstream rules for documentation generation
 filegroup(
     name = "bzl",
     srcs = glob(["**/*.bzl"]),
-    visibility = [
-        "//python/private:__pkg__",
-        "//tools/private:__pkg__",
-    ],
+    visibility = ["//:__subpackages__"],
 )
 
 filegroup(
     name = "requirements_txt",
     srcs = ["requirements.txt"],
-    visibility = ["//tools/private/update_deps:__pkg__"],
+    visibility = ["//:__subpackages__"],
 )
 
 bzl_library(
@@ -122,6 +127,7 @@ bzl_library(
     name = "extension",
     srcs = ["extension.bzl"],
     deps = [
+        ":default_platforms",
         ":hub_builder",
         ":hub_repository",
         ":parse_whl_name",
@@ -224,7 +230,7 @@ bzl_library(
 bzl_library(
     name = "namespace_pkgs",
     srcs = ["namespace_pkgs.bzl"],
-    deps = ["@bazel_skylib//rules:copy_file"],
+    deps = ["@bazel_skylib//rules:expand_template"],
 )
 
 bzl_library(
@@ -318,6 +324,8 @@ bzl_library(
     name = "pip_repository",
     srcs = ["pip_repository.bzl"],
     deps = [
+        ":default_platforms",
+        ":hash",
         ":parse_requirements",
         ":pep508_env",
         ":pip_repository_attrs",
@@ -327,7 +335,9 @@ bzl_library(
         "//python/private:normalize_name",
         "//python/private:repo_utils",
         "//python/private:text_util",
+        "//python/private:version",
         "@bazel_skylib//lib:sets",
+        "@toml.bzl//:toml",
     ],
 )
 
@@ -342,6 +352,7 @@ bzl_library(
     srcs = ["pkg_aliases.bzl"],
     deps = [
         ":labels",
+        ":whl_library_deps_targets",
         "//python/private:common_labels",
         "//python/private:text_util",
         "@bazel_skylib//lib:selects",
@@ -473,8 +484,10 @@ bzl_library(
     name = "whl_library",
     srcs = ["whl_library.bzl"],
     deps = [
+        ":patch_whl",
         ":pip_archive",
         ":whl_archive",
+        ":whl_file_repo",
     ],
 )
 
@@ -549,8 +562,20 @@ bzl_library(
     deps = [
         ":attrs",
         ":patch_and_extract_whl",
-        ":urllib",
         ":whl_deps_repo",
+        ":whl_file_repo",
+        "//python/private:auth",
+        "//python/private:repo_utils",
+    ],
+)
+
+bzl_library(
+    name = "whl_file_repo",
+    srcs = ["whl_file_repo.bzl"],
+    deps = [
+        ":attrs",
+        ":patch_whl",
+        ":urllib",
         "//python/private:auth",
         "//python/private:repo_utils",
     ],
@@ -626,6 +651,11 @@ bzl_library(
 bzl_library(
     name = "attrs",
     srcs = ["attrs.bzl"],
+)
+
+bzl_library(
+    name = "default_platforms",
+    srcs = ["default_platforms.bzl"],
 )
 
 bzl_library(
