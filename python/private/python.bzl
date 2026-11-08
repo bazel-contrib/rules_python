@@ -1459,9 +1459,9 @@ class.
         "coverage_tool": attr.label(
             doc = """\
 The coverage tool to use for all platforms of this Python version, e.g.
-`@pypi//coverage:extracted_whl_files`. See {attr}`py_runtime.coverage_tool` for the accepted
-targets. {attr}`single_version_platform_override.coverage_tool` takes
-precedence for a particular platform.
+`@pypi//coverage:extracted_whl_files`. See {attr}`py_runtime.coverage_tool`
+for the accepted targets. {attr}`single_version_platform_override.coverage_tool`
+takes precedence for a particular platform.
 
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
