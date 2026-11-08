@@ -467,6 +467,45 @@ def _test_single_version_override_coverage_tool(env):
 
 _tests.append(_test_single_version_override_coverage_tool)
 
+def _test_single_version_override_coverage_tool_with_platform_override(env):
+    py = parse_modules(
+        module_ctx = python_ext.mctx(
+            python_ext.module(
+                name = "my_module",
+                is_root = True,
+                single_version_override = [
+                    python_ext.single_version_override(
+                        coverage_tool = Label("@my_module//:cov_tool"),
+                        python_version = "3.12.4",
+                    ),
+                ],
+                single_version_platform_override = [
+                    python_ext.single_version_platform_override(
+                        coverage_tool = Label("@my_module//:platform_cov_tool"),
+                        platform = "x86_64-unknown-linux-gnu",
+                        python_version = "3.12.4",
+                    ),
+                ],
+                toolchain = [python_ext.toolchain(python_version = "3.12")],
+            ),
+            _rules_python_module(),
+        ),
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
+    )
+
+    # Both are kept, the platform setting takes precedence in
+    # python_register_toolchains.
+    env.expect.that_dict(py.config.kwargs["3.12.4"]).contains_exactly({
+        "coverage_tool": str(Label("@my_module//:cov_tool")),
+    })
+    env.expect.that_dict(
+        py.config.default["tool_versions"]["3.12.4"]["coverage_tool"],
+    ).contains_exactly({
+        "x86_64-unknown-linux-gnu": str(Label("@my_module//:platform_cov_tool")),
+    })
+
+_tests.append(_test_single_version_override_coverage_tool_with_platform_override)
+
 def _test_single_version_override_keeps_strip_prefix(env):
     # This version has `full` archives for the freethreaded builds, which use
     # a different strip_prefix.

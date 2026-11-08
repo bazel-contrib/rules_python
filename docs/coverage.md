@@ -84,14 +84,16 @@ the one bundled with `rules_python`, point the toolchain to the extracted files
 of the `coverage` package in your {obj}`pip.parse` hub:
 
 ```starlark
-python.single_version_platform_override(
+python.single_version_override(
     coverage_tool = "@pypi//coverage:extracted_whl_files",
-    platform = "x86_64-unknown-linux-gnu",
     python_version = "3.13.2",
 )
 ```
 
-Or set {attr}`py_runtime.coverage_tool` to
+In `WORKSPACE`, pass the same `coverage_tool` to
+{obj}`python_register_toolchains`. Use
+{obj}`python.single_version_platform_override` to set it for a single platform
+only, or set {attr}`py_runtime.coverage_tool` to
 `@pypi//coverage:extracted_whl_files` when defining your own runtime.
 
 :::{note}
