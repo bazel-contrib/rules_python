@@ -17,6 +17,8 @@ load(":requirements_files_by_platform.bzl", "requirements_files_by_platform")
 load(":whl_config_setting.bzl", "whl_config_setting")
 load(":whl_repo_name.bzl", "pypi_repo_name", "whl_repo_name")
 
+_PUBLIC_INDEX_URL = "https://pypi.org/simple"
+
 def _major_minor_version(version_str):
     ver = version.parse(version_str)
     return "{}.{}".format(ver.release[0], ver.release[1])
@@ -381,11 +383,20 @@ def _set_get_index_urls(self, mctx, pip_attr, python_version):
     # active. Without this, an unsubstituted template like ``$RULES_PYTHON_PIP_INDEX_URL``
     # is treated as truthy and the mode is forced on, even when the env var
     # would expand to the empty string.
-    default_index_url = envsubst(
+    #
+    # Only the resolved value is used for these decisions. The unresolved
+    # template is passed on, so that the credentials that the env vars may
+    # contain do not leak into the whl_library args.
+    resolved_index_url = envsubst(
         pip_attr.experimental_index_url,
         pip_attr.envsubst,
         mctx.getenv,
-    ) or self._config.index_url
+    )
+    if resolved_index_url:
+        default_index_url = pip_attr.experimental_index_url
+    else:
+        resolved_index_url = self._config.index_url
+        default_index_url = self._config.index_url
     default_extra_index_urls = pip_attr.experimental_extra_index_urls or []
 
     if not default_index_url:
@@ -400,7 +411,11 @@ def _set_get_index_urls(self, mctx, pip_attr, python_version):
     self._get_index_urls[python_version] = lambda ctx, distributions, *, index_url = None, extra_index_urls = None: self._simpleapi_download_fn(
         ctx,
         attr = struct(
-            index_url = _select_default_index(index_url, default_index_url).rstrip("/"),
+            index_url = _select_default_index(
+                index_url,
+                default_index_url,
+                is_default_public = resolved_index_url.rstrip("/") == _PUBLIC_INDEX_URL,
+            ),
             extra_index_urls = [
                 x.rstrip("/")
                 for x in (extra_index_urls or default_extra_index_urls)
@@ -421,13 +436,13 @@ def _set_get_index_urls(self, mctx, pip_attr, python_version):
     )
     return True
 
-def _select_default_index(index, default):
+def _select_default_index(index, default, *, is_default_public):
     # We will use the value from the requirements file by default
     index = (index or default).rstrip("/")
     default = default.rstrip("/")
 
     # If the default is set to something else than the public mirror, use that
-    return index if default == "https://pypi.org/simple" else default
+    return index if is_default_public else default
 
 def _host_interpreter_name(python_version):
     return "python_{}_host".format(python_version.replace(".", "_"))

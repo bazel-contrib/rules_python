@@ -907,15 +907,16 @@ simple==0.0.1 --hash=sha256:deadb00f
             expect_extra_index_urls = [],
             expect_url = "pypi.org/simple/",
         ),
-        # When the env var is set, the resolved value drives the
-        # experimental index-url path.
+        # When the env var is set, the experimental index-url path is
+        # used, but the unresolved template is passed on, because the
+        # resolved value may contain credentials.
         struct(
             requirements_txt = "simple==0.0.1 --hash=sha256:deadb00f",
             experimental_index_url = "${RULES_PYTHON_PIP_INDEX_URL:-}",
             experimental_extra_index_urls = [],
             envsubst = ["RULES_PYTHON_PIP_INDEX_URL"],
             environ = {"RULES_PYTHON_PIP_INDEX_URL": "https://from-env.example.com/simple"},
-            expect_index_url = "https://from-env.example.com/simple",
+            expect_index_url = "${RULES_PYTHON_PIP_INDEX_URL:-}",
             expect_extra_index_urls = [],
             expect_url = "from-env.example.com/simple/",
         ),
