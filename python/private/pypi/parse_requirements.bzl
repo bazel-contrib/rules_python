@@ -26,7 +26,6 @@ file for the host platform to be backwards compatible with the legacy
 behavior.
 """
 
-load("@bazel_skylib//lib:types.bzl", "types")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
 load("//python/uv/private:uv_lock_to_requirements.bzl", "uv_lock_extras_map")  # buildifier: disable=bzl-visibility
@@ -163,8 +162,7 @@ def _uv_lock_package_dependencies(pkg):
 
 def _uv_lock_dep_extras(dep):
     """Return the extras that a uv.lock dependency edge requests."""
-    extras = dep.get("extra", [])
-    return [extras] if types.is_string(extras) else extras
+    return dep.get("extra", [])
 
 def _uv_lock_requested_extras(packages):
     """Return the extras that the dependents request for each package.
