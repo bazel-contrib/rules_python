@@ -39,3 +39,31 @@ py_test(
     target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
     deps = ["//python/runfiles"],
 )
+
+# The same program, but the coverage tool is the `coverage` package from the
+# `@coverage_pip` hub, see the `MODULE.bazel` file.
+py_reconfig_test(
+    name = "instrumented_pypi",
+    srcs = ["instrumented.py"],
+    collect_code_coverage = "true",
+    main = "instrumented.py",
+    python_version = "3.13.13",
+    tags = ["manual"],
+    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    deps = [":lib"],
+)
+
+py_test(
+    name = "coverage_from_pypi_test",
+    srcs = ["coverage_collection_test.py"],
+    data = [
+        "lib.py",
+        ":instrumented_pypi",
+    ],
+    env = {
+        "INSTRUMENTED": "$(rlocationpath :instrumented_pypi)",
+    },
+    main = "coverage_collection_test.py",
+    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    deps = ["//python/runfiles"],
+)
