@@ -1,10 +1,9 @@
 """Create the `select_whl` target platform for a hermetic python toolchain."""
 
+load("//python:versions.bzl", "FREETHREADED")
 load("//python/private:version.bzl", "version")
 load(":pep508_env.bzl", "env")
 load(":platform.bzl", "platform")
-
-_FREETHREADED = "-freethreaded"
 
 # The CPU part of the toolchain platform triple to the `platform_machine` like
 # value used in the wheel platform tags. If a CPU is not listed here, then only
@@ -13,7 +12,6 @@ _LINUX_CPUS = {
     "aarch64": "aarch64",
     "armv7": "armv7l",
     "i386": "i686",
-    "i686": "i686",
     "ppc64le": "ppc64le",
     "riscv64": "riscv64",
     "s390x": "s390x",
@@ -27,18 +25,11 @@ _MACOS_CPUS = {
     "x86_64": "x86_64",
 }
 
-_WINDOWS_CPUS = {
-    "aarch64": "win_arm64",
-    "i686": "win32",
-    "x86_64": "win_amd64",
-}
-
 # The `@platforms//cpu` values used in the PEP508 env.
 _PLATFORMS_CPUS = {
     "arm64e": "aarch64",
     "armv7": "armv7",
     "i386": "x86_32",
-    "i686": "x86_32",
     "ppc64le": "ppc64le",
 }
 
@@ -61,25 +52,31 @@ def python_toolchain_platform(*, python_version, platform_name):
         with the `env`, `whl_abi_tags` and `whl_platform_tags` populated for
         the given python version and platform.
     """
-    freethreaded = platform_name.endswith(_FREETHREADED)
-    triple = platform_name[:-len(_FREETHREADED)] if freethreaded else platform_name
+    triple = platform_name.removesuffix(FREETHREADED)
+    freethreaded = triple != platform_name
     cpu, _, tail = triple.partition("-")
 
     if tail == "apple-darwin":
         os_name = "osx"
-        whl_platform_tags = [
-            "macosx_*_universal2",
-            "macosx_*_{}".format(_MACOS_CPUS[cpu]),
-        ] if cpu in _MACOS_CPUS else []
-    elif tail.endswith("-windows-msvc"):
-        os_name = "windows"
-        whl_platform_tags = [_WINDOWS_CPUS[cpu]] if cpu in _WINDOWS_CPUS else []
+        machine = _MACOS_CPUS.get(cpu)
+        whl_platform_tags = []
+        if machine:
+            whl_platform_tags = [
+                "macosx_*_universal2",
+                "macosx_*_{}".format(machine),
+            ]
     elif tail.endswith("-linux-gnu"):
         os_name = "linux"
-        whl_platform_tags = ["manylinux_*_{}".format(_LINUX_CPUS[cpu])] if cpu in _LINUX_CPUS else []
+        machine = _LINUX_CPUS.get(cpu)
+        whl_platform_tags = []
+        if machine:
+            whl_platform_tags = ["manylinux_*_{}".format(machine)]
     elif tail.endswith("-linux-musl"):
         os_name = "linux"
-        whl_platform_tags = ["musllinux_*_{}".format(_LINUX_CPUS[cpu])] if cpu in _LINUX_CPUS else []
+        machine = _LINUX_CPUS.get(cpu)
+        whl_platform_tags = []
+        if machine:
+            whl_platform_tags = ["musllinux_*_{}".format(machine)]
     else:
         fail("Unsupported python toolchain platform: '{}'".format(platform_name))
 
@@ -87,13 +84,14 @@ def python_toolchain_platform(*, python_version, platform_name):
     abi = "cp{}{}".format(v.release[0], v.release[1])
     whl_abi_tags = [abi + "t"] if freethreaded else ["abi3", abi]
 
+    arch = _PLATFORMS_CPUS.get(cpu, cpu)
     return platform(
         name = platform_name,
-        arch_name = _PLATFORMS_CPUS.get(cpu, cpu),
+        arch_name = arch,
         os_name = os_name,
         env = env(
             os = os_name,
-            arch = _PLATFORMS_CPUS.get(cpu, cpu),
+            arch = arch,
             python_version = python_version,
         ),
         whl_abi_tags = whl_abi_tags,

@@ -27,7 +27,7 @@ load("//python/private/pypi:select_whl.bzl", "select_whl")
 #
 # Newer coverage versions do not support older python versions, so each version
 # has a `python_full_version` marker for when it should be used.
-# START: maintained by 'bazel run //dev/update_deps:update_coverage_deps <version>'
+# START: maintained by 'bazel run //dev/update_deps:update_coverage_deps'
 _coverage_wheels = [
     struct(
         url = "https://files.pythonhosted.org/packages/e5/6c/3a3f7a46888e69d18abe3ccc6fe4cb16cccb1e6a2f99698931dafca489e6/coverage-7.10.7-cp310-cp310-macosx_10_9_x86_64.whl",
@@ -1135,7 +1135,7 @@ _coverage_wheels = [
         marker = "python_full_version >= '3.11'",
     ),
 ]
-# END: maintained by 'bazel run //dev/update_deps:update_coverage_deps <version>'
+# END: maintained by 'bazel run //dev/update_deps:update_coverage_deps'
 
 _coverage_patch = Label("//python/private:coverage.patch")
 
@@ -1157,24 +1157,18 @@ def select_coverage_whl(*, python_version, platform):
 
     whls = []
     for whl in _coverage_wheels:
-        marker = getattr(whl, "marker", "")
-        if marker and not evaluate(marker, env = target_platform.env):
+        if whl.marker and not evaluate(whl.marker, env = target_platform.env):
             continue
-
-        algo, _, digest = whl.hash.partition(":")
-        if algo != "sha256":
-            fail("BUG: unsupported hash algorithm '{}' for {}".format(algo, whl.url))
 
         whls.append(struct(
             filename = whl.url.rpartition("/")[2],
             url = whl.url,
-            sha256 = digest,
+            sha256 = whl.hash.removeprefix("sha256:"),
         ))
 
     whl = select_whl(
         whls = whls,
         python_version = python_version,
-        implementation_name = target_platform.env["implementation_name"],
         whl_platform_tags = target_platform.whl_platform_tags,
         whl_abi_tags = target_platform.whl_abi_tags,
         logger = repo_utils.logger(name = "coverage_dep", verbosity_level = "WARN"),
@@ -1203,8 +1197,9 @@ def coverage_dep(name, python_version, platform, visibility):
 
     whl = select_coverage_whl(python_version = python_version, platform = platform)
 
-    # NOTE @aignas 2026-07-27: if the default is matched, then the same file may be extracted
-    # multiple times. The wheel is small enough to not matter in most cases.
+    # NOTE @aignas 2026-07-27: if the `py3-none-any` wheel is selected, then the
+    # same file may be extracted multiple times. The wheel is small enough to
+    # not matter in most cases.
 
     maybe(
         http_archive,

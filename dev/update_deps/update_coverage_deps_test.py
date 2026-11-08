@@ -42,19 +42,16 @@ def test_get_whls():
 
     assert got == [
         Whl(
-            filename="coverage-1.0.0-cp39-cp39-win_amd64.whl",
             url="https://example.org/coverage-1.0.0-cp39-cp39-win_amd64.whl",
             hash="sha256:bb",
             marker="python_full_version < '3.15'",
         ),
         Whl(
-            filename="coverage-1.0.0-py3-none-any.whl",
             url="https://example.org/coverage-1.0.0-py3-none-any.whl",
             hash="sha256:aa",
             marker="python_full_version < '3.15'",
         ),
         Whl(
-            filename="coverage-2.0.0-py3-none-any.whl",
             url="https://example.org/coverage-2.0.0-py3-none-any.whl",
             hash="sha256:cc",
             marker="(python_full_version >= '3.15' and sys_platform == 'linux') or (python_full_version >= '3.15' and sys_platform != 'linux')",
@@ -71,13 +68,11 @@ def test_render():
         Whls(
             [
                 Whl(
-                    filename="foo.whl",
                     url="https://example.org/foo.whl",
                     hash="sha256:aa",
-                    marker='python_version < "3.15"',
+                    marker="python_version < '3.15'",
                 ),
                 Whl(
-                    filename="bar.whl",
                     url="https://example.org/bar.whl",
                     hash="sha256:bb",
                     marker="",
@@ -93,11 +88,12 @@ def test_render():
     struct(
         url = "https://example.org/foo.whl",
         hash = "sha256:aa",
-        marker = 'python_version < "3.15"',
+        marker = "python_version < '3.15'",
     ),
     struct(
         url = "https://example.org/bar.whl",
         hash = "sha256:bb",
+        marker = "",
     ),
 ]"""
     )

@@ -36,25 +36,20 @@ from dev.update_deps.update_file import update_file
 
 @dataclass
 class Whl:
-    filename: str
     url: str
     hash: str
     marker: str
 
     def __repr__(self):
-        lines = [
-            "struct(",
-            f'    url = "{self.url}",',
-            f'    hash = "{self.hash}",',
-        ]
-        if self.marker:
-            if '"' in self.marker and "'" not in self.marker:
-                marker = f"'{self.marker}'"
-            else:
-                marker = json.dumps(self.marker)
-            lines.append(f"    marker = {marker},")
-        lines.append("),")
-        return "\n".join(lines)
+        return "\n".join(
+            [
+                "struct(",
+                f'    url = "{self.url}",',
+                f'    hash = "{self.hash}",',
+                f"    marker = {json.dumps(self.marker)},",
+                "),",
+            ]
+        )
 
 
 @dataclass
@@ -85,17 +80,15 @@ def get_whls(uv_lock: dict[str, Any], name: str) -> list[Whl]:
 
         marker = _marker(pkg.get("resolution-markers", []))
         for wheel in pkg.get("wheels", []):
-            url = wheel["url"]
             whls.append(
                 Whl(
-                    filename=url.rpartition("/")[2],
-                    url=url,
+                    url=wheel["url"],
                     hash=wheel["hash"],
                     marker=marker,
                 )
             )
 
-    whls.sort(key=lambda x: x.filename)
+    whls.sort(key=lambda x: x.url.rpartition("/")[2])
     return whls
 
 
@@ -139,8 +132,8 @@ def main():
     update_file(
         path=args.update_file,
         snippet="_coverage_wheels = {}\n".format(repr(Whls(whls))),
-        start_marker="# START: maintained by 'bazel run //dev/update_deps:update_coverage_deps <version>'",
-        end_marker="# END: maintained by 'bazel run //dev/update_deps:update_coverage_deps <version>'",
+        start_marker="# START: maintained by 'bazel run //dev/update_deps:update_coverage_deps'",
+        end_marker="# END: maintained by 'bazel run //dev/update_deps:update_coverage_deps'",
         dry_run=args.dry_run,
     )
 
