@@ -823,12 +823,44 @@ previously-generated or hand-created rules.
 (directive-python-resolve-sibling-imports)=
 ## `python_resolve_sibling_imports`
 
+Controls whether an absolute import can be resolved to a module in the same
+directory (a sibling module). It defaults to `false`, which follows the
+Python 3 import rules: `import foo` refers to a top-level `foo` module, not to a
+`foo.py` next to the importing file.
+
+For example, given:
+
+```
+pkg/
+├── BUILD.bazel
+├── foo.py
+└── typing.py
+```
+
+and `pkg/foo.py` containing:
+
+```python
+from typing import TYPE_CHECKING
+```
+
+Gazelle resolves the import to the standard library `typing` module and does
+not add a dependency on `pkg/typing.py` ({gh-issue}`3097`). To depend on the
+sibling module, use a relative import, e.g. `from .typing import MyType`,
+together with the
+[`python_experimental_allow_relative_imports`](#directive-python-experimental-allow-relative-imports)
+directive.
+
+Setting the directive to `true` restores the behavior from before 1.6.0
+(Python 2's implicit relative imports), where absolute imports such as
+`import a` or `from b import run` in `pkg/foo.py` are resolved to the sibling
+`pkg/a.py` and `pkg/b.py` modules:
+
+```starlark
+# gazelle:python_resolve_sibling_imports true
+```
+
 :::{versionadded} 1.6.0
 {gh-pr}`3106`
-:::
-
-:::{error}
-Detailed docs are not yet written.
 :::
 
 (directive-python-include-ancestor-conftest)=

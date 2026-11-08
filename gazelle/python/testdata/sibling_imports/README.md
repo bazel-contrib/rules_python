@@ -1,8 +1,8 @@
 # Sibling imports
 
 This test case asserts that imports from sibling modules are resolved correctly
-when the `python_resolve_sibling_imports` directive is enabled (default
-behavior). It covers 3 different types of imports in `pkg/unit_test.py`:
+when the `python_resolve_sibling_imports` directive is enabled. It
+covers 3 different types of imports in `pkg/unit_test.py`:
 
 - `import a` - resolves to the sibling `a.py` in the same package
 - `import test_util` - resolves to the sibling `test_util.py` in the same
