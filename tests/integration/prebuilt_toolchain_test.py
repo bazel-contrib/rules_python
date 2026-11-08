@@ -80,7 +80,13 @@ class PrebuiltToolchainTest(runner.TestCase):
             "//:zipapp_test",
         )
 
-        for mnemonic in ("PyZipAppCreateExecutableZip", "PyZipAppCreateZip"):
+        for mnemonic in (
+            # keep-sorted start
+            "PyZipAppCreateExecutableZip",
+            "PyZipAppCreateMainPy",
+            "PyZipAppCreateZip",
+            # keep-sorted end
+        ):
             with self.subTest(mnemonic=mnemonic):
                 aquery_res = self.run_bazel(
                     "aquery",

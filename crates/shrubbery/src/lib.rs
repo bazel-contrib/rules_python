@@ -5,11 +5,13 @@
 #![deny(clippy::expect_used, clippy::unwrap_used)]
 
 use std::ffi::OsString;
+use std::process::ExitCode;
 
 /// Canonical subcommand names supported by `shrubbery`.
 pub const SUBCOMMANDS: &[&str] = &[
     // keep-sorted start
     "exe_zip_maker",
+    "zip_main_maker",
     "zipper",
     // keep-sorted end
 ];
@@ -29,7 +31,7 @@ fn print_usage(prog_name: &str, to_stderr: bool) {
 
 /// Dispatches CLI arguments (including `argv[0]`) to the requested subcommand and returns the
 /// process exit code.
-pub fn run_cli<I, T>(args: I) -> i32
+pub fn run_cli<I, T>(args: I) -> ExitCode
 where
     I: IntoIterator<Item = T>,
     T: Into<OsString>,
@@ -42,23 +44,24 @@ where
 
     let Some(sub_os) = iter.next() else {
         print_usage(&prog_name, true);
-        return 1;
+        return ExitCode::FAILURE;
     };
     let sub_raw = sub_os.to_string_lossy();
     if sub_raw == "-h" || sub_raw == "--help" || sub_raw == "help" {
         print_usage(&prog_name, false);
-        return 0;
+        return ExitCode::SUCCESS;
     }
 
     match sub_raw.as_ref() {
         // keep-sorted start
         "exe_zip_maker" => exe_zip_maker_lib::run_cli(iter),
+        "zip_main_maker" => zip_main_maker_lib::run_cli(iter),
         "zipper" => zipper_lib::run_cli(iter),
         // keep-sorted end
         _ => {
             eprintln!("shrubbery: error: unknown subcommand '{}'", sub_raw);
             print_usage(&prog_name, true);
-            1
+            ExitCode::FAILURE
         }
     }
 }

@@ -31,6 +31,11 @@ description: rules_python-specific Bzlmod, PyPI, and rule usage invariants
   `repr()` for Starlark calls; use `json.encode_indent()` for data constants.
 * **`@bazel_tools` `bzl_library` Deps**: Use `"//python/private:bazel_tools"` in
   `bzl_library` `deps` for files loading `@bazel_tools//...`.
+* **`# buildifier: disable=bzl-visibility` on Internal `/private/` Loads**:
+  Add trailing `# buildifier: disable=bzl-visibility` comments when `tests/` or
+  internal non-`python/` packages (such as `crates/**` and `tools/**`) load
+  repo-internal `/private/` helpers like
+  `//python/private:distribution_filegroup.bzl`.
 
 ## WORKSPACE & Bzlmod Parity
 * **Extend Existing Rules Over Adding Parallel Rules**: When bringing a Bzlmod

@@ -10,6 +10,7 @@ rust_library(
     srcs = ["src/lib.rs"],
     edition = "2024",
     deps = [
+        "//crates/zip_manifest",
         "@crates//:anyhow",
         "@crates//:lexopt",
         "@crates//:zip",

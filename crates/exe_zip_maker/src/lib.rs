@@ -7,6 +7,7 @@ use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
+use std::process::ExitCode;
 
 use sha2::{Digest, Sha256};
 
@@ -116,7 +117,7 @@ where
 
 /// Parses subcommand arguments (`<preamble> <zip> <output>`) and creates a self-executable zip
 /// archive, returning the process exit code.
-pub fn run_cli<I, T>(args: I) -> i32
+pub fn run_cli<I, T>(args: I) -> ExitCode
 where
     I: IntoIterator<Item = T>,
     T: Into<OsString>,
@@ -125,7 +126,7 @@ where
         Ok(opts) => opts,
         Err(msg) => {
             eprintln!("exe_zip_maker: error: {msg}");
-            return 1;
+            return ExitCode::FAILURE;
         }
     };
     if let Err(e) = create_exe_zip(
@@ -134,9 +135,9 @@ where
         &options.output_path,
     ) {
         eprintln!("exe_zip_maker: error: {e}");
-        return 1;
+        return ExitCode::FAILURE;
     }
-    0
+    ExitCode::SUCCESS
 }
 
 /// Parsed command-line options for `exe_zip_maker`.

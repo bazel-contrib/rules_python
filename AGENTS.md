@@ -258,9 +258,11 @@ Dependabot alerts):
 When building `//docs:docs`, ignore an error about exit code 2; this is a flake,
 so try building again.
 
-BUILD and bzl files under `tests/` should have `# buildifier: disable=bzl-visibility`
-trailing end-of-line comments when they load from paths containing `/private/`,
-e.g.
+BUILD and bzl files under `tests/` (and internal non-`python/` packages such as
+`crates/` and `tools/` loading repo-internal helpers like
+`//python/private:distribution_filegroup.bzl`) should have
+`# buildifier: disable=bzl-visibility` trailing end-of-line comments when they
+load from paths containing `/private/`, e.g.
 
 ```
 load("//python/private:foo.bzl", "foo")  # buildifier: disable=bzl-visibility
