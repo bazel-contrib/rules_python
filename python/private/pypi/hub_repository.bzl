@@ -28,14 +28,16 @@ exports_files(["requirements.bzl"])
 def _impl(rctx):
     if rctx.attr.hide_unexposed_packages:
         bzl_packages = rctx.attr.packages
+        exposed_packages = bzl_packages
     else:
         bzl_packages = rctx.attr.packages or rctx.attr.whl_map.keys()
+        exposed_packages = None
     aliases = render_multiplatform_pkg_aliases(
         aliases = {
             key: _whl_config_settings_from_json(values)
             for key, values in rctx.attr.whl_map.items()
         },
-        exposed_packages = bzl_packages if rctx.attr.hide_unexposed_packages else None,
+        exposed_packages = exposed_packages,
         extra_hub_aliases = rctx.attr.extra_hub_aliases,
         requirement_cycles = rctx.attr.groups,
         platform_config_settings = rctx.attr.platform_config_settings,

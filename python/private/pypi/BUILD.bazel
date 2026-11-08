@@ -639,6 +639,7 @@ bzl_library(
     deps = [
         ":pep508_requirement",
         "//python/private:normalize_name",
+        "@bazel_skylib//lib:types",
     ],
 )
 
