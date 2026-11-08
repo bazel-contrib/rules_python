@@ -369,7 +369,6 @@ You cannot use both the additive_build_content and additive_build_content_file a
             module_name = hub.module_name,
             pyproject = hub_pyproject.get(hub.name),
             packages = out.whl_map.keys(),
-            exposed_packages = out.exposed_packages,
         )
 
     configured_hubs = hub_exposure(

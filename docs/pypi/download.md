@@ -171,8 +171,9 @@ dependencies of `numpy` are only used through `@pypi_hub//numpy`. The
 
 The {attr}`pip.configure.dependency_groups` attribute defaults to `["*"]`,
 which selects every group. Use `["*", "transitive"]` to expose all of the
-packages of the hub, including the transitive dependencies. Selecting the
-transitive dependencies of only some of the groups is not supported.
+packages of the hub, including the transitive dependencies, which is the same
+as not configuring the hub. Selecting the transitive dependencies of only some
+of the groups is not supported.
 
 Multiple tags for the same hub are combined. Only the root module and the
 module that created the hub can configure it; if both do, the root module
