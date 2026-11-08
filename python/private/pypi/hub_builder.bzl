@@ -387,16 +387,15 @@ def _set_get_index_urls(self, mctx, pip_attr, python_version):
     # Only the resolved value is used for these decisions. The unresolved
     # template is passed on, so that the credentials that the env vars may
     # contain do not leak into the whl_library args.
+    default_index_url = pip_attr.experimental_index_url
     resolved_index_url = envsubst(
-        pip_attr.experimental_index_url,
+        default_index_url,
         pip_attr.envsubst,
         mctx.getenv,
     )
-    if resolved_index_url:
-        default_index_url = pip_attr.experimental_index_url
-    else:
-        resolved_index_url = self._config.index_url
+    if not resolved_index_url:
         default_index_url = self._config.index_url
+        resolved_index_url = self._config.index_url
     default_extra_index_urls = pip_attr.experimental_extra_index_urls or []
 
     if not default_index_url:
