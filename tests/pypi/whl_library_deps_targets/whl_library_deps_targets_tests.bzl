@@ -158,13 +158,13 @@ def _test_whl_library_deps_targets_repo_aliases(env):
         call["name"]: str(call["actual"])
         for call in alias_calls
     }).contains_exactly({
-        "data": "@@srcs//:data",
-        "dist_info": "@@srcs//:dist_info",
-        "extracted_whl_files": "@@srcs//:extracted_whl_files",
-        "pkg": "@@srcs//:srcs",
-        "srcs": "@@srcs//:srcs",
-        "whl": "@@srcs//:whl_file",
-        "whl_file": "@@srcs//:whl_file",
+        "data": str(Label("@@srcs//:data")),
+        "dist_info": str(Label("@@srcs//:dist_info")),
+        "extracted_whl_files": str(Label("@@srcs//:extracted_whl_files")),
+        "pkg": str(Label("@@srcs//:srcs")),
+        "srcs": str(Label("@@srcs//:srcs")),
+        "whl": str(Label("@@srcs//:whl_file")),
+        "whl_file": str(Label("@@srcs//:whl_file")),
     })
 
 _tests.append(_test_whl_library_deps_targets_repo_aliases)
