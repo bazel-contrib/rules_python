@@ -249,6 +249,7 @@ bzl_library(
         "//python/private:normalize_name",
         "//python/private:repo_utils",
         "//python/uv/private:uv_lock_to_requirements",
+        "@bazel_skylib//lib:types",
     ],
 )
 

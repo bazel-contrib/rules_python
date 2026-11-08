@@ -26,6 +26,7 @@ file for the host platform to be backwards compatible with the legacy
 behavior.
 """
 
+load("@bazel_skylib//lib:types.bzl", "types")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
 load("//python/uv/private:uv_lock_to_requirements.bzl", "uv_lock_extras_map")  # buildifier: disable=bzl-visibility
@@ -85,6 +86,11 @@ def parse_requirements(
            containing: `distribution`, `extra_pip_args`, `requirement_line`,
            `target_platforms`, `filename`, `digest`, `url`, `yanked`. The `digest`
            is a `<algo>:<digest>` string or empty if the artifact digest is unknown.
+         * `requires_dist`: {type}`list[str] | None` The dependencies of the
+           package from the `uv.lock` file as PEP 508 requirement strings.
+           `None` if they are unknown, i.e. the requirements files are used or
+           the `uv.lock` entries of the package have different dependencies,
+           then the wheel `METADATA` is used instead.
     """
     if uv_lock and toml_decode:
         uv_lock = toml_decode(ctx.read(uv_lock))
@@ -154,6 +160,65 @@ def _uv_lock_package_dependencies(pkg):
         for group in pkg.get(table, {}).values():
             deps.extend(group)
     return deps
+
+def _uv_lock_dep_extras(dep):
+    """Return the extras that a uv.lock dependency edge requests."""
+    extras = dep.get("extra", [])
+    return [extras] if types.is_string(extras) else extras
+
+def _uv_lock_requested_extras(packages):
+    """Return the extras that the dependents request for each package.
+
+    Args:
+        packages: {type}`list[dict]` The uv.lock `package` entries.
+
+    Returns:
+        {type}`dict[str, dict[str, None]]` The requested extras keyed by the
+        normalized package name.
+    """
+    requested = {}
+    for pkg in packages:
+        for dep in _uv_lock_package_dependencies(pkg):
+            extras = requested.setdefault(normalize_name(dep["name"]), {})
+            for extra in _uv_lock_dep_extras(dep):
+                extras[extra] = None
+    return requested
+
+def _uv_lock_requires_dist(pkg, extras):
+    """Render the dependencies of a uv.lock entry as PEP 508 requirements.
+
+    The optional dependencies are included only for the requested extras, so
+    the requirements need no `extra` markers. The development dependency
+    groups are left out, because only the workspace members have them.
+
+    Args:
+        pkg: {type}`dict` The uv.lock `package` entry.
+        extras: {type}`dict[str, None]` The extras that the dependents of the
+            package request.
+
+    Returns:
+        {type}`list[str]` The sorted and unique requirement strings.
+    """
+    deps = list(pkg.get("dependencies", []))
+    for extra, extra_deps in pkg.get("optional-dependencies", {}).items():
+        if extra in extras:
+            deps.extend(extra_deps)
+
+    name = normalize_name(pkg["name"])
+    requires_dist = {}
+    for dep in deps:
+        if normalize_name(dep["name"]) == name:
+            # The self edges only request extras, which are already resolved.
+            continue
+
+        line = dep["name"]
+        dep_extras = _uv_lock_dep_extras(dep)
+        if dep_extras:
+            line += "[{}]".format(",".join(sorted(dep_extras)))
+        if dep.get("marker"):
+            line += "; " + dep["marker"]
+        requires_dist[line] = None
+    return sorted(requires_dist)
 
 def _uv_lock_package_platforms(packages, all_platforms, platforms):
     """Find each lock entry's platforms by walking dependency edges from roots.
@@ -242,12 +307,14 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
         fail("BUG: platforms must be configured")
 
     package_platforms = _uv_lock_package_platforms(uv_lock["package"], all_platforms, platforms)
+    requested_extras = _uv_lock_requested_extras(uv_lock["package"])
     for i, pkg in enumerate(uv_lock["package"]):
         name = pkg["name"]
         version = pkg["version"]
         norm_name = normalize_name(name)
         entry = uv_packages.setdefault(norm_name, {
             "distribution": name,
+            "requires_dist": {},
             "resolved_srcs": [],
             "versions": {},
         })
@@ -328,6 +395,14 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
             elif git_struct:
                 plat_to_src[p] = git_struct
 
+        if plat_to_src:
+            # Only the entries used on the target platforms matter.
+            requires_dist = _uv_lock_requires_dist(
+                pkg,
+                requested_extras.get(norm_name, {}),
+            )
+            entry["requires_dist"][tuple(requires_dist)] = None
+
         # Group platforms by resolved source
         src_to_plats = {}
         for p, src in plat_to_src.items():
@@ -364,6 +439,14 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
     ret = []
     for norm_name, info in sorted(uv_packages.items()):
         versions = sorted(info["versions"].keys())
+        requires_dist = None
+        if len(info["requires_dist"]) == 1:
+            requires_dist = list(info["requires_dist"].keys()[0])
+        elif info["requires_dist"]:
+            logger.debug(lambda: (
+                "The uv.lock entries for '{}' have different dependencies, " +
+                "using the wheel METADATA instead"
+            ).format(norm_name))
         item = struct(
             name = norm_name,
             # Only expose packages that resolved to at least one source. uv
@@ -377,6 +460,7 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
             is_multiple_versions = len(versions) > 1,
             index_url = info["index_url"],
             srcs = info["resolved_srcs"],
+            requires_dist = requires_dist,
         )
         ret.append(item)
 
@@ -580,6 +664,7 @@ def _parse_requirements_from_req_files(
             is_multiple_versions = len(reqs.values()) > 1,
             index_url = pkg_sources.index_url if pkg_sources else "",
             srcs = package_srcs,
+            requires_dist = None,
         )
         ret.append(item)
         if not item.is_exposed and logger:

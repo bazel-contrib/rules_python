@@ -187,6 +187,7 @@ def _test_simple(env):
             index_url = "",
             is_exposed = True,
             is_multiple_versions = False,
+            requires_dist = None,
             srcs = [
                 struct(
                     distribution = "foo",
@@ -221,6 +222,7 @@ def _test_direct_urls_integration(env):
             index_url = "",
             is_exposed = True,
             is_multiple_versions = True,
+            requires_dist = None,
             srcs = [
                 struct(
                     distribution = "foo",
@@ -263,6 +265,7 @@ def _test_direct_urls_no_extract(env):
             index_url = "",
             is_exposed = True,
             is_multiple_versions = True,
+            requires_dist = None,
             srcs = [
                 struct(
                     distribution = "foo",
@@ -304,6 +307,7 @@ def _test_extra_pip_args(env):
             index_url = "",
             is_exposed = True,
             is_multiple_versions = False,
+            requires_dist = None,
             srcs = [
                 struct(
                     distribution = "foo",
@@ -336,6 +340,7 @@ def _test_dupe_requirements(env):
             index_url = "",
             is_exposed = True,
             is_multiple_versions = False,
+            requires_dist = None,
             srcs = [
                 struct(
                     distribution = "foo",
@@ -368,6 +373,7 @@ def _test_multi_os(env):
             index_url = "",
             is_exposed = False,
             is_multiple_versions = False,
+            requires_dist = None,
             srcs = [
                 struct(
                     distribution = "bar",
@@ -386,6 +392,7 @@ def _test_multi_os(env):
             index_url = "",
             is_exposed = True,
             is_multiple_versions = True,
+            requires_dist = None,
             srcs = [
                 struct(
                     distribution = "foo",
@@ -434,6 +441,7 @@ def _test_multi_os_legacy(env):
             index_url = "",
             is_exposed = False,
             is_multiple_versions = False,
+            requires_dist = None,
             srcs = [
                 struct(
                     distribution = "bar",
@@ -452,6 +460,7 @@ def _test_multi_os_legacy(env):
             index_url = "",
             is_exposed = True,
             is_multiple_versions = True,
+            requires_dist = None,
             srcs = [
                 struct(
                     distribution = "foo",
@@ -520,6 +529,7 @@ def _test_env_marker_resolution(env):
             index_url = "",
             is_exposed = True,
             is_multiple_versions = False,
+            requires_dist = None,
             srcs = [
                 struct(
                     distribution = "bar",
@@ -538,6 +548,7 @@ def _test_env_marker_resolution(env):
             index_url = "",
             is_exposed = False,
             is_multiple_versions = False,
+            requires_dist = None,
             srcs = [
                 struct(
                     distribution = "foo",
@@ -569,6 +580,7 @@ def _test_different_package_version(env):
             index_url = "",
             is_exposed = True,
             is_multiple_versions = True,
+            requires_dist = None,
             srcs = [
                 struct(
                     distribution = "foo",
@@ -610,6 +622,7 @@ def _test_different_package_extras(env):
             index_url = "",
             is_exposed = True,
             is_multiple_versions = True,
+            requires_dist = None,
             srcs = [
                 struct(
                     distribution = "foo",
@@ -650,6 +663,7 @@ def _test_optional_hash(env):
             index_url = "",
             is_exposed = True,
             is_multiple_versions = False,
+            requires_dist = None,
             srcs = [
                 struct(
                     distribution = "bar",
@@ -668,6 +682,7 @@ def _test_optional_hash(env):
             index_url = "",
             is_exposed = True,
             is_multiple_versions = False,
+            requires_dist = None,
             srcs = [
                 struct(
                     distribution = "foo",
@@ -698,6 +713,7 @@ def _test_git_sources(env):
             index_url = "",
             is_exposed = True,
             is_multiple_versions = False,
+            requires_dist = None,
             srcs = [
                 struct(
                     distribution = "foo",
@@ -777,6 +793,7 @@ def _test_overlapping_shas_with_index_results(env):
             index_url = "https://example.com",
             is_exposed = True,
             is_multiple_versions = True,
+            requires_dist = None,
             srcs = [
                 struct(
                     distribution = "foo",
@@ -843,6 +860,7 @@ def _test_non_sha256_hash_matching(env):
             index_url = "https://example.com",
             is_exposed = True,
             is_multiple_versions = False,
+            requires_dist = None,
             srcs = [
                 struct(
                     distribution = "foo",
@@ -917,6 +935,7 @@ def _test_get_index_urls_different_versions(env):
             index_url = "",
             is_exposed = False,
             is_multiple_versions = False,
+            requires_dist = None,
             srcs = [
                 struct(
                     distribution = "boo",
@@ -935,6 +954,7 @@ def _test_get_index_urls_different_versions(env):
             index_url = "",
             is_exposed = True,
             is_multiple_versions = True,
+            requires_dist = None,
             srcs = [
                 struct(
                     distribution = "foo",
@@ -1048,6 +1068,7 @@ def _test_get_index_urls_single_py_version(env):
             index_url = "",
             is_exposed = True,
             is_multiple_versions = False,
+            requires_dist = None,
             srcs = [
                 struct(
                     distribution = "foo",
@@ -1117,6 +1138,7 @@ def _test_uv_lock_consistent(env):
             index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = False,
+            requires_dist = [],
             srcs = [
                 struct(
                     distribution = "foo",
@@ -1145,6 +1167,7 @@ def _test_uv_lock_primary_source(env):
             index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = False,
+            requires_dist = [],
             srcs = [
                 struct(
                     distribution = "foo",
@@ -1173,6 +1196,7 @@ def _test_uv_lock_non_sha256_hash(env):
             index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = False,
+            requires_dist = [],
             srcs = [
                 struct(
                     distribution = "foo",
@@ -1201,6 +1225,7 @@ def _test_uv_lock_primary_source_multiple_versions(env):
             index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = True,
+            requires_dist = [],
             srcs = [
                 struct(
                     distribution = "foo",
@@ -1239,6 +1264,7 @@ def _test_uv_lock_primary_source_with_extras(env):
             index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = False,
+            requires_dist = [],
             srcs = [
                 struct(
                     distribution = "foo",
@@ -1267,6 +1293,7 @@ def _test_uv_lock_primary_source_includes_virtual(env):
             index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = False,
+            requires_dist = [],
             srcs = [
                 struct(
                     distribution = "foo",
@@ -1285,6 +1312,7 @@ def _test_uv_lock_primary_source_includes_virtual(env):
             index_url = "",
             is_exposed = False,
             is_multiple_versions = False,
+            requires_dist = None,
             srcs = [],
         ),
     ])
@@ -1305,6 +1333,7 @@ def _test_uv_lock_cross_consistent(env):
             index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = False,
+            requires_dist = [],
             srcs = [
                 struct(
                     distribution = "foo",
@@ -1333,6 +1362,7 @@ def _test_uv_lock_vcs_entry(env):
             index_url = "",
             is_exposed = True,
             is_multiple_versions = False,
+            requires_dist = [],
             srcs = [
                 struct(
                     distribution = "foo",
@@ -1361,6 +1391,7 @@ def _test_uv_lock_vcs_entry_subdirectory(env):
             index_url = "",
             is_exposed = True,
             is_multiple_versions = False,
+            requires_dist = [],
             srcs = [
                 struct(
                     distribution = "foo",
@@ -1389,6 +1420,7 @@ def _test_uv_lock_rules_python_pkg_not_skipped(env):
             index_url = "https://pypi.org/simple/rules-python",
             is_exposed = True,
             is_multiple_versions = False,
+            requires_dist = [],
             srcs = [
                 struct(
                     distribution = "rules_python",
@@ -1422,6 +1454,7 @@ def _test_uv_lock_no_consistency_check(env):
             index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = False,
+            requires_dist = ["bar[extra]"],
             srcs = [
                 struct(
                     distribution = "foo",
@@ -1450,6 +1483,7 @@ def _test_uv_lock_multiple_packages(env):
             index_url = "https://pypi.org/simple/bar",
             is_exposed = True,
             is_multiple_versions = False,
+            requires_dist = [],
             srcs = [
                 struct(
                     distribution = "bar",
@@ -1468,6 +1502,7 @@ def _test_uv_lock_multiple_packages(env):
             index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = False,
+            requires_dist = [],
             srcs = [
                 struct(
                     distribution = "foo",
@@ -1497,6 +1532,7 @@ def _test_uv_lock_with_extra_pip_args(env):
             index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = False,
+            requires_dist = ["bar[extra]"],
             srcs = [
                 struct(
                     distribution = "foo",
@@ -1529,6 +1565,7 @@ def _test_uv_lock_multi_os_with_requirements(env):
             index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = False,
+            requires_dist = ["bar[extra]"],
             srcs = [
                 struct(
                     distribution = "foo",
@@ -1557,6 +1594,7 @@ def _test_uv_lock_extras_optional_deps(env):
             index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = False,
+            requires_dist = [],
             srcs = [
                 struct(
                     distribution = "foo",
@@ -1585,6 +1623,7 @@ def _test_uv_lock_extras_dep_edge(env):
             index_url = "https://pypi.org/simple/bar",
             is_exposed = True,
             is_multiple_versions = False,
+            requires_dist = [],
             srcs = [
                 struct(
                     distribution = "bar",
@@ -1603,6 +1642,7 @@ def _test_uv_lock_extras_dep_edge(env):
             index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = False,
+            requires_dist = ["bar[extra1]"],
             srcs = [
                 struct(
                     distribution = "foo",
@@ -1638,6 +1678,7 @@ def _test_uv_lock_wheel_dedup_single_version(env):
             index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = False,
+            requires_dist = [],
             srcs = [
                 struct(
                     distribution = "foo",
@@ -1684,6 +1725,7 @@ def _test_uv_lock_wheel_dedup_resolution_markers(env):
             index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = True,
+            requires_dist = [],
             srcs = [
                 struct(
                     distribution = "foo",
@@ -1722,6 +1764,7 @@ def _test_uv_lock_requires_dist_extras(env):
             index_url = "https://pypi.org/simple/foo",
             is_exposed = True,
             is_multiple_versions = False,
+            requires_dist = [],
             srcs = [
                 struct(
                     distribution = "foo",
@@ -1740,6 +1783,7 @@ def _test_uv_lock_requires_dist_extras(env):
             index_url = "",
             is_exposed = False,
             is_multiple_versions = False,
+            requires_dist = None,
             srcs = [],
         ),
     ])
@@ -1936,6 +1980,84 @@ def _test_uv_lock_partial_extra_markers(env):
     env.expect.that_collection(got["union"].srcs[0].target_platforms).contains_exactly(["linux_x86_64", "osx_aarch64"])
 
 _tests.append(_test_uv_lock_partial_extra_markers)
+
+def _test_uv_lock_requires_dist(env):
+    got = _parse_uv_graph([
+        _uv_graph_package("root", source = {"virtual": "."}, dependencies = [
+            {"name": "parent"},
+        ]),
+        _uv_graph_package("parent", dependencies = [
+            {"marker": "sys_platform == 'linux'", "name": "child"},
+            {"extra": ["fast", "async"], "name": "opt"},
+        ]),
+        _uv_graph_package("child"),
+        _uv_graph_package("opt", **{"optional-dependencies": {
+            # Only the extras requested by the dependents are included.
+            "async": [{"name": "anyio"}],
+            "fast": [
+                {"marker": "sys_platform == 'linux'", "name": "uvloop"},
+                # The self edges only request extras.
+                {"extra": ["async"], "name": "opt"},
+            ],
+            "unused": [{"name": "unused"}],
+        }}),
+        _uv_graph_package("anyio"),
+        _uv_graph_package("uvloop"),
+        _uv_graph_package("unused"),
+    ])
+    env.expect.that_dict({
+        name: pkg.requires_dist
+        for name, pkg in got.items()
+    }).contains_exactly({
+        "anyio": [],
+        "child": [],
+        "opt": ["anyio", "uvloop; sys_platform == 'linux'"],
+        "parent": [
+            "child; sys_platform == 'linux'",
+            "opt[async,fast]",
+        ],
+        "root": ["parent"],
+        # Still has sources, because all optional dependencies are walked
+        # to find the platforms of the packages.
+        "unused": [],
+        "uvloop": [],
+    })
+
+_tests.append(_test_uv_lock_requires_dist)
+
+def _test_uv_lock_requires_dist_multiple_versions(env):
+    linux = {"resolution-markers": ["sys_platform == 'linux'"]}
+    osx = {"resolution-markers": ["sys_platform == 'darwin'"]}
+    windows = {"resolution-markers": ["sys_platform == 'win32'"]}
+    got = _parse_uv_graph([
+        _uv_graph_package("root", source = {"virtual": "."}, dependencies = [
+            {"name": "same"},
+            {"name": "different"},
+            {"name": "unused_fork"},
+            {"name": "dep_a"},
+            {"name": "dep_b"},
+        ]),
+        _uv_graph_package("same", "1", dependencies = [{"name": "dep_a"}], **linux),
+        _uv_graph_package("same", "2", dependencies = [{"name": "dep_a"}], **osx),
+        _uv_graph_package("different", "1", dependencies = [{"name": "dep_a"}], **linux),
+        _uv_graph_package("different", "2", dependencies = [{"name": "dep_b"}], **osx),
+        _uv_graph_package("unused_fork", "1", dependencies = [{"name": "dep_a"}], **linux),
+        # Not used on any of the target platforms.
+        _uv_graph_package("unused_fork", "2", dependencies = [{"name": "dep_b"}], **windows),
+        _uv_graph_package("dep_a"),
+        _uv_graph_package("dep_b"),
+    ])
+    env.expect.that_dict({
+        name: got[name].requires_dist
+        for name in ["same", "different", "unused_fork"]
+    }).contains_exactly({
+        # The entries have different deps, so the wheel METADATA is used.
+        "different": None,
+        "same": ["dep_a"],
+        "unused_fork": ["dep_a"],
+    })
+
+_tests.append(_test_uv_lock_requires_dist_multiple_versions)
 
 def parse_requirements_test_suite(name):
     """Create the test suite.
