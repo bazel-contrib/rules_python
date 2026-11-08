@@ -46,6 +46,7 @@ def python_register_toolchains(
         python_version,
         register_toolchains = True,
         register_coverage_tool = False,
+        coverage_tool = None,
         set_python_version_constraint = False,
         libpython = None,
         tool_versions = None,
@@ -73,6 +74,9 @@ def python_register_toolchains(
         register_toolchains: {type}`bool` Whether or not to register the downloaded toolchains.
         register_coverage_tool: {type}`bool` Whether or not to register the
             downloaded coverage tool to the toolchains.
+        coverage_tool: {type}`str | None` the coverage tool to use for all
+            platforms that do not set a `coverage_tool` in `tool_versions`.
+            Takes precedence over `register_coverage_tool`.
         set_python_version_constraint: {type}`bool` When set to `True`,
             `target_compatible_with` for the toolchains will include a version
             constraint.
@@ -156,8 +160,7 @@ def python_register_toolchains(
             )
 
         # allow passing in a tool version
-        coverage_tool = None
-        coverage_tool = _get_platform_setting(
+        platform_coverage_tool = _get_platform_setting(
             version_info,
             "coverage_tool",
             platform = source_platform,
@@ -165,11 +168,11 @@ def python_register_toolchains(
                 version_info,
                 "coverage_tool",
                 platform = base_platform,
-                default = None,
+                default = coverage_tool,
             ),
         )
-        if register_coverage_tool and coverage_tool == None:
-            coverage_tool = coverage_dep(
+        if register_coverage_tool and platform_coverage_tool == None:
+            platform_coverage_tool = coverage_dep(
                 name = "{name}_{platform}_coverage".format(
                     name = name,
                     platform = platform,
@@ -194,7 +197,7 @@ def python_register_toolchains(
             release_filename = release_filename,
             urls = urls,
             strip_prefix = strip_prefix,
-            coverage_tool = coverage_tool,
+            coverage_tool = platform_coverage_tool,
             libpython = libpython or _get_platform_setting(
                 version_info,
                 "libpython",

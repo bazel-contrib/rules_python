@@ -642,6 +642,10 @@ def _process_single_version_overrides(*, tag, _fail = fail, default):
 
     available_versions[tag.python_version] = {k: v for k, v in override.items() if v}
 
+    if tag.coverage_tool:
+        # The Label is resolved relative to the calling module, but
+        # python_repository consumes it as a string.
+        kwargs.setdefault(tag.python_version, {})["coverage_tool"] = str(tag.coverage_tool)
     if tag.distutils_content:
         kwargs.setdefault(tag.python_version, {})["distutils_content"] = tag.distutils_content
     if tag.distutils:
@@ -1458,6 +1462,17 @@ class.
         #
         # However, we need to understand how to accommodate the fact that
         # {attr}`single_version_override.version` only allows patch versions.
+        "coverage_tool": attr.label(
+            doc = """\
+The coverage tool to use for all platforms of this Python version, e.g.
+`@pypi//coverage`. See {attr}`py_runtime.coverage_tool` for the accepted
+targets. {attr}`single_version_platform_override.coverage_tool` takes
+precedence for a particular platform.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+        ),
         "distutils": attr.label(
             allow_single_file = True,
             doc = "A distutils.cfg file to be included in the Python installation. " +

@@ -470,6 +470,31 @@ def _test_single_version_override_keeps_strip_prefix(env):
 
 _tests.append(_test_single_version_override_keeps_strip_prefix)
 
+def _test_single_version_override_coverage_tool(env):
+    py = parse_modules(
+        module_ctx = python_ext.mctx(
+            python_ext.module(
+                name = "my_module",
+                is_root = True,
+                single_version_override = [
+                    python_ext.single_version_override(
+                        coverage_tool = Label("@my_module//:cov_tool"),
+                        python_version = "3.12.4",
+                    ),
+                ],
+                toolchain = [python_ext.toolchain(python_version = "3.12")],
+            ),
+            _rules_python_module(),
+        ),
+        logger = repo_utils.logger(verbosity_level = 0, name = "python"),
+    )
+
+    env.expect.that_dict(py.config.kwargs).contains_exactly({
+        "3.12.4": {"coverage_tool": str(Label("@my_module//:cov_tool"))},
+    })
+
+_tests.append(_test_single_version_override_coverage_tool)
+
 _ARCHIVE_FLAVOR_MANIFEST = """
 1111111111111111111111111111111111111111111111111111111111111111  20260414/cpython-3.14.4+20260414-x86_64-unknown-linux-gnu-install_only.tar.gz
 2222222222222222222222222222222222222222222222222222222222222222  20260414/cpython-3.14.4+20260414-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz

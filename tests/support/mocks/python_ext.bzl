@@ -52,6 +52,7 @@ def _defaults(**kwargs):
 def _single_version_override(**kwargs):
     """Creates a mock python.single_version_override tag with default values."""
     attrs = {
+        "coverage_tool": None,
         "distutils": None,
         "distutils_content": "",
         "libpython": "auto",
