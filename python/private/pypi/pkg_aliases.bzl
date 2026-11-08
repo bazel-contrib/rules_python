@@ -124,7 +124,7 @@ def pkg_aliases(
     _native.alias(
         name = name,
         actual = ":" + PY_LIBRARY_PUBLIC_LABEL,
-        testonly = testonly,
+        **({"testonly": True} if testonly else {})
     )
 
     if requires_dist:
