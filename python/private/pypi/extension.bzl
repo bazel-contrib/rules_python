@@ -379,8 +379,16 @@ You cannot use both the additive_build_content and additive_build_content_file a
     )
     if configured_hubs == None:
         return None
+    testonly_packages = {}
+    unified_testonly_packages = {}
     for hub_name, info in configured_hubs.items():
         exposed_packages[hub_name] = info.packages
+        testonly_packages[hub_name] = info.testonly_packages
+
+        # An alias can't be less testonly than what it points to, so a package
+        # is testonly in the unified hub if it is testonly in any hub.
+        for pkg in info.testonly_packages:
+            unified_testonly_packages[pkg] = None
 
     return struct(
         configured_hubs = configured_hubs,
@@ -392,7 +400,9 @@ You cannot use both the additive_build_content and additive_build_content_file a
         facts = simpleapi_cache.get_facts(),
         hub_group_map = hub_group_map,
         hub_whl_map = hub_whl_map,
+        testonly_packages = testonly_packages,
         unified_hub_requirements_bzl = config.unified_hub_requirements_bzl,
+        unified_testonly_packages = sorted(unified_testonly_packages),
         whl_libraries = whl_libraries,
         whl_mods = whl_mods,
         platform_config_settings = {
@@ -417,7 +427,9 @@ def _create_unified_hub_repo(mods):
 
     for hub_name in hubs:
         # The hubs configured with `pip.configure` only expose some packages.
-        hub_packages = mods.configured_hubs[hub_name].packages if hub_name in mods.configured_hubs else mods.hub_whl_map[hub_name]
+        hub_packages = mods.hub_whl_map[hub_name]
+        if hub_name in mods.configured_hubs:
+            hub_packages = mods.configured_hubs[hub_name].packages
         for pkg_name in hub_packages:
             norm_pkg = normalize_name(pkg_name)
             if norm_pkg not in packages:
@@ -449,13 +461,7 @@ def _create_unified_hub_repo(mods):
         hubs = hubs,
         packages = packages,
         requirements_bzl = mods.unified_hub_requirements_bzl,
-        # An alias can't be less testonly than what it points to, so a package
-        # is testonly if it is testonly in any hub.
-        testonly_packages = sorted({
-            pkg: None
-            for hub_name in hubs
-            for pkg in (mods.configured_hubs[hub_name].testonly_packages if hub_name in mods.configured_hubs else [])
-        }),
+        testonly_packages = mods.unified_testonly_packages,
     )
 
 def _pip_impl(module_ctx):
@@ -549,7 +555,7 @@ def _pip_impl(module_ctx):
             groups = mods.hub_group_map.get(hub_name),
             # The hubs configured with `pip.configure` hide the other packages.
             hide_unexposed_packages = hub_name in mods.configured_hubs,
-            testonly_packages = mods.configured_hubs[hub_name].testonly_packages if hub_name in mods.configured_hubs else [],
+            testonly_packages = mods.testonly_packages.get(hub_name, []),
         )
 
     _create_unified_hub_repo(mods)

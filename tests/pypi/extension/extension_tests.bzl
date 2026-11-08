@@ -125,6 +125,8 @@ def _parse_modules(env, **kwargs):
             exposed_packages = subjects.dict,
             hub_group_map = subjects.dict,
             hub_whl_map = subjects.dict,
+            testonly_packages = subjects.dict,
+            unified_testonly_packages = subjects.collection,
             unified_hub_requirements_bzl = subjects.bool,
             whl_libraries = subjects.dict,
             whl_mods = subjects.dict,
@@ -807,9 +809,9 @@ def _configure_parse_modules(env, *modules):
         minor_mapping = {"3.15": "3.15.19"},
     )
 
-def _configure_parse(**kwargs):
+def _configure_parse(hub_name = "pypi_a", **kwargs):
     return _parse(
-        hub_name = "pypi_a",
+        hub_name = hub_name,
         python_version = "3.15",
         simpleapi_skip = ["simple", "other-pkg", "transitive-pkg"],
         requirements_lock = "requirements.txt",
@@ -857,6 +859,29 @@ def _test_configure_testonly(env):
     )})
 
 _tests.append(_test_configure_testonly)
+
+def _test_configure_testonly_unified(env):
+    pypi = _configure_parse_modules(
+        env,
+        _mod(
+            name = "rules_python",
+            parse = [
+                _configure_parse(hub_name = "pypi_a", pyproject_toml = "pyproject.toml"),
+                _configure_parse(hub_name = "pypi_b", pyproject_toml = "pyproject.toml"),
+            ],
+            configure = [
+                _configure(hub_name = "pypi_a", dependency_groups = ["default"], testonly = True),
+                _configure(hub_name = "pypi_b", dependency_groups = ["default"]),
+            ],
+        ),
+    )
+
+    pypi.testonly_packages().contains_exactly({"pypi_a": ["simple"], "pypi_b": []})
+
+    # A package is testonly in the unified hub if it is testonly in any hub.
+    pypi.unified_testonly_packages().contains_exactly(["simple"])
+
+_tests.append(_test_configure_testonly_unified)
 
 def _test_configure_default_pyproject(env):
     # The `pip.default` pyproject.toml is used for the hubs of the root module.
