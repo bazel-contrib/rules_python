@@ -6,6 +6,7 @@ dependencies of the wheel together by reading the `METADATA` from the extracted
 repository.
 """
 
+load("//python/private:normalize_name.bzl", "normalize_name")
 load(":pep508_requirement.bzl", "requirement")
 load(":urllib.bzl", "urllib")
 load(":whl_archive.bzl", "whl_archive_attrs")
@@ -45,7 +46,7 @@ _UNSUPPORTED_ARGS = [
     # keep-sorted end
 ]
 
-def shared_whl_srcs(whl_libraries, *, exclude):
+def shared_whl_srcs(whl_libraries, *, hub_whl_map, extra_aliases):
     """Split the whl_library repositories into the extracted and deps repositories.
 
     The wheels that are downloaded with the Bazel downloader are extracted once
@@ -56,9 +57,12 @@ def shared_whl_srcs(whl_libraries, *, exclude):
     Args:
         whl_libraries: {type}`dict[str, dict[str, object]]` The `whl_library`
             repository names and the kwargs to create them with.
-        exclude: {type}`dict[str, None]` The `whl_library` repository names
-            that should not share the extracted wheel, e.g. because extra
-            targets of the repository are aliased from the hub repository.
+        hub_whl_map: {type}`dict[str, dict[str, dict[str, object]]]` The
+            `whl_library` repository names for each package in each hub.
+        extra_aliases: {type}`dict[str, dict[str, list[str]]]` The extra
+            targets that each hub aliases for each package. These targets
+            are not available in the `whl_deps_repo`, so the wheels of these
+            packages are not shared.
 
     Returns:
         A struct with the following fields:
@@ -73,6 +77,7 @@ def shared_whl_srcs(whl_libraries, *, exclude):
     deps = {}
     libraries = {}
     srcs_name_by_key = {}
+    exclude = _repos_with_extra_aliases(hub_whl_map, extra_aliases)
 
     for name, args in whl_libraries.items():
         if name in exclude or not _is_shareable(args):
@@ -99,6 +104,18 @@ def shared_whl_srcs(whl_libraries, *, exclude):
         deps = deps,
         whl_libraries = libraries,
     )
+
+def _repos_with_extra_aliases(hub_whl_map, extra_aliases):
+    """Return the `whl_library` repos that have extra targets aliased by a hub."""
+    repos = {}
+    for hub_name, whl_map in hub_whl_map.items():
+        hub_extra_aliases = extra_aliases.get(hub_name, {})
+        for whl_name, whl_repos in whl_map.items():
+            if not hub_extra_aliases.get(normalize_name(whl_name)):
+                continue
+            for repo in whl_repos:
+                repos[repo] = None
+    return repos
 
 def _is_shareable(args):
     """Return True if the wheel is downloaded with the Bazel downloader."""

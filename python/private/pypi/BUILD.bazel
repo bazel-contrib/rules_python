@@ -420,6 +420,7 @@ bzl_library(
         ":urllib",
         ":whl_archive",
         ":whl_repo_name",
+        "//python/private:normalize_name",
     ],
 )
 

@@ -424,22 +424,6 @@ def _create_unified_hub_repo(mods):
         requirements_bzl = mods.unified_hub_requirements_bzl,
     )
 
-def _repos_with_extra_aliases(mods):
-    """Return the whl_library repos that have extra targets aliased by the hub.
-
-    The extra targets are not available in the `whl_deps_repo`, so these
-    repos need to keep the extracted wheel.
-    """
-    repos = {}
-    for hub_name, whl_map in mods.hub_whl_map.items():
-        extra_aliases = mods.extra_aliases.get(hub_name, {})
-        for whl_name, whl_repos in whl_map.items():
-            if not extra_aliases.get(normalize_name(whl_name)):
-                continue
-            for repo in whl_repos:
-                repos[repo] = None
-    return repos
-
 def _pip_impl(module_ctx):
     """Implementation of a class tag that creates the pip hub and corresponding pip spoke whl repositories.
 
@@ -516,7 +500,8 @@ def _pip_impl(module_ctx):
 
     repos = shared_whl_srcs(
         mods.whl_libraries,
-        exclude = _repos_with_extra_aliases(mods),
+        hub_whl_map = mods.hub_whl_map,
+        extra_aliases = mods.extra_aliases,
     )
     for name, args in repos.srcs.items():
         whl_library(name = name, **args)

@@ -31,7 +31,8 @@ def _test_shared_across_hubs(env):
             "pypi_311_foo": _whl(),
             "pypi_312_foo": _whl(),
         },
-        exclude = {},
+        hub_whl_map = {},
+        extra_aliases = {},
     )
 
     env.expect.that_dict(got.srcs).contains_exactly({
@@ -79,7 +80,8 @@ def _test_first_index_url_wins(env):
             ),
             "pypi_312_foo": _whl(),
         },
-        exclude = {},
+        hub_whl_map = {},
+        extra_aliases = {},
     )
 
     env.expect.that_dict(got.srcs).contains_exactly({
@@ -112,7 +114,8 @@ def _test_unique_by_url_and_integrity(env):
                 urls = ["../../packages/foo-0.0.1-py3-none-any.whl"],
             ),
         },
-        exclude = {},
+        hub_whl_map = {},
+        extra_aliases = {},
     )
 
     env.expect.that_dict({
@@ -146,7 +149,8 @@ def _test_not_shared(env):
             "pip": pip,
             "sdist": sdist,
         },
-        exclude = {"excluded": None},
+        hub_whl_map = {"pypi": {"Foo": {"excluded": []}}},
+        extra_aliases = {"pypi": {"foo": ["bin/foo"]}},
     )
 
     env.expect.that_dict(got.srcs).contains_exactly({})
@@ -169,7 +173,8 @@ def _test_different_extraction_args(env):
             "other_312_foo": other,
             "pypi_312_foo": _whl(),
         },
-        exclude = {},
+        hub_whl_map = {},
+        extra_aliases = {},
     )
 
     env.expect.that_collection(got.srcs.keys()).contains_exactly([
@@ -190,7 +195,8 @@ def _test_name_collision_with_whl_library(env):
             "pypi_312_foo": _whl(),
             "whl_foo_0_0_1_py3_none_any": _whl(annotation = "@whl_mods//:foo.json"),
         },
-        exclude = {},
+        hub_whl_map = {},
+        extra_aliases = {},
     )
 
     env.expect.that_collection(got.srcs.keys()).contains_exactly([
