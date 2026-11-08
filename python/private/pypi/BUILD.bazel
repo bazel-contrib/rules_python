@@ -633,6 +633,7 @@ bzl_library(
     deps = [
         ":pep508_env",
         ":platform",
+        "//python:versions",
         "//python/private:version",
     ],
 )
