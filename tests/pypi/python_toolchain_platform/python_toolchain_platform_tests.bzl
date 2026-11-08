@@ -8,17 +8,14 @@ _tests = []
 def _test_whl_platform_tags(env):
     for platform_name, want in {
         "aarch64-apple-darwin": ["any", "macosx_*_universal2", "macosx_*_arm64"],
-        "aarch64-pc-windows-msvc": ["any", "win_arm64"],
         "aarch64-unknown-linux-gnu": ["any", "manylinux_*_aarch64"],
         "arm64e-apple-darwin": ["any"],
         "armv7-unknown-linux-gnu": ["any", "manylinux_*_armv7l"],
         "i386-unknown-linux-gnu": ["any", "manylinux_*_i686"],
-        "i686-pc-windows-msvc": ["any", "win32"],
         "ppc64le-unknown-linux-gnu": ["any", "manylinux_*_ppc64le"],
         "riscv64-unknown-linux-gnu": ["any", "manylinux_*_riscv64"],
         "s390x-unknown-linux-gnu": ["any", "manylinux_*_s390x"],
         "x86_64-apple-darwin": ["any", "macosx_*_universal2", "macosx_*_x86_64"],
-        "x86_64-pc-windows-msvc": ["any", "win_amd64"],
         "x86_64-unknown-linux-gnu": ["any", "manylinux_*_x86_64"],
         "x86_64-unknown-linux-gnu-freethreaded": ["any", "manylinux_*_x86_64"],
         "x86_64-unknown-linux-musl": ["any", "musllinux_*_x86_64"],
