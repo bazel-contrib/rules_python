@@ -30,8 +30,10 @@ load(":pep508_env.bzl", "env")
 load(":pip_repository_attrs.bzl", "ATTRS")
 load(":platform.bzl", _plat = "platform")
 load(":pypi_cache.bzl", "pypi_cache")
+load(":shared_whl_srcs.bzl", "shared_whl_srcs")
 load(":simpleapi_download.bzl", "simpleapi_download")
 load(":unified_hub_repo.bzl", "unified_hub_repo")
+load(":whl_deps_repo.bzl", "whl_deps_repo")
 load(":whl_library.bzl", "whl_library")
 
 def _whl_mods_impl(whl_mods_dict):
@@ -422,6 +424,22 @@ def _create_unified_hub_repo(mods):
         requirements_bzl = mods.unified_hub_requirements_bzl,
     )
 
+def _repos_with_extra_aliases(mods):
+    """Return the whl_library repos that have extra targets aliased by the hub.
+
+    The extra targets are not available in the `whl_deps_repo`, so these
+    repos need to keep the extracted wheel.
+    """
+    repos = {}
+    for hub_name, whl_map in mods.hub_whl_map.items():
+        extra_aliases = mods.extra_aliases.get(hub_name, {})
+        for whl_name, whl_repos in whl_map.items():
+            if not extra_aliases.get(normalize_name(whl_name)):
+                continue
+            for repo in whl_repos:
+                repos[repo] = None
+    return repos
+
 def _pip_impl(module_ctx):
     """Implementation of a class tag that creates the pip hub and corresponding pip spoke whl repositories.
 
@@ -496,7 +514,15 @@ def _pip_impl(module_ctx):
     # Build all of the wheel modifications if the tag class is called.
     _whl_mods_impl(mods.whl_mods)
 
-    for name, args in mods.whl_libraries.items():
+    repos = shared_whl_srcs(
+        mods.whl_libraries,
+        exclude = _repos_with_extra_aliases(mods),
+    )
+    for name, args in repos.srcs.items():
+        whl_library(name = name, **args)
+    for name, args in repos.deps.items():
+        whl_deps_repo(name = name, **args)
+    for name, args in repos.whl_libraries.items():
         whl_library(name = name, **args)
 
     for hub_name, whl_map in mods.hub_whl_map.items():
