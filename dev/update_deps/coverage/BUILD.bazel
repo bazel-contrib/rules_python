@@ -1,7 +1,5 @@
 load("//python/uv:lock.bzl", "lock")
 
-package(default_visibility = ["//dev/update_deps:__subpackages__"])
-
 exports_files(["uv.lock"])
 
 # The lock file for the coverage.py versions that are bundled with the hermetic
