@@ -22,15 +22,15 @@ fn read_zip_entries(zip_path: &Path) -> Vec<ParsedZipEntry> {
         entry
             .read_to_end(&mut data)
             .expect("zip entry data should be readable");
+        let name = entry.name().expect("zip entry name should be valid");
         assert_eq!(
             data.len() as u64,
             entry.size(),
-            "uncompressed size mismatch for {}",
-            entry.name()
+            "uncompressed size mismatch for {name}",
         );
 
         entries.push(ParsedZipEntry {
-            name: entry.name().to_string(),
+            name: name.into_owned(),
             compression: entry.compression(),
             last_modified: entry.last_modified(),
             compress_size: entry.compressed_size(),
