@@ -283,3 +283,6 @@ posting comments, filter out noise:
     suppressing naming precision or simplification findings.
 12. Deduplicate Against Existing Comments: Inspect existing PR review comments
     and suppress candidate comments that duplicate feedback already posted.
+13. Preserve Documented Rule Findings: Keep every sub-agent finding backed by
+    `.agents/rules/` or `AGENTS.md` in `## Open Issues`, regardless of `NIT`
+    severity or legacy patterns in existing files.
