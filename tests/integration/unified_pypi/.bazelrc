@@ -1,1 +1,5 @@
 common --experimental_enable_bzlmod
+# Mitigate transient CI network failures via mirror fallback and retries.
+common --experimental_downloader_config=downloader_config.cfg
+common --http_timeout_scaling=10.0
+common --experimental_repository_downloader_retries=10
