@@ -80,8 +80,9 @@ common:ci --//dev/release_artifacts:require_msvc_arm64=true
 # can only be determined from the runtime environment.
 # Some bzl files contain repos only available under bzlmod
 build:rtd --enable_bzlmod
-# Disable typechecking and Rust lint output groups so doc builds do not download
-# the pyrefly toolchain or run clippy/rustfmt checks.
+# Disable typechecking and Rust lint aspects/output groups so doc builds do not
+# fetch @rules_pyrefly/@rules_rust or run clippy/rustfmt checks.
+build:rtd --aspects=
 build:rtd --output_groups=-pyrefly,-clippy_checks,-rustfmt_checks
 # Use the stripped Python runtime archive (without debug symbols) to reduce
 # download size and share remote cache keys with GitHub Actions workflows.
@@ -90,6 +91,9 @@ build:rtd --//python/config_settings:py_pbs_distribution=install_only_stripped
 # Stardoc protos) from remote cache/RBE; only materialize the top-level outputs
 # needed by `bazel run //docs:readthedocs_install`.
 build:rtd --remote_download_toplevel
+# Fetch external repository archives through BuildBuddy's Remote Asset API
+# cache so RTD builds do not hit GitHub Releases 504 timeouts.
+build:rtd --experimental_remote_downloader=grpcs://rules-python.buildbuddy.io
 
 common --incompatible_python_disallow_native_rules
 common --incompatible_no_implicit_file_export
