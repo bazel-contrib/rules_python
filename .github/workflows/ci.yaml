@@ -21,15 +21,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      # LINT.IfChange(ruff)
       - uses: astral-sh/ruff-action@v4.1.0
         with:
-          # Keep in sync with .pre-commit-config.yaml
           version: 0.15.14
           args: check --extend-exclude testdata
       - uses: astral-sh/ruff-action@v4.1.0
         with:
           version: 0.15.14
           args: format --check --exclude testdata
+      # LINT.ThenChange(//.pre-commit-config.yaml:ruff)
 
   keep_sorted:
     name: keep-sorted
@@ -41,14 +42,47 @@ jobs:
         uses: ./.github/actions/download-tool
         with:
           name: keep-sorted
-          # Keep in sync with .pre-commit-config.yaml
+          # LINT.IfChange(keep_sorted)
           urls: |
             https://github.com/google/keep-sorted/releases/download/v0.10.0/keep-sorted_linux_amd64
           sha256: 079710c01619cc3dc11c9ddce18ac8db8d86701e7d12f9c5b62b8c4c4a664cca
+          # LINT.ThenChange(//.pre-commit-config.yaml:keep_sorted)
       - name: Check keep-sorted
         env:
           KEEP_SORTED_BIN: ${{ steps.keep-sorted.outputs.path }}
         run: ./.github/workflows/check_keep_sorted.py -- "$KEEP_SORTED_BIN"
+
+  ifttt_lint:
+    name: ifttt-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Download ifttt-lint
+        id: ifttt-lint
+        uses: ./.github/actions/download-tool
+        with:
+          name: ifttt-lint
+          archive-member: ifttt-lint
+          # LINT.IfChange(ifttt_lint)
+          urls: |
+            https://github.com/simonepri/ifttt-lint/releases/download/v0.11.3/ifttt-lint-x86_64-unknown-linux-gnu.tar.gz
+          sha256: 1dd2071f17d5f5c11d698ae60e81c0ed1d419ca90a2d64f5d3810bdf28ddd4fe
+          # LINT.ThenChange(//.pre-commit-config.yaml:ifttt_lint)
+      - name: Check ifttt-lint
+        env:
+          IFTTT_LINT_BIN: ${{ steps.ifttt-lint.outputs.path }}
+        run: >-
+          "$IFTTT_LINT_BIN" --vcs git '**/*'
+      - name: Check ifttt-lint diff
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          IFTTT_LINT_BIN: ${{ steps.ifttt-lint.outputs.path }}
+        run: >-
+          "$IFTTT_LINT_BIN" --vcs git --diff "${BASE_SHA}...${HEAD_SHA}"
 
   build_release_artifacts:
     name: Build release artifacts

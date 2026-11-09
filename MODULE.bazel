@@ -486,7 +486,7 @@ bazel_binaries = use_extension(
     dev_dependency = True,
 )
 
-# Keep in sync with //:version.bzl
+# LINT.IfChange(bazel_binaries)
 bazel_binaries.local(
     name = "self",
     path = "tests/integration/bazel_from_env",
@@ -508,6 +508,7 @@ use_repo(
     # "build_bazel_bazel_rolling",
     "build_bazel_bazel_self",
 )
+# LINT.ThenChange(//version.bzl:supported_bazel_versions)
 
 # TODO @aignas 2025-01-27: should this be moved to `//python/extensions:uv.bzl` or should
 # it stay as it is? I think I may prefer to move it.
@@ -516,11 +517,15 @@ uv = use_extension("//python/uv:uv.bzl", "uv")
 # Here is how we can define platforms for the `uv` binaries - this will affect
 # all of the downstream callers because we are using the extension without
 # `dev_dependency = True`.
+# LINT.IfChange(uv_defaults)
 uv.default(
     base_url = "https://github.com/astral-sh/uv/releases/download",
     manifest_filename = "dist-manifest.json",
     version = "0.13.5",
 )
+
+# LINT.ThenChange(//python/uv/private/uv_defaults.bzl:uv_defaults)
+# LINT.IfChange(uv_platforms)
 uv.default(
     compatible_with = [
         "@platforms//os:macos",
@@ -577,6 +582,8 @@ uv.default(
     ],
     platform = "x86_64-unknown-linux-gnu",
 )
+
+# LINT.ThenChange(//python/uv/private/uv_defaults.bzl:uv_platforms)
 use_repo(uv, "uv")
 
 register_toolchains("@uv//:all")

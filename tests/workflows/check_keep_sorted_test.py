@@ -9,6 +9,7 @@ import os
 import subprocess
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import check_keep_sorted
 import pytest
@@ -37,41 +38,52 @@ def _write_fake_keep_sorted(path: Path, body: str) -> Path:
     return path
 
 
-def test_ci_workflow_uses_download_tool_in_sync_with_pre_commit() -> None:
+def _assert_ci_download_step_in_sync(
+    *,
+    repo_url: str,
+    expected_hooks: list[str],
+    job_id: str,
+    step_id: str,
+    url_template: str,
+    archive_member: str = "",
+) -> list[dict[str, Any]]:
     pre_commit = yaml.safe_load(
         _repo_file(".pre-commit-config.yaml").read_text(encoding="utf-8")
     )
-    repos = pre_commit["repos"]
-    matching = [
-        repo
-        for repo in repos
-        if repo.get("repo") == "https://github.com/google/keep-sorted"
-    ]
+    matching = [repo for repo in pre_commit["repos"] if repo.get("repo") == repo_url]
     assert len(matching) == 1
-    entry = matching[0]
-    rev = entry["rev"]
-    hook_ids = [hook["id"] for hook in entry["hooks"]]
-    assert hook_ids == ["keep-sorted"]
+    rev = matching[0]["rev"]
+    assert [hook["id"] for hook in matching[0]["hooks"]] == expected_hooks
 
     ci = yaml.safe_load(
         _repo_file(".github/workflows/ci.yaml").read_text(encoding="utf-8")
     )
-    job = ci["jobs"]["keep_sorted"]
+    job = ci["jobs"][job_id]
     assert job["runs-on"] == "ubuntu-latest"
     steps = job["steps"]
 
-    download_step = next(s for s in steps if s.get("id") == "keep-sorted")
+    download_step = next(s for s in steps if s.get("id") == step_id)
     assert download_step["uses"] == "./.github/actions/download-tool"
-    assert download_step["with"]["name"] == "keep-sorted"
+    assert download_step["with"]["name"] == step_id
+    assert download_step["with"].get("archive-member", "") == archive_member
     urls = [
         line.strip()
         for line in download_step["with"]["urls"].splitlines()
         if line.strip()
     ]
-    assert urls == [
-        f"https://github.com/google/keep-sorted/releases/download/{rev}/keep-sorted_linux_amd64"
-    ]
+    assert urls == [url_template.format(rev=rev)]
     assert len(download_step["with"]["sha256"]) == 64
+    return steps
+
+
+def test_ci_workflow_uses_download_tool_in_sync_with_pre_commit() -> None:
+    steps = _assert_ci_download_step_in_sync(
+        repo_url="https://github.com/google/keep-sorted",
+        expected_hooks=["keep-sorted"],
+        job_id="keep_sorted",
+        step_id="keep-sorted",
+        url_template="https://github.com/google/keep-sorted/releases/download/{rev}/keep-sorted_linux_amd64",
+    )
 
     check_step = next(s for s in steps if s.get("name") == "Check keep-sorted")
     assert check_step["env"] == {
@@ -80,6 +92,39 @@ def test_ci_workflow_uses_download_tool_in_sync_with_pre_commit() -> None:
     assert (
         check_step["run"]
         == './.github/workflows/check_keep_sorted.py -- "$KEEP_SORTED_BIN"'
+    )
+
+
+def test_ci_workflow_ifttt_lint_in_sync_with_pre_commit() -> None:
+    steps = _assert_ci_download_step_in_sync(
+        repo_url="https://github.com/simonepri/ifttt-lint",
+        expected_hooks=["ifttt-lint", "ifttt-lint-diff"],
+        job_id="ifttt_lint",
+        step_id="ifttt-lint",
+        url_template="https://github.com/simonepri/ifttt-lint/releases/download/{rev}/ifttt-lint-x86_64-unknown-linux-gnu.tar.gz",
+        archive_member="ifttt-lint",
+    )
+
+    checkout_step = steps[0]
+    assert checkout_step["uses"].startswith("actions/checkout@")
+    assert checkout_step["with"]["fetch-depth"] == 0
+
+    check_step = next(s for s in steps if s.get("name") == "Check ifttt-lint")
+    assert check_step["env"] == {
+        "IFTTT_LINT_BIN": "${{ steps.ifttt-lint.outputs.path }}"
+    }
+    assert check_step["run"] == "\"$IFTTT_LINT_BIN\" --vcs git '**/*'"
+
+    diff_step = next(s for s in steps if s.get("name") == "Check ifttt-lint diff")
+    assert diff_step["if"] == "github.event_name == 'pull_request'"
+    assert diff_step["env"] == {
+        "BASE_SHA": "${{ github.event.pull_request.base.sha }}",
+        "HEAD_SHA": "${{ github.event.pull_request.head.sha }}",
+        "IFTTT_LINT_BIN": "${{ steps.ifttt-lint.outputs.path }}",
+    }
+    assert (
+        diff_step["run"]
+        == '"$IFTTT_LINT_BIN" --vcs git --diff "${BASE_SHA}...${HEAD_SHA}"'
     )
 
 
