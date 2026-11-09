@@ -97,7 +97,30 @@ pip.dep(name = "pytest")
 pip.dep(name = "pytest-bazel")
 pip.dep(name = "pytest-randomly")
 pip.dep(name = "pytest-shard")
-use_repo(pip, "pypi", "rules_python_publish_deps")
+
+# The default coverage tool for the hermetic toolchains, see
+# `python.toolchain.configure_coverage_tool`. The versions that do not have a
+# registered toolchain are ignored.
+[
+    pip.parse(
+        download_only = True,
+        hub_name = "rules_python_coverage",
+        python_version = python_version,
+        target_platforms = ["*"],
+        uv_lock = "//python/private/coverage:uv.lock",
+    )
+    for python_version in [
+        "3.9",
+        "3.10",
+        "3.11",
+        "3.12",
+        "3.13",
+        "3.14",
+        "3.15",
+    ]
+]
+
+use_repo(pip, "pypi", "rules_python_coverage", "rules_python_publish_deps")
 
 bazel_dep(
     name = "rules_rust",
