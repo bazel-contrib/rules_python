@@ -13,7 +13,10 @@ from python.runfiles import runfiles
 
 def main() -> None:
     r = runfiles.CreateOrRaise()
-    src = pathlib.Path(r.Rlocation(os.environ["GENERATED"]))
+    generated = r.Rlocation(os.environ["GENERATED"])
+    if not generated:
+        raise FileNotFoundError(os.environ["GENERATED"])
+    src = pathlib.Path(generated)
     dst = (
         pathlib.Path(os.environ["BUILD_WORKSPACE_DIRECTORY"])
         / "python/private/coverage/workspace_deps.bzl"
