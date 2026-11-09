@@ -481,6 +481,19 @@ def _detect_interpreter(self, pip_attr, python_version, full_python_version):
         path = pip_attr.python_interpreter,
     )
 
+def hub_platforms(module_ctx, *, python_version, config):
+    """Return all of the target platforms in `config` for a python version.
+
+    Args:
+        module_ctx: {type}`module_ctx` the module context.
+        python_version: {type}`str` the full python version.
+        config: the platform configuration.
+
+    Returns:
+        {type}`dict[str, struct]` the target platforms, keyed by the ABI and the platform name.
+    """
+    return _platforms(module_ctx, python_version = python_version, config = config, target_platforms = [])
+
 def _platforms(module_ctx, *, python_version, config, target_platforms):
     platforms = {}
     python_version = version.parse(

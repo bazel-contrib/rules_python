@@ -149,6 +149,7 @@ bzl_library(
         ":unified_hub_repo",
         ":whl_library",
         "//python/private:auth",
+        "//python/private:full_version",
         "//python/private:normalize_name",
         "//python/private:pyproject_utils",
         "//python/private:repo_utils",
@@ -371,7 +372,10 @@ bzl_library(
 bzl_library(
     name = "pypi_cache",
     srcs = ["pypi_cache.bzl"],
-    deps = [":version_from_filename"],
+    deps = [
+        ":select_whl",
+        ":version_from_filename",
+    ],
 )
 
 bzl_library(

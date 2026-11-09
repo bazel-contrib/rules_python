@@ -820,6 +820,81 @@ def _test_pypi_cache_reads_index_urls_from_facts_drops_unaccessed(env):
 
 _tests.append(_test_pypi_cache_reads_index_urls_from_facts_drops_unaccessed)
 
+_MACOS_ARM64_CP312 = struct(
+    env = {"implementation_name": "cpython", "python_full_version": "3.12.0"},
+    whl_abi_tags = ["none", "abi3", "cp312"],
+    whl_platform_tags = ["any", "macosx_*_arm64"],
+)
+
+def _dist(filename):
+    return struct(
+        version = "1.0.0",
+        filename = filename,
+        url = "https://pypi.org/files/" + filename,
+        digest = "sha256:" + filename,
+        yanked = None,
+    )
+
+def _test_pypi_cache_facts_store_only_selectable_wheels(env):
+    """Verifies that the facts skip the wheels that no platform can select."""
+    cache = _cache(env, mctx = mocks.mctx(facts = {}), wheel_platforms = [_MACOS_ARM64_CP312])
+
+    dists = [
+        _dist("pkg-1.0.0.tar.gz"),
+        _dist("pkg-1.0.0-py3-none-any.whl"),
+        _dist("pkg-1.0.0-cp312-cp312-macosx_11_0_arm64.whl"),
+        _dist("pkg-1.0.0-cp312-cp312-manylinux_2_17_x86_64.whl"),
+        _dist("pkg-1.0.0-cp313-cp313-macosx_11_0_arm64.whl"),
+    ]
+    fake_result = struct(
+        sdists = {d.digest: d for d in dists[:1]},
+        whls = {d.digest: d for d in dists[1:]},
+        hashes_by_version = {"1.0.0": sorted([d.digest for d in dists])},
+    )
+    key = ("https://{PYPI_INDEX_URL}/pkg/", "https://pypi.org/simple/pkg/", ["1.0.0"])
+    cache.setdefault(key, fake_result)
+
+    cache.expect_facts().contains_exactly({
+        "fact_version": "v3",
+        "pkg@https://{PYPI_INDEX_URL}": {
+            "https://pypi.org/files/pkg-1.0.0-cp312-cp312-macosx_11_0_arm64.whl": "sha256:pkg-1.0.0-cp312-cp312-macosx_11_0_arm64.whl",
+            "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "sha256:pkg-1.0.0-py3-none-any.whl",
+            "https://pypi.org/files/pkg-1.0.0.tar.gz": "sha256:pkg-1.0.0.tar.gz",
+        },
+        "wheel_filter": ["cpython|3.12.0|none,abi3,cp312|any,macosx_*_arm64"],
+    })
+
+_tests.append(_test_pypi_cache_facts_store_only_selectable_wheels)
+
+def _test_pypi_cache_reads_facts_only_for_the_same_wheel_filter(env):
+    """Verifies that the facts filtered for other platforms are not read."""
+    facts = {
+        "fact_version": "v3",
+        "pkg@https://{PYPI_INDEX_URL}": {
+            "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "sha256:whl",
+        },
+        "wheel_filter": ["cpython|3.12.0|none,abi3,cp312|any,macosx_*_arm64"],
+    }
+    key = ("https://{PYPI_INDEX_URL}/pkg/", "https://pypi.org/simple/pkg/", ["1.0.0"])
+
+    cache = _cache(env, mctx = mocks.mctx(facts = facts), wheel_platforms = [_MACOS_ARM64_CP312])
+    got = cache.get(key)
+    got.whls().keys().contains_exactly(["sha256:whl"])
+    cache.expect_facts().contains_exactly(facts)
+
+    other = struct(
+        env = {"implementation_name": "cpython", "python_full_version": "3.13.0"},
+        whl_abi_tags = _MACOS_ARM64_CP312.whl_abi_tags,
+        whl_platform_tags = _MACOS_ARM64_CP312.whl_platform_tags,
+    )
+    cache = _cache(env, mctx = mocks.mctx(facts = facts), wheel_platforms = [other])
+    cache.get(key).equals(None)
+
+    cache = _cache(env, mctx = mocks.mctx(facts = facts))
+    cache.get(key).equals(None)
+
+_tests.append(_test_pypi_cache_reads_facts_only_for_the_same_wheel_filter)
+
 def pypi_cache_test_suite(name):
     test_suite(
         name = name,

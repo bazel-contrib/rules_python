@@ -8,6 +8,7 @@ In the future the same will be used to:
 - Store PyPI index query results as facts in the MODULE.bazel.lock file
 """
 
+load(":select_whl.bzl", "select_whl")
 load(":version_from_filename.bzl", "version_from_filename")
 
 # This value should be changed whenever the storage format changes.
@@ -23,7 +24,7 @@ load(":version_from_filename.bzl", "version_from_filename")
 #      `<digest>[|<filename>[|<yanked>]]`.
 _FACT_VERSION = "v3"
 
-def pypi_cache(mctx = None, store = None):
+def pypi_cache(mctx = None, store = None, wheel_platforms = None):
     """The cache for PyPI index queries.
 
     Currently the key is of the following structure:
@@ -32,12 +33,15 @@ def pypi_cache(mctx = None, store = None):
     Args:
         mctx: The module context
         store: The in-memory store, should implement dict interface for get and setdefault
+        wheel_platforms: {type}`list[struct] | None` the target platforms of all hubs, as
+            returned by `hub_builder.bzl%platforms`. If set, the facts only store the wheels
+            that one of them can select.
 
     Returns:
         A cache struct
     """
     mcache = memory_cache(store)
-    fcache = facts_cache(getattr(mctx, "facts", None))
+    fcache = facts_cache(getattr(mctx, "facts", None), wheel_platforms = wheel_platforms)
 
     # buildifier: disable=uninitialized
     self = struct(
@@ -175,7 +179,7 @@ def _filter_packages(dists, requested_versions):
         },
     )
 
-def facts_cache(known_facts, facts_version = _FACT_VERSION):
+def facts_cache(known_facts, facts_version = _FACT_VERSION, wheel_platforms = None):
     """The facts cache.
 
     Here we have a way to store things as facts and the main thing to keep in mind is that we should
@@ -184,6 +188,7 @@ def facts_cache(known_facts, facts_version = _FACT_VERSION):
     Args:
         known_facts: An opaque object coming from {obj}`module_ctx.facts`.
         facts_version: {type}`str` the version of the facts schema, used for short-circuiting.
+        wheel_platforms: {type}`list[struct] | None` see {obj}`pypi_cache`.
 
     Returns:
         A struct that has:
@@ -195,6 +200,7 @@ def facts_cache(known_facts, facts_version = _FACT_VERSION):
         return None
 
     facts = {}
+    wheel_filter = _wheel_filter(wheel_platforms)
 
     return struct(
         get = lambda index_url, versions: _get_from_facts(
@@ -203,15 +209,62 @@ def facts_cache(known_facts, facts_version = _FACT_VERSION):
             index_url,
             versions,
             facts_version,
+            wheel_filter,
         ),
-        setdefault = lambda url, value: _store_facts(facts, facts_version, url, value),
+        setdefault = lambda url, value: _store_facts(facts, facts_version, url, value, wheel_filter),
         known_facts = known_facts,
         facts = facts,
     )
 
-def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_version):
+def _wheel_filter(wheel_platforms):
+    """Return the filter for the wheels to store, or `None` to store all of them.
+
+    The `key` identifies the platforms. Facts stored with a different `key` may
+    lack wheels that the current platforms select, so they are not read.
+    """
+    if not wheel_platforms:
+        return None
+
+    platforms = {
+        "|".join([
+            p.env["implementation_name"],
+            p.env["python_full_version"],
+            ",".join(p.whl_abi_tags),
+            ",".join(p.whl_platform_tags),
+        ]): p
+        for p in wheel_platforms
+    }
+    return struct(
+        key = sorted(platforms.keys()),
+        platforms = platforms.values(),
+    )
+
+_NOOP_LOGGER = struct(debug = lambda *_args, **_kwargs: None)
+
+def _is_selectable(wheel_filter, dist):
+    if wheel_filter == None or not dist.filename.endswith(".whl"):
+        return True
+
+    for p in wheel_filter.platforms:
+        if select_whl(
+            whls = [dist],
+            python_version = p.env["python_full_version"],
+            implementation_name = p.env["implementation_name"],
+            whl_abi_tags = p.whl_abi_tags,
+            whl_platform_tags = p.whl_platform_tags,
+            logger = _NOOP_LOGGER,
+        ):
+            return True
+
+    return False
+
+def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_version, wheel_filter = None):
     if known_facts.get("fact_version") != facts_version:
         # cannot trust known facts, different version that we know how to parse
+        return None
+
+    if known_facts.get("wheel_filter") != (wheel_filter.key if wheel_filter else None):
+        # the facts were filtered for other platforms and may lack the wheels that we need
         return None
 
     if type(requested_versions) == "dict":
@@ -228,7 +281,7 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
         # exist in known_facts but are not in requested_versions (e.g.
         # removed from all requirements files) are dropped from the
         # computed facts so they get cleaned up from the lockfile.
-        return _store_facts(facts, facts_version, index_url, result)
+        return _store_facts(facts, facts_version, index_url, result, wheel_filter)
 
     fact_key = _dist_fact_key(index_url)
     known_sources = {}
@@ -284,8 +337,11 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
     # entries are copied as-is instead of re-encoding the decoded structs, so
     # that a no-op run leaves the lockfile unchanged.
     facts["fact_version"] = facts_version
+    _set_wheel_filter(facts, wheel_filter)
     facts.setdefault(fact_key, {}).update(used_entries)
 
+    # `wheels_filtered` tells callers that the digests of the wheels that no hub
+    # can select are missing on purpose.
     return struct(
         whls = known_sources.get("whls", {}),
         sdists = known_sources.get("sdists", {}),
@@ -293,9 +349,10 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
             k: sorted(v)
             for k, v in known_sources.get("hashes_by_version", {}).items()
         },
+        **({"wheels_filtered": True} if wheel_filter else {})
     )
 
-def _store_facts(facts, fact_version, index_url, value):
+def _store_facts(facts, fact_version, index_url, value, wheel_filter = None):
     """Store values as facts in the lock file.
 
     The main idea is to ensure that the lock file is small and it is only
@@ -309,6 +366,10 @@ def _store_facts(facts, fact_version, index_url, value):
     ```
     facts: {
       "fact_version": "<_FACT_VERSION>",
+
+      # The platforms that the stored wheels are filtered for, see `_wheel_filter`.
+      # Absent if all wheels are stored.
+      "wheel_filter": ["<implementation>|<python version>|<abi tags>|<platform tags>"],
 
       # From the index page, e.g. `foo@https://pypi.org/simple/`
       "<pkg_normalized>@<index_url>": "<package page URL>",
@@ -326,6 +387,7 @@ def _store_facts(facts, fact_version, index_url, value):
         return value
 
     facts["fact_version"] = fact_version
+    _set_wheel_filter(facts, wheel_filter)
 
     if type(value) == "dict":
         for pkg, url in value.items():
@@ -339,9 +401,14 @@ def _store_facts(facts, fact_version, index_url, value):
     # keyed by digest and hashless sdists and wheels would collide on `""`.
     for dists in (value.sdists, value.whls):
         for digest, d in dists.items():
-            entries[d.url] = _encode_dist_entry(digest, d)
+            if _is_selectable(wheel_filter, d):
+                entries[d.url] = _encode_dist_entry(digest, d)
 
     return value
+
+def _set_wheel_filter(facts, wheel_filter):
+    if wheel_filter:
+        facts["wheel_filter"] = wheel_filter.key
 
 def _index_fact_key(pkg, index_url):
     """Return the fact key for a package found on an index page.

@@ -779,6 +779,10 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
             sdist = maybe_sdist
             continue
 
+        if getattr(index_urls, "wheels_filtered", False):
+            # The lockfile facts store only the wheels that the configured platforms can select.
+            continue
+
         logger.warn(lambda: "Could not find a whl or an sdist with hash {}; note that the index may be advertising digests calculated with a different hash algorithm".format(digest))
 
     yanked = {}
