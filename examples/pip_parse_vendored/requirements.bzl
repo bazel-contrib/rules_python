@@ -34,7 +34,7 @@ all_data_requirements = [
 
 _packages = [
     ("my_project_pip_deps_vendored_certifi", "certifi==2026.10.23"),
-    ("my_project_pip_deps_vendored_charset_normalizer", "charset-normalizer==3.5.2 --hash=sha256:1c50fe28bbc2ced33386f298650d91218076c05420e6cbd790b913adc41659e7 --hash=sha256:4275811936e2f06feff5e598fb42a1b7ae852da8e39605211892b56b81a34efd --hash=sha256:8d86d6fc60743dc916eb79e2eb1ec4818e21e427731543af40a3021851174a13 --hash=sha256:b6b751274acb69d77b3323d6b7dbaa3c7fdfc1eb829b7eb61d262f32e1af9685 --hash=sha256:e4e81e09c1578b8df602e3db08b0b3ea0a6947ad612f52bf8dc5ea8d47691f0c"),
+    ("my_project_pip_deps_vendored_charset_normalizer", "charset-normalizer==3.5.2 --hash=sha256:0521c5665880b33d603717defa76c094048900010897909952397feb3039da56 --hash=sha256:1c50fe28bbc2ced33386f298650d91218076c05420e6cbd790b913adc41659e7 --hash=sha256:4275811936e2f06feff5e598fb42a1b7ae852da8e39605211892b56b81a34efd --hash=sha256:4d48f2d08b9de5864e2c8744d4461b862fb149a18274abc8b698c45975573438 --hash=sha256:8024d00c3faf3fc0c16e07a69f4405e8eac7cc0ab15f65fe6cf43827c4cf72b4 --hash=sha256:8d86d6fc60743dc916eb79e2eb1ec4818e21e427731543af40a3021851174a13 --hash=sha256:b6b751274acb69d77b3323d6b7dbaa3c7fdfc1eb829b7eb61d262f32e1af9685 --hash=sha256:e4e81e09c1578b8df602e3db08b0b3ea0a6947ad612f52bf8dc5ea8d47691f0c"),
     ("my_project_pip_deps_vendored_idna", "idna==3.20"),
     ("my_project_pip_deps_vendored_requests", "requests==2.34.2"),
     ("my_project_pip_deps_vendored_urllib3", "urllib3==2.8.0"),
