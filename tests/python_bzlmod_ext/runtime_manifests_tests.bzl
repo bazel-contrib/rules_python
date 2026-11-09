@@ -208,7 +208,6 @@ def _test_dynamic_manifest_skips_debug_builds_impl(env, target):
 2222222222222222222222222222222222222222222222222222222222222222  cpython-3.14.99+20261026-x86_64-unknown-linux-gnu-freethreaded+debug-full.tar.zst
 3333333333333333333333333333333333333333333333333333333333333333  cpython-3.14.99+20261026-x86_64-unknown-linux-gnu-freethreaded+pgo+lto-full.tar.zst
 4444444444444444444444444444444444444444444444444444444444444444  cpython-3.14.99+20261026-x86_64-unknown-linux-gnu-pgo+lto-full.tar.zst
-5555555555555555555555555555555555555555555555555555555555555555  cpython-3.14.99+20261026-x86_64-unknown-linux-musl-debug+static-full.tar.zst
 """,
         },
     )
@@ -223,9 +222,8 @@ def _test_dynamic_manifest_skips_debug_builds_impl(env, target):
 
     version_info = tool_versions["3.14.99"]
 
-    # Debug builds fill no key, so the optimized full archives are used for
-    # both the plain and the full keys, and the debug-only musl platform is
-    # not registered.
+    # Debug builds sort last, so the optimized full archives are used for
+    # both the plain and the full keys.
     env.expect.that_dict(version_info).contains_exactly({
         "sha256": {
             "x86_64-unknown-linux-gnu": "4444444444444444444444444444444444444444444444444444444444444444",
