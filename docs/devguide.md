@@ -101,11 +101,11 @@ integration test.
    ```
    bazel run //dev:all_requirements.update
    ```
-1. Bump the coverage dependencies using the script using:
+1. Bump the coverage dependencies and update the file that the WORKSPACE
+   toolchains use:
    ```
-   bazel run //dev/update_deps:update_coverage_deps <VERSION>
-   # for example:
-   # bazel run //dev/update_deps:update_coverage_deps 7.10.7
+   bazel run //python/private/coverage:requirements.update
+   bazel run //dev/update_deps:update_coverage_workspace_deps
    ```
 
 ## Updating tool dependencies

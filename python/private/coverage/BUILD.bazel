@@ -1,12 +1,35 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
 load("//python/uv:lock.bzl", "lock")
 
 package(default_visibility = ["//:__subpackages__"])
 
-exports_files(["uv.lock"])
+exports_files([
+    "uv.lock",
+    "workspace_deps.bzl",
+])
 
 distribution_filegroup(
     name = "distribution",
+)
+
+bzl_library(
+    name = "workspace_deps_gen",
+    srcs = ["workspace_deps_gen.bzl"],
+    deps = [
+        "//python:versions",
+        "//python/private:repo_utils",
+        "//python/private:text_util",
+        "//python/private:version",
+        "//python/private/pypi:default_platforms",
+        "//python/private/pypi:hash",
+        "//python/private/pypi:parse_requirements",
+        "//python/private/pypi:pep508_env",
+        "//python/private/pypi:pep508_evaluate",
+        "//python/private/pypi:platform",
+        "//python/private/pypi:whl_repo_name",
+        "@toml.bzl//:toml",
+    ],
 )
 
 # Run `bazel run //python/private/coverage:requirements.update` to update the
@@ -18,4 +41,9 @@ lock(
     args = [
         "--upgrade",  # always upgrade
     ],
+)
+
+bzl_library(
+    name = "workspace_deps",
+    srcs = ["workspace_deps.bzl"],
 )

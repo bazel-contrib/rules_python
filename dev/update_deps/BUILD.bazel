@@ -32,19 +32,16 @@ py_library(
 )
 
 py_binary(
-    name = "update_coverage_deps",
-    srcs = ["update_coverage_deps.py"],
-    data = [
-        "//python/private:coverage_deps_filegroup",
-    ],
+    name = "update_coverage_workspace_deps",
+    srcs = ["update_coverage_workspace_deps.py"],
+    data = ["@rules_python_coverage_workspace_deps//:workspace_deps.bzl"],
     env = {
-        "UPDATE_FILE": "$(rlocationpath //python/private:coverage_deps_filegroup)",
+        "GENERATED": "$(rlocationpath @rules_python_coverage_workspace_deps//:workspace_deps.bzl)",
     },
     imports = ["../.."],
-    deps = [
-        ":args",
-        ":update_file",
-    ],
+    # The file is generated with bzlmod.
+    target_compatible_with = SUPPORTS_BZLMOD,
+    deps = ["//python/runfiles"],
 )
 
 py_binary(

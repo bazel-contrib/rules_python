@@ -1,3 +1,4 @@
+load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
 load("//python:py_library.bzl", "py_library")
 load("//python:pytest_test.bzl", "pytest_test")
 load("//tests/support:py_reconfig.bzl", "py_reconfig_test")
@@ -35,6 +36,16 @@ pytest_test(
     },
     target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
     deps = ["//python/runfiles"],
+)
+
+# The WORKSPACE toolchains use the wheels from the checked-in file, which is
+# generated with bzlmod.
+diff_test(
+    name = "workspace_deps_test",
+    failure_message = "Run `bazel run //dev/update_deps:update_coverage_workspace_deps` to update the file.",
+    file1 = "//python/private/coverage:workspace_deps.bzl",
+    file2 = "@rules_python_coverage_workspace_deps//:workspace_deps.bzl",
+    target_compatible_with = SUPPORTS_BZLMOD,
 )
 
 # The same program, but the coverage tool is the `coverage` py_library from the
