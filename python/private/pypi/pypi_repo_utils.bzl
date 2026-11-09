@@ -112,6 +112,10 @@ def _execute_prep(mrctx, *, python, srcs, **kwargs):
 
     environment = kwargs.pop("environment", {})
     pythonpath = environment.get("PYTHONPATH", "")
+
+    # NOTE: `types.is_string` from `@bazel_skylib` is not used, so that this
+    # file can be loaded before the `WORKSPACE` defines `@bazel_skylib`, e.g.
+    # via `whl_library` from `python/repositories.bzl`.
     if pythonpath and type(pythonpath) != "string":
         environment["PYTHONPATH"] = _construct_pypath(mrctx, entries = pythonpath)
     kwargs["environment"] = environment

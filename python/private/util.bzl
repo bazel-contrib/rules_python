@@ -61,6 +61,10 @@ def add_tag(attrs, tag):
 
         # Preserve the input type: this allows a test verifying the underlying
         # rule can accept the tuple for the tags argument.
+        # NOTE: `types.is_tuple` from `@bazel_skylib` is not used, so that
+        # this file can be loaded before the `WORKSPACE` defines
+        # `@bazel_skylib`, e.g. via `whl_library` from
+        # `python/repositories.bzl`.
         if type(tags) == "tuple":
             attrs["tags"] = tags + (tag,)
         else:
