@@ -22,9 +22,13 @@ conversation directory (`~/.gemini/jetski/brain/`) are created:
 3. **Local Git Branch**: The feature branch associated with the worktree.
 4. **Remote Git Branch**: The feature branch pushed to the user's fork
    (e.g., `origin`).
+5. **Conversation Name**: Once cleanup completes without errors, the active
+   conversation title is prefixed with `"done "` (without duplicating an
+   existing `"done "` prefix, capped at 70 characters).
 
-This skill safely shuts down active build processes and reclaims these
-resources without removing the conversation transcript or chat history.
+This skill safely shuts down active build processes, reclaims these external
+resources, and marks the conversation title as `"done "` without removing the
+conversation transcript or chat history.
 
 ## Script Location
 
@@ -103,6 +107,8 @@ deleted (or would be deleted in `--dry-run` mode), including:
 * **Git Worktree**: Removed worktree directory path.
 * **Local Git Branch**: Deleted local branch name.
 * **Remote Git Branch**: Deleted remote branch (`<remote>/<branch>`).
+* **Conversation Name**: Updated conversation title (prefixed with `"done "`
+  after successful cleanup).
 
 If any resources were skipped, left intact via `--leave-*` flags, or not found,
 note that briefly in the summary.

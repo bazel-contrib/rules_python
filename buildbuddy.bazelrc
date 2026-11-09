@@ -9,6 +9,10 @@ build:_buildbuddy_base --build_metadata=REPO_URL=https://github.com/bazel-contri
 common:_buildbuddy_base --remote_cache=grpcs://rules-python.buildbuddy.io
 common:_buildbuddy_base --remote_timeout=10m
 common:_buildbuddy_base --remote_executor=grpcs://rules-python.buildbuddy.io
+# Use BuildBuddy's Ubuntu 24.04 RBE container and hermetic GCC 13 toolchain
+# instead of its default Ubuntu 16.04 executor image (GCC 5.4.0).
+build:_buildbuddy_base --extra_execution_platforms=@toolchains_buildbuddy//platforms:linux_x86_64
+build:_buildbuddy_base --extra_toolchains=@toolchains_buildbuddy//toolchains/cc:ubuntu_gcc_x86_64
 # Compress remote cache transfers with zstd to improve network throughput.
 common:_buildbuddy_base --remote_cache_compression
 # Chunk large blobs using FastCDC (SplitBlob/SpliceBlob) for efficient
@@ -26,10 +30,10 @@ common:_buildbuddy_base --noslim_profile
 common:_buildbuddy_base --experimental_profile_include_target_label
 common:_buildbuddy_base --experimental_profile_include_primary_output
 # Re-apply `--enable_platform_specific_config` after setting `--remote_executor`
-# so `common:macos` and `common:windows` in `.bazelrc` inherit the priority of
-# `--config=buildbuddy_*` (e.g. when set in `~/.bazelrc` by `setup-bazel`,
-# which has higher priority than `.bazelrc`'s top-level
-# `--enable_platform_specific_config`).
+# and `--extra_execution_platforms` so `macos` and `windows` in `.bazelrc`
+# inherit the priority of `--config=buildbuddy_*` (e.g. when set in
+# `~/.bazelrc` by `setup-bazel`, which has higher priority than `.bazelrc`'s
+# top-level `--enable_platform_specific_config`).
 common:_buildbuddy_base --enable_platform_specific_config
 
 # For PR presubmit runs.

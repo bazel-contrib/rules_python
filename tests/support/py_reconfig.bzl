@@ -37,6 +37,8 @@ def _perform_transition_impl(input_settings, attr, base_impl):
     settings[labels.BUILD_PYTHON_ZIP] = attr.build_python_zip
     if attr.bootstrap_impl:
         settings[labels.BOOTSTRAP_IMPL] = attr.bootstrap_impl
+    if attr.collect_code_coverage:
+        settings["//command_line_option:collect_code_coverage"] = True
     if attr.extra_toolchains:
         settings["//command_line_option:extra_toolchains"] = attr.extra_toolchains
     if attr.python_src:
@@ -55,6 +57,7 @@ _BUILTIN_BUILD_PYTHON_ZIP = [] if config.bazel_10_or_later else [
 
 _RECONFIG_INPUTS = [
     "//command_line_option:build_runfile_links",
+    "//command_line_option:collect_code_coverage",
     "//command_line_option:extra_toolchains",
     "//command_line_option:stamp",
     CUSTOM_RUNTIME,
@@ -73,6 +76,9 @@ _RECONFIG_INHERITED_OUTPUTS = [v for v in _RECONFIG_OUTPUTS if v in _RECONFIG_IN
 _RECONFIG_ATTRS = {
     "bootstrap_impl": attrb.String(),
     "build_python_zip": attrb.Bool(default = config.build_python_zip_default),
+    "collect_code_coverage": attrb.Bool(
+        doc = "If true, set the --collect_code_coverage flag.",
+    ),
     "config_settings": attrb.LabelKeyedStringDict(),
     "extra_toolchains": attrb.StringList(
         doc = """

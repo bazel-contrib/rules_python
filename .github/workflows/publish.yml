@@ -8,6 +8,14 @@ on:
       tag_name:
         required: true
         type: string
+      author_name:
+        description: Commit author name for the BCR entry (optional)
+        required: false
+        type: string
+      author_email:
+        description: Commit author email for the BCR entry (optional)
+        required: false
+        type: string
     secrets:
       publish_token:
         required: true
@@ -19,14 +27,70 @@ on:
         description: git tag being released
         required: true
         type: string
+      author_name:
+        description: Commit author name for the BCR entry (optional)
+        required: false
+        type: string
+      author_email:
+        description: Commit author email for the BCR entry (optional)
+        required: false
+        type: string
 
 permissions: {}
 
 jobs:
   publish:
-    uses: bazel-contrib/publish-to-bcr/.github/workflows/publish.yaml@v1.5.1
+    uses: bazel-contrib/publish-to-bcr/.github/workflows/publish.yaml@v1.7.0
     with:
       tag_name: ${{ inputs.tag_name }}
+      # NOTE: BCR requires PR authors to have signed the CLA. Bots, such as
+      # github-actions[bot] (used by automation or when `gh workflow run` is
+      # called within a workflow), cannot sign the CLA.
+      author_name: ${{ inputs.author_name || github.actor }}
+      author_email: ${{ inputs.author_email || format('{0}+{1}@users.noreply.github.com', github.actor_id, github.actor) }}
+      module_roots: .
+      # GitHub repository which is a fork of the upstream where the Pull Request will be opened.
+      registry_fork: bazel-contrib/bazel-central-registry
+      attest: false
+      # Create non-draft PRs so the BCR bazel-io bot processes them. Otherwise,
+      # since a bazel-contrib bot, we have to wait for BCR maintainers to mark it
+      # non-draft or approve it.
+      draft: false
+    permissions:
+      contents: write
+    secrets:
+      # Necessary to push to the BCR fork, and to open a pull request against a registry
+      publish_token: ${{ secrets.publish_token || secrets.BCR_PUBLISH_TOKEN }}
+
+  publish_gazelle:
+    uses: bazel-contrib/publish-to-bcr/.github/workflows/publish.yaml@v1.7.0
+    with:
+      tag_name: ${{ inputs.tag_name }}
+      # See `publish` job above for why `author_name`/`author_email` are set.
+      author_name: ${{ inputs.author_name || github.actor }}
+      author_email: ${{ inputs.author_email || format('{0}+{1}@users.noreply.github.com', github.actor_id, github.actor) }}
+      module_roots: gazelle
+      # GitHub repository which is a fork of the upstream where the Pull Request will be opened.
+      registry_fork: bazel-contrib/bazel-central-registry
+      attest: false
+      # Create non-draft PRs so the BCR bazel-io bot processes them. Otherwise,
+      # since a bazel-contrib bot, we have to wait for BCR maintainers to mark it
+      # non-draft or approve it.
+      draft: false
+    permissions:
+      contents: write
+    secrets:
+      # Necessary to push to the BCR fork, and to open a pull request against a registry
+      publish_token: ${{ secrets.publish_token || secrets.BCR_PUBLISH_TOKEN }}
+
+  publish_sphinxdocs:
+    uses: bazel-contrib/publish-to-bcr/.github/workflows/publish.yaml@v1.7.0
+    with:
+      tag_name: ${{ inputs.tag_name }}
+      # See `publish` job above for why `author_name`/`author_email` are set.
+      author_name: ${{ inputs.author_name || github.actor }}
+      author_email: ${{ inputs.author_email || format('{0}+{1}@users.noreply.github.com', github.actor_id, github.actor) }}
+      module_roots: sphinxdocs
       # GitHub repository which is a fork of the upstream where the Pull Request will be opened.
       registry_fork: bazel-contrib/bazel-central-registry
       attest: false

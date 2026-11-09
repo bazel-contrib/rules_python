@@ -8,8 +8,11 @@ licenses(["notice"])
 rust_library(
     name = "exe_zip_maker_lib",
     srcs = ["src/lib.rs"],
-    edition = "2021",
-    deps = ["@crates//:sha2"],
+    edition = "2024",
+    deps = [
+        "@crates//:lexopt",
+        "@crates//:sha2",
+    ],
 )
 
 distribution_filegroup(

@@ -9,6 +9,10 @@ this PR", or monitor its merge):
 
 1. **Enqueue for Merge**: Run
    `gh pr merge <pr_number> --repo bazel-contrib/rules_python --auto --squash`.
+   - **Draft PRs**: If the PR is a draft (`isDraft: true`), mark it ready for
+     review first via `gh pr ready <pr_number> --repo
+     bazel-contrib/rules_python` (otherwise `gh pr merge` fails with
+     `Pull Request is still a draft`).
    - **Force / Admin Merge**: **CRITICAL**: Only pass `--admin` (e.g.,
      `gh pr merge <pr_number> --repo bazel-contrib/rules_python --admin
      --squash`) with explicit user consent ("force merge", "admin merge", or

@@ -3,6 +3,52 @@ load("//python:pytest_test.bzl", "pytest_test")
 load("//tests/support:support.bzl", "NOT_WINDOWS")
 
 py_library(
+    name = "verified_download",
+    testonly = True,
+    srcs = ["//dev:verified_download.py"],
+    imports = ["../../dev"],
+    target_compatible_with = NOT_WINDOWS,
+)
+
+pytest_test(
+    name = "verified_download_test",
+    srcs = ["verified_download_test.py"],
+    data = [
+        "//.github/actions/download-tool:all_files",
+        "//dev:verified_download.py",
+    ],
+    target_compatible_with = NOT_WINDOWS,
+    deps = [
+        ":verified_download",
+        "//python/runfiles",
+        "@pypi//pyyaml",
+    ],
+)
+
+py_library(
+    name = "check_keep_sorted",
+    testonly = True,
+    srcs = ["//.github/workflows:check_keep_sorted.py"],
+    imports = ["../../.github/workflows"],
+    target_compatible_with = NOT_WINDOWS,
+)
+
+pytest_test(
+    name = "check_keep_sorted_test",
+    srcs = ["check_keep_sorted_test.py"],
+    data = [
+        "//:.pre-commit-config.yaml",
+        "//.github/workflows:all_files",
+    ],
+    target_compatible_with = NOT_WINDOWS,
+    deps = [
+        ":check_keep_sorted",
+        "//python/runfiles",
+        "@pypi//pyyaml",
+    ],
+)
+
+py_library(
     name = "on_comment",
     testonly = True,
     srcs = ["//.github/workflows:on_comment.py"],
@@ -55,7 +101,10 @@ pytest_test(
 pytest_test(
     name = "workflow_permissions_test",
     srcs = ["workflow_permissions_test.py"],
-    data = ["//.github/workflows:all_files"],
+    data = [
+        "//.bcr:config_yml",
+        "//.github/workflows:all_files",
+    ],
     target_compatible_with = NOT_WINDOWS,
     deps = [
         "//python/runfiles",
@@ -80,9 +129,10 @@ pytest_test(
 py_library(
     name = "download_bazel",
     testonly = True,
-    srcs = ["//.github/actions/setup-bazel:download_bazel.py"],
-    imports = ["../../.github/actions/setup-bazel"],
+    srcs = ["//dev:download_bazel.py"],
+    imports = ["../../dev"],
     target_compatible_with = NOT_WINDOWS,
+    deps = [":verified_download"],
 )
 
 pytest_test(
@@ -92,11 +142,25 @@ pytest_test(
         "//:.bazelrc",
         "//:buildbuddy.bazelrc",
         "//.github/actions/setup-bazel:all_files",
+        "//dev:download_bazel.py",
+        "//dev:verified_download.py",
     ],
     target_compatible_with = NOT_WINDOWS,
     deps = [
         ":download_bazel",
         "//python/runfiles",
         "@pypi//pyyaml",
+    ],
+)
+
+pytest_test(
+    name = "readthedocs_test",
+    srcs = ["readthedocs_test.py"],
+    data = [
+        "//docs:readthedocs_build.sh",
+    ],
+    target_compatible_with = NOT_WINDOWS,
+    deps = [
+        "//python/runfiles",
     ],
 )

@@ -63,11 +63,10 @@ pip_parse(
 
     # (Optional) You can set quiet to False if you want to see pip output.
     #quiet = False,
-    requirements_lock = "//:requirements_lock.txt",
-    requirements_windows = "//:requirements_windows.txt",
+    uv_lock = "//:uv.lock",
 )
 
 load("@pypi//:requirements.bzl", "install_deps")
 
-# Initialize repositories for all packages in requirements_lock.txt.
+# Initialize repositories for all packages in uv.lock.
 install_deps()

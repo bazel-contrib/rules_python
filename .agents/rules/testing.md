@@ -35,6 +35,12 @@ description: Bazel test execution, integration test flags, and lockfiles
 * When building `//docs:docs` fails with exit code 2, treat it as a known
   Sphinx/Bazel flake and retry the build.
 
+## Local vs. Remote Execution Consistency
+* Do not pass `--strategy=Rustc=local` (or per-mnemonic local overrides for
+  compiled binaries) while leaving test runners or downstream build actions on
+  remote execution; host `glibc` mismatches cause `GLIBC_2.xx not found` on RBE
+  containers. Use `--spawn_strategy=local` when running locally.
+
 ## Test Organization
 * **Domain Placement**: Place tests by the feature tested (e.g.,
   `tests/bootstrap_impls/`), not by the fixture helper used (e.g.,
