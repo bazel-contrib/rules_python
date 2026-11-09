@@ -107,7 +107,9 @@ detached
         with mock.patch("cleanup.remove_git_worktree") as mock_rm_wt, mock.patch(
             "cleanup.log_error"
         ) as mock_log_err:
-            await cleanup.execute_cleanup_target(main_repo, target)
+            deleted, succeeded = await cleanup.execute_cleanup_target(main_repo, target)
+            self.assertEqual(deleted, [])
+            self.assertFalse(succeeded)
             mock_rm_wt.assert_not_called()
             mock_log_err.assert_called_with(
                 "Target is the main repository! Refusing to clean up main repository."
@@ -172,8 +174,11 @@ detached
                 "Deleted remote branch 'feat1' from 'origin'.",
             ),
         ):
-            deleted = await cleanup.execute_cleanup_target("/repo/main", target)
+            deleted, succeeded = await cleanup.execute_cleanup_target(
+                "/repo/main", target
+            )
 
+        self.assertTrue(succeeded)
         self.assertEqual(
             deleted,
             [
@@ -183,6 +188,26 @@ detached
                 "Remote branch: origin/feat1",
             ],
         )
+
+    def test_format_done_title(self):
+        """Verifies prepending 'done ' without duplication and 70-char truncation."""
+        self.assertEqual(
+            cleanup.format_done_title("Fix flaky upload test"),
+            "done Fix flaky upload test",
+        )
+        self.assertEqual(
+            cleanup.format_done_title("done Fix flaky upload test"),
+            "done Fix flaky upload test",
+        )
+        self.assertEqual(
+            cleanup.format_done_title("DONE   Fix flaky upload test"),
+            "done Fix flaky upload test",
+        )
+        self.assertEqual(cleanup.format_done_title("   "), "done")
+        long_title = "a" * 80
+        formatted = cleanup.format_done_title(long_title)
+        self.assertEqual(len(formatted), 70)
+        self.assertTrue(formatted.startswith("done "))
 
 
 if __name__ == "__main__":
