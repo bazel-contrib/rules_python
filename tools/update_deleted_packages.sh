@@ -31,10 +31,19 @@ cd $DIR
 # The sed -i.bak pattern is compatible between macos and linux
 {
     echo "# Generated via './tools/update_deleted_packages.sh'"
-    find examples tests gazelle \( -name WORKSPACE -or -name MODULE.bazel \) |
-        xargs -n 1 dirname |
-        xargs -I{} find {} \( -name BUILD -or -name BUILD.bazel \) |
-        xargs -n 1 dirname |
+    {
+        find examples tests gazelle \( -name WORKSPACE -or -name MODULE.bazel \) |
+            xargs -n 1 dirname |
+            xargs -I{} find {} \( -name BUILD -or -name BUILD.bazel \) |
+            xargs -n 1 dirname
+        # In WORKSPACE mode, gazelle is a local_repository, so intermediate
+        # directories above nested workspaces under gazelle must also be
+        # deleted to allow globbing workspace config files from //BUILD.bazel.
+        find gazelle -mindepth 2 -not -path "gazelle/python/testdata/*" \
+            \( -name WORKSPACE -or -name MODULE.bazel \) |
+            xargs -n 1 dirname |
+            xargs -n 1 dirname
+    } |
         grep -v "gazelle/docs" |
         LC_ALL=C sort -u |
         sed 's/^/common --deleted_packages=/g' 

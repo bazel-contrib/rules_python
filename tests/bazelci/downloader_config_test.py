@@ -84,6 +84,8 @@ def test_subworkspace_downloader_configs_match_root():
     found_configs: dict[str, str] = {}
     for cfg_path in main_root.rglob("downloader_config.cfg"):
         rel = cfg_path.relative_to(main_root).as_posix()
+        if rel.startswith("external/"):
+            continue
         found_configs[rel] = cfg_path.read_text(encoding="utf-8")
     for cfg_path in sphinx_root.rglob("downloader_config.cfg"):
         rel = f"sphinxdocs/{cfg_path.relative_to(sphinx_root).as_posix()}"
@@ -132,9 +134,15 @@ def _discover_workspaces(
 
     for marker in ("MODULE.bazel", "WORKSPACE"):
         for path in main_root.rglob(marker):
+            if not path.is_file() or path.name != marker:
+                continue
             rel = path.parent.relative_to(main_root).as_posix()
+            if rel == "external" or rel.startswith("external/"):
+                continue
             workspaces[rel] = path.parent
         for path in sphinx_root.rglob(marker):
+            if not path.is_file() or path.name != marker:
+                continue
             sub = path.parent.relative_to(sphinx_root).as_posix()
             rel = "sphinxdocs" if sub == "." else f"sphinxdocs/{sub}"
             workspaces[rel] = path.parent
