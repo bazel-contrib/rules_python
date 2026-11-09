@@ -45,6 +45,7 @@ def _test_select_platform_specific_wheels(env):
     env.expect.that_dict(got.wheels["coverage_cp313_cp313_manylinux_2_17_x86_64_deadb001"]).contains_exactly({
         "filename": "coverage-7.0-cp313-cp313-manylinux_2_17_x86_64.whl",
         "integrity": "sha256-3q2wAQ==",
+        "requirement": "coverage==7.0",
         "url": _URL + "coverage-7.0-cp313-cp313-manylinux_2_17_x86_64.whl",
     })
     env.expect.that_collection(got.wheels.keys()).contains_exactly([

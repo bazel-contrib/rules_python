@@ -29,6 +29,7 @@ bzl_library(
         "//python/private/pypi:pep508_env",
         "//python/private/pypi:pep508_evaluate",
         "//python/private/pypi:platform",
+        "//python/private/pypi:whl_library",
         "//python/private/pypi:whl_repo_name",
     ],
 )
