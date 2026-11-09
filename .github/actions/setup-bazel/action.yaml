@@ -58,6 +58,8 @@ runs:
     # retries) or leaving the Bazel download to the first build step.
     - name: Download Bazel
       shell: bash
+      env:
+        PYTHONPATH: ${{ github.action_path }}/../download-tool
       run: "${GITHUB_ACTION_PATH}/download_bazel.py"
 
     # Use github-script with step-scoped env vars to write the key directly to

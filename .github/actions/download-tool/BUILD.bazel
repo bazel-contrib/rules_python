@@ -1,0 +1,15 @@
+package(default_visibility = ["//tests:__subpackages__"])
+
+exports_files(
+    ["verified_download.py"],
+    visibility = ["//tests:__subpackages__"],
+)
+
+filegroup(
+    name = "all_files",
+    srcs = [
+        "action.yaml",
+        "verified_download.py",
+    ],
+    visibility = ["//tests:__subpackages__"],
+)

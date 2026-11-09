@@ -145,9 +145,10 @@ def create_binary_semantics_struct(
         A "BinarySemantics" struct.
     """
     return struct(
-        # keep-sorted
+        # keep-sorted start
         get_native_deps_dso_name = get_native_deps_dso_name,
         should_build_native_deps_dso = should_build_native_deps_dso,
+        # keep-sorted end
     )
 
 def create_cc_details_struct(

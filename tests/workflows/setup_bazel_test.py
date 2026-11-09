@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import os
+import shutil
 import stat
+import subprocess
+import sys
 import tarfile
 from pathlib import Path
 
@@ -33,8 +37,8 @@ def _sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def test_action_yaml_invokes_executable_download_script():
-    """Verifies setup-bazel action.yaml runs download_bazel.py and omits bazelisk-version."""
+def test_action_yaml_invokes_executable_download_script(tmp_path: Path):
+    """Verifies setup-bazel action.yaml runs download_bazel.py with PYTHONPATH."""
     action_dir = _action_dir()
     script = action_dir / "download_bazel.py"
     assert script.is_file()
@@ -44,9 +48,30 @@ def test_action_yaml_invokes_executable_download_script():
 
     action = yaml.safe_load((action_dir / "action.yaml").read_text(encoding="utf-8"))
     steps = action["runs"]["steps"]
-    assert any("download_bazel.py" in step.get("run", "") for step in steps)
+    download_step = next(s for s in steps if s.get("name") == "Download Bazel")
+    assert "download_bazel.py" in download_step["run"]
+    assert download_step["env"] == {
+        "PYTHONPATH": "${{ github.action_path }}/../download-tool"
+    }
     setup_step = next(s for s in steps if s.get("name") == "Setup Bazel")
     assert "bazelisk-version" not in setup_step["with"]
+
+    # Stage sibling action dirs outside Bazel runfiles and verify PYTHONPATH
+    # alone resolves verified_download without sys.path manipulation.
+    staged_actions = tmp_path / "actions"
+    (staged_actions / "setup-bazel").mkdir(parents=True)
+    (staged_actions / "download-tool").mkdir(parents=True)
+    staged_script = staged_actions / "setup-bazel" / "download_bazel.py"
+    shutil.copy2(script, staged_script)
+    shutil.copy2(
+        action_dir.parent / "download-tool" / "verified_download.py",
+        staged_actions / "download-tool" / "verified_download.py",
+    )
+    subprocess.run(
+        [sys.executable, "-B", "-m", "doctest", str(staged_script)],
+        check=True,
+        env={"PYTHONPATH": str(staged_actions / "download-tool")},
+    )
 
 
 def test_action_yaml_enables_buildbuddy_on_all_os():
@@ -157,7 +182,7 @@ def test_download_bazelisk_from_primary_url(
     monkeypatch.setitem(
         download_bazel.BAZELISK_URLS,
         "linux-amd64",
-        [(asset.as_uri(), _sha256_file(asset))],
+        [(asset.as_uri(), _sha256_file(asset), "")],
     )
 
     download_bazel.main()
@@ -201,7 +226,10 @@ def test_download_bazelisk_falls_back_to_npm_mirror(
     monkeypatch.setitem(
         download_bazel.BAZELISK_URLS,
         "linux-amd64",
-        [(missing_url, sha), (tgz_path.as_uri(), sha)],
+        [
+            (missing_url, sha, ""),
+            (tgz_path.as_uri(), sha, "package/bazelisk-linux_amd64"),
+        ],
     )
 
     download_bazel.main()
@@ -234,7 +262,7 @@ def test_download_bazelisk_reuses_cached_binary(
     monkeypatch.setitem(
         download_bazel.BAZELISK_URLS,
         "linux-amd64",
-        [((tmp_path / "missing").as_uri(), _sha256_file(cached_bazel))],
+        [((tmp_path / "missing").as_uri(), _sha256_file(cached_bazel), "")],
     )
 
     download_bazel.main()
@@ -263,13 +291,17 @@ def test_download_bazelisk_exhausts_retries_and_cleans_cache(
         download_bazel.BAZELISK_URLS,
         "linux-amd64",
         [
-            ((tmp_path / "missing").as_uri(), "0" * 64),
-            ((tmp_path / "missing.tgz").as_uri(), "0" * 64),
+            ((tmp_path / "missing").as_uri(), "0" * 64, ""),
+            (
+                (tmp_path / "missing.tgz").as_uri(),
+                "0" * 64,
+                "package/bazelisk-linux_amd64",
+            ),
         ],
     )
 
     with pytest.raises(SystemExit) as exc_info:
-        download_bazel._setup_bazelisk(max_attempts=2, initial_delay=0)
+        asyncio.run(download_bazel._setup_bazelisk(max_attempts=2, initial_delay=0))
 
     assert exc_info.value.code == 1
     out = capsys.readouterr().out
@@ -294,7 +326,7 @@ def test_download_bazel_succeeds_first_try(
     )
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
 
-    download_bazel._download_bazel(max_attempts=5, initial_delay=0)
+    asyncio.run(download_bazel._download_bazel(max_attempts=5, initial_delay=0))
 
     out = capsys.readouterr().out
     assert calls_file.read_text(encoding="utf-8").splitlines() == ["--version"]
@@ -329,7 +361,7 @@ echo "bazel 9.1.1"
     )
     monkeypatch.setenv("HOME", str(home))
 
-    download_bazel._download_bazel(max_attempts=5, initial_delay=0)
+    asyncio.run(download_bazel._download_bazel(max_attempts=5, initial_delay=0))
 
     out = capsys.readouterr().out
     assert calls_file.read_text(encoding="utf-8").splitlines() == [
@@ -369,7 +401,7 @@ exit 1
     monkeypatch.setenv("BAZELISK_HOME", str(bazelisk_home))
 
     with pytest.raises(SystemExit) as exc_info:
-        download_bazel._download_bazel(max_attempts=3, initial_delay=0)
+        asyncio.run(download_bazel._download_bazel(max_attempts=3, initial_delay=0))
 
     assert exc_info.value.code == 1
     out = capsys.readouterr().out
