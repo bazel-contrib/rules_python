@@ -23,6 +23,9 @@ rules_python_config = use_extension("//python/extensions:config.bzl", "config")
 rules_python_config.internal_configure(
     tool_deps_dev_only = TOOL_DEPS_DEV_ONLY,
 )
+rules_python_config.explicit_init_py(
+    default = True,
+)
 use_repo(
     rules_python_config,
     "pypi__build",
