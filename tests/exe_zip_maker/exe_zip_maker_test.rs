@@ -3,8 +3,8 @@ use std::fs;
 use std::path::PathBuf;
 
 use exe_zip_maker_lib::{
-    compute_file_sha256_hex, create_exe_zip, parse_args, replace_bytes, run_cli, Options,
-    PLACEHOLDER,
+    Options, PLACEHOLDER, compute_file_sha256_hex, create_exe_zip, parse_args, replace_bytes,
+    run_cli,
 };
 
 #[test]

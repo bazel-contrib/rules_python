@@ -50,7 +50,7 @@ runs:
         TOOL_SHA256: ${{ inputs.sha256 }}
         TOOL_URLS: ${{ inputs.urls }}
       run: >-
-        "${GITHUB_ACTION_PATH}/verified_download.py"
+        "${GITHUB_ACTION_PATH}/../../../dev/verified_download.py"
         --urls "${TOOL_URLS}"
         --sha256 "${TOOL_SHA256}"
         --executable

@@ -9,9 +9,9 @@ use std::fs::{self, File, Metadata};
 use std::io::{self, BufWriter, Seek, Write};
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use zip::write::SimpleFileOptions;
-use zip::{CompressionMethod, DateTime, ZipWriter, ZIP64_BYTES_THR};
+use zip::{CompressionMethod, DateTime, ZIP64_BYTES_THR, ZipWriter};
 
 /// `BufWriter` capacity for the output zip.
 ///
@@ -51,10 +51,8 @@ fn get_zip_runfiles_path(
     legacy_external_runfiles: bool,
     runfiles_dir: &str,
 ) -> String {
-    if legacy_external_runfiles {
-        if let Some(rest) = path.strip_prefix("external/") {
-            return unix_join(&[runfiles_dir, rest]);
-        }
+    if legacy_external_runfiles && let Some(rest) = path.strip_prefix("external/") {
+        return unix_join(&[runfiles_dir, rest]);
     }
     if let Some(rest) = path.strip_prefix("../") {
         return unix_join(&[runfiles_dir, rest]);
@@ -75,11 +73,11 @@ fn normalize_components(path: &str) -> Vec<&str> {
             continue;
         }
         if part == ".." {
-            if let Some(&last) = out.last() {
-                if last != ".." {
-                    out.pop();
-                    continue;
-                }
+            if let Some(&last) = out.last()
+                && last != ".."
+            {
+                out.pop();
+                continue;
             }
             out.push("..");
         } else {
@@ -430,12 +428,12 @@ pub fn create_zip(options: &ZipOptions) -> Result<()> {
     }
     let entries = read_manifest(options)?;
 
-    if let Some(parent) = options.output_zip.parent() {
-        // TODO: Use `Path::is_empty()` once it is stable (Rust 1.98).
-        if !parent.as_os_str().is_empty() {
-            fs::create_dir_all(parent)
-                .with_context(|| format!("creating directory {}", parent.display()))?;
-        }
+    // TODO: Use `Path::is_empty()` once it is stable (Rust 1.98).
+    if let Some(parent) = options.output_zip.parent()
+        && !parent.as_os_str().is_empty()
+    {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("creating directory {}", parent.display()))?;
     }
 
     let out_file = File::create(&options.output_zip)

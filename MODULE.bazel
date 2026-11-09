@@ -23,6 +23,9 @@ rules_python_config = use_extension("//python/extensions:config.bzl", "config")
 rules_python_config.internal_configure(
     tool_deps_dev_only = TOOL_DEPS_DEV_ONLY,
 )
+rules_python_config.explicit_init_py(
+    default = True,
+)
 use_repo(
     rules_python_config,
     "pypi__build",
@@ -80,11 +83,6 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
 pip.parse(
     hub_name = "rules_python_publish_deps",
     python_version = "3.14",
-    requirements_by_platform = {
-        "//tools/publish:requirements_darwin.txt": "osx_*",
-        "//tools/publish:requirements_linux.txt": "linux_*",
-        "//tools/publish:requirements_windows.txt": "windows_*",
-    },
     target_platforms = [
         "linux_aarch64",
         "linux_x86_64",
@@ -93,6 +91,7 @@ pip.parse(
         "windows_aarch64",
         "windows_x86_64",
     ],
+    uv_lock = "//tools/publish:uv.lock",
 )
 pip.dep(name = "pytest")
 pip.dep(name = "pytest-bazel")
@@ -190,15 +189,25 @@ bazel_dep(name = "rules_shell", version = "0.3.0", dev_dependency = True)
 bazel_dep(name = "rules_multirun", version = "0.9.0", dev_dependency = True)
 bazel_dep(name = "bazel_ci_rules", version = "1.0.0", dev_dependency = True)
 bazel_dep(name = "rules_pkg", version = "1.2.0", dev_dependency = True)
+bazel_dep(name = "toolchains_buildbuddy", version = "0.0.4", dev_dependency = True)
 
-# Rust toolchains to build the release artifacts for Linux from Linux x86_64;
-# see dev/release_artifacts. They target musl, which Rust can link statically
-# with its bundled rust-lld, so no C cross toolchain is needed.
+buildbuddy = use_extension(
+    "@toolchains_buildbuddy//:extensions.bzl",
+    "buildbuddy",
+    dev_dependency = True,
+)
+buildbuddy.platform(buildbuddy_container_image = "UBUNTU24_04_IMAGE")
+
 rust = use_extension(
     "@rules_rust//rust:extensions.bzl",
     "rust",
     dev_dependency = True,
 )
+rust.toolchain(edition = "2024")
+
+# Rust toolchains to build the release artifacts for Linux from Linux x86_64;
+# see dev/release_artifacts. They target musl, which Rust can link statically
+# with its bundled rust-lld, so no C cross toolchain is needed.
 rust.repository_set(
     # rules_rust also registers an x86_64 to x86_64 toolchain from this set, in
     # name order with its default ones, so the name must sort after
@@ -207,7 +216,7 @@ rust.repository_set(
     # The default allocator library needs a C toolchain for the target platform,
     # but there isn't one. This one is what rules_rust uses for e.g. Windows.
     allocator_library = "@rules_rust//rust/private/cc:empty",
-    edition = "2021",
+    edition = "2024",
     exec_triple = "x86_64-unknown-linux-gnu",
     target_compatible_with = [
         "@platforms//cpu:aarch64",
@@ -300,7 +309,7 @@ rust.repository_set(
     # On Windows, rules_rust names toolchains after a hash of the full name:
     # rw-1886791612 for this one, after rust_windows_x86_64's rw-1704990954.
     name = "rust_release_windows",
-    edition = "2021",
+    edition = "2024",
     exec_triple = "x86_64-pc-windows-msvc",
     target_compatible_with = [
         "@platforms//cpu:x86_32",
@@ -397,6 +406,16 @@ dev_python.override(
     register_all_versions = True,
 )
 
+# For testing the coverage collection with the bundled coverage tool.
+# See //tests/coverage:coverage_collection_test
+#
+# NOTE: A full version is used so that the toolchain is named after it and does
+# not shadow the toolchains that are checked in //tests/toolchains.
+dev_python.toolchain(
+    configure_coverage_tool = True,
+    python_version = "3.12.16",
+)
+
 # For testing an arbitrary runtime triggered by a custom flag.
 # See //tests/toolchains:custom_platform_toolchain_test
 dev_python.single_version_platform_override(
@@ -445,17 +464,17 @@ dev_pip.parse(
     download_only = True,
     hub_name = "pypiserver",
     python_version = "3.14",
-    requirements_lock = "//examples/wheel:requirements_server.txt",
+    uv_lock = "//examples/wheel:uv.lock",
 )
 dev_pip.parse(
     hub_name = "pypi_alpha",
     python_version = "3.14",
-    requirements_lock = "//tests/multi_pypi/alpha:requirements.txt",
+    uv_lock = "//tests/multi_pypi/alpha:uv.lock",
 )
 dev_pip.parse(
     hub_name = "pypi_beta",
     python_version = "3.14",
-    requirements_lock = "//tests/multi_pypi/beta:requirements.txt",
+    uv_lock = "//tests/multi_pypi/beta:uv.lock",
 )
 use_repo(dev_pip, "dev_pip", "pypi_alpha", "pypi_beta", "pypiserver")
 

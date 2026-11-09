@@ -16,7 +16,7 @@ bcr_test_module:
   module_path: "examples/bzlmod_build_file_generation"
   matrix:
     platform: [
-      "debian11",
+      "debian13",
       "macos",
       "ubuntu2204",
     ]

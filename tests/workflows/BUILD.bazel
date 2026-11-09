@@ -5,15 +5,18 @@ load("//tests/support:support.bzl", "NOT_WINDOWS")
 py_library(
     name = "verified_download",
     testonly = True,
-    srcs = ["//.github/actions/download-tool:verified_download.py"],
-    imports = ["../../.github/actions/download-tool"],
+    srcs = ["//dev:verified_download.py"],
+    imports = ["../../dev"],
     target_compatible_with = NOT_WINDOWS,
 )
 
 pytest_test(
     name = "verified_download_test",
     srcs = ["verified_download_test.py"],
-    data = ["//.github/actions/download-tool:all_files"],
+    data = [
+        "//.github/actions/download-tool:all_files",
+        "//dev:verified_download.py",
+    ],
     target_compatible_with = NOT_WINDOWS,
     deps = [
         ":verified_download",
@@ -126,8 +129,8 @@ pytest_test(
 py_library(
     name = "download_bazel",
     testonly = True,
-    srcs = ["//.github/actions/setup-bazel:download_bazel.py"],
-    imports = ["../../.github/actions/setup-bazel"],
+    srcs = ["//dev:download_bazel.py"],
+    imports = ["../../dev"],
     target_compatible_with = NOT_WINDOWS,
     deps = [":verified_download"],
 )
@@ -138,13 +141,26 @@ pytest_test(
     data = [
         "//:.bazelrc",
         "//:buildbuddy.bazelrc",
-        "//.github/actions/download-tool:all_files",
         "//.github/actions/setup-bazel:all_files",
+        "//dev:download_bazel.py",
+        "//dev:verified_download.py",
     ],
     target_compatible_with = NOT_WINDOWS,
     deps = [
         ":download_bazel",
         "//python/runfiles",
         "@pypi//pyyaml",
+    ],
+)
+
+pytest_test(
+    name = "readthedocs_test",
+    srcs = ["readthedocs_test.py"],
+    data = [
+        "//docs:readthedocs_build.sh",
+    ],
+    target_compatible_with = NOT_WINDOWS,
+    deps = [
+        "//python/runfiles",
     ],
 )

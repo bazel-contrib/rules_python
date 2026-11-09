@@ -51,10 +51,10 @@ pub fn compute_file_sha256_hex(path: &Path) -> io::Result<String> {
 /// Creates a self-executable zip archive by prepending a preamble to a zip archive
 /// and substituting `%ZIP_HASH%` with the SHA-256 hash of the zip archive.
 pub fn create_exe_zip(preamble_path: &Path, zip_path: &Path, output_path: &Path) -> io::Result<()> {
-    if let Some(parent) = output_path.parent() {
-        if !parent.as_os_str().is_empty() {
-            fs::create_dir_all(parent)?;
-        }
+    if let Some(parent) = output_path.parent()
+        && !parent.as_os_str().is_empty()
+    {
+        fs::create_dir_all(parent)?;
     }
 
     let zip_hash = compute_file_sha256_hex(zip_path)?;

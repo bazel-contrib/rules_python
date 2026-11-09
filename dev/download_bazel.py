@@ -192,7 +192,8 @@ async def _download_bazel(
 
         if attempt < max_attempts:
             print(
-                f"::warning::Failed to download Bazel (attempt {attempt}/{max_attempts}); retrying in {delay:g}s...",
+                f"::warning::Failed to download Bazel "
+                f"(attempt {attempt}/{max_attempts}); retrying in {delay:g}s...",
                 flush=True,
             )
             await asyncio.sleep(delay)
@@ -206,14 +207,10 @@ async def _download_bazel(
     sys.exit(1)
 
 
-async def async_main() -> None:
+async def main() -> None:
     await _setup_bazelisk()
     await _download_bazel()
 
 
-def main() -> None:
-    asyncio.run(async_main())
-
-
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

@@ -32,8 +32,9 @@ def _sha256(data: bytes) -> str:
 
 
 def test_action_yaml_accepts_urls_and_caches_by_name_and_sha256() -> None:
+    rf = runfiles.CreateOrRaise()
     action_dir = _action_dir()
-    script = action_dir / "verified_download.py"
+    script = rf.root() / "rules_python/dev/verified_download.py"
     assert script.is_file()
     assert bool(script.stat().st_mode & stat.S_IXUSR)
 
@@ -56,7 +57,7 @@ def test_action_yaml_accepts_urls_and_caches_by_name_and_sha256() -> None:
     assert download_step["if"] == "steps.cache.outputs.cache-hit != 'true'"
     assert download_step["env"]["TOOL_URLS"] == "${{ inputs.urls }}"
     assert '--urls "${TOOL_URLS}"' in download_step["run"]
-    assert "verified_download.py" in download_step["run"]
+    assert "dev/verified_download.py" in download_step["run"]
 
 
 def test_parse_url_list_splits_commas_and_newlines() -> None:

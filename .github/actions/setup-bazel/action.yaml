@@ -34,7 +34,7 @@ runs:
         repository-cache: |
           - MODULE.bazel
           - dev/uv.lock
-          - tools/publish/requirements_linux.txt
+          - tools/publish/uv.lock
         bazelrc: |
           # .bazelrc enables --config=pyrefly by default; disable the pyrefly
           # output group here so operational workflows don't download the
@@ -58,9 +58,7 @@ runs:
     # retries) or leaving the Bazel download to the first build step.
     - name: Download Bazel
       shell: bash
-      env:
-        PYTHONPATH: ${{ github.action_path }}/../download-tool
-      run: "${GITHUB_ACTION_PATH}/download_bazel.py"
+      run: "${GITHUB_ACTION_PATH}/../../../dev/download_bazel.py"
 
     # Use github-script with step-scoped env vars to write the key directly to
     # user.bazelrc without passing it via CLI args, job-wide environment

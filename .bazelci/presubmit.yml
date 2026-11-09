@@ -140,7 +140,7 @@ matrix:
   # Keep in sync with .bcr/presubmit.yml
   platform:
     - ubuntu2204
-    - debian11
+    - debian13
     - macos_arm64
     - windows
   # Keep in sync with .bcr/presubmit.yml
@@ -167,10 +167,10 @@ tasks:
     <<: *gazelle_common_bcr
     name: "Gazelle: BCR, Bazel {bazel}"
     platform: ubuntu2204
-  gazelle_bcr_debian11:
+  gazelle_bcr_debian:
     <<: *gazelle_common_bcr
     name: "Gazelle: BCR, Bazel {bazel}"
-    platform: debian11
+    platform: debian13
   gazelle_bcr_macos_arm64:
     <<: *gazelle_common_bcr
     name: "Gazelle: BCR, Bazel {bazel}"
@@ -301,7 +301,7 @@ tasks:
   debian:
     <<: *reusable_config
     name: "Default: Debian, Bazel {bazel}"
-    platform: debian11
+    platform: debian13
     bazel: ${{ bazel }}
   macos_arm64:
     <<: *reusable_config
@@ -367,7 +367,7 @@ tasks:
     <<: *common_workspace_flags
     name: "examples/build_file_generation: Debian, workspace"
     working_directory: examples/build_file_generation
-    platform: debian11
+    platform: debian13
   integration_test_build_file_generation_macos_workspace:
     <<: *reusable_build_test_all
     <<: *common_workspace_flags
@@ -404,7 +404,7 @@ tasks:
     <<: *coverage_targets_example_multi_python
     name: "examples/multi_python_versions: Debian, workspace"
     working_directory: examples/multi_python_versions
-    platform: debian11
+    platform: debian13
   integration_test_multi_python_versions_macos_workspace:
     <<: *reusable_build_test_all
     <<: *common_workspace_flags
@@ -443,7 +443,7 @@ tasks:
     <<: *reusable_build_test_all
     name: "examples/pip_parse: Debian"
     working_directory: examples/pip_parse
-    platform: debian11
+    platform: debian13
   integration_test_pip_parse_macos:
     <<: *reusable_build_test_all
     name: "examples/pip_parse: MacOS"
@@ -473,7 +473,7 @@ tasks:
     <<: *common_workspace_flags
     name: "examples/pip_parse_vendored: Debian"
     working_directory: examples/pip_parse_vendored
-    platform: debian11
+    platform: debian13
   integration_test_pip_parse_vendored_macos:
     <<: *reusable_build_test_all
     <<: *common_workspace_flags
@@ -490,7 +490,7 @@ tasks:
   integration_test_bazelinbazel_debian:
     <<: *common_bazelinbazel_config
     name: "tests/integration bazel-in-bazel: Debian"
-    platform: debian11
+    platform: debian13
   # The bazelinbazel tests were disabled on Mac to save CI jobs slots, and
   # have bitrotted a bit. For now, just run a subset of what we're most
   # interested in.
@@ -532,7 +532,7 @@ tasks:
     <<: *reusable_build_test_all
     name: "compile_pip_requirements: Debian"
     working_directory: tests/integration/compile_pip_requirements
-    platform: debian11
+    platform: debian13
     shell_commands:
     # Make a change to the locked requirements and then assert that //:requirements.update does the
     # right thing.
@@ -611,7 +611,7 @@ tasks:
   integration_compile_pip_requirements_test_from_external_repo_debian:
     name: "compile_pip_requirements_test_from_external_repo: Debian"
     working_directory: tests/integration/compile_pip_requirements_test_from_external_repo
-    platform: debian11
+    platform: debian13
     shell_commands:
     # Assert that @compile_pip_requirements//:requirements_test does the right thing.
     - "bazel test @compile_pip_requirements//..."

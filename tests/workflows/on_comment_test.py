@@ -41,6 +41,7 @@ class GitHubActionEnv:
         self,
         *,
         issue_number: int | str = 4175,
+        issue_title: str = "Release 2.5.0",
         comment_id: int | str = 5772601429,
         comment_url: str = "",
         repo: str = "bazel-contrib/rules_python",
@@ -58,8 +59,13 @@ class GitHubActionEnv:
         }
         if user_login:
             comment["user"] = {"login": user_login}
+        issue: dict[str, object] = {}
+        if issue_number:
+            issue["number"] = issue_number
+        if issue_title:
+            issue["title"] = issue_title
         payload = {
-            "issue": {"number": issue_number} if issue_number else {},
+            "issue": issue,
             "comment": comment,
             "repository": {"full_name": repo} if repo else {},
         }
@@ -125,6 +131,7 @@ def test_release_issue_create_rc(monkeypatch, gha_env):
     )
     assert gha_env.read_outputs() == {
         "issue_number": "100",
+        "release_branch": "release/2.5",
         "command": "create-rc",
     }
     assert gha_env.read_env() == {"issue_number": "100"}
@@ -138,6 +145,7 @@ def test_release_issue_prepare_complete_with_arg(monkeypatch, gha_env):
     )
     assert gha_env.read_outputs() == {
         "issue_number": "100",
+        "release_branch": "release/2.5",
         "command": "prepare-complete",
         "pr_number": "200",
     }
@@ -152,6 +160,7 @@ def test_release_issue_prepare_complete_no_arg(monkeypatch, gha_env):
     )
     assert gha_env.read_outputs() == {
         "issue_number": "100",
+        "release_branch": "release/2.5",
         "command": "prepare-complete",
     }
     assert gha_env.read_env() == {"issue_number": "100"}
@@ -165,6 +174,7 @@ def test_release_issue_create_release_branch(monkeypatch, gha_env):
     )
     assert gha_env.read_outputs() == {
         "issue_number": "100",
+        "release_branch": "release/2.5",
         "command": "create-release-branch",
     }
     assert gha_env.read_env() == {"issue_number": "100"}
@@ -178,6 +188,7 @@ def test_release_issue_prepare(monkeypatch, gha_env):
     )
     assert gha_env.read_outputs() == {
         "issue_number": "100",
+        "release_branch": "release/2.5",
         "command": "prepare",
     }
     assert gha_env.read_env() == {"issue_number": "100"}
@@ -191,6 +202,7 @@ def test_release_issue_process_backports(monkeypatch, gha_env):
     )
     assert gha_env.read_outputs() == {
         "issue_number": "100",
+        "release_branch": "release/2.5",
         "command": "process-backports",
     }
     assert gha_env.read_env() == {"issue_number": "100"}
@@ -204,6 +216,7 @@ def test_release_issue_backport(monkeypatch, gha_env):
     )
     assert gha_env.read_outputs() == {
         "issue_number": "100",
+        "release_branch": "release/2.5",
         "command": "add-backports",
         "backports": "1,2,3",
     }
@@ -218,6 +231,7 @@ def test_release_issue_backport_hashes(monkeypatch, gha_env):
     )
     assert gha_env.read_outputs() == {
         "issue_number": "100",
+        "release_branch": "release/2.5",
         "command": "add-backports",
         "backports": "#123,#567",
     }
@@ -234,6 +248,7 @@ def test_release_issue_backport_empty(monkeypatch, gha_env, mock_add_reaction, c
     )
     assert gha_env.read_outputs() == {
         "issue_number": "100",
+        "release_branch": "release/2.5",
         "command": "none",
     }
     assert gha_env.read_env() == {"issue_number": "100"}
@@ -254,6 +269,7 @@ def test_release_issue_sync_changelog(monkeypatch, gha_env):
     )
     assert gha_env.read_outputs() == {
         "issue_number": "100",
+        "release_branch": "release/2.5",
         "command": "sync-changelog",
     }
     assert gha_env.read_env() == {"issue_number": "100"}
@@ -267,6 +283,7 @@ def test_release_issue_promote(monkeypatch, gha_env):
     )
     assert gha_env.read_outputs() == {
         "issue_number": "100",
+        "release_branch": "release/2.5",
         "command": "promote",
     }
     assert gha_env.read_env() == {"issue_number": "100"}
@@ -280,6 +297,7 @@ def test_release_issue_unknown_comment(monkeypatch, gha_env):
     )
     assert gha_env.read_outputs() == {
         "issue_number": "100",
+        "release_branch": "release/2.5",
         "command": "none",
     }
     assert gha_env.read_env() == {"issue_number": "100"}
@@ -294,9 +312,25 @@ def test_release_issue_multiline_comment(monkeypatch, gha_env):
     )
     assert gha_env.read_outputs() == {
         "issue_number": "100",
+        "release_branch": "release/2.5",
         "command": "prepare",
     }
     assert gha_env.read_env() == {"issue_number": "100"}
+
+
+def test_release_issue_missing_release_branch_fails(monkeypatch, gha_env, capsys):
+    gha_env.set_event(issue_title="Invalid title")
+    rc = _run_comment(
+        monkeypatch,
+        "/create-rc",
+        has_release_label="true",
+    )
+    assert rc == 1
+    captured = capsys.readouterr()
+    assert (
+        "::error::Could not determine release branch for issue #100 from"
+        " title: 'Invalid title'." in captured.out
+    )
 
 
 def test_backport_issue_prepare(monkeypatch, gha_env):
@@ -417,6 +451,7 @@ def test_main_cli_execution(monkeypatch, gha_env):
 
     assert gha_env.read_outputs() == {
         "issue_number": "42",
+        "release_branch": "release/2.5",
         "command": "create-rc",
     }
     assert gha_env.read_env() == {"issue_number": "42"}
@@ -547,6 +582,7 @@ def test_allowed_user_release_issue_backport(monkeypatch, gha_env):
     assert rc == 0
     assert gha_env.read_outputs() == {
         "issue_number": "100",
+        "release_branch": "release/2.5",
         "command": "add-backports",
         "backports": "#123,#456",
     }
@@ -621,6 +657,7 @@ def test_maintainer_associations_allowed_arbitrary_commands(
     assert rc == 0
     assert gha_env.read_outputs() == {
         "issue_number": "100",
+        "release_branch": "release/2.5",
         "command": "promote",
     }
 

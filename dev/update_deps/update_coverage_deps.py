@@ -23,7 +23,6 @@ import argparse
 import json
 import os
 import textwrap
-from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
 from urllib import request
@@ -31,102 +30,61 @@ from urllib import request
 from dev.update_deps.args import path_from_runfiles
 from dev.update_deps.update_file import update_file
 
-# This should be kept in sync with //python:versions.bzl
-_supported_platforms = {
-    # Windows is unsupported right now
-    # "win_amd64": "x86_64-pc-windows-msvc",
-    "manylinux1_x86_64": "x86_64-unknown-linux-gnu",
-    "manylinux2014_x86_64": "x86_64-unknown-linux-gnu",
-    "manylinux2014_aarch64": "aarch64-unknown-linux-gnu",
-    "macosx_11_0_arm64": "aarch64-apple-darwin",
-    "macosx_10_9_x86_64": "x86_64-apple-darwin",
-    "macosx_10_13_x86_64": "x86_64-apple-darwin",
-    "macosx_10_15_x86_64": "x86_64-apple-darwin",
-    ("t", "manylinux1_x86_64"): "x86_64-unknown-linux-gnu-freethreaded",
-    ("t", "manylinux2014_x86_64"): "x86_64-unknown-linux-gnu-freethreaded",
-    ("t", "manylinux2014_aarch64"): "aarch64-unknown-linux-gnu-freethreaded",
-    ("t", "macosx_11_0_arm64"): "aarch64-apple-darwin-freethreaded",
-    ("t", "macosx_10_9_x86_64"): "x86_64-apple-darwin-freethreaded",
-    ("t", "macosx_10_13_x86_64"): "x86_64-apple-darwin-freethreaded",
-    ("t", "macosx_10_15_x86_64"): "x86_64-apple-darwin-freethreaded",
-}
-
 
 @dataclass
-class Dep:
-    name: str
-    platform: str
-    python: str
+class Whl:
     url: str
     sha256: str
-
-    @property
-    def repo_name(self):
-        return f"pypi__{self.name}_{self.python}_{self.platform}"
+    marker: str
 
     def __repr__(self):
         return "\n".join(
             [
-                "(",
-                f'    "{self.url}",',
-                f'    "{self.sha256}",',
-                ")",
+                "struct(",
+                f'    url = "{self.url}",',
+                f'    hash = "sha256:{self.sha256}",',
+                f"    marker = {json.dumps(self.marker)},",
+                "),",
             ]
         )
 
 
 @dataclass
-class Deps:
-    deps: list[Dep]
+class Whls:
+    whls: list[Whl]
 
     def __repr__(self):
-        deps = defaultdict(dict)
-        for d in self.deps:
-            deps[d.python][d.platform] = d
-
-        parts = []
-        for python, contents in deps.items():
-            inner = textwrap.indent(
-                "\n".join([f'"{platform}": {d},' for platform, d in contents.items()]),
-                prefix="    ",
-            )
-            parts.append('"{}": {{\n{}\n}},'.format(python, inner))
-        return "{{\n{}\n}}".format(textwrap.indent("\n".join(parts), prefix="    "))
+        inner = textwrap.indent(
+            "\n".join([repr(w) for w in self.whls]),
+            prefix="    ",
+        )
+        return "[\n{}\n]".format(inner)
 
 
-def _get_platforms(filename: str, python_version: str):
-    name, _, tail = filename.partition("-")
-    version, _, tail = tail.partition("-")
-    got_python_version, _, tail = tail.partition("-")
-    if python_version != got_python_version:
-        return []
-    abi, _, tail = tail.partition("-")
-
-    platforms, _, tail = tail.rpartition(".")
-    platforms = platforms.split(".")
-
-    return [("t", p) for p in platforms] if abi.endswith("t") else platforms
-
-
-def _map(
-    name: str,
-    filename: str,
-    python_version: str,
-    url: str,
-    digests: dict[str, str],
-    platform: str | tuple[str, str],
-    **kwargs: Any,
-):
-    if platform and platform not in _supported_platforms:
-        return None
-
-    return Dep(
-        name=name,
-        platform=_supported_platforms[platform] if platform else "",
-        python=python_version,
+def _whl(url: str, digests: dict[str, str], marker: str, **kwargs: Any) -> Whl:
+    return Whl(
         url=url,
         sha256=digests["sha256"],
+        marker=marker,
     )
+
+
+@dataclass
+class VersionSpec:
+    """A package version and the PEP 508 marker for when to use it."""
+
+    version: str
+    marker: str
+
+
+def _parse_version_spec(value: str) -> VersionSpec:
+    version, _, marker = value.partition(";")
+    version = version.strip()
+    if not version:
+        raise argparse.ArgumentTypeError(
+            f"Expected '<version>[; <marker>]', got '{value}'"
+        )
+    return VersionSpec(version=version, marker=marker.strip())
 
 
 def _parse_args() -> argparse.Namespace:
@@ -138,16 +96,15 @@ def _parse_args() -> argparse.Namespace:
         help="The name of the package",
     )
     parser.add_argument(
-        "version",
-        type=str,
-        help="The version of the package to download",
-    )
-    parser.add_argument(
-        "--py",
+        "versions",
         nargs="+",
-        type=str,
-        default=["cp39", "cp310", "cp311", "cp312", "cp313", "cp314", "cp315"],
-        help="Supported python versions",
+        type=_parse_version_spec,
+        help=(
+            "The versions of the package to download, each optionally with a "
+            "PEP 508 environment marker for when the version should be used, "
+            "e.g. \"7.10.7; python_full_version < '3.15'\". The markers should not "
+            "overlap."
+        ),
     )
     parser.add_argument(
         "--dry-run",
@@ -163,59 +120,38 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main():
-    args = _parse_args()
-
-    api_url = f"https://pypi.org/pypi/{args.name}/{args.version}/json"
+def _get_urls(name: str, version: str) -> list[dict[str, Any]]:
+    api_url = f"https://pypi.org/pypi/{name}/{version}/json"
     req = request.Request(api_url)
     with request.urlopen(req) as response:
         data = json.loads(response.read().decode("utf-8"))
+    return data["urls"]
 
-    urls = []
-    default_url = None
-    for u in data["urls"]:
-        if u["yanked"]:
-            continue
 
-        if not u["filename"].endswith(".whl"):
-            continue
+def main():
+    args = _parse_args()
 
-        if u["filename"].endswith("py3-none-any.whl"):
-            default_url = _map(name=args.name, platform="", **u)
-            continue
+    whls = []
+    for spec in args.versions:
+        for u in _get_urls(args.name, spec.version):
+            if u["yanked"]:
+                continue
 
-        if u["python_version"] not in args.py:
-            continue
+            if not u["filename"].endswith(".whl"):
+                continue
 
-        if f"_{u['python_version']}m_" in u["filename"]:
-            continue
+            whls.append(_whl(marker=spec.marker, **u))
 
-        platforms = _get_platforms(
-            u["filename"],
-            u["python_version"],
-        )
+    whls.sort(key=lambda x: x.url.rpartition("/")[2])
 
-        result = [_map(name=args.name, platform=p, **u) for p in platforms]
-        urls.extend(filter(None, result))
-
-    urls.sort(key=lambda x: f"{x.python}_{x.platform}")
-
-    # Update the coverage_deps, which are used to register deps
+    # Update the coverage wheels, the compatible wheel is selected in Starlark
     update_file(
         path=args.update_file,
-        snippet="\n".join(
-            [
-                f"_default = {repr(default_url)}",
-                f"_coverage_deps = {repr(Deps(urls))}",
-                "",
-            ]
-        ),
+        snippet="_coverage_wheels = {}\n".format(repr(Whls(whls))),
         start_marker="# START: maintained by 'bazel run //dev/update_deps:update_coverage_deps <version>'",
         end_marker="# END: maintained by 'bazel run //dev/update_deps:update_coverage_deps <version>'",
         dry_run=args.dry_run,
     )
-
-    return
 
 
 if __name__ == "__main__":

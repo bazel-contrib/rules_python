@@ -612,12 +612,18 @@ def _process_single_version_overrides(*, tag, _fail = fail, default):
                 return
 
     sha256 = dict(tag.sha256) or available_versions[tag.python_version]["sha256"]
-    override = {
-        "sha256": sha256,
-        "strip_prefix": {
+    if tag.urls:
+        strip_prefix = {
             platform: tag.strip_prefix
             for platform in sha256
-        },
+        }
+    else:
+        # The archives are not overridden, so keep their strip_prefix, which
+        # differs between the archive flavors.
+        strip_prefix = available_versions[tag.python_version]["strip_prefix"]
+    override = {
+        "sha256": sha256,
+        "strip_prefix": strip_prefix,
         "url": {
             platform: list(tag.urls)
             for platform in tag.sha256
