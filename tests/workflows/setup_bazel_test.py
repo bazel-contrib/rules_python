@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import os
 import stat
@@ -35,8 +36,9 @@ def _sha256_file(path: Path) -> str:
 
 def test_action_yaml_invokes_executable_download_script():
     """Verifies setup-bazel action.yaml runs download_bazel.py and omits bazelisk-version."""
+    rf = runfiles.CreateOrRaise()
     action_dir = _action_dir()
-    script = action_dir / "download_bazel.py"
+    script = rf.root() / "rules_python/dev/download_bazel.py"
     assert script.is_file()
     assert bool(script.stat().st_mode & stat.S_IXUSR), (
         "download_bazel.py must be executable"
@@ -44,7 +46,7 @@ def test_action_yaml_invokes_executable_download_script():
 
     action = yaml.safe_load((action_dir / "action.yaml").read_text(encoding="utf-8"))
     steps = action["runs"]["steps"]
-    assert any("download_bazel.py" in step.get("run", "") for step in steps)
+    assert any("dev/download_bazel.py" in step.get("run", "") for step in steps)
     setup_step = next(s for s in steps if s.get("name") == "Setup Bazel")
     assert "bazelisk-version" not in setup_step["with"]
 
@@ -115,10 +117,23 @@ def test_buildbuddy_bazelrc_disables_remote_executor_on_macos_and_windows():
     executor_line = (
         "common:_buildbuddy_base --remote_executor=grpcs://rules-python.buildbuddy.io"
     )
+    rbe_platform_line = (
+        "build:_buildbuddy_base "
+        "--extra_execution_platforms=@toolchains_buildbuddy//platforms:linux_x86_64"
+    )
+    rbe_toolchain_line = (
+        "build:_buildbuddy_base "
+        "--extra_toolchains=@toolchains_buildbuddy//toolchains/cc:ubuntu_gcc_x86_64"
+    )
     platform_config_line = "common:_buildbuddy_base --enable_platform_specific_config"
     assert executor_line in buildbuddy_lines
+    assert rbe_platform_line in buildbuddy_lines
+    assert rbe_toolchain_line in buildbuddy_lines
     assert platform_config_line in buildbuddy_lines
     assert buildbuddy_lines.index(executor_line) < buildbuddy_lines.index(
+        platform_config_line
+    )
+    assert buildbuddy_lines.index(rbe_platform_line) < buildbuddy_lines.index(
         platform_config_line
     )
 
@@ -129,7 +144,9 @@ def test_buildbuddy_bazelrc_disables_remote_executor_on_macos_and_windows():
         if line.strip() and not line.strip().startswith("#")
     ]
     assert "common:macos --remote_executor=" in bazelrc_lines
+    assert "build:macos --extra_execution_platforms=" in bazelrc_lines
     assert "common:windows --remote_executor=" in bazelrc_lines
+    assert "build:windows --extra_execution_platforms=" in bazelrc_lines
 
 
 def test_download_bazelisk_from_primary_url(
@@ -160,7 +177,7 @@ def test_download_bazelisk_from_primary_url(
         [(asset.as_uri(), _sha256_file(asset))],
     )
 
-    download_bazel.main()
+    asyncio.run(download_bazel.main())
 
     out = capsys.readouterr().out
     bin_dir = home / ".cache/bazelisk/bin"
@@ -204,7 +221,7 @@ def test_download_bazelisk_falls_back_to_npm_mirror(
         [(missing_url, sha), (tgz_path.as_uri(), sha)],
     )
 
-    download_bazel.main()
+    asyncio.run(download_bazel.main())
 
     out = capsys.readouterr().out
     assert f"::warning::Failed to fetch {missing_url}" in out
@@ -237,7 +254,7 @@ def test_download_bazelisk_reuses_cached_binary(
         [((tmp_path / "missing").as_uri(), _sha256_file(cached_bazel))],
     )
 
-    download_bazel.main()
+    asyncio.run(download_bazel.main())
 
     out = capsys.readouterr().out
     assert (home / ".cache/bazelisk/bin/bazelisk").is_file()
@@ -269,7 +286,7 @@ def test_download_bazelisk_exhausts_retries_and_cleans_cache(
     )
 
     with pytest.raises(SystemExit) as exc_info:
-        download_bazel._setup_bazelisk(max_attempts=2, initial_delay=0)
+        asyncio.run(download_bazel._setup_bazelisk(max_attempts=2, initial_delay=0))
 
     assert exc_info.value.code == 1
     out = capsys.readouterr().out
@@ -294,7 +311,7 @@ def test_download_bazel_succeeds_first_try(
     )
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
 
-    download_bazel._download_bazel(max_attempts=5, initial_delay=0)
+    asyncio.run(download_bazel._download_bazel(max_attempts=5, initial_delay=0))
 
     out = capsys.readouterr().out
     assert calls_file.read_text(encoding="utf-8").splitlines() == ["--version"]
@@ -329,7 +346,7 @@ echo "bazel 9.1.1"
     )
     monkeypatch.setenv("HOME", str(home))
 
-    download_bazel._download_bazel(max_attempts=5, initial_delay=0)
+    asyncio.run(download_bazel._download_bazel(max_attempts=5, initial_delay=0))
 
     out = capsys.readouterr().out
     assert calls_file.read_text(encoding="utf-8").splitlines() == [
@@ -369,7 +386,7 @@ exit 1
     monkeypatch.setenv("BAZELISK_HOME", str(bazelisk_home))
 
     with pytest.raises(SystemExit) as exc_info:
-        download_bazel._download_bazel(max_attempts=3, initial_delay=0)
+        asyncio.run(download_bazel._download_bazel(max_attempts=3, initial_delay=0))
 
     assert exc_info.value.code == 1
     out = capsys.readouterr().out

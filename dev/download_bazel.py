@@ -21,16 +21,15 @@ Why we also run `bazel --version` with retries:
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import io
 import os
 import platform
 import shutil
 import stat
-import subprocess
 import sys
 import tarfile
-import time
 import urllib.request
 from pathlib import Path
 
@@ -143,10 +142,16 @@ def _add_to_path(bin_dir: Path) -> None:
     )
 
 
-def _fetch_bazelisk(url: str, os_name: str, arch_name: str, ext: str) -> bytes | None:
+def _read_url(url: str) -> bytes:
+    with urllib.request.urlopen(url, timeout=DOWNLOAD_TIMEOUT_SECONDS) as resp:
+        return resp.read()
+
+
+async def _fetch_bazelisk(
+    url: str, os_name: str, arch_name: str, ext: str
+) -> bytes | None:
     try:
-        with urllib.request.urlopen(url, timeout=DOWNLOAD_TIMEOUT_SECONDS) as response:
-            data = response.read()
+        data = await asyncio.to_thread(_read_url, url)
         if url.endswith(".tgz"):
             member_name = f"package/bazelisk-{os_name}_{arch_name}{ext}"
             with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as tar:
@@ -172,7 +177,7 @@ def _install_bazelisk_binary(
     _add_to_path(bin_dir)
 
 
-def _setup_bazelisk(
+async def _setup_bazelisk(
     max_attempts: int = MAX_ATTEMPTS,
     initial_delay: float = INITIAL_DELAY_SECONDS,
 ) -> None:
@@ -202,17 +207,18 @@ def _setup_bazelisk(
     delay = initial_delay
     for attempt in range(1, max_attempts + 1):
         for url, expected_sha in sources:
-            data = _fetch_bazelisk(url, os_name, arch_name, ext)
+            data = await _fetch_bazelisk(url, os_name, arch_name, ext)
             if data is not None and _verify_sha256_bytes(data, expected_sha):
                 _install_bazelisk_binary(data, bin_dir, bazel_bin, bazelisk_bin)
                 return
 
         if attempt < max_attempts:
             print(
-                f"::warning::Failed to download Bazelisk (attempt {attempt}/{max_attempts}); retrying in {delay:g}s...",
+                f"::warning::Failed to download Bazelisk "
+                f"(attempt {attempt}/{max_attempts}); retrying in {delay:g}s...",
                 flush=True,
             )
-            time.sleep(delay)
+            await asyncio.sleep(delay)
             delay *= 2
 
     print(
@@ -223,27 +229,29 @@ def _setup_bazelisk(
     sys.exit(1)
 
 
-def _run_bazel_version() -> bool:
+async def _run_bazel_version() -> bool:
     bazel_exe = shutil.which("bazel", path=os.environ.get("PATH")) or "bazel"
-    result = subprocess.run([bazel_exe, "--version"], check=False)
-    return result.returncode == 0
+    proc = await asyncio.create_subprocess_exec(bazel_exe, "--version")
+    returncode = await proc.wait()
+    return returncode == 0
 
 
-def _download_bazel(
+async def _download_bazel(
     max_attempts: int = MAX_ATTEMPTS,
     initial_delay: float = INITIAL_DELAY_SECONDS,
 ) -> None:
     delay = initial_delay
     for attempt in range(1, max_attempts + 1):
-        if _run_bazel_version():
+        if await _run_bazel_version():
             return
 
         if attempt < max_attempts:
             print(
-                f"::warning::Failed to download Bazel (attempt {attempt}/{max_attempts}); retrying in {delay:g}s...",
+                f"::warning::Failed to download Bazel "
+                f"(attempt {attempt}/{max_attempts}); retrying in {delay:g}s...",
                 flush=True,
             )
-            time.sleep(delay)
+            await asyncio.sleep(delay)
             delay *= 2
 
     print(
@@ -254,10 +262,10 @@ def _download_bazel(
     sys.exit(1)
 
 
-def main() -> None:
-    _setup_bazelisk()
-    _download_bazel()
+async def main() -> None:
+    await _setup_bazelisk()
+    await _download_bazel()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

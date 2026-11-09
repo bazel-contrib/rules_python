@@ -3,6 +3,11 @@ load("//python/uv:lock.bzl", "lock")  # buildifier: disable=bzl-visibility
 
 licenses(["notice"])
 
+exports_files(
+    ["download_bazel.py"],
+    visibility = ["//:__subpackages__"],
+)
+
 # Run bazel run //dev:uv_lock.update
 lock(
     name = "uv_lock",
