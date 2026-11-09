@@ -907,7 +907,9 @@ If you only care for the host platform and do not have a usecase to cross-build,
 a string `"{os}_{arch}"` as the value here. You could also use `"{os}_{arch}_freethreaded"` as well.
 
 Use `"*"` to evaluate the requirements for all of the platforms configured with
-{obj}`pip.default`.
+{obj}`pip.default`. When used together with {attr}`uv_lock`, the platform
+independent (`none-any`) wheel of a package, if present, is also used for the
+platforms that are not configured with {obj}`pip.default`.
 
 :::{include} /_includes/experimental_api.md
 :::

@@ -577,6 +577,7 @@ def _create_whl_repos(
         extra_pip_args = pip_attr.extra_pip_args,
         get_index_urls = self._get_index_urls.get(python_version),
         toml_decode = getattr(self._config, "toml_decode", None),
+        any_src = "*" in pip_attr.target_platforms,
         logger = logger,
     )
 
@@ -629,6 +630,29 @@ def _create_whl_repos(
                 python_version = python_version,
                 whl = whl,
                 repo = repo,
+            )
+
+        if getattr(whl, "any_src", None):
+            # Use the platform independent wheel for the platforms that are
+            # not configured, so it has no target platforms and the more
+            # specific config settings take precedence.
+            _add_whl_library(
+                self,
+                python_version = python_version,
+                whl = whl,
+                repo = _whl_repo(
+                    src = whl.any_src,
+                    index_url = whl.index_url,
+                    whl_library_args = whl_library_args,
+                    download_only = pip_attr.download_only,
+                    netrc = self._config.netrc or pip_attr.netrc,
+                    use_downloader = True,
+                    auth_patterns = self._config.auth_patterns or pip_attr.auth_patterns,
+                    python_version = _major_minor_version(python_version),
+                    is_multiple_versions = whl.is_multiple_versions,
+                    interpreter = interpreter,
+                    enable_pipstar_extract = enable_pipstar_extract,
+                ),
             )
 
 def _common_args(self, module_ctx, *, pip_attr):
