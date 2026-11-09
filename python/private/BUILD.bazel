@@ -796,6 +796,12 @@ bzl_library(
 )
 
 bzl_library(
+    name = "python_toolchain_type",
+    srcs = ["python_toolchain_type.bzl"],
+    deps = ["@rules_python_internal//:rules_python_config"],
+)
+
+bzl_library(
     name = "pythons_hub",
     srcs = ["pythons_hub.bzl"],
     deps = [
