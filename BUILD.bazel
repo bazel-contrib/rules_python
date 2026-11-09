@@ -63,6 +63,7 @@ exports_files(
     [
         ".bazelrc",
         ".bazelversion",
+        ".pre-commit-config.yaml",
         "MODULE.bazel",
         "buildbuddy.bazelrc",
     ],

@@ -5,7 +5,10 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import os
+import shutil
 import stat
+import subprocess
+import sys
 import tarfile
 from pathlib import Path
 
@@ -34,8 +37,8 @@ def _sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def test_action_yaml_invokes_executable_download_script():
-    """Verifies setup-bazel action.yaml runs download_bazel.py and omits bazelisk-version."""
+def test_action_yaml_invokes_executable_download_script(tmp_path: Path):
+    """Verifies setup-bazel action.yaml runs dev/download_bazel.py and omits bazelisk-version."""
     rf = runfiles.CreateOrRaise()
     action_dir = _action_dir()
     script = rf.root() / "rules_python/dev/download_bazel.py"
@@ -49,6 +52,24 @@ def test_action_yaml_invokes_executable_download_script():
     assert any("dev/download_bazel.py" in step.get("run", "") for step in steps)
     setup_step = next(s for s in steps if s.get("name") == "Setup Bazel")
     assert "bazelisk-version" not in setup_step["with"]
+
+    # Stage dev/ scripts outside Bazel runfiles and verify dev/download_bazel.py
+    # resolves sibling dev/verified_download.py with an empty environment (as in
+    # Read the Docs and GitHub Actions).
+    staged_dev = tmp_path / "dev"
+    staged_dev.mkdir(parents=True)
+    staged_script = staged_dev / "download_bazel.py"
+    shutil.copy2(script, staged_script)
+    shutil.copy2(
+        rf.root() / "rules_python/dev/verified_download.py",
+        staged_dev / "verified_download.py",
+    )
+    subprocess.run(
+        [sys.executable, "-B", "-m", "doctest", "download_bazel.py"],
+        check=True,
+        cwd=staged_dev,
+        env={},
+    )
 
 
 def test_action_yaml_enables_buildbuddy_on_all_os():
@@ -174,7 +195,7 @@ def test_download_bazelisk_from_primary_url(
     monkeypatch.setitem(
         download_bazel.BAZELISK_URLS,
         "linux-amd64",
-        [(asset.as_uri(), _sha256_file(asset))],
+        [(asset.as_uri(), _sha256_file(asset), "")],
     )
 
     asyncio.run(download_bazel.main())
@@ -218,7 +239,10 @@ def test_download_bazelisk_falls_back_to_npm_mirror(
     monkeypatch.setitem(
         download_bazel.BAZELISK_URLS,
         "linux-amd64",
-        [(missing_url, sha), (tgz_path.as_uri(), sha)],
+        [
+            (missing_url, sha, ""),
+            (tgz_path.as_uri(), sha, "package/bazelisk-linux_amd64"),
+        ],
     )
 
     asyncio.run(download_bazel.main())
@@ -251,7 +275,7 @@ def test_download_bazelisk_reuses_cached_binary(
     monkeypatch.setitem(
         download_bazel.BAZELISK_URLS,
         "linux-amd64",
-        [((tmp_path / "missing").as_uri(), _sha256_file(cached_bazel))],
+        [((tmp_path / "missing").as_uri(), _sha256_file(cached_bazel), "")],
     )
 
     asyncio.run(download_bazel.main())
@@ -280,8 +304,12 @@ def test_download_bazelisk_exhausts_retries_and_cleans_cache(
         download_bazel.BAZELISK_URLS,
         "linux-amd64",
         [
-            ((tmp_path / "missing").as_uri(), "0" * 64),
-            ((tmp_path / "missing.tgz").as_uri(), "0" * 64),
+            ((tmp_path / "missing").as_uri(), "0" * 64, ""),
+            (
+                (tmp_path / "missing.tgz").as_uri(),
+                "0" * 64,
+                "package/bazelisk-linux_amd64",
+            ),
         ],
     )
 

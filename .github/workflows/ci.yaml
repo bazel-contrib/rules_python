@@ -31,6 +31,25 @@ jobs:
           version: 0.15.14
           args: format --check --exclude testdata
 
+  keep_sorted:
+    name: keep-sorted
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Download keep-sorted
+        id: keep-sorted
+        uses: ./.github/actions/download-tool
+        with:
+          name: keep-sorted
+          # Keep in sync with .pre-commit-config.yaml
+          urls: |
+            https://github.com/google/keep-sorted/releases/download/v0.10.0/keep-sorted_linux_amd64
+          sha256: 079710c01619cc3dc11c9ddce18ac8db8d86701e7d12f9c5b62b8c4c4a664cca
+      - name: Check keep-sorted
+        env:
+          KEEP_SORTED_BIN: ${{ steps.keep-sorted.outputs.path }}
+        run: ./.github/workflows/check_keep_sorted.py -- "$KEEP_SORTED_BIN"
+
   build_release_artifacts:
     name: Build release artifacts
     uses: ./.github/workflows/release_build_artifacts.yaml
