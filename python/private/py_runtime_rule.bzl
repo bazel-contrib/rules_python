@@ -351,10 +351,16 @@ The entry point for the tool must be loadable by a Python interpreter (e.g. a
 of [`coverage.py`](https://coverage.readthedocs.io), at least including
 the `run` and `lcov` subcommands.
 
-See {ref}`coverage-from-pypi` for using `coverage` from a pip hub.
+Using a target providing {obj}`PyInfo` is the preferred way. See
+{ref}`coverage-from-pypi` for using `coverage` from a pip hub.
 
 :::{versionchanged} VERSION_NEXT_FEATURE
 Targets providing {obj}`PyInfo`, such as `@pypi//coverage`, can be used.
+:::
+
+:::{deprecated} VERSION_NEXT_FEATURE
+Using a target that does not provide {obj}`PyInfo` will be deprecated in the
+next version.
 :::
 """,
             ),
