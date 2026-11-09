@@ -37,6 +37,7 @@ def _config_impl(module_ctx):
         name = "rules_python_internal",
         transition_setting_generators = transition_setting_generators,
         transition_settings = transition_settings,
+        toolchain_type_in_rules_python = bazel_features.rules._toolchain_type_in_rules_python,
     )
 
     pypi_deps()
