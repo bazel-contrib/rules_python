@@ -21,7 +21,7 @@ def pip_parse(
         download_only = False,
         enable_implicit_namespace_pkgs = False,
         environment = {},
-        envsubst = {},
+        envsubst = [],
         experimental_extra_index_urls = [],
         experimental_index_url = "",
         experimental_requirement_cycles = {},

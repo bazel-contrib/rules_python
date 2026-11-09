@@ -11,6 +11,14 @@ on:
         description: 'The ID of the comment that triggered this run (optional)'
         required: false
         type: string
+      author_name:
+        description: 'Commit author name for the BCR entry (optional)'
+        required: false
+        type: string
+      author_email:
+        description: 'Commit author email for the BCR entry (optional)'
+        required: false
+        type: string
   workflow_call:
     inputs:
       issue:
@@ -19,6 +27,14 @@ on:
         type: string
       comment_id:
         description: 'The ID of the comment that triggered this run (optional)'
+        required: false
+        type: string
+      author_name:
+        description: 'Commit author name for the BCR entry (optional)'
+        required: false
+        type: string
+      author_email:
+        description: 'Commit author email for the BCR entry (optional)'
         required: false
         type: string
 
@@ -66,4 +82,6 @@ jobs:
     uses: ./.github/workflows/release_publish.yaml
     with:
       tag_name: ${{ needs.tag_rc.outputs.tag_name }}
+      author_name: ${{ inputs.author_name }}
+      author_email: ${{ inputs.author_email }}
     secrets: inherit
