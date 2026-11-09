@@ -6,7 +6,9 @@ build:
   tools:
     nodejs: "19"
   commands:
-    - env
+    # Log RTD env vars to help debug builds without dumping noisy or sensitive
+    # unrelated env vars.
+    - env | grep '^READTHEDOC*'
     - npm install -g @bazel/bazelisk
     - bazel version
     # Put the actual build behind a shell script because its easier to modify than
