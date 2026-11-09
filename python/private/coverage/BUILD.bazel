@@ -21,7 +21,6 @@ bzl_library(
         "//python/private:bazel_tools",
         "//python/private:text_util",
         "//python/private/pypi:default_platforms",
-        "//python/private/pypi:whl_library",
     ],
 )
 

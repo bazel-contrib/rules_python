@@ -11,10 +11,10 @@ is a target for each Python version in the hub, which only selects the wheel
 based on the target platform.
 """
 
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("//python/private:text_util.bzl", "render")
 load("//python/private/pypi:default_platforms.bzl", "default_platforms")
-load("//python/private/pypi:whl_library.bzl", "whl_library")
 load(":workspace_deps.bzl", "COVERAGE_TOOLS", "COVERAGE_WHEELS")
 
 _HUB_NAME = "rules_python_coverage"
@@ -37,8 +37,6 @@ def _coverage_hub_repo_impl(rctx):
         "",
         """package(default_visibility = ["//visibility:public"])""",
         "",
-        """exports_files(["config.bzl"])""",
-        "",
     ] + [
         render.call(
             "selects.config_setting_group",
@@ -47,8 +45,6 @@ def _coverage_hub_repo_impl(rctx):
         ) + "\n"
         for p in used_platforms
     ]))
-
-    rctx.file("config.bzl", "packages = {\"coverage\": None}\n")
 
     rctx.file("coverage/BUILD.bazel", "\n".join([
         """package(default_visibility = ["//visibility:public"])""",
@@ -86,6 +82,25 @@ coverage_hub_repo = repository_rule(
     doc = "The hub repository for the coverage tool of the WORKSPACE toolchains.",
 )
 
+# The BUILD file for the extracted wheel. The `whl_library` is not used,
+# because this is loaded before `py_repositories` defines the repositories that
+# it needs.
+_WHL_BUILD_FILE = """\
+load("{py_library}", "py_library")
+
+package(default_visibility = ["//visibility:public"])
+
+py_library(
+    name = "pkg",
+    srcs = glob(["coverage/**/*.py"]),
+    data = glob(
+        ["coverage/**"],
+        exclude = ["coverage/**/*.py"],
+    ),
+    imports = ["."],
+)
+"""
+
 def coverage_tool(python_version):
     """Create the coverage repositories and return the coverage tool label.
 
@@ -100,16 +115,17 @@ def coverage_tool(python_version):
     if major_minor not in COVERAGE_TOOLS:
         return None
 
+    build_file_content = _WHL_BUILD_FILE.format(
+        py_library = str(Label("//python:py_library.bzl")),
+    )
     for name, whl in COVERAGE_WHEELS.items():
         maybe(
-            whl_library,
+            http_archive,
             name = _wheel_repo_name(name),
-            requirement = whl["requirement"],
-            urls = [whl["url"]],
-            filename = whl["filename"],
+            build_file_content = build_file_content,
             integrity = whl["integrity"],
-            dep_template = "@{}//{{name}}:{{target}}".format(_HUB_NAME),
-            config_load = "@{}//:config.bzl".format(_HUB_NAME),
+            type = "zip",
+            urls = [whl["url"]],
         )
 
     maybe(
