@@ -34,6 +34,12 @@ python_register_toolchains(
 )
 ```
 
+This uses the same `coverage` wheels as bzlmod, without any extra setup in the
+`WORKSPACE` file. The WORKSPACE macros cannot read the `uv.lock` file, so the
+selected wheels are stored in a `.bzl` file generated from it, and the
+`@rules_python_coverage` repository has a coverage tool for each Python version,
+e.g. `@rules_python_coverage//coverage:3.13`.
+
 :::{note}
 This will implicitly add the version of `coverage` provided by
 `rules_python` to the dependencies of `py_test` rules when `bazel coverage` is
@@ -44,14 +50,11 @@ need to manually configure coverage (see below).
 :::
 
 :::{note}
-For WORKSPACE, the bundled `coverage` wheel set covers CPython 3.9 through
-3.14 (with freethreaded variants for 3.13+), and not every platform within
-that range. When the interpreter that `bazel coverage` actually selects has no
-bundled wheel, `register_coverage_tool = True` produces no coverage tool and
-`bazel coverage` emits empty lcov data; manually configure coverage (see below)
-instead.
+The coverage tool is not configured for the Windows toolchains, so `bazel
+coverage` emits empty lcov data for them; manually configure coverage (see
+below) instead.
 
-`py_runtime` warns when this happens. The warning is emitted during analysis,
+`py_runtime` warns when the selected runtime has no coverage tool. The warning is emitted during analysis,
 for the runtime toolchain resolution selected and only when coverage is being
 collected, so it does not fire for the many platforms toolchains are
 registered for but a given build never uses.

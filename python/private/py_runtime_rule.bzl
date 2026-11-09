@@ -53,8 +53,8 @@ WARNING: Python runtime {label} has no coverage_tool.
   For rules_python's hermetic toolchains, enable the bundled coverage.py:
     python.toolchain(configure_coverage_tool = True)           # bzlmod
     python_register_toolchains(register_coverage_tool = True)  # WORKSPACE
-  A bundled wheel must exist for this interpreter's version and platform;
-  python/private/coverage_deps.bzl lists what ships with rules_python.
+  A coverage wheel must exist for this interpreter's version and platform;
+  python/private/coverage/uv.lock lists what ships with rules_python.
 
   Otherwise, set py_runtime.coverage_tool directly. See
   https://rules-python.readthedocs.io/en/latest/coverage.html

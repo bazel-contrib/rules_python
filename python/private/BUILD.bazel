@@ -42,12 +42,6 @@ distribution_filegroup(
     name = "distribution",
 )
 
-filegroup(
-    name = "coverage_deps_filegroup",
-    srcs = ["coverage_deps.bzl"],
-    visibility = ["//:__subpackages__"],
-)
-
 # Filegroup of bzl files that can be used by downstream rules for documentation generation
 filegroup(
     name = "bzl",
@@ -366,19 +360,6 @@ bzl_library(
         ":visibility",
         "@bazel_skylib//lib:selects",
         "@bazel_skylib//rules:common_settings",
-    ],
-)
-
-bzl_library(
-    name = "coverage_deps",
-    srcs = ["coverage_deps.bzl"],
-    deps = [
-        ":repo_utils",
-        ":version_label",
-        "//python:versions",
-        "//python/private:bazel_tools",
-        "//python/private/pypi:pep508_evaluate",
-        "//python/private/pypi:select_whl",
     ],
 )
 
@@ -798,12 +779,12 @@ bzl_library(
     name = "python_register_toolchains",
     srcs = ["python_register_toolchains.bzl"],
     deps = [
-        ":coverage_deps",
         ":full_version",
         ":pbs_manifest",
         ":python_repository",
         ":toolchains_repo",
         "//python:versions",
+        "//python/private/coverage:coverage_workspace",
     ],
 )
 

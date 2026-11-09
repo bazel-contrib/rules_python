@@ -14,6 +14,18 @@ distribution_filegroup(
 )
 
 bzl_library(
+    name = "coverage_workspace",
+    srcs = ["coverage_workspace.bzl"],
+    deps = [
+        ":workspace_deps",
+        "//python/private:bazel_tools",
+        "//python/private:text_util",
+        "//python/private/pypi:default_platforms",
+        "//python/private/pypi:whl_library",
+    ],
+)
+
+bzl_library(
     name = "workspace_deps_gen",
     srcs = ["workspace_deps_gen.bzl"],
     deps = [
