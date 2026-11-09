@@ -3,6 +3,11 @@ load("//python/uv:lock.bzl", "lock")  # buildifier: disable=bzl-visibility
 
 licenses(["notice"])
 
+exports_files(
+    ["download_bazel.py"],
+    visibility = ["//:__subpackages__"],
+)
+
 # Only present for WORKSPACE support; bzlmod uses //dev:uv.lock.
 # Run bazel run //dev:requirements.update
 lock(

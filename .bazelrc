@@ -76,12 +76,20 @@ common:ci --experimental_repository_cache_hardlinks=false
 common:ci --//dev/release_artifacts:require_msvc_arm64=true
 
 # Additional config to use for readthedocs builds.
-# See .readthedocs.yml for additional flags that can only be determined from
-# the runtime environment.
-build:rtd --stamp
+# See .readthedocs.yml and docs/readthedocs_build.sh for additional flags that
+# can only be determined from the runtime environment.
 # Some bzl files contain repos only available under bzlmod
 build:rtd --enable_bzlmod
+# Disable typechecking and Rust lint output groups so doc builds do not download
+# the pyrefly toolchain or run clippy/rustfmt checks.
+build:rtd --output_groups=-pyrefly,-clippy_checks,-rustfmt_checks
+# Use the stripped Python runtime archive (without debug symbols) to reduce
+# download size and share remote cache keys with GitHub Actions workflows.
 build:rtd --//python/config_settings:py_pbs_distribution=install_only_stripped
+# Avoid downloading intermediate build outputs (such as protoc, shrubbery, and
+# Stardoc protos) from remote cache/RBE; only materialize the top-level outputs
+# needed by `bazel run //docs:readthedocs_install`.
+build:rtd --remote_download_toplevel
 
 common --incompatible_python_disallow_native_rules
 common --incompatible_no_implicit_file_export
