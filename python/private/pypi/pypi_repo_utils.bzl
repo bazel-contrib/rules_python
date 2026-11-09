@@ -14,7 +14,6 @@
 
 ""
 
-load("@bazel_skylib//lib:types.bzl", "types")
 load("//python/private:repo_utils.bzl", "repo_utils")
 load("//python/private:util.bzl", "is_importable_name")
 
@@ -113,7 +112,7 @@ def _execute_prep(mrctx, *, python, srcs, **kwargs):
 
     environment = kwargs.pop("environment", {})
     pythonpath = environment.get("PYTHONPATH", "")
-    if pythonpath and not types.is_string(pythonpath):
+    if pythonpath and type(pythonpath) != "string":
         environment["PYTHONPATH"] = _construct_pypath(mrctx, entries = pythonpath)
     kwargs["environment"] = environment
 
