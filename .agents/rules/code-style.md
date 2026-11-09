@@ -59,8 +59,8 @@ Order definitions within a file as:
   error messages for CLI flags that bypass safety checks.
 
 ## Sorting
-* Add `keep-sorted start` and `keep-sorted end` markers on list and dict config
-  or registry tables, even when they have a single entry.
+* Add `keep-sorted` `start` and `end` markers on list and dict config or
+  registry tables, even when they have a single entry.
 
 ## Bulk Logging
 * In bulk operations, log a single summary line on success; on failure, list
