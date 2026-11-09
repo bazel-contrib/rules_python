@@ -188,6 +188,9 @@ func (py *Resolver) Resolve(
 	MODULES_LOOP:
 		for it.Next() {
 			mod := it.Value().(Module)
+			if mod.PytestPlugin && !cfg.ResolvePytestPlugins() {
+				continue MODULES_LOOP
+			}
 			moduleName := mod.Name
 			if mod.PytestPlugin {
 				moduleName = pytestPluginModule(moduleName)

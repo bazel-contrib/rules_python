@@ -181,6 +181,12 @@ The Python-specific directives are:
   * Default: `true`
   * Allowed Values: `true`, `false`
 
+[`# gazelle:python_resolve_pytest_plugins bool`](#directive-python-resolve-pytest-plugins)
+: Controls whether module-level `pytest_plugins` declarations are resolved into
+  target dependencies.
+  * Default: `true`
+  * Allowed Values: `true`, `false`
+
 (directive-python-extension)=
 ## `python_extension`
 
@@ -898,4 +904,25 @@ py_test(
         ":conftest",
     ],
 )
+```
+
+
+(directive-python-resolve-pytest-plugins)=
+## `python_resolve_pytest_plugins`
+
+:::{versionadded} VERSION_NEXT_FEATURE
+{gh-pr}`4207`
+:::
+
+Gazelle resolves static, module-level `pytest_plugins` declarations into
+dependencies (see {ref}`gazelle-pytest-plugins`). The
+`python_resolve_pytest_plugins` directive controls this behavior. It defaults
+to `true`.
+
+Setting the directive to `false` makes Gazelle ignore `pytest_plugins`
+declarations in the package and its subpackages: their entries are neither
+added as dependencies nor validated. Ordinary imports are unaffected.
+
+```starlark
+# gazelle:python_resolve_pytest_plugins false
 ```

@@ -75,6 +75,7 @@ func (py *Configurer) KnownDirectives() []string {
 		pythonconfig.GenerateProto,
 		pythonconfig.PythonResolveSiblingImports,
 		pythonconfig.PythonIncludeAncestorConftest,
+		pythonconfig.PythonResolvePytestPlugins,
 	}
 }
 
@@ -268,6 +269,12 @@ func (py *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 				log.Fatal(err)
 			}
 			config.SetIncludeAncestorConftest(v)
+		case pythonconfig.PythonResolvePytestPlugins:
+			v, err := strconv.ParseBool(strings.TrimSpace(d.Value))
+			if err != nil {
+				log.Fatal(err)
+			}
+			config.SetResolvePytestPlugins(v)
 		}
 	}
 

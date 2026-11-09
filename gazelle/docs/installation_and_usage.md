@@ -206,6 +206,7 @@ You can control the naming convention for test targets using the
 {term}`# gazelle:python_test_naming_convention value` directive.
 
 
+(gazelle-pytest-plugins)=
 #### Pytest plugins
 
 Gazelle resolves module-level `pytest_plugins` declarations into dependencies in
@@ -227,6 +228,9 @@ declarations are ignored. Literal entries in mixed lists are resolved, but dynam
 values, bytes, f-strings, and named Unicode escapes are not evaluated; use
 {ref}`annotation-include-dep` for their dependencies. This does not change pytest's
 invocation-wide plugin registration or its restriction on non-root conftests.
+
+Set the {term}`# gazelle:python_resolve_pytest_plugins bool` directive to `false`
+to turn this off for a package and its subpackages.
 
 :::{versionadded} VERSION_NEXT_FEATURE
 :::

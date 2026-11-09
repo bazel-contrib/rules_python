@@ -1,0 +1,9 @@
+load("@rules_python//python:defs.bzl", "py_test")
+
+# gazelle:python_resolve_pytest_plugins false
+
+py_test(
+    name = "disabled_test",
+    srcs = ["disabled_test.py"],
+    deps = ["@gazelle_python_test//pytest"],
+)
