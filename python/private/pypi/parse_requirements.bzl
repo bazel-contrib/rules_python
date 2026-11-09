@@ -47,7 +47,6 @@ def parse_requirements(
         extract_url_srcs = True,
         uv_lock = None,
         toml_decode = None,
-        any_src = False,
         logger):
     """Get the requirements with platforms that the requirements apply to.
 
@@ -72,9 +71,6 @@ def parse_requirements(
             requirements files if both are provided.
         toml_decode: {type}`callable | None` A function to decode TOML
             content (e.g. `toml.decode`). Required when `uv_lock` is provided.
-        any_src: {type}`bool` whether to add the `any_src` field to each
-            returned struct, which is the platform independent wheel of the
-            package or `None`. Only supported with `uv_lock`.
         logger: repo_utils.logger, a simple struct to log diagnostic messages.
 
     Returns:
@@ -100,7 +96,6 @@ def parse_requirements(
             get_index_urls = get_index_urls,
             extract_url_srcs = extract_url_srcs,
             uv_lock = uv_lock,
-            any_src = any_src,
             logger = logger,
         )
 
@@ -131,13 +126,11 @@ def _parse_requirements_with_uv_lock(
         get_index_urls,
         extract_url_srcs,
         uv_lock,
-        any_src,
         logger):
     """Parse requirements using uv.lock as the primary source."""
     if uv_lock:
         return _parse_uv_lock_json(
             uv_lock = uv_lock,
-            any_src = any_src,
             all_platforms = _get_all_platforms(requirements_by_platform) if requirements_by_platform else sorted(platforms.keys()),
             platforms = platforms,
             extra_pip_args = extra_pip_args,
@@ -227,7 +220,7 @@ def _uv_lock_package_platforms(packages, all_platforms, platforms):
                     queue.append(target)
     return result
 
-def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, platforms = {}, any_src = False):
+def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, platforms = {}):
     """Parse uv.lock JSON and build the same return structs as parse_requirements.
 
     Args:
@@ -237,8 +230,6 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
         extra_pip_args: {type}`list[str] | None` Extra pip arguments to pass through.
         platforms: {type}`dict[str, struct]` A dict of platform name to platform info
             (containing `.env` with PEP 508 marker environment).
-        any_src: {type}`bool` whether to add the `any_src` field with the platform
-            independent wheel of each package.
 
     Returns:
         {type}`list[struct]` The same format as {func}`parse_requirements`.
@@ -256,7 +247,6 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
         version = pkg["version"]
         norm_name = normalize_name(name)
         entry = uv_packages.setdefault(norm_name, {
-            "any_srcs": {},
             "distribution": name,
             "resolved_srcs": [],
             "versions": {},
@@ -312,35 +302,6 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
                 kind = "git",
                 requirement = _uv_lock_git_requirement(pkg["source"]["git"]),
             )
-
-        # The platform independent wheel, if there is one, which can be used
-        # as a fallback for the platforms that are not configured.
-        if any_src and candidates and pkg_platforms and platforms.get(pkg_platforms[0]):
-            platform = platforms[pkg_platforms[0]]
-            any_whl = select_whl(
-                whls = candidates,
-                python_version = platform.env.get("python_full_version", "3"),
-                whl_platform_tags = ["any"],
-                whl_abi_tags = ["none"],
-                implementation_name = platform.env.get("implementation_name", "cpython"),
-                limit = 1,
-                logger = logger,
-            )
-            if any_whl:
-                entry["any_srcs"][any_whl.filename + any_whl.digest] = struct(
-                    distribution = name,
-                    extra_pip_args = extra_pip_args or [],
-                    requirement_line = "{name}{extras}=={version}".format(
-                        name = name,
-                        extras = extra_str,
-                        version = version,
-                    ),
-                    target_platforms = [],
-                    filename = any_whl.filename,
-                    digest = any_whl.digest,
-                    url = any_whl.url,
-                    yanked = None,
-                )
 
         plat_to_src = {}
         for p in pkg_platforms:
@@ -407,7 +368,7 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
         for src in info["resolved_srcs"]:
             for p in src.target_platforms:
                 resolved_platforms[p] = None
-        item = dict(
+        item = struct(
             name = norm_name,
             # Only expose packages that resolved on all configured platforms.
             # Workspace/root members (e.g. `source = { virtual = "." }` or
@@ -423,11 +384,7 @@ def _parse_uv_lock_json(uv_lock, all_platforms, logger, extra_pip_args = None, p
             index_url = info["index_url"],
             srcs = info["resolved_srcs"],
         )
-        if any_src:
-            # The platform independent wheel, if there is exactly one.
-            any_srcs = info["any_srcs"].values()
-            item["any_src"] = any_srcs[0] if len(any_srcs) == 1 else None
-        ret.append(struct(**item))
+        ret.append(item)
 
     logger.debug(lambda: "Parsed {} packages from uv.lock".format(len(ret)))
     return ret
