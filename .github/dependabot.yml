@@ -50,6 +50,16 @@ updates:
       - "/crates/**/*"
     patterns:
       - "*"
+    ignore:
+      # keep-sorted start block=yes
+      # zip >= 9.1.0 fails on powerpc64le-unknown-linux-musl until rules_rust
+      # defines a powerpc64le config_setting; keep below 9.1.0 (see
+      # crates/Cargo.toml). Unpatched zip <= 9.0.5 advisories (reading,
+      # extraction, AES/legacy-decoder flaws) do not apply: crates/zipper only
+      # creates zips via ZipWriter (ZipArchive is test-only).
+      - dependency-name: "zip"
+        versions: [">= 9.1.0"]
+      # keep-sorted end
 
   - package-ecosystem: "uv"
     multi-ecosystem-group: "dev-only"

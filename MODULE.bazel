@@ -111,48 +111,15 @@ rust_crates = use_extension(
     dev_dependency = TOOL_DEPS_DEV_ONLY,
 )
 
-# keep-sorted start block=yes by_regex=package\s*=\s*"([^"]+)"
-rust_crates.spec(
-    package = "anyhow",
-    version = "1.0.104",
-)
-rust_crates.spec(
-    # Not used directly; it's a transitive dep of zip. zip's `deflate-flate2`
-    # feature enables flate2 without selecting a backend, so a top-level spec is
-    # needed to pick the pure-Rust `rust_backend` and avoid the C zlib backend,
-    # which can't cross-compile for dev/platforms.
-    default_features = False,
-    features = ["rust_backend"],
-    package = "flate2",
-    version = "1.1.10",
-)
-rust_crates.spec(
-    package = "lexopt",
-    version = "0.3.2",
-)
-rust_crates.spec(
-    package = "sha2",
-    version = "0.10.8",
-)
-rust_crates.spec(
-    # NOTE: zip 9.x added mandatory target-conditional OS deps (getrandom, nix,
-    # windows-sys) that fail on powerpc64le-unknown-linux-musl until rules_rust
-    # defines a powerpc64le @rules_rust//rust/platform config_setting. Keep on the
-    # latest 8.x release until rules_rust supports powerpc64le platform selection.
-    default_features = False,
-    features = ["deflate-flate2"],
-    package = "zip",
-    version = "8.6.0",
-)
-# keep-sorted end
-
 # The crates must build for every platform in dev/platforms. Conditional
 # dependencies are resolved for these triples; rules_rust matches them by CPU
 # and OS, e.g. i686-unknown-linux-gnu also matches the i686-unknown-linux-musl
-# platform.
-rust_crates.from_specs(
+# platform. Direct dependencies live in //crates:Cargo.toml so Dependabot can
+# track Cargo updates and security alerts.
+rust_crates.from_cargo(
     cargo_lockfile = "//crates:Cargo.lock",
     lockfile = "//crates:Cargo.Bazel.lock",
+    manifests = ["//crates:Cargo.toml"],
     supported_platform_triples = [
         "aarch64-apple-darwin",
         "aarch64-pc-windows-msvc",
