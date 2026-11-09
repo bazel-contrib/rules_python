@@ -1783,6 +1783,7 @@ def _test_uv_lock_dependency_markers(env):
             ]),
             _uv_graph_package("uvloop", wheels = wheels, sdist = {"url": "https://example.org/uvloop-0.0.1.tar.gz"}),
         ])
+        env.expect.that_bool(got["uvloop"].is_exposed).equals(False)
         env.expect.that_collection(got["uvloop"].srcs).has_size(1)
         env.expect.that_collection(got["uvloop"].srcs[0].target_platforms).contains_exactly(["linux_x86_64"])
 
@@ -1828,7 +1829,9 @@ def _test_uv_lock_all_extras(env):
     # uv_lock_extras_map enables all extras, even when the edge requesting an
     # extra is limited to one platform. Optional edges still honor markers.
     for name in ["parent", "child", "leaf", "optional"]:
+        env.expect.that_bool(got[name].is_exposed).equals(True)
         env.expect.that_collection(got[name].srcs[0].target_platforms).contains_exactly(["linux_x86_64", "osx_aarch64"])
+    env.expect.that_bool(got["linux_only"].is_exposed).equals(False)
     env.expect.that_collection(got["linux_only"].srcs[0].target_platforms).contains_exactly(["linux_x86_64"])
 
 _tests.append(_test_uv_lock_all_extras)

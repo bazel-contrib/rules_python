@@ -81,6 +81,7 @@ common:ci --//dev/release_artifacts:require_msvc_arm64=true
 build:rtd --stamp
 # Some bzl files contain repos only available under bzlmod
 build:rtd --enable_bzlmod
+build:rtd --//python/config_settings:py_pbs_distribution=install_only_stripped
 
 common --incompatible_python_disallow_native_rules
 common --incompatible_no_implicit_file_export

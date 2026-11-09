@@ -48,13 +48,11 @@ def _parse_lcov(path):
 class CoverageCollectionTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        rf = runfiles.Create()
-        assert rf is not None
-        program = rf.Rlocation(os.environ["INSTRUMENTED"])
-        assert program is not None and os.path.exists(program), program
-        lib_path = rf.Rlocation("_main/" + _LIB)
-        assert lib_path is not None
-        cls.lib_lines = pathlib.Path(lib_path).read_text().splitlines()
+        rf = runfiles.CreateOrRaise()
+        root = rf.root()
+        program = root / os.environ["INSTRUMENTED"]
+        assert program.exists(), program
+        cls.lib_lines = (root / "_main" / _LIB).read_text().splitlines()
 
         tmp = pathlib.Path(os.environ["TEST_TMPDIR"])
         coverage_dir = tmp / "coverage"
