@@ -25,7 +25,9 @@ load(":version_from_filename.bzl", "version_from_filename")
 #      `<digest>[|<filename>[|<yanked>]]`.
 # v4: the facts store only the wheels that the `wheel_filter` platforms can
 #      select, so an older reader must not use them.
-_FACT_VERSION = "v4"
+# v5: the distribution URLs are stored relative to their longest common
+#      directory, which is stored under the `""` key.
+_FACT_VERSION = "v5"
 
 def pypi_cache(mctx = None, store = None, wheel_platforms = None):
     """The cache for PyPI index queries.
@@ -116,7 +118,10 @@ def _pypi_cache_get_facts(self):
     if not self._facts:
         return {}
 
-    return self._facts.facts
+    return {
+        key: _compact_dist_urls(value) if type(value) == "dict" else value
+        for key, value in self._facts.facts.items()
+    }
 
 def memory_cache(cache = None):
     """SimpleAPI cache for making fewer calls.
@@ -315,7 +320,7 @@ def _get_from_facts(
     retrieved_versions = {}
     used_entries = {}
 
-    for url, entry in known_facts.get(fact_key, {}).items():
+    for url, entry in _expand_dist_urls(known_facts.get(fact_key, {})).items():
         if type(entry) != "string":
             # Defensive: `fact_version` guards against older schemas, but the
             # facts come from a user-editable lockfile (e.g. a botched merge),
@@ -403,10 +408,14 @@ def _store_facts(facts, fact_version, index_url, value, wheel_filter = None):
 
       # From the package page, e.g. `foo@https://pypi.org/simple`
       "<distribution>@<root_url>": {
-        "<dist url>": "<encoded entry>",  # see `_encode_dist_entry`
+        "": "<common directory of the dist urls>",  # see `_compact_dist_urls`
+        "<dist url without the common directory>": "<encoded entry>",  # see `_encode_dist_entry`
       },
     }
     ```
+
+    The facts in memory store the full dist urls. They are made relative only in the
+    facts returned for the lockfile.
 
     Adding a new field to the encoded entry requires bumping `_FACT_VERSION`.
     """
@@ -465,6 +474,49 @@ def _index_fact_key(pkg, index_url):
         {type}`str` The fact key, e.g. `foo@https://pypi.org/simple/`.
     """
     return pkg + "@" + index_url
+
+def _compact_dist_urls(entries):
+    """Store the dist urls relative to their longest common directory.
+
+    The index usually serves all the files of a distribution from the same host
+    and path, so this removes the part of each url that the entries repeat.
+
+    Args:
+        entries: {type}`dict[str, str]` the encoded entries keyed by the full dist url.
+
+    Returns:
+        {type}`dict[str, str]` the entries keyed by the relative url, with the common
+        directory under the `""` key.
+    """
+    urls = sorted(entries.keys())
+    if not urls:
+        return entries
+
+    # The longest common prefix of a sorted list is the one of its first and last items.
+    first, last = urls[0], urls[-1]
+    size = 0
+    for i in range(min(len(first), len(last))):
+        if first[i] != last[i]:
+            break
+        size = i + 1
+    prefix = first[:first.rfind("/", 0, size) + 1]
+
+    compact = {"": prefix}
+    for url in urls:
+        compact[url[len(prefix):]] = entries[url]
+    return compact
+
+def _expand_dist_urls(entries):
+    """Return the entries of {obj}`_compact_dist_urls` keyed by the full dist url."""
+    prefix = entries.get("", "")
+    if type(prefix) != "string":
+        prefix = ""
+
+    return {
+        prefix + url: entry
+        for url, entry in entries.items()
+        if url
+    }
 
 def _dist_fact_key(index_url):
     """Return the fact key for the distributions of a package index page.

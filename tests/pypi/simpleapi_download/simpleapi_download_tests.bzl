@@ -310,9 +310,10 @@ def _test_keeps_wheels_filtered_from_facts(env):
     """Verifies that a result read from filtered facts keeps the `wheels_filtered` flag."""
     cache = pypi_cache(
         mctx = mocks.mctx(facts = {
-            "fact_version": "v4",
+            "fact_version": "v5",
             "foo@https://example.com/simple": {
-                "https://example.com/files/foo-1.0-py3-none-any.whl": "sha256:deadbeef",
+                "": "https://example.com/files/",
+                "foo-1.0-py3-none-any.whl": "sha256:deadbeef",
             },
             "wheel_filter": ["cpython|3.12|none|any"],
         }),
