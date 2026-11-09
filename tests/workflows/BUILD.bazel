@@ -83,8 +83,8 @@ pytest_test(
 py_library(
     name = "download_bazel",
     testonly = True,
-    srcs = ["//.github/actions/setup-bazel:download_bazel.py"],
-    imports = ["../../.github/actions/setup-bazel"],
+    srcs = ["//dev:download_bazel.py"],
+    imports = ["../../dev"],
     target_compatible_with = NOT_WINDOWS,
 )
 
@@ -95,11 +95,24 @@ pytest_test(
         "//:.bazelrc",
         "//:buildbuddy.bazelrc",
         "//.github/actions/setup-bazel:all_files",
+        "//dev:download_bazel.py",
     ],
     target_compatible_with = NOT_WINDOWS,
     deps = [
         ":download_bazel",
         "//python/runfiles",
         "@pypi//pyyaml",
+    ],
+)
+
+pytest_test(
+    name = "readthedocs_test",
+    srcs = ["readthedocs_test.py"],
+    data = [
+        "//docs:readthedocs_build.sh",
+    ],
+    target_compatible_with = NOT_WINDOWS,
+    deps = [
+        "//python/runfiles",
     ],
 )

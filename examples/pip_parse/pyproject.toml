@@ -1,6 +1,7 @@
 [project]
 name = "pip_parse"
 version = "0.0.0"
+requires-python = ">=3.14"
 dependencies = [
     "requests~=2.34.2",
     "s3cmd~=2.1.0",
@@ -8,4 +9,10 @@ dependencies = [
     "sphinx",
     "sphinxcontrib-serializinghtml",
     "libclang",
+]
+
+[tool.uv]
+constraint-dependencies = [
+    "certifi>=2026.10.19",
+    "urllib3>=2.8.0",
 ]
