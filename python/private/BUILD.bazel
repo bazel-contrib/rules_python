@@ -410,6 +410,7 @@ bzl_library(
     name = "internal_config_repo",
     srcs = ["internal_config_repo.bzl"],
     deps = [
+        ":extract_features",
         ":repo_utils",
         ":text_util",
     ],
@@ -973,6 +974,11 @@ bzl_library(
 bzl_library(
     name = "envsubst",
     srcs = ["envsubst.bzl"],
+)
+
+bzl_library(
+    name = "extract_features",
+    srcs = ["extract_features.bzl"],
 )
 
 bzl_library(

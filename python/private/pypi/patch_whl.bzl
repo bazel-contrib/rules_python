@@ -19,7 +19,7 @@ repack patched wheels. Instead, after extracting and patching, we fix
 the RECORD file natively in Starlark and repack using system zip.
 """
 
-load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
+load("//python/private:extract_features.bzl", "extract_features")
 load("//python/private:repo_utils.bzl", "repo_utils")
 load(":parse_whl_name.bzl", "parse_whl_name")
 
@@ -96,8 +96,8 @@ def patch_whl(rctx, *, whl_path, patches):
     repo_utils.extract(
         rctx,
         archive = whl_input,
-        supports_whl_extraction = rp_config.supports_whl_extraction,
-        extract_needs_chmod = rp_config.extract_needs_chmod,
+        supports_whl_extraction = extract_features().supports_whl_extraction,
+        extract_needs_chmod = extract_features().extract_needs_chmod,
     )
 
     if not patches:
