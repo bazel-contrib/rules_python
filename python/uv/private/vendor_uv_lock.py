@@ -104,13 +104,15 @@ def render(packages: list, *, constant: str, src: str, update_target: str) -> st
 
 def vendor(src: pathlib.Path, out: pathlib.Path, args: argparse.Namespace) -> None:
     lock = tomllib.loads(src.read_text())
+    # Always use LF, so that the vendored file is the same on all platforms.
     out.write_text(
         render(
             trim(lock),
             constant=args.constant,
             src=args.src_label,
             update_target=args.update_target,
-        )
+        ),
+        newline="\n",
     )
 
 

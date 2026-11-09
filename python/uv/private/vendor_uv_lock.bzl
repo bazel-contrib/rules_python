@@ -66,6 +66,13 @@ def vendor_uv_lock(
     - `name_test`: a `diff_test` that `out` is up to date. It only depends on
       `src`, so it does not need the network.
 
+    The vendored file always uses LF line endings, so add `<out> text eol=lf`
+    to the `.gitattributes` file if git converts the line endings on checkout,
+    e.g. on Windows.
+
+    :::{versionadded} VERSION_NEXT_FEATURE
+    :::
+
     Args:
         name: {type}`str` the name of the targets.
         lock: {type}`str` the name of the {obj}`lock` target in the same
@@ -75,9 +82,6 @@ def vendor_uv_lock(
         out: {type}`str` the vendored `.bzl` file, relative to the package.
         constant: {type}`str` the name of the JSON string constant.
         **kwargs: common kwargs passed to the rules.
-
-    :::{versionadded} VERSION_NEXT_FEATURE
-    :::
     """
     pkg = native.package_name()
     prefix = pkg + "/" if pkg else ""
