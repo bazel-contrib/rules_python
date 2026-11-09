@@ -149,8 +149,6 @@ internal_config_repo = repository_rule(
     attrs = {
         "explicit_init_py_modules": attr.string_dict(),
         "tool_deps_dev_only": attr.bool(default = True),
-        # Only set by the bzlmod extension: Bazel versions that define the
-        # toolchain type in rules_python don't support WORKSPACE.
         "toolchain_type_in_rules_python": attr.bool(),
         "transition_setting_generators": attr.string_list_dict(),
         "transition_settings": attr.string_list(),
