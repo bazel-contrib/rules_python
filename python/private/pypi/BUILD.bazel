@@ -265,8 +265,8 @@ bzl_library(
     srcs = ["patch_whl.bzl"],
     deps = [
         ":parse_whl_name",
+        "//python/private:extract_features",
         "//python/private:repo_utils",
-        "@rules_python_internal//:rules_python_config",
     ],
 )
 
@@ -475,8 +475,8 @@ bzl_library(
     srcs = ["whl_extract.bzl"],
     deps = [
         ":whl_metadata",
+        "//python/private:extract_features",
         "//python/private:repo_utils",
-        "@rules_python_internal//:rules_python_config",
     ],
 )
 

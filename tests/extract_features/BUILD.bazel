@@ -1,0 +1,3 @@
+load(":extract_features_tests.bzl", "extract_features_test_suite")
+
+extract_features_test_suite(name = "extract_features_tests")
