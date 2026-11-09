@@ -5,7 +5,7 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use zip::{CompressionMethod, DateTime, ZipArchive};
+use zip::{CompressionMethod, DateTime, System, ZipArchive};
 use zipper_lib::{Cli, ZipOptions, create_zip, parse_args, relative_path};
 
 static TEST_COUNTER: AtomicUsize = AtomicUsize::new(0);
@@ -31,6 +31,7 @@ fn read_zip_entries(zip_path: &Path) -> Vec<ParsedZipEntry> {
 
         entries.push(ParsedZipEntry {
             name: name.into_owned(),
+            system: entry.system(),
             compression: entry.compression(),
             last_modified: entry.last_modified(),
             compress_size: entry.compressed_size(),
@@ -95,6 +96,7 @@ fn test_create_zip_with_files_and_symlinks() {
 
     assert_eq!(by_name["file1.txt"].text(), "content1");
     assert!(!by_name["file1.txt"].is_symlink);
+    assert_eq!(by_name["file1.txt"].system, System::Unix);
 
     assert_eq!(by_name["runfiles/my_ws/foo/bar.txt"].text(), "content1");
     assert!(!by_name["runfiles/my_ws/foo/bar.txt"].is_symlink);
@@ -104,6 +106,7 @@ fn test_create_zip_with_files_and_symlinks() {
 
     assert_eq!(by_name["runfiles/my_ws/empty_file"].text(), "");
     assert!(!by_name["runfiles/my_ws/empty_file"].is_symlink);
+    assert_eq!(by_name["runfiles/my_ws/empty_file"].system, System::Unix);
     assert_eq!(
         by_name["runfiles/my_ws/empty_file"]
             .unix_mode
@@ -797,6 +800,7 @@ impl Drop for TempDir {
 struct ParsedZipEntry {
     /// Entry path inside the zip archive, relative to the zip root.
     name: String,
+    system: System,
     compression: CompressionMethod,
     last_modified: Option<DateTime>,
     compress_size: u64,
