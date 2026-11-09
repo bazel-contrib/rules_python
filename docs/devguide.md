@@ -101,11 +101,10 @@ integration test.
    ```
    bazel run //dev:all_requirements.update
    ```
-1. Bump the coverage dependencies and update the file that the WORKSPACE
-   toolchains use:
+1. Bump the coverage dependencies and the vendored `uv_lock.bzl` file that
+   the WORKSPACE toolchains use:
    ```
-   bazel run //python/private/coverage:requirements.update
-   bazel run //dev/update_deps:update_coverage_workspace_deps
+   bazel run //python/private/coverage:uv_lock_bzl.update
    ```
 
 ## Updating tool dependencies

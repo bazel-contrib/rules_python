@@ -29,6 +29,8 @@ multirun(
         "//examples:bzlmod_other_module_uv_lock.update",
         "//examples:bzlmod_uv_lock.update",
         "//examples/wheel:requirements_server.update",
+        # Updates the uv.lock and then the vendored uv_lock.bzl.
+        "//python/private/coverage:uv_lock_bzl.update",
         "//tests/multi_pypi/alpha:requirements.update",
         "//tests/multi_pypi/beta:requirements.update",
         "//tests/multiple_inputs:multiple_inputs.update",

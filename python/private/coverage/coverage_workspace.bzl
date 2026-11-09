@@ -2,9 +2,9 @@
 
 The bzlmod toolchains use the `@rules_python_coverage` pip hub, which is
 created from the `uv.lock` file. The WORKSPACE macros cannot read the
-`uv.lock` file, so the selected wheels are stored in the generated
-`workspace_deps.bzl` file and this creates an equivalent hub repository from
-it.
+`uv.lock` file, so it is vendored to the `uv_lock.bzl` file by the
+`vendor_uv_lock` macro and this creates an equivalent hub repository from it
+with the same wheel selection as the `pip.parse` extension.
 
 The WORKSPACE builds do not set the Python version flag by default, so there
 is a target for each Python version in the hub, which only selects the wheel
@@ -13,14 +13,33 @@ based on the target platform.
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
+load("//python:versions.bzl", "MINOR_MAPPING")
 load("//python/private:text_util.bzl", "render")
+load("//python/private:version.bzl", "version")
 load("//python/private/pypi:default_platforms.bzl", "default_platforms")
-load(":workspace_deps.bzl", "COVERAGE_TOOLS", "COVERAGE_WHEELS")
+load("//python/private/pypi:hash.bzl", "hash")
+load("//python/private/pypi:parse_requirements.bzl", "parse_requirements")
+load("//python/private/pypi:pep508_env.bzl", "env")
+load("//python/private/pypi:pep508_evaluate.bzl", "evaluate")
+load("//python/private/pypi:platform.bzl", "platform")
+load("//python/private/pypi:whl_repo_name.bzl", "whl_repo_name")
+load(":uv_lock.bzl", "UV_LOCK_JSON")
 
 _HUB_NAME = "rules_python_coverage"
 
-def _wheel_repo_name(name):
-    return "{}_{}".format(_HUB_NAME, name)
+def _noop(*_args, **_kwargs):
+    return None
+
+# The selection runs in WORKSPACE macros, which have no repository context to
+# create a logger from.
+_LOGGER = struct(
+    trace = _noop,
+    debug = _noop,
+    info = _noop,
+    warn = _noop,
+    fail = lambda message_cb: fail(message_cb()),
+    failed = lambda: False,
+)
 
 def _coverage_hub_repo_impl(rctx):
     platforms = json.decode(rctx.attr.platforms)
@@ -54,12 +73,12 @@ def _coverage_hub_repo_impl(rctx):
             name = python_version,
             actual = render.select(
                 {
-                    "//:is_" + p: "@{}//:pkg".format(_wheel_repo_name(name))
+                    "//:is_" + p: "@{}_{}//:pkg".format(rctx.attr.name, name)
                     for p, name in sorted(by_platform.items())
                 },
                 no_match_error = repr((
                     "There is no coverage wheel for Python {} on the target " +
-                    "platform. See the `python/private/coverage/workspace_deps.bzl` " +
+                    "platform. See the `python/private/coverage/uv.lock` " +
                     "file in rules_python for the supported platforms."
                 ).format(python_version)),
             ),
@@ -101,6 +120,148 @@ py_library(
 )
 """
 
+def _platforms(python_version, platforms):
+    """Return the platforms to select the wheels for.
+
+    Args:
+        python_version: {type}`str` the full Python version.
+        platforms: {type}`dict[str, dict]` the platform definitions, see
+            `default_platforms`.
+
+    Returns:
+        {type}`dict[str, struct]` the platforms.
+    """
+    ver = version.parse(python_version, strict = True)
+    ret = {}
+    for name, values in platforms.items():
+        p = platform(**values)
+        env_ = env(
+            env = p.env,
+            os = p.os_name,
+            arch = p.arch_name,
+            python_version = python_version,
+        )
+        if p.marker and not evaluate(p.marker, env = env_):
+            continue
+
+        ret[name] = struct(
+            env = env_,
+            whl_abi_tags = [
+                tag.format(major = ver.release[0], minor = ver.release[1])
+                for tag in p.whl_abi_tags
+            ],
+            whl_platform_tags = p.whl_platform_tags,
+        )
+    return ret
+
+def select_wheels(*, uv_lock, minor_mapping, platforms, package = "coverage"):
+    """Select the wheels of a package with the same selection as `pip.parse`.
+
+    Args:
+        uv_lock: {type}`dict` the decoded `uv.lock` file.
+        minor_mapping: {type}`dict[str, str]` the Python versions to select
+            the wheels for, e.g. `{"3.13": "3.13.1"}`.
+        platforms: {type}`dict[str, dict]` the platform definitions, see
+            `default_platforms`.
+        package: {type}`str` the name of the package to select the wheels for.
+
+    Returns:
+        {type}`struct` with `wheels`, a dict of repository name suffixes to
+        the wheel `filename`, `integrity` and `url`, and `tools`, a dict of
+        `major.minor` versions to platform names to the repository name
+        suffixes.
+    """
+    wheels = {}
+    tools = {}
+    for minor_version, full_version in sorted(
+        minor_mapping.items(),
+        key = lambda x: version.parse(x[0]).key(),
+    ):
+        requirements = parse_requirements(
+            # The lock file is already decoded, so there is nothing to read.
+            struct(read = lambda _: ""),
+            platforms = _platforms(full_version, platforms),
+            uv_lock = "uv.lock",
+            toml_decode = lambda _: uv_lock,
+            logger = _LOGGER,
+        )
+        for whl in requirements:
+            if whl.name != package:
+                continue
+
+            for src in whl.srcs:
+                if not src.filename.endswith(".whl"):
+                    continue
+
+                name = whl_repo_name(src.filename, src.digest)
+                wheels[name] = {
+                    "filename": src.filename,
+                    "integrity": hash.integrity(src.digest),
+                    "url": src.url,
+                }
+                for p in src.target_platforms:
+                    tools.setdefault(minor_version, {})[p] = name
+
+    return struct(wheels = wheels, tools = tools)
+
+def coverage_repositories(*, name, uv_lock, python_version, minor_mapping = MINOR_MAPPING, platforms = None):
+    """Create the coverage wheel repositories and the hub repository.
+
+    Args:
+        name: {type}`str` the name of the hub repository.
+        uv_lock: {type}`dict` the decoded `uv.lock` file.
+        python_version: {type}`str` the full Python version of the toolchain.
+        minor_mapping: {type}`dict[str, str]` the Python versions to create
+            the coverage tool for.
+        platforms: {type}`dict[str, dict] | None` the platform definitions,
+            defaults to `default_platforms`.
+
+    Returns:
+        {type}`str | None` the label of the coverage tool or `None` if there
+        are no coverage wheels for the Python version.
+    """
+    major_minor = ".".join(python_version.split(".")[:2])
+
+    # This is called for each toolchain platform, so only select the wheels
+    # once.
+    existing = native.existing_rule(name)
+    if existing:
+        tools = json.decode(existing["tools"])
+    else:
+        platforms = platforms or default_platforms()
+        selected = select_wheels(
+            uv_lock = uv_lock,
+            minor_mapping = minor_mapping,
+            platforms = platforms,
+        )
+        tools = selected.tools
+        build_file_content = _WHL_BUILD_FILE.format(
+            py_library = str(Label("//python:py_library.bzl")),
+        )
+        for repo, whl in selected.wheels.items():
+            maybe(
+                http_archive,
+                name = "{}_{}".format(name, repo),
+                build_file_content = build_file_content,
+                integrity = whl["integrity"],
+                type = "zip",
+                urls = [whl["url"]],
+            )
+
+        coverage_hub_repo(
+            name = name,
+            platforms = json.encode({
+                p: [str(Label(setting)) for setting in values["config_settings"]]
+                for p, values in platforms.items()
+            }),
+            tools = json.encode(tools),
+        )
+
+    if major_minor not in tools:
+        return None
+
+    return "@{}//coverage:{}".format(name, major_minor)
+
 def coverage_tool(python_version):
     """Create the coverage repositories and return the coverage tool label.
 
@@ -111,31 +272,8 @@ def coverage_tool(python_version):
         {type}`str | None` the label of the coverage tool or `None` if there
         are no coverage wheels for the Python version.
     """
-    major_minor = ".".join(python_version.split(".")[:2])
-    if major_minor not in COVERAGE_TOOLS:
-        return None
-
-    build_file_content = _WHL_BUILD_FILE.format(
-        py_library = str(Label("//python:py_library.bzl")),
-    )
-    for name, whl in COVERAGE_WHEELS.items():
-        maybe(
-            http_archive,
-            name = _wheel_repo_name(name),
-            build_file_content = build_file_content,
-            integrity = whl["integrity"],
-            type = "zip",
-            urls = [whl["url"]],
-        )
-
-    maybe(
-        coverage_hub_repo,
+    return coverage_repositories(
         name = _HUB_NAME,
-        platforms = json.encode({
-            name: [str(Label(setting)) for setting in values["config_settings"]]
-            for name, values in default_platforms().items()
-        }),
-        tools = json.encode(COVERAGE_TOOLS),
+        uv_lock = json.decode(UV_LOCK_JSON),
+        python_version = python_version,
     )
-
-    return "@{}//coverage:{}".format(_HUB_NAME, major_minor)
