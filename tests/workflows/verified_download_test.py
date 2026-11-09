@@ -39,7 +39,8 @@ def test_action_yaml_accepts_urls_and_caches_by_name_and_sha256() -> None:
     assert bool(script.stat().st_mode & stat.S_IXUSR)
 
     action = yaml.safe_load((action_dir / "action.yaml").read_text(encoding="utf-8"))
-    assert set(action["inputs"].keys()) == {"name", "urls", "sha256"}
+    assert set(action["inputs"].keys()) == {"name", "urls", "sha256", "archive-member"}
+    assert action["inputs"]["archive-member"]["default"] == ""
     assert action["outputs"]["path"]["value"] == "${{ steps.tool_path.outputs.path }}"
 
     steps = action["runs"]["steps"]
@@ -55,8 +56,10 @@ def test_action_yaml_accepts_urls_and_caches_by_name_and_sha256() -> None:
         s for s in steps if s.get("name") == "Download and verify tool"
     )
     assert download_step["if"] == "steps.cache.outputs.cache-hit != 'true'"
+    assert download_step["env"]["TOOL_ARCHIVE_MEMBER"] == "${{ inputs.archive-member }}"
     assert download_step["env"]["TOOL_URLS"] == "${{ inputs.urls }}"
     assert '--urls "${TOOL_URLS}"' in download_step["run"]
+    assert '--archive-member "${TOOL_ARCHIVE_MEMBER}"' in download_step["run"]
     assert "dev/verified_download.py" in download_step["run"]
 
 
@@ -101,6 +104,27 @@ def test_downloads_from_delimited_url_list_with_fallback(
     out = capsys.readouterr().out
     assert f"::warning::Failed to fetch {missing_a}" in out
     assert f"::warning::Failed to fetch {missing_b}" in out
+
+    tgz_path = tmp_path / "tool.tar.gz"
+    with tarfile.open(tgz_path, "w:gz") as tar:
+        tar.add(src_file, arcname="tool")
+    archive_dest = tmp_path / "out" / "archive-tool"
+    rc = verified_download.main(
+        [
+            "--urls",
+            tgz_path.as_uri(),
+            "--sha256",
+            _sha256(payload),
+            "--archive-member",
+            "tool",
+            "--executable",
+            "--output",
+            str(archive_dest),
+        ]
+    )
+    assert rc == 0
+    assert archive_dest.read_bytes() == payload
+    assert bool(archive_dest.stat().st_mode & stat.S_IXUSR)
 
 
 def test_falls_back_to_tgz_and_zip_archive_tuples_and_reuses_cached_file(
