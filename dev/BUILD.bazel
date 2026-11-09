@@ -3,24 +3,6 @@ load("//python/uv:lock.bzl", "lock")  # buildifier: disable=bzl-visibility
 
 licenses(["notice"])
 
-# Only present for WORKSPACE support; bzlmod uses //dev:uv.lock.
-# Run bazel run //dev:requirements.update
-lock(
-    name = "requirements",
-    srcs = ["pyproject.toml"],
-    out = "requirements.txt",
-    args = [
-        "--emit-index-url",
-        "--universal",
-        "--upgrade",
-    ],
-    # NOTE @aignas 2025-08-17: here we select the lowest actively supported
-    # version so that the requirements file is generated to be compatible with
-    # Python version 3.10 or greater.
-    python_version = "3.10",
-    visibility = ["//:__subpackages__"],
-)
-
 # Run bazel run //dev:uv_lock.update
 lock(
     name = "uv_lock",
@@ -35,15 +17,6 @@ lock(
 multirun(
     name = "all_requirements.update",
     commands = [
-        "//tools/publish:{}.update".format(r)
-        for r in [
-            "requirements_universal",
-            "requirements_darwin",
-            "requirements_windows",
-            "requirements_linux",
-        ]
-    ] + [
-        ":requirements.update",
         ":uv_lock.update",
         "//examples:bzlmod_other_module_uv_lock.update",
         "//examples:bzlmod_uv_lock.update",
@@ -55,6 +28,7 @@ multirun(
         "//tests/multiple_inputs:multiple_requirements_in.update",
         "//tests/uv/lock/pyproject_toml:requirements.update",
         "//tests/uv/lock/workspaces:requirements.update",
+        "//tools/publish:requirements.update",
     ],
     tags = ["manual"],
     visibility = ["//:__subpackages__"],
