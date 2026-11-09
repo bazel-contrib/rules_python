@@ -10,10 +10,9 @@ globs: ".github/workflows/**,.github/actions/**,.github/dependabot.yml"
   `.github/workflows/` and `.github/actions/` (check via
   `gh release view --repo <owner>/<repo>`), targeting supported Node.js
   runtimes (`node24`, not `node20`).
-* **Dependabot Coverage for Composite Actions**: When adding a composite action
-  directory under `.github/actions/<name>`, add `"/.github/actions/<name>"` to
-  the `github-actions` `directories` list in `.github/dependabot.yml` (since
-  `directory: "/"` only scans `.github/workflows/`).
+* **Dependabot Coverage**: Keep `directories: ["/", "/.github/actions/*"]` in
+  `.github/dependabot.yml` to cover workflows and composite actions; do not list
+  individual action directories or brace globs.
 * **Verifying Secret-Gated Workflow Steps**: GitHub Actions does not expose
   repository secrets (e.g. `secrets.BUILDBUDDY_CAS_ONLY_KEY`) to `pull_request`
   runs from forks (`origin`). To test secret-gated workflow or composite action
@@ -25,6 +24,10 @@ globs: ".github/workflows/**,.github/actions/**,.github/dependabot.yml"
   like `bazel-contrib/setup-bazel` directly in `.github/workflows/`. Update
   `.github/actions/setup-bazel/action.yaml` if project defaults or inputs need
   adjustment.
+* **Verified Tool Downloads (`./.github/actions/download-tool`)**: Use
+  `./.github/actions/download-tool` (or `dev/verified_download.py`) to fetch,
+  SHA-256-verify, and cache tool binaries; key caches by `<name>-<sha256>`
+  without OS or version prefixes.
 * Preserve `suppress-no-jobs-ran-error` fallback jobs in conditional workflows.
 * Pass inputs (e.g. `${{ inputs.issue }}`) directly to commands without
   redundant shell stripping.
@@ -110,8 +113,9 @@ globs: ".github/workflows/**,.github/actions/**,.github/dependabot.yml"
   `needs.parse_step.result == 'success' && contains(needs.*.result, 'failure')`
   without adding redundant `outputs.command != ''` predicates.
 * **Single-Line `$GITHUB_OUTPUT` and `$GITHUB_ENV` Writes**: Reject `\n` and
-  `\r` in keys and values before writing `key=value` lines to `$GITHUB_OUTPUT`
-  or `$GITHUB_ENV`. In line-anchored regexes over comment or PR bodies, match
+  `\r` in untrusted keys and values before writing `key=value` lines to
+  `$GITHUB_OUTPUT` or `$GITHUB_ENV`; omit these guards on trusted workflow
+  constants. In line-anchored regexes over comment or PR bodies, match
   horizontal whitespace (`[ \t]`) and non-linebreak characters (`[^\r\n]`)
   rather than `\s` or `.`.
 * **Suppress Untrusted Stdout in Privileged Jobs**: Never echo raw PR bodies,
@@ -133,9 +137,11 @@ globs: ".github/workflows/**,.github/actions/**,.github/dependabot.yml"
 * **Test Location**: Place workflow tests under `tests/workflows/`.
 * **Platform Constraints**: Set
   `target_compatible_with = ["@platforms//os:linux"]` on tests for Linux-only
-  workflow scripts instead of adding macOS/BSD workarounds.
-* **Imports over `sys.path`**: Never alter `sys.path`. Define a `py_library`
-  with `imports = ["../../.github/workflows"]` in `tests/workflows/BUILD.bazel`.
+  workflow scripts instead of adding macOS/BSD workarounds. Scope CI-only
+  scripts to the job's runner OS and omit unused platform or cache fallbacks.
+* **Imports over `sys.path`**: Never alter `sys.path`. Co-locate shared helper
+  modules in `dev/` or set `PYTHONPATH` in step `env:`, and define `py_library`
+  targets with `imports` in `tests/workflows/BUILD.bazel`.
 * **Functional Design & Fixtures**: Keep scripts functional with one public
   entry point (e.g. `process_comment()`) and private helpers (`_` prefix). Write
   outputs directly when matching actions. Test end-to-end via autouse fixtures
