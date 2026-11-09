@@ -12,7 +12,10 @@ this PR", or monitor its merge):
    - **Draft PRs**: If the PR is a draft (`isDraft: true`), mark it ready for
      review first via `gh pr ready <pr_number> --repo
      bazel-contrib/rules_python` (otherwise `gh pr merge` fails with
-     `Pull Request is still a draft`).
+     `Pull Request is still a draft`). Run `gh pr ready` before pushing final
+     commits so external `pull_request` webhooks trigger; if external checks do
+     not register on head, run `gh pr close <pr_number> && gh pr reopen
+     <pr_number>`.
    - **Force / Admin Merge**: **CRITICAL**: Only pass `--admin` (e.g.,
      `gh pr merge <pr_number> --repo bazel-contrib/rules_python --admin
      --squash`) with explicit user consent ("force merge", "admin merge", or
