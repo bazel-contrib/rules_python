@@ -861,7 +861,7 @@ def _test_pypi_cache_facts_store_only_selectable_wheels(env):
             "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "sha256:pkg-1.0.0-py3-none-any.whl",
             "https://pypi.org/files/pkg-1.0.0.tar.gz": "sha256:pkg-1.0.0.tar.gz",
         },
-        "wheel_filter": ["cpython|3.12.0|none,abi3,cp312|any,macosx_*_arm64"],
+        "wheel_filter": ["cpython|3.12|none,abi3,cp312|any,macosx_*_arm64"],
     })
 
 _tests.append(_test_pypi_cache_facts_store_only_selectable_wheels)
@@ -873,7 +873,7 @@ def _test_pypi_cache_reads_facts_only_for_the_same_wheel_filter(env):
         "pkg@https://{PYPI_INDEX_URL}": {
             "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "sha256:whl",
         },
-        "wheel_filter": ["cpython|3.12.0|none,abi3,cp312|any,macosx_*_arm64"],
+        "wheel_filter": ["cpython|3.12|none,abi3,cp312|any,macosx_*_arm64"],
     }
     key = ("https://{PYPI_INDEX_URL}/pkg/", "https://pypi.org/simple/pkg/", ["1.0.0"])
 
@@ -881,6 +881,15 @@ def _test_pypi_cache_reads_facts_only_for_the_same_wheel_filter(env):
     got = cache.get(key)
     got.whls().keys().contains_exactly(["sha256:whl"])
     cache.expect_facts().contains_exactly(facts)
+
+    # A new patch version selects the same wheels, so it reads the same facts.
+    patch = struct(
+        env = {"implementation_name": "cpython", "python_full_version": "3.12.7"},
+        whl_abi_tags = _MACOS_ARM64_CP312.whl_abi_tags,
+        whl_platform_tags = _MACOS_ARM64_CP312.whl_platform_tags,
+    )
+    cache = _cache(env, mctx = mocks.mctx(facts = facts), wheel_platforms = [patch])
+    cache.get(key).whls().keys().contains_exactly(["sha256:whl"])
 
     other = struct(
         env = {"implementation_name": "cpython", "python_full_version": "3.13.0"},

@@ -220,7 +220,9 @@ def _wheel_filter(wheel_platforms):
     """Return the filter for the wheels to store, or `None` to store all of them.
 
     The `key` identifies the platforms. Facts stored with a different `key` may
-    lack wheels that the current platforms select, so they are not read.
+    lack wheels that the current platforms select, so they are not read. The key
+    has only the major and minor python version, because the wheel tags do not
+    depend on the patch version.
     """
     if not wheel_platforms:
         return None
@@ -228,7 +230,7 @@ def _wheel_filter(wheel_platforms):
     platforms = {
         "|".join([
             p.env["implementation_name"],
-            p.env["python_full_version"],
+            ".".join(p.env["python_full_version"].split(".")[:2]),
             ",".join(p.whl_abi_tags),
             ",".join(p.whl_platform_tags),
         ]): p

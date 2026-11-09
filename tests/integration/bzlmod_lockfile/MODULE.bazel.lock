@@ -401,7 +401,33 @@
       "six@https://pypi.org/simple": {
         "https://files.pythonhosted.org/packages/94/e7/b2c673351809dca68a0e064b6af791aa332cf192da575fd474ed7d6f16a2/six-1.17.0.tar.gz": "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81",
         "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl": "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274"
-      }
+      },
+      "wheel_filter": [
+        "cpython|3.13|none,abi3,cp313|any,linux_aarch64,manylinux_*_aarch64",
+        "cpython|3.13|none,abi3,cp313|any,linux_x86_64,manylinux_*_x86_64",
+        "cpython|3.13|none,abi3,cp313|any,macosx_*_universal2,macosx_*_arm64",
+        "cpython|3.13|none,abi3,cp313|any,macosx_*_universal2,macosx_*_x86_64",
+        "cpython|3.13|none,abi3,cp313|any,win_amd64",
+        "cpython|3.13|none,abi3,cp313|any,win_arm64",
+        "cpython|3.13|none,cp313t|any,linux_aarch64,manylinux_*_aarch64",
+        "cpython|3.13|none,cp313t|any,linux_x86_64,manylinux_*_x86_64",
+        "cpython|3.13|none,cp313t|any,macosx_*_universal2,macosx_*_arm64",
+        "cpython|3.13|none,cp313t|any,macosx_*_universal2,macosx_*_x86_64",
+        "cpython|3.13|none,cp313t|any,win_amd64",
+        "cpython|3.13|none,cp313t|any,win_arm64",
+        "cpython|3.14|none,abi3,cp314|any,linux_aarch64,manylinux_*_aarch64",
+        "cpython|3.14|none,abi3,cp314|any,linux_x86_64,manylinux_*_x86_64",
+        "cpython|3.14|none,abi3,cp314|any,macosx_*_universal2,macosx_*_arm64",
+        "cpython|3.14|none,abi3,cp314|any,macosx_*_universal2,macosx_*_x86_64",
+        "cpython|3.14|none,abi3,cp314|any,win_amd64",
+        "cpython|3.14|none,abi3,cp314|any,win_arm64",
+        "cpython|3.14|none,cp314t|any,linux_aarch64,manylinux_*_aarch64",
+        "cpython|3.14|none,cp314t|any,linux_x86_64,manylinux_*_x86_64",
+        "cpython|3.14|none,cp314t|any,macosx_*_universal2,macosx_*_arm64",
+        "cpython|3.14|none,cp314t|any,macosx_*_universal2,macosx_*_x86_64",
+        "cpython|3.14|none,cp314t|any,win_amd64",
+        "cpython|3.14|none,cp314t|any,win_arm64"
+      ]
     }
   },
   "factsVersions": {}
