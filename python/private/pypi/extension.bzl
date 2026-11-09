@@ -906,10 +906,17 @@ function in general are the same as used in the {obj}`pip.default.platform` attr
 If you only care for the host platform and do not have a usecase to cross-build, then you can put in
 a string `"{os}_{arch}"` as the value here. You could also use `"{os}_{arch}_freethreaded"` as well.
 
+Use `"*"` to evaluate the requirements for all of the platforms configured with
+{obj}`pip.default`.
+
 :::{include} /_includes/experimental_api.md
 :::
 
 :::{versionadded} 1.8.0
+:::
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+Added support for `"*"` to select all of the configured platforms.
 :::
 """,
         ),
