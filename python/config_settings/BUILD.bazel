@@ -44,6 +44,7 @@ construct_config_settings(
         ":py_pbs_distribution",
     ],
     minor_mapping = MINOR_MAPPING,
+    python_version_scope = config.python_version_scope,
     versions = PYTHON_VERSIONS,
 )
 
