@@ -12,7 +12,7 @@ from python.runfiles import runfiles
 
 
 def main() -> None:
-    r = runfiles.Create()
+    r = runfiles.CreateOrRaise()
     src = pathlib.Path(r.Rlocation(os.environ["GENERATED"]))
     dst = (
         pathlib.Path(os.environ["BUILD_WORKSPACE_DIRECTORY"])
