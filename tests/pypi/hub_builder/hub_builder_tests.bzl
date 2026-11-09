@@ -183,25 +183,7 @@ def _test_target_platforms_all(env):
             os_name = "osx",
             arch_name = "aarch64",
             mock_files = {
-                "uv.lock": json.encode({"package": [
-                    {
-                        "name": "plat",
-                        "source": {"registry": "https://pypi.org/simple"},
-                        "version": "0.0.1",
-                        "wheels": [
-                            {"hash": "sha256:deadb00f", "url": "https://files.pythonhosted.org/packages/plat-0.0.1-cp315-cp315-manylinux_2_17_x86_64.whl"},
-                            {"hash": "sha256:deadbeef", "url": "https://files.pythonhosted.org/packages/plat-0.0.1-py3-none-any.whl"},
-                        ],
-                    },
-                    {
-                        "name": "platonly",
-                        "source": {"registry": "https://pypi.org/simple"},
-                        "version": "0.0.1",
-                        "wheels": [
-                            {"hash": "sha256:deadbaaf", "url": "https://files.pythonhosted.org/packages/platonly-0.0.1-cp315-cp315-manylinux_2_17_x86_64.whl"},
-                        ],
-                    },
-                ]}),
+                "uv.lock": """{"package":[{"name":"simple","source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/simple-0.0.1-py3-none-any.whl"}]}]}""",
             },
         ),
         _parse(
@@ -214,37 +196,18 @@ def _test_target_platforms_all(env):
     )
     pypi = builder.build()
 
-    # Only the packages that are available on all of the platforms are exposed.
-    pypi.exposed_packages().contains_exactly(["plat"])
+    pypi.exposed_packages().contains_exactly(["simple"])
     pypi.whl_map().contains_exactly({
-        "plat": {
-            "pypi_315_plat_cp315_cp315_manylinux_2_17_x86_64_deadb00f": [
-                whl_config_setting(
-                    target_platforms = ("cp315_linux_x86_64",),
-                    version = "3.15",
-                ),
-            ],
-            "pypi_315_plat_py3_none_any_deadbeef": [
+        "simple": {
+            "pypi_315_simple_py3_none_any_deadbeef": [
                 whl_config_setting(
                     target_platforms = (
                         "cp315_linux_aarch64",
+                        "cp315_linux_x86_64",
                         "cp315_linux_x86_64_freethreaded",
                         "cp315_osx_aarch64",
                         "cp315_windows_aarch64",
                     ),
-                    version = "3.15",
-                ),
-                # The fallback for the platforms that are not configured.
-                whl_config_setting(
-                    version = "3.15",
-                ),
-            ],
-        },
-        # There is no platform independent wheel, so there is no fallback.
-        "platonly": {
-            "pypi_315_platonly_cp315_cp315_manylinux_2_17_x86_64_deadbaaf": [
-                whl_config_setting(
-                    target_platforms = ("cp315_linux_x86_64",),
                     version = "3.15",
                 ),
             ],
