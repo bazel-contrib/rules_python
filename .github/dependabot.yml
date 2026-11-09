@@ -28,8 +28,10 @@ updates:
   - package-ecosystem: "github-actions"
     multi-ecosystem-group: "dev-only"
     directories:
+      # keep-sorted start
       - "/"
-      - "/.github/actions/setup-bazel"
+      - "/.github/actions/*"
+      # keep-sorted end
     patterns:
       - "*"
 

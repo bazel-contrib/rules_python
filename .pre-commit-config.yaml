@@ -20,6 +20,11 @@ repos:
     rev: v5.0.0  # Use the ref you want to point at
     hooks:
       - id: check-merge-conflict
+  - repo: https://github.com/google/keep-sorted
+    # Keep in sync with .github/workflows/ci.yaml
+    rev: v0.10.0
+    hooks:
+      - id: keep-sorted
   - repo: https://github.com/keith/pre-commit-buildifier
     rev: 8.2.1
     hooks:
