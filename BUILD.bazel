@@ -81,7 +81,6 @@ filegroup(
         "MODULE.bazel",
         "WORKSPACE",
         "WORKSPACE.bzlmod",
-        "downloader_config.cfg",
         "internal_dev_deps.bzl",
         "internal_dev_setup.bzl",
         "version.bzl",
@@ -93,37 +92,6 @@ filegroup(
     visibility = [
         "//:__subpackages__",
     ],
-)
-
-# Exposes workspace config files as test data for
-# //tests/bazelci:downloader_config_test.
-filegroup(
-    name = "workspace_configs",
-    srcs = [
-        ".bazelrc",
-        ".bazelrc.deleted_packages",
-        "MODULE.bazel",
-        "WORKSPACE",
-        "buildbuddy.bazelrc",
-        "downloader_config.cfg",
-        "specialized_configs.bazelrc",
-    ] + glob(
-        [
-            "gazelle/**/.bazelrc",
-            "gazelle/**/MODULE.bazel",
-            "gazelle/**/WORKSPACE",
-            "gazelle/**/downloader_config.cfg",
-        ],
-        exclude = [
-            # Local helper module for
-            # gazelle/examples/bzlmod_build_file_generation, not a standalone
-            # workspace.
-            "gazelle/**/other_module/**",
-            # Unit test fixture directories for Gazelle, not Bazel workspaces.
-            "gazelle/python/testdata/**",
-        ],
-    ),
-    visibility = ["//tests:__subpackages__"],
 )
 
 # Reexport of all bzl files used to allow downstream rules to generate docs

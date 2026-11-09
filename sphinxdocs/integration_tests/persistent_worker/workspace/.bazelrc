@@ -2,10 +2,7 @@
 # directly to the running persistent worker instead of restoring pre-built HTML cache results across test steps.
 common --disk_cache=
 build --noremote_accept_cached
-# Increase HTTP timeouts and retries to mitigate transient CI network failures.
 common --http_timeout_scaling=10.0
 common --experimental_repository_downloader_retries=10
-# Note: Bazel resolves --experimental_downloader_config relative to the active
-# workspace directory (and does not expand %workspace% in flag values).
-common --experimental_downloader_config=../../../downloader_config.cfg
+common --experimental_downloader_config=downloader_config.cfg
 common --lockfile_mode=off
