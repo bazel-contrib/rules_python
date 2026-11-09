@@ -18,30 +18,13 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load(":common_labels.bzl", "labels")
 load(":flags.bzl", "FreeThreadedFlag")
+load(":py_info.bzl", "PyInfo")
 load(":py_internal.bzl", "py_internal")
 load(":py_runtime_info.bzl", "DEFAULT_STUB_SHEBANG", "PyRuntimeInfo")
 load(":reexports.bzl", "BuiltinPyRuntimeInfo")
 load(":version.bzl", "version")
 
 _py_builtins = py_internal
-
-_COVERAGE_MAIN = "coverage/__main__.py"
-
-def _coverage_main(files):
-    """Return the `coverage/__main__.py` entry point from the coverage files.
-
-    Args:
-        files: {type}`depset[File]` the files of the coverage tool target, e.g.
-            `@pypi//coverage:extracted_whl_files`.
-
-    Returns:
-        {type}`File | None` the entry point of the coverage tool.
-    """
-    for f in files.to_list():
-        if f.short_path == _COVERAGE_MAIN or f.short_path.endswith("/" + _COVERAGE_MAIN):
-            return f
-
-    return None
 
 def coverage_tool_missing_message(*, coverage_enabled, coverage_tool, label):
     """Build the warning for a selected runtime that cannot produce coverage.
@@ -168,26 +151,29 @@ def _py_runtime_impl(ctx):
         else:
             fail("interpreter must be an executable target or must produce exactly one file.")
 
+    coverage_tool = None
+    coverage_imports = None
+    coverage_files = None
     if ctx.attr.coverage_tool:
         # A list because of the Starlark transition on the attribute.
-        coverage_di = ctx.attr.coverage_tool[0][DefaultInfo]
+        coverage_target = ctx.attr.coverage_tool[0]
+        coverage_di = coverage_target[DefaultInfo]
 
-        if _is_singleton_depset(coverage_di.files):
+        if PyInfo in coverage_target:
+            # E.g. `@pypi//coverage`: the `coverage` package is imported using
+            # the import paths of the target.
+            coverage_imports = coverage_target[PyInfo].imports
+        elif _is_singleton_depset(coverage_di.files):
             coverage_tool = coverage_di.files.to_list()[0]
         elif coverage_di.files_to_run and coverage_di.files_to_run.executable:
             coverage_tool = coverage_di.files_to_run.executable
         else:
-            coverage_tool = _coverage_main(coverage_di.files)
-            if not coverage_tool:
-                fail("coverage_tool must be an executable target, must produce exactly one file or must contain '{}'.".format(_COVERAGE_MAIN))
+            fail("coverage_tool must provide PyInfo, be an executable target or produce exactly one file.")
 
         coverage_files = depset(transitive = [
             coverage_di.files,
             coverage_di.default_runfiles.files,
         ])
-    else:
-        coverage_tool = None
-        coverage_files = None
 
     # Reported here rather than where the toolchains are registered: this rule is
     # analyzed once per configuration, and only for the runtime that toolchain
@@ -195,7 +181,7 @@ def _py_runtime_impl(ctx):
     # hypothetical. See https://github.com/bazel-contrib/rules_python/issues/3950.
     coverage_warning = coverage_tool_missing_message(
         coverage_enabled = ctx.configuration.coverage_enabled,
-        coverage_tool = coverage_tool,
+        coverage_tool = coverage_tool or coverage_imports,
         label = ctx.label,
     )
     if coverage_warning:
@@ -236,7 +222,8 @@ def _py_runtime_impl(ctx):
         interpreter = interpreter,
         files = runtime_files if hermetic else None,
         coverage_tool = coverage_tool,
-        coverage_files = coverage_files,
+        # The builtin provider only knows about coverage_tool.
+        coverage_files = coverage_files if coverage_tool else None,
         python_version = python_version,
         stub_shebang = ctx.attr.stub_shebang,
         bootstrap_template = ctx.file.bootstrap_template,
@@ -245,6 +232,8 @@ def _py_runtime_impl(ctx):
 
     # There are all args that BuiltinPyRuntimeInfo doesn't support
     py_runtime_info_kwargs.update(dict(
+        coverage_files = coverage_files,
+        coverage_imports = coverage_imports,
         implementation_name = ctx.attr.implementation_name,
         interpreter_version_info = interpreter_version_info,
         interpreter_files_to_run = interpreter_files_to_run,
@@ -349,22 +338,23 @@ See @bazel_tools//tools/python:python_bootstrap_template.txt for more variables.
 This is a target to use for collecting code coverage information from
 {rule}`py_binary` and {rule}`py_test` targets.
 
-If set, the target must either produce a single file or be an executable target.
-The path to the single file, or the executable if the target is executable,
-determines the entry point for the python coverage tool.  The target and its
-runfiles will be added to the runfiles when coverage is enabled.
+If set, the target must either provide {obj}`PyInfo` (e.g. a `py_library`
+such as `@pypi//coverage`), produce a single file or be an executable target.
+If the target provides {obj}`PyInfo`, then its import paths are used to import
+the `coverage` package. Otherwise, the path to the single file, or the
+executable if the target is executable, determines the entry point for the
+python coverage tool.  The target and its runfiles will be added to the
+runfiles when coverage is enabled.
 
 The entry point for the tool must be loadable by a Python interpreter (e.g. a
 `.py` or `.pyc` file).  It must accept the command line arguments
 of [`coverage.py`](https://coverage.readthedocs.io), at least including
 the `run` and `lcov` subcommands.
 
-If the target produces multiple files and one of them is
-`coverage/__main__.py`, then it is used as the entry point, e.g.
-`@pypi//coverage:extracted_whl_files`. See {ref}`coverage-from-pypi`.
+See {ref}`coverage-from-pypi` for using `coverage` from a pip hub.
 
 :::{versionchanged} VERSION_NEXT_FEATURE
-The extracted files of the `coverage` wheel can be used.
+Targets providing {obj}`PyInfo`, such as `@pypi//coverage`, can be used.
 :::
 """,
             ),
