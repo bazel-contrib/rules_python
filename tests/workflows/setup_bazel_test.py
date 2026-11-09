@@ -117,10 +117,23 @@ def test_buildbuddy_bazelrc_disables_remote_executor_on_macos_and_windows():
     executor_line = (
         "common:_buildbuddy_base --remote_executor=grpcs://rules-python.buildbuddy.io"
     )
+    rbe_platform_line = (
+        "build:_buildbuddy_base "
+        "--extra_execution_platforms=@toolchains_buildbuddy//platforms:linux_x86_64"
+    )
+    rbe_toolchain_line = (
+        "build:_buildbuddy_base "
+        "--extra_toolchains=@toolchains_buildbuddy//toolchains/cc:ubuntu_gcc_x86_64"
+    )
     platform_config_line = "common:_buildbuddy_base --enable_platform_specific_config"
     assert executor_line in buildbuddy_lines
+    assert rbe_platform_line in buildbuddy_lines
+    assert rbe_toolchain_line in buildbuddy_lines
     assert platform_config_line in buildbuddy_lines
     assert buildbuddy_lines.index(executor_line) < buildbuddy_lines.index(
+        platform_config_line
+    )
+    assert buildbuddy_lines.index(rbe_platform_line) < buildbuddy_lines.index(
         platform_config_line
     )
 
@@ -131,7 +144,9 @@ def test_buildbuddy_bazelrc_disables_remote_executor_on_macos_and_windows():
         if line.strip() and not line.strip().startswith("#")
     ]
     assert "common:macos --remote_executor=" in bazelrc_lines
+    assert "build:macos --extra_execution_platforms=" in bazelrc_lines
     assert "common:windows --remote_executor=" in bazelrc_lines
+    assert "build:windows --extra_execution_platforms=" in bazelrc_lines
 
 
 def test_download_bazelisk_from_primary_url(

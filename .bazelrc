@@ -113,7 +113,9 @@ build:macos --host_copt=-Wno-sign-compare
 # BuildBuddy's managed cloud pool only has Linux executors; disable remote
 # execution on macOS and Windows while keeping BES and remote caching enabled.
 common:macos --remote_executor=
+build:macos --extra_execution_platforms=
 common:windows --remote_executor=
+build:windows --extra_execution_platforms=
 
 import %workspace%/specialized_configs.bazelrc
 import %workspace%/buildbuddy.bazelrc
