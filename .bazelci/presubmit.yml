@@ -167,7 +167,7 @@ tasks:
     <<: *gazelle_common_bcr
     name: "Gazelle: BCR, Bazel {bazel}"
     platform: ubuntu2204
-  gazelle_bcr_debian13:
+  gazelle_bcr_debian:
     <<: *gazelle_common_bcr
     name: "Gazelle: BCR, Bazel {bazel}"
     platform: debian13
