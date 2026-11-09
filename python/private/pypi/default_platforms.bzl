@@ -1,5 +1,38 @@
 """The default platforms used for selecting the wheels."""
 
+def _platform(
+        *,
+        name,
+        os_name,
+        arch_name,
+        cpu,
+        whl_platform_tags,
+        platform_version,
+        freethreaded,
+        os_constraint = None,
+        config_settings = [],
+        marker = ""):
+    return {
+        "arch_name": arch_name,
+        "config_settings": [
+            "@platforms//cpu:{}".format(cpu),
+            "@platforms//os:{}".format(os_constraint or os_name),
+        ] + config_settings + [
+            "//python/config_settings:_is_py_freethreaded_{}".format(
+                "yes" if freethreaded else "no",
+            ),
+        ],
+        "env": {"platform_version": platform_version},
+        "marker": "python_version >= '3.13'" if freethreaded else marker,
+        "name": name,
+        "os_name": os_name,
+        "whl_abi_tags": ["cp{major}{minor}t"] if freethreaded else [
+            "abi3",
+            "cp{major}{minor}",
+        ],
+        "whl_platform_tags": whl_platform_tags,
+    }
+
 def default_platforms():
     """Return the built-in default platform definitions.
 
@@ -9,6 +42,9 @@ def default_platforms():
     for build_config; root modules can override individual platforms via
     pip.default tags.
 
+    There is a platform for each of the platforms that the hermetic Python
+    toolchains support, see `//python:versions.bzl`.
+
     Returns:
         A dict of platform name to platform config dicts.
     """
@@ -16,108 +52,87 @@ def default_platforms():
     # stabilize the API this list may be updated with a mention in the CHANGELOG.
 
     platforms = {}
+    for freethreaded in ["", "_freethreaded"]:
+        # Linux glibc platforms. The key is the platform name suffix and the
+        # values are the `@platforms//cpu` constraint, the `arch_name` and the
+        # wheel platform tag suffix.
+        for name, (cpu, arch_name, tag) in {
+            "aarch64": ("aarch64", "aarch64", "aarch64"),
+            "armv7": ("armv7", "arm", "armv7l"),
+            "i386": ("i386", "x86_32", "i686"),
+            "ppc": ("ppc", "ppc", "ppc64le"),
+            "riscv64": ("riscv64", "riscv64", "riscv64"),
+            "s390x": ("s390x", "s390x", "s390x"),
+            "x86_64": ("x86_64", "x86_64", "x86_64"),
+        }.items():
+            platform_name = "linux_{}{}".format(name, freethreaded)
+            platforms[platform_name] = _platform(
+                name = platform_name,
+                os_name = "linux",
+                arch_name = arch_name,
+                cpu = cpu,
+                config_settings = [
+                    "//python/config_settings:_is_py_linux_libc_glibc",
+                ],
+                platform_version = "0",
+                freethreaded = freethreaded,
+                whl_platform_tags = [
+                    "linux_{}".format(tag),
+                    "manylinux_*_{}".format(tag),
+                ],
+            )
 
-    # Linux platforms
-    for cpu in ["x86_64", "aarch64"]:
-        for freethreaded in ["", "_freethreaded"]:
-            platform_name = "linux_{}{}".format(cpu, freethreaded)
-            platforms[platform_name] = {
-                "arch_name": cpu,
-                "config_settings": [
-                    "@platforms//cpu:{}".format(cpu),
-                    "@platforms//os:linux",
-                    "//python/config_settings:_is_py_freethreaded_{}".format(
-                        "yes" if freethreaded else "no",
-                    ),
-                ],
-                "env": {"platform_version": "0"},
-                "marker": "python_version >= '3.13'" if freethreaded else "",
-                "name": platform_name,
-                "os_name": "linux",
-                "whl_abi_tags": ["cp{major}{minor}t"] if freethreaded else [
-                    "abi3",
-                    "cp{major}{minor}",
-                ],
-                "whl_platform_tags": [
-                    "linux_{}".format(cpu),
-                    "manylinux_*_{}".format(cpu),
-                ],
-            }
+        # Linux musl platforms
+        platform_name = "linux_x86_64_musl{}".format(freethreaded)
+        platforms[platform_name] = _platform(
+            name = platform_name,
+            os_name = "linux",
+            arch_name = "x86_64",
+            cpu = "x86_64",
+            config_settings = [
+                "//python/config_settings:_is_py_linux_libc_musl",
+            ],
+            platform_version = "0",
+            freethreaded = freethreaded,
+            whl_platform_tags = ["musllinux_*_x86_64"],
+        )
 
-    # macOS platforms
-    for cpu, platform_tag_cpus in {
-        "aarch64": ["universal2", "arm64"],
-        "x86_64": ["universal2", "x86_64"],
-    }.items():
-        for freethreaded in ["", "_freethreaded"]:
+        # macOS platforms
+        for cpu, platform_tag_cpus in {
+            "aarch64": ["universal2", "arm64"],
+            "arm64e": ["arm64e"],
+            "x86_64": ["universal2", "x86_64"],
+        }.items():
             platform_name = "osx_{}{}".format(cpu, freethreaded)
-            platforms[platform_name] = {
-                "arch_name": cpu,
-                "config_settings": [
-                    "@platforms//cpu:{}".format(cpu),
-                    "@platforms//os:osx",
-                    "//python/config_settings:_is_py_freethreaded_{}".format(
-                        "yes" if freethreaded else "no",
-                    ),
-                ],
-                "env": {"platform_version": "14.0"},
-                "marker": "python_version >= '3.13'" if freethreaded else "",
-                "name": platform_name,
-                "os_name": "osx",
-                "whl_abi_tags": ["cp{major}{minor}t"] if freethreaded else [
-                    "abi3",
-                    "cp{major}{minor}",
-                ],
-                "whl_platform_tags": [
+            platforms[platform_name] = _platform(
+                name = platform_name,
+                os_name = "osx",
+                arch_name = "aarch64" if cpu == "arm64e" else cpu,
+                cpu = cpu,
+                platform_version = "14.0",
+                freethreaded = freethreaded,
+                whl_platform_tags = [
                     "macosx_*_{}".format(suffix)
                     for suffix in platform_tag_cpus
                 ],
-            }
+            )
 
-    # Windows x86_64 platforms
-    for freethreaded in ["", "_freethreaded"]:
-        platform_name = "windows_x86_64{}".format(freethreaded)
-        platforms[platform_name] = {
-            "arch_name": "x86_64",
-            "config_settings": [
-                "@platforms//cpu:x86_64",
-                "@platforms//os:windows",
-                "//python/config_settings:_is_py_freethreaded_{}".format(
-                    "yes" if freethreaded else "no",
-                ),
-            ],
-            "env": {"platform_version": "0"},
-            "marker": "python_version >= '3.13'" if freethreaded else "",
-            "name": platform_name,
-            "os_name": "windows",
-            "whl_abi_tags": ["cp{major}{minor}t"] if freethreaded else [
-                "abi3",
-                "cp{major}{minor}",
-            ],
-            "whl_platform_tags": ["win_amd64"],
-        }
-
-    # Windows aarch64 platforms
-    for freethreaded in ["", "_freethreaded"]:
-        platform_name = "windows_aarch64{}".format(freethreaded)
-        platforms[platform_name] = {
-            "arch_name": "aarch64",
-            "config_settings": [
-                "@platforms//cpu:aarch64",
-                "@platforms//os:windows",
-                "//python/config_settings:_is_py_freethreaded_{}".format(
-                    "yes" if freethreaded else "no",
-                ),
-            ],
-            "env": {"platform_version": "0"},
-            "marker": "python_version >= '3.13'" if freethreaded else "python_version >= '3.11'",
-            "name": platform_name,
-            "os_name": "windows",
-            "whl_abi_tags": ["cp{major}{minor}t"] if freethreaded else [
-                "abi3",
-                "cp{major}{minor}",
-            ],
-            "whl_platform_tags": ["win_arm64"],
-        }
+        # Windows platforms
+        for cpu, (tag, marker) in {
+            "aarch64": ("win_arm64", "python_version >= '3.11'"),
+            "x86_32": ("win32", ""),
+            "x86_64": ("win_amd64", ""),
+        }.items():
+            platform_name = "windows_{}{}".format(cpu, freethreaded)
+            platforms[platform_name] = _platform(
+                name = platform_name,
+                os_name = "windows",
+                arch_name = cpu,
+                cpu = cpu,
+                platform_version = "0",
+                freethreaded = freethreaded,
+                marker = marker,
+                whl_platform_tags = [tag],
+            )
 
     return platforms
