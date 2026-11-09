@@ -426,7 +426,7 @@ dev_python.toolchain(
 
 [
     dev_python.single_version_platform_override(
-        coverage_tool = "@dev_pip//coverage:extracted_whl_files",
+        coverage_tool = "@dev_pip//coverage",
         platform = platform,
         python_version = "3.13.13",
     )

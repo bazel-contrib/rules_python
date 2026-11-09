@@ -13,7 +13,7 @@
 # limitations under the License.
 
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
-load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "bool_setting")
 load("//python:py_binary.bzl", "py_binary")
 load("//python:py_library.bzl", "py_library")
 load(":bazel_config_mode.bzl", "bazel_config_mode")
@@ -163,6 +163,25 @@ alias(
 )
 
 bazel_config_mode(name = "bazel_config_mode")
+
+# Usually False. The `py_runtime.coverage_tool` transition sets it to True so
+# that the coverage tool and its dependencies (e.g. a `py_library` from a pip hub)
+# resolve to a toolchain without a coverage tool, which would otherwise be a
+# dependency cycle.
+bool_setting(
+    name = "bootstrap_coverage_tool",
+    build_setting_default = False,
+    visibility = ["//visibility:private"],
+)
+
+config_setting(
+    name = "coverage_tool_active",
+    flag_values = {
+        ":bootstrap_coverage_tool": "False",
+    },
+    # This is only because it is an implicit dependency by the toolchains.
+    visibility = NOT_ACTUALLY_PUBLIC,
+)
 
 # This should only be set by analysis tests to expose additional metadata to
 # aid testing, so a setting instead of a flag.

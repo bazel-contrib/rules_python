@@ -78,6 +78,31 @@ WARNING: Python runtime {label} has no coverage_tool.
 ======================================================================
 """.format(label = label)
 
+def _coverage_tool_transition_impl(_settings, _attr):
+    """Build the coverage tool without itself being a toolchain coverage tool.
+
+    The coverage tool can be a target that resolves the Python toolchain itself,
+    e.g. a `py_library` from a pip hub. Setting the bootstrap flag makes the
+    {obj}`py_runtime` macro drop the `coverage_tool` dependency in that
+    configuration, which would otherwise be a dependency cycle. The coverage tool
+    itself is not instrumented, so coverage collection is disabled.
+
+    This mirrors how `rules_go` builds `nogo`.
+    """
+    return {
+        labels.BOOTSTRAP_COVERAGE_TOOL: True,
+        "//command_line_option:collect_code_coverage": False,
+    }
+
+_coverage_tool_transition = transition(
+    implementation = _coverage_tool_transition_impl,
+    inputs = [],
+    outputs = [
+        labels.BOOTSTRAP_COVERAGE_TOOL,
+        "//command_line_option:collect_code_coverage",
+    ],
+)
+
 def _py_runtime_impl(ctx):
     interpreter_path = ctx.attr.interpreter_path or None  # Convert empty string to None
     interpreter = ctx.attr.interpreter
@@ -144,7 +169,8 @@ def _py_runtime_impl(ctx):
             fail("interpreter must be an executable target or must produce exactly one file.")
 
     if ctx.attr.coverage_tool:
-        coverage_di = ctx.attr.coverage_tool[DefaultInfo]
+        # A list because of the Starlark transition on the attribute.
+        coverage_di = ctx.attr.coverage_tool[0][DefaultInfo]
 
         if _is_singleton_depset(coverage_di.files):
             coverage_tool = coverage_di.files.to_list()[0]
@@ -318,6 +344,7 @@ See @bazel_tools//tools/python:python_bootstrap_template.txt for more variables.
             ),
             "coverage_tool": attr.label(
                 allow_files = False,
+                cfg = _coverage_tool_transition,
                 doc = """
 This is a target to use for collecting code coverage information from
 {rule}`py_binary` and {rule}`py_test` targets.

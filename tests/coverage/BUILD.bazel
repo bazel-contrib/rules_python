@@ -37,8 +37,8 @@ pytest_test(
     deps = ["//python/runfiles"],
 )
 
-# The same program, but the coverage tool is the extracted `coverage` wheel from
-# the `@dev_pip` hub, see the `MODULE.bazel` file.
+# The same program, but the coverage tool is the `coverage` py_library from the
+# `@dev_pip` hub, see the `MODULE.bazel` file.
 py_reconfig_test(
     name = "instrumented_pypi",
     srcs = ["instrumented.py"],
