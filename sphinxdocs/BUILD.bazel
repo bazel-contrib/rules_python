@@ -2,6 +2,19 @@ package(default_visibility = ["//visibility:public"])
 
 exports_files(["pyproject.toml"])
 
+# Exposes workspace config files as test data for
+# //tests/bazelci:downloader_config_test.
+filegroup(
+    name = "workspace_configs",
+    srcs = [
+        ".bazelrc",
+        ".bazelrc.deleted_packages",
+        "MODULE.bazel",
+        "downloader_config.cfg",
+    ],
+    visibility = ["//visibility:public"],
+)
+
 filegroup(
     name = "distribution",
     srcs = glob(

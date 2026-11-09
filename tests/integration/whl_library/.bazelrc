@@ -1,2 +1,3 @@
 common --incompatible_default_to_explicit_init_py
 test --test_output=errors
+import %workspace%/../common.bazelrc

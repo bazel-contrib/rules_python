@@ -101,6 +101,7 @@ def rules_python_integration_test(
     native.filegroup(
         name = name + "_workspace_files",
         srcs = workspace_files + [
+            "common.bazelrc",
             "//:distribution",
         ],
     )

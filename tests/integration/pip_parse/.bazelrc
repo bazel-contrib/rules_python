@@ -1,8 +1,8 @@
 # Bazel configuration flags
 
 build --enable_runfiles
+common:bazel7.x --incompatible_python_disallow_native_rules
+import %workspace%/../common.bazelrc
 
 # https://docs.bazel.build/versions/main/best-practices.html#using-the-bazelrc-file
 try-import %workspace%/user.bazelrc
-
-common:bazel7.x --incompatible_python_disallow_native_rules

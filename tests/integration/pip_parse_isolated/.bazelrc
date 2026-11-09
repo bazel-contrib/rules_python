@@ -3,6 +3,7 @@
 build --enable_runfiles
 
 common --experimental_isolated_extension_usages
+import %workspace%/../common.bazelrc
 
 # https://docs.bazel.build/versions/main/best-practices.html#using-the-bazelrc-file
 try-import %workspace%/user.bazelrc

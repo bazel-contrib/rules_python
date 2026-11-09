@@ -33,3 +33,24 @@ lock(
     python_version = "3.11",
     visibility = ["//:__subpackages__"],
 )
+
+# Exposes workspace config files as test data for
+# //tests/bazelci:downloader_config_test.
+filegroup(
+    name = "workspace_configs",
+    srcs = [
+        "common.bazelrc",
+    ] + glob(
+        [
+            "*/.bazelrc",
+            "*/MODULE.bazel",
+            "*/WORKSPACE",
+            # Included so downloader_config_test detects stray configs if
+            # added; allow_empty = True is needed because none exist under this
+            # directory.
+            "**/downloader_config.cfg",
+        ],
+        allow_empty = True,
+    ),
+    visibility = ["//tests:__subpackages__"],
+)

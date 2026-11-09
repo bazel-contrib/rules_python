@@ -1,6 +1,17 @@
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load("@sphinxdocs//sphinxdocs:sphinx.bzl", "sphinx_build_binary", "sphinx_docs")
 
+# Exposes workspace config files as test data for
+# //tests/bazelci:downloader_config_test.
+filegroup(
+    name = "workspace_configs",
+    srcs = [
+        ".bazelrc",
+        "MODULE.bazel",
+    ],
+    visibility = ["//visibility:public"],
+)
+
 sphinx_docs(
     name = "docs",
     srcs = ["index.md"],

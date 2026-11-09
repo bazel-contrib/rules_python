@@ -1,0 +1,6 @@
+# Note: Bazel resolves --experimental_downloader_config relative to the active
+# workspace directory (and does not expand %workspace% in flag values).
+common --experimental_downloader_config=../../downloader_config.cfg
+# Increase HTTP timeouts and retries to mitigate transient CI network failures.
+common --http_timeout_scaling=10.0
+common --experimental_repository_downloader_retries=10

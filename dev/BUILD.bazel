@@ -1,7 +1,15 @@
 load("@rules_multirun//:defs.bzl", "multirun")
+load("//python:py_library.bzl", "py_library")
 load("//python/uv:lock.bzl", "lock")  # buildifier: disable=bzl-visibility
 
 licenses(["notice"])
+
+py_library(
+    name = "sync_downloader_configs",
+    srcs = ["sync_downloader_configs.py"],
+    imports = [".."],
+    visibility = ["//:__subpackages__"],
+)
 
 # Only present for WORKSPACE support; bzlmod uses //dev:uv.lock.
 # Run bazel run //dev:requirements.update
