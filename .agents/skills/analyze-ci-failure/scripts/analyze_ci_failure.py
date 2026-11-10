@@ -9,6 +9,7 @@ import urllib.parse
 import urllib.request
 
 _ANSI_ESCAPE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+_HTTP_5XX_DOWNLOAD_ERROR = re.compile(r"get returned 5\d\d\b", re.IGNORECASE)
 
 _HTTP_GATEWAY_ERRORS = (
     # keep-sorted start
@@ -25,6 +26,7 @@ _ERROR_KEYWORDS = _HTTP_GATEWAY_ERRORS + (
     "critical path",
     "curl: (",
     "errno 5",
+    "error downloading [",
     "error during connect:",
     "error waiting for container",
     "error:",
@@ -36,6 +38,7 @@ _ERROR_KEYWORDS = _HTTP_GATEWAY_ERRORS + (
     "fatal",
     "fatal:",
     "filenotfounderror",
+    "get returned 5",
     "input/output error",
     "no such package",
     "no such target",
@@ -162,6 +165,31 @@ def _contains_any(lines, substrings):
     return False
 
 
+def _is_repo_download_flake(errors):
+    """Returns whether error lines indicate a transient Bazel download failure.
+
+    Args:
+        errors: Sequence of extracted error log lines.
+
+    Returns:
+        True if any line shows an HTTP 5xx or transient download failure.
+    """
+    for err in errors:
+        if _HTTP_5XX_DOWNLOAD_ERROR.search(err):
+            return True
+        lower_err = err.lower()
+        if "error downloading [" in lower_err and any(
+            reason in lower_err
+            for reason in (
+                "timed out",
+                "connection reset",
+                "unexpected end of file",
+            )
+        ):
+            return True
+    return False
+
+
 def parse_log(log_path):
     if not os.path.exists(log_path):
         return [f"Log file not found at {log_path}"]
@@ -212,6 +240,12 @@ def create_plan(job_name, log_path, errors):
     ):
         is_flake = True
         flake_reason = "Buildkite agent / Docker runner infrastructure failure (dockerd disconnection / grpc context canceled / exit status 125). This is an infrastructure flake, not a codebase bug."
+    elif _is_repo_download_flake(errors):
+        is_flake = True
+        flake_reason = (
+            "Transient Bazel repository download failure (HTTP 5xx or I/O error). "
+            "Check if the archive is available on mirror.bazel.build before retrying."
+        )
     elif _contains_any(errors, _HTTP_GATEWAY_ERRORS):
         is_flake = True
         flake_reason = (
