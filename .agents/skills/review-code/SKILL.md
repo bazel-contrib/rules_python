@@ -211,14 +211,19 @@ file from `.agents/skills/review-code/`:
   concise summary with the overall verdict and a clickable markdown link to
   `code-review-results.md` in the response.
 - If reviewing a PR belonging to another user and at least one net-new candidate
-  comment remains after the Anti-Noise Gate, prompt the user via `ask_question`
-  (including a clickable `[code-review-results.md](file:///...)` link in the
-  `question` prompt text) to choose whether to:
-  1. Post the feedback as non-draft comments
-  2. Approve PR and post non-draft comments
-  3. Post the feedback as draft comments
-  4. Review the feedback
-  5. Do not post comments
+  comment remains after the Anti-Noise Gate, prompt the user via a single
+  multi-select (`is_multi_select: true`) `ask_question` question (including a
+  clickable `[code-review-results.md](file:///...)` link in the `question`
+  prompt text) with the following options:
+  1. Post non-draft comments
+  2. Post draft comments
+  3. Review feedback further
+  4. Also approve PR
+  5. Also fix issues
+  6. Also push fixes to PR
+- When fixing and pushing open issues that also had non-draft review comments
+  posted, reply to each fixed review thread with the commit SHA (and disclosure
+  line) and resolve the thread.
 - If reviewing or re-reviewing a PR belonging to another user and the verdict is
   `PASS` (0 open issues and 0 net-new candidate comments) while the PR is not
   yet approved by the user, prompt the user via `ask_question` (including a
@@ -226,6 +231,7 @@ file from `.agents/skills/review-code/`:
   prompt text) to choose whether to:
   1. Approve PR
   2. Do nothing
+  3. Re-review
 - Immediately before posting comments (after `ask_question` returns), re-fetch
   the latest PR description, commits, and review comments (`gh pr view`), move
   any issues addressed in the interim to `## Resolved Issues` in

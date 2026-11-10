@@ -7,8 +7,15 @@ description: Merge a pull request into main, monitoring the merge queue,
 When the user asks to merge a pull request (e.g., "merge PR <number>", "merge
 this PR", or monitor its merge):
 
-1. **Enqueue for Merge**: Run
-   `gh pr merge <pr_number> --repo bazel-contrib/rules_python --auto --squash`.
+1. **Check Mergeability & Enqueue for Merge**:
+   - First check `gh pr view <pr_number> --repo bazel-contrib/rules_python
+     --json isDraft,mergeable,mergeStateStatus`. `gh pr merge --auto` exits `0`
+     even when `mergeable` is `"CONFLICTING"` (`mergeStateStatus: "DIRTY"`),
+     which prevents the PR from ever entering the merge queue. If conflicting,
+     either merge `upstream/main` and push (if authorized) or report the
+     conflict immediately.
+   - Run `gh pr merge <pr_number> --repo bazel-contrib/rules_python --auto
+     --squash`.
    - **Draft PRs**: If the PR is a draft (`isDraft: true`), mark it ready for
      review first via `gh pr ready <pr_number> --repo
      bazel-contrib/rules_python` (otherwise `gh pr merge` fails with
