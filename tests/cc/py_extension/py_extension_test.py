@@ -5,6 +5,7 @@ import unittest
 import ext_shared  # pyrefly: ignore[missing-import]
 from elftools.elf.dynamic import DynamicSection
 from elftools.elf.elffile import ELFFile
+from elftools.elf.sections import SymbolTableSection
 
 
 class PyExtensionTest(unittest.TestCase):
@@ -35,6 +36,7 @@ class PyExtensionTest(unittest.TestCase):
             # Check for the PyInit symbol
             dynsym_section = elf.get_section_by_name(".dynsym")
             self.assertIsNotNone(dynsym_section)
+            self.assertTrue(isinstance(dynsym_section, SymbolTableSection))
 
             symbols = [s.name for s in dynsym_section.iter_symbols()]
             self.assertIn("PyInit_ext_shared", symbols)
