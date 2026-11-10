@@ -43,7 +43,8 @@ project's workflow rules and conventions:
     `bazel-contrib/setup-bazel` directly, and
     `uses: ./.github/actions/download-tool` or `dev/verified_download.py` to
     fetch, SHA-256-verify, and cache tool binaries keyed by `<name>-<sha256>`
-    without OS or version prefixes).
+    without OS or version prefixes, listing verified mirrors in `urls` when
+    available).
 11. Audit for injection and security vulnerabilities:
     - Require explicit top-level `permissions:` (`{}` or minimal scopes) in all
       workflows, and explicit job-level permissions for reusable workflow calls

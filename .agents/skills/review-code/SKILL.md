@@ -88,7 +88,8 @@ file from `.agents/skills/review-code/`:
       definition order, guard clauses, fail-closed `else`, single input form,
       no unrequested knobs/aliases, no speculative validation or defensive
       `None` checks, no nested comprehensions, naming precision,
-      simplification, `keep-sorted` markers, and CLI safety annotations.
+      simplification, `keep-sorted` markers, `LINT.IfChange` /
+      `LINT.ThenChange` directives, and CLI safety annotations.
 
 11. Shell Script Sub-Agent (`Role: "Shell Script Auditor"`):
     - Prompt file:

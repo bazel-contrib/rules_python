@@ -27,7 +27,9 @@ globs: ".github/workflows/**,.github/actions/**,.github/dependabot.yml"
 * **Verified Tool Downloads (`./.github/actions/download-tool`)**: Use
   `./.github/actions/download-tool` (or `dev/verified_download.py`) to fetch,
   SHA-256-verify, and cache tool binaries; key caches by `<name>-<sha256>`
-  without OS or version prefixes.
+  without OS or version prefixes. Check for verified mirrors serving the exact
+  SHA-256 payload (e.g., `mirror.bazel.build`) and list all valid mirrors in
+  `urls`.
 * Preserve `suppress-no-jobs-ran-error` fallback jobs in conditional workflows.
 * Pass inputs (e.g. `${{ inputs.issue }}`) directly to commands without
   redundant shell stripping.
