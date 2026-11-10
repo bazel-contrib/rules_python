@@ -100,7 +100,12 @@ globs: "*.bzl,BUILD,BUILD.bazel,*.bazel"
   `$(execpaths ...)`.
 * Do not define overlapping `filegroup` targets or `exports_files` globs in the
   same `BUILD` package; reconcile or compose them.
-* Move complex loops and branching out of `BUILD` files into `.bzl` macros.
+* Move loops and conditional target definitions out of `BUILD` files into `.bzl`
+  helper macros using `if`/`else` statements. Never instantiate targets via
+  top-level `rule_a(...) if cond else rule_b(...)` ternaries (or suppress
+  `no-effect` / `duplicated-name` buildifier warnings in `BUILD` files).
+  * **Why**: Keeping `BUILD` files declarative ensures they remain processable
+    by tools like `buildifier` and `buildozer`.
 * When exposing data files across packages, define a named `filegroup` in the
   owning package rather than referencing raw source files in caller `data`.
 

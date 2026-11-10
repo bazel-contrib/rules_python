@@ -24,8 +24,14 @@ description: rules_python-specific Bzlmod, PyPI, and rule usage invariants
 
 ## Internal Labels & Helpers
 * **Toolchain Type Labels**: Define toolchain type constants in
-  `//python/private/toolchain_types:toolchain_types.bzl` and targets in
+  `//python/private:toolchain_types.bzl` and internal toolchain type targets in
   `//python/private/toolchain_types:BUILD.bazel`.
+* **`@rules_python_internal` Cycle Avoidance**: Never load
+  `@rules_python_internal//...` in `.bzl` files transitively loaded by
+  `//python/extensions:config.bzl` (such as
+  `//python/private:toolchain_types.bzl` or
+  `//python/private/toolchains:repo.bzl`), because `config.bzl` generates
+  `@rules_python_internal` and will trigger a Bzlmod Skyframe cycle.
 * **`render` Helpers (`//python/private:text_util.bzl`)**: Use `render.*`
   (`render.string`, `render.toolchain`, `render.call`, `render.list`) instead of
   `repr()` for Starlark calls; use `json.encode_indent()` for data constants.

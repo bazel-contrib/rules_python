@@ -22,14 +22,18 @@ description: Bazel test execution, integration test flags, and lockfiles
   targets built!
 
 ## Lockfile Testing (`MODULE.bazel.lock`)
-* Changes to transitive module extension dependencies or `.bzl` files loaded by
-  extensions update Bazel 9 lockfile hashes, requiring `bazel mod deps
-  --lockfile_mode=update` in integration test workspaces.
-* When requirements files (e.g., in `//tools/publish` or root pip parses) are
-  modified or bumped by Dependabot, update the integration lockfile by running
-  `bazel mod deps --lockfile_mode=update` in `tests/integration/bzlmod_lockfile`
-  and verify with
-  `bazel test //tests/integration:bzlmod_lockfile_test_bazel_9.3.1`.
+* When changing transitive module extension dependencies, `.bzl` files loaded
+  by extensions, or requirements files (in `//tools/publish` or root pip
+  parses), update the Bazel 9 integration lockfile by running
+  `USE_BAZEL_VERSION=<ver> bazel mod deps --lockfile_mode=update` in
+  `tests/integration/bzlmod_lockfile` (matching `bazel_versions` on
+  `bzlmod_lockfile_test` in `tests/integration/BUILD.bazel`) and verify with
+  `bazel test //tests/integration:bzlmod_lockfile_test_bazel_<ver>`.
+* When `MODULE.bazel.lock` has Git merge conflicts (`<<<<<<<`), Bazel fails to
+  parse it (`MalformedJsonException`); run
+  `git checkout --theirs tests/integration/bzlmod_lockfile/MODULE.bazel.lock`
+  first, then regenerate in `tests/integration/bzlmod_lockfile` with
+  `USE_BAZEL_VERSION=<ver> bazel mod deps --lockfile_mode=update`.
 
 ## Documentation Flake Handling
 * When building `//docs:docs` fails with exit code 2, treat it as a known
