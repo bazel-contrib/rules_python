@@ -117,6 +117,11 @@ def sphinx_docs(
     * `<name>.run`: A binary that directly runs the underlying Sphinx command
       to build the docs. This is a debugging aid.
 
+    :::{versionchanged} VERSION_NEXT_FEATURE
+    `--show-traceback` is no longer passed to Sphinx by default. Pass
+    `extra_opts = ["--show-traceback"]` to include full tracebacks on errors.
+    :::
+
     Args:
         name: {type}`Name` name of the docs rule.
         srcs: {type}`list[label]` The source files for Sphinx to process.
@@ -283,8 +288,6 @@ def _run_sphinx(ctx, format, source_path, inputs, output_prefix, allow_persisten
     args.add(source_path)
     args.add(output_dir.path)
 
-    args.add("--show-traceback")  # Full tracebacks on error
-    run_args.append("--show-traceback")
     args.add(format, format = "--builder=%s")
     run_args.append("--builder={}".format(format))
 
