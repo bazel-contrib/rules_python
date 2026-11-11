@@ -1,5 +1,6 @@
-# Mitigate transient CI network failures via mirror fallback and retries.
-# Drop `experimental_` prefix once Bazel 7 is no longer supported.
-common --experimental_downloader_config=downloader_config.cfg
+# Mitigate transient CI network failures via increased HTTP timeouts and retries.
+# Note: --experimental_downloader_config is set per workspace depth because
+# Bazel 10+ treats --downloader_config as allowMultiple=true (accumulating all
+# passed paths) and resolves relative paths against the active workspace root.
 common --http_timeout_scaling=10.0
 common --experimental_repository_downloader_retries=10

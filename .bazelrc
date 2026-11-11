@@ -63,6 +63,8 @@ common --repository_cache=~/.cache/bazel/bazel-repo-cache
 # Hardlinks save disk space and copy time when unpacking repositories
 common --experimental_repository_cache_hardlinks=true
 import %workspace%/downloader_cfg.bazelrc
+# Drop `experimental_` prefix once Bazel 7 is no longer supported
+common --experimental_downloader_config=downloader_config.cfg
 
 # BazelCI's default and RBE bzlmod jobs pass --config=ci; see
 # .bazelci/presubmit.yml.
