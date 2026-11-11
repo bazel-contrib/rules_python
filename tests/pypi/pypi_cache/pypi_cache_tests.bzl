@@ -826,13 +826,13 @@ _MACOS_ARM64_CP312 = struct(
     whl_platform_tags = ["any", "macosx_*_arm64"],
 )
 
-def _dist(filename):
+def _dist(filename, yanked = None):
     return struct(
         version = "1.0.0",
         filename = filename,
         url = "https://pypi.org/files/" + filename,
         digest = "sha256:" + filename,
-        yanked = None,
+        yanked = yanked,
     )
 
 def _test_pypi_cache_facts_store_only_selectable_wheels(env):
@@ -865,6 +865,124 @@ def _test_pypi_cache_facts_store_only_selectable_wheels(env):
     })
 
 _tests.append(_test_pypi_cache_facts_store_only_selectable_wheels)
+
+_LINUX_X86_64_CP313 = struct(
+    env = {"implementation_name": "cpython", "python_full_version": "3.13.0"},
+    whl_abi_tags = ["none", "abi3", "cp313"],
+    whl_platform_tags = ["any", "manylinux_*_x86_64"],
+)
+
+def _test_pypi_cache_facts_store_wheels_selectable_by_any_platform(env):
+    """Verifies that the facts keep a wheel that any one of the platforms can select."""
+    cache = _cache(
+        env,
+        mctx = mocks.mctx(facts = {}),
+        wheel_platforms = [_MACOS_ARM64_CP312, _LINUX_X86_64_CP313],
+    )
+
+    dists = [
+        _dist("pkg-1.0.0-cp312-cp312-macosx_11_0_arm64.whl"),
+        _dist("pkg-1.0.0-cp313-cp313-manylinux_2_17_x86_64.whl"),
+        _dist("pkg-1.0.0-cp312-cp312-win_amd64.whl"),
+    ]
+    fake_result = struct(
+        sdists = {},
+        whls = {d.digest: d for d in dists},
+        hashes_by_version = {"1.0.0": sorted([d.digest for d in dists])},
+    )
+    key = ("https://{PYPI_INDEX_URL}/pkg/", "https://pypi.org/simple/pkg/", ["1.0.0"])
+    cache.setdefault(key, fake_result)
+
+    cache.expect_facts().contains_exactly({
+        "fact_version": "v3",
+        "pkg@https://{PYPI_INDEX_URL}": {
+            "https://pypi.org/files/pkg-1.0.0-cp312-cp312-macosx_11_0_arm64.whl": "sha256:pkg-1.0.0-cp312-cp312-macosx_11_0_arm64.whl",
+            "https://pypi.org/files/pkg-1.0.0-cp313-cp313-manylinux_2_17_x86_64.whl": "sha256:pkg-1.0.0-cp313-cp313-manylinux_2_17_x86_64.whl",
+        },
+        "wheel_filter": [
+            "cpython|3.12|none,abi3,cp312|any,macosx_*_arm64",
+            "cpython|3.13|none,abi3,cp313|any,manylinux_*_x86_64",
+        ],
+    })
+
+_tests.append(_test_pypi_cache_facts_store_wheels_selectable_by_any_platform)
+
+def _test_pypi_cache_facts_filter_yanked_wheels(env):
+    """Verifies that a kept yanked wheel keeps its yank reason and a dropped one is gone."""
+    cache = _cache(env, mctx = mocks.mctx(facts = {}), wheel_platforms = [_MACOS_ARM64_CP312])
+
+    kept = _dist("pkg-1.0.0-py3-none-any.whl", yanked = "Broken build")
+    dropped = _dist("pkg-1.0.0-cp312-cp312-win_amd64.whl", yanked = "Broken build")
+    fake_result = struct(
+        sdists = {},
+        whls = {d.digest: d for d in [kept, dropped]},
+        hashes_by_version = {"1.0.0": sorted([kept.digest, dropped.digest])},
+    )
+    key = ("https://{PYPI_INDEX_URL}/pkg/", "https://pypi.org/simple/pkg/", ["1.0.0"])
+    cache.setdefault(key, fake_result)
+
+    cache.expect_facts().contains_exactly({
+        "fact_version": "v3",
+        "pkg@https://{PYPI_INDEX_URL}": {
+            "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "sha256:pkg-1.0.0-py3-none-any.whl||Broken build",
+        },
+        "wheel_filter": ["cpython|3.12|none,abi3,cp312|any,macosx_*_arm64"],
+    })
+
+    cache2 = _cache(
+        env,
+        mctx = mocks.mctx(facts = cache.raw_facts()),
+        wheel_platforms = [_MACOS_ARM64_CP312],
+    )
+    got = cache2.get(key)
+    got.whls().contains_exactly({
+        kept.digest: struct(
+            digest = kept.digest,
+            version = "1.0.0",
+            filename = kept.filename,
+            metadata_url = "",
+            metadata_sha256 = "",
+            url = kept.url,
+            yanked = "Broken build",
+        ),
+    })
+    got.hashes_by_version().contains_exactly({"1.0.0": [kept.digest]})
+
+_tests.append(_test_pypi_cache_facts_filter_yanked_wheels)
+
+def _test_pypi_cache_facts_filter_wheels_with_the_same_tags(env):
+    """Verifies that wheels with the same tags get the same result across packages."""
+    cache = _cache(env, mctx = mocks.mctx(facts = {}), wheel_platforms = [_MACOS_ARM64_CP312])
+
+    for pkg in ["pkg", "other"]:
+        dists = [
+            _dist(pkg + "-1.0.0-cp312-abi3-macosx_11_0_arm64.whl"),
+            _dist(pkg + "-2.0.0-cp312-abi3-macosx_11_0_arm64.whl"),
+            _dist(pkg + "-1.0.0-cp312-cp312-win_amd64.whl"),
+            _dist(pkg + "-2.0.0-cp312-cp312-win_amd64.whl"),
+        ]
+        fake_result = struct(
+            sdists = {},
+            whls = {d.digest: d for d in dists},
+            hashes_by_version = {"1.0.0": sorted([d.digest for d in dists])},
+        )
+        key = ("https://{PYPI_INDEX_URL}/" + pkg + "/", "https://pypi.org/simple/" + pkg + "/", ["1.0.0"])
+        cache.setdefault(key, fake_result)
+
+    cache.expect_facts().contains_exactly({
+        "fact_version": "v3",
+        "other@https://{PYPI_INDEX_URL}": {
+            "https://pypi.org/files/other-1.0.0-cp312-abi3-macosx_11_0_arm64.whl": "sha256:other-1.0.0-cp312-abi3-macosx_11_0_arm64.whl",
+            "https://pypi.org/files/other-2.0.0-cp312-abi3-macosx_11_0_arm64.whl": "sha256:other-2.0.0-cp312-abi3-macosx_11_0_arm64.whl",
+        },
+        "pkg@https://{PYPI_INDEX_URL}": {
+            "https://pypi.org/files/pkg-1.0.0-cp312-abi3-macosx_11_0_arm64.whl": "sha256:pkg-1.0.0-cp312-abi3-macosx_11_0_arm64.whl",
+            "https://pypi.org/files/pkg-2.0.0-cp312-abi3-macosx_11_0_arm64.whl": "sha256:pkg-2.0.0-cp312-abi3-macosx_11_0_arm64.whl",
+        },
+        "wheel_filter": ["cpython|3.12|none,abi3,cp312|any,macosx_*_arm64"],
+    })
+
+_tests.append(_test_pypi_cache_facts_filter_wheels_with_the_same_tags)
 
 def _test_pypi_cache_reads_facts_only_for_the_same_wheel_filter(env):
     """Verifies that the facts filtered for other platforms are not read."""
