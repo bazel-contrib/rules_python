@@ -163,6 +163,11 @@ string_flag = rule(
     build_setting = config.string(flag = True),
     attrs = {
         "override": attr.string(),
+        # Read by Bazel, not the implementation, to decide whether the flag
+        # propagates into exec configurations. No default because Bazel only
+        # honors an explicitly set value
+        # (https://github.com/bazelbuild/bazel/issues/31806).
+        "scope": attr.string(),
         "values": attr.string_list(),
     },
 )

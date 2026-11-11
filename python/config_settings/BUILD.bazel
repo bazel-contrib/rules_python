@@ -114,6 +114,12 @@ rp_string_flag(
         ":_is_windows": BootstrapImplFlag.SYSTEM_PYTHON,
         "//conditions:default": "",
     }),
+    # Propagate the flag into exec configurations so that tools, e.g. a
+    # py_binary run by a genrule, use the same bootstrap as the target
+    # configuration. Bazel 10 resets Starlark flags in exec configurations
+    # unless they have universal scope
+    # (https://github.com/bazelbuild/bazel/issues/26909).
+    scope = "universal",
     values = sorted(BootstrapImplFlag.__members__.values()),
     # NOTE: Only public because it's an implicit dependency
     visibility = NOT_ACTUALLY_PUBLIC,

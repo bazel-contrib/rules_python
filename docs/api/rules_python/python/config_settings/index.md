@@ -405,6 +405,10 @@ instead.
 :::{versionadded} 0.33.0
 :::
 
+:::{versionchanged} VERSION_NEXT_PATCH
+The flag also applies to tools built in the exec configuration under Bazel 10.
+:::
+
 ::::
 
 ::::{bzl:flag} current_config
