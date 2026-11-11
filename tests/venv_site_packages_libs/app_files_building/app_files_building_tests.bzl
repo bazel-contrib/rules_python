@@ -87,6 +87,25 @@ def _assert_tree_artifact_equivalence(
         package,
         version_str,
         namespace_package_files = []):
+    """Verifies at analysis time that tree-mode matches file-mode venv entries.
+
+    Checks using fake `File` structs that `get_venv_symlinks(tree_artifact = ...)`
+    and `build_link_map` produce entries and conflict-merged link maps equivalent
+    to file mode for the same package layout. This is an analysis-only check and
+    does not load modules or shared libraries at runtime; see
+    `//tests/venv_site_packages_libs/app_files_building:tree_shared_lib_loading_test`
+    (and `:tree_venv_merge_test`) for runtime verification.
+
+    Args:
+        env: `rules_testing` analysis test environment.
+        test_ctx: Fake rule context struct from `_ctx()`.
+        files: Fake `File` structs passed to file-mode `get_venv_symlinks`.
+        file_entries: Expected `VenvSymlinkEntry` list produced in file mode.
+        package: Distribution name.
+        version_str: Distribution version string.
+        namespace_package_files: Optional fake `File` structs for pkgutil-style
+            namespace package `__init__.py` files.
+    """
     pkg_prefix = env.ctx.label.package + "/"
     tree_artifact = _file(pkg_prefix + "srcs", is_directory = True)
     tree_files = [f.short_path[len(pkg_prefix):] for f in files]
@@ -957,6 +976,7 @@ def _test_default_mode_directory_merge_impl(env, _):
     })
 
 def _tree_venv_lib_impl(ctx):
+    """Populates a directory artifact and returns tree-backed `PyInfo.venv_symlinks`."""
     out = ctx.actions.declare_directory(ctx.label.name + "_srcs")
     args = ctx.actions.args()
     args.add_all("--output-dir", [out], expand_directories = False)
@@ -964,12 +984,30 @@ def _tree_venv_lib_impl(ctx):
         args.add("--path", p)
     for rel_path, content in ctx.attr.contents.items():
         args.add("--entry", "{}={}".format(rel_path, content))
+
+    inputs = []
+    copied_paths = []
+    for src_target, dest_dir in ctx.attr.files.items():
+        clean_dir = dest_dir.strip("/")
+        for src_file in src_target[DefaultInfo].files.to_list():
+            if clean_dir:
+                rel_path = "{}/{}".format(clean_dir, src_file.basename)
+            else:
+                rel_path = src_file.basename
+            args.add("--copy", "{}={}".format(rel_path, src_file.path))
+            inputs.append(src_file)
+            copied_paths.append(rel_path)
+
     ctx.actions.run(
         executable = ctx.executable._populate_tree,
+        inputs = inputs,
         arguments = [args],
         outputs = [out],
     )
-    all_paths = sorted({p: True for p in ctx.attr.paths + ctx.attr.contents.keys()}.keys())
+    all_paths = sorted({
+        p: True
+        for p in ctx.attr.paths + ctx.attr.contents.keys() + copied_paths
+    }.keys())
     entries = get_venv_symlinks(
         ctx,
         all_paths,
@@ -992,12 +1030,40 @@ def _tree_venv_lib_impl(ctx):
 
 tree_venv_lib = rule(
     implementation = _tree_venv_lib_impl,
+    doc = """
+Test-only rule that writes the given paths, contents, and files into a
+directory artifact (`TreeArtifact`) and returns a `PyInfo` whose
+`venv_symlinks` are tree-backed via `get_venv_symlinks(tree_artifact = ...)`,
+standing in for a target that installs a package into a directory artifact at
+build time.
+""",
     attrs = {
-        "contents": attr.string_dict(),
-        "namespace_package_files": attr.string_list(),
-        "package": attr.string(mandatory = True),
-        "paths": attr.string_list(),
-        "version": attr.string(default = "1.0"),
+        "contents": attr.string_dict(
+            doc = "Mapping of tree-relative file paths to UTF-8 text contents.",
+        ),
+        "files": attr.label_keyed_string_dict(
+            allow_files = True,
+            doc = """
+Mapping of source file targets to destination directories inside the tree
+artifact; each file's basename is preserved.
+""",
+        ),
+        "namespace_package_files": attr.string_list(
+            doc = """
+Tree-relative paths to pkgutil-style namespace `__init__.py` files.
+""",
+        ),
+        "package": attr.string(
+            doc = "Python distribution name passed to `get_venv_symlinks`.",
+            mandatory = True,
+        ),
+        "paths": attr.string_list(
+            doc = "Tree-relative paths to create as empty files.",
+        ),
+        "version": attr.string(
+            default = "1.0",
+            doc = "Python distribution version passed to `get_venv_symlinks`.",
+        ),
         "_populate_tree": attr.label(
             default = ":populate_tree",
             executable = True,

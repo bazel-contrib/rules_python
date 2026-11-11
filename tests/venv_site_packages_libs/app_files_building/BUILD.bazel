@@ -1,5 +1,6 @@
 load("//python:py_binary.bzl", "py_binary")
 load("//tests/support:py_reconfig.bzl", "py_reconfig_test")
+load("//tests/support:support.bzl", "NOT_WINDOWS")
 load(":app_files_building_tests.bzl", "app_files_building_test_suite", "tree_venv_lib")
 
 py_binary(
@@ -53,5 +54,33 @@ py_reconfig_test(
     deps = [
         ":tree_venv_runtime_a",
         ":tree_venv_runtime_b",
+    ],
+)
+
+tree_venv_lib(
+    name = "tree_ext_with_libs",
+    contents = {
+        "site-packages/tree_ext_with_libs/__init__.py": "",
+    },
+    files = {
+        "//tests/venv_site_packages_libs/ext_with_libs:adder": "site-packages/tree_ext_with_libs",
+        "//tests/venv_site_packages_libs/ext_with_libs:increment": "site-packages/tree_ext_with_libs/libs",
+    },
+    package = "tree-ext-with-libs",
+    tags = ["manual"],
+    target_compatible_with = NOT_WINDOWS,
+)
+
+py_reconfig_test(
+    name = "tree_shared_lib_loading_test",
+    srcs = ["tree_shared_lib_loading_test.py"],
+    bootstrap_impl = "script",
+    main = "tree_shared_lib_loading_test.py",
+    target_compatible_with = NOT_WINDOWS,
+    venvs_site_packages = "yes",
+    deps = [
+        ":tree_ext_with_libs",
+        "@dev_pip//macholib",
+        "@dev_pip//pyelftools",
     ],
 )

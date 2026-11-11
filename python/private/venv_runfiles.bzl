@@ -489,7 +489,7 @@ def get_venv_symlinks(
                 link_to_file = candidate.file,
                 package = package,
                 version = version_str,
-                files = tree_files_depset if tree_artifact != None else depset([candidate.file]),
+                files = tree_files_depset or depset([candidate.file]),
                 venv_path = venv_path,
             )
             parent = paths.dirname(venv_path)
