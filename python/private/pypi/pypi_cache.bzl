@@ -481,6 +481,9 @@ def _compact_dist_urls(entries):
     The index usually serves all the files of a distribution from the same host
     and path, so this removes the part of each url that the entries repeat.
 
+    The common directory ends before any `?` or `#`, and no relative url is
+    empty, so that no dist url overwrites the common directory under the `""` key.
+
     Args:
         entries: {type}`dict[str, str]` the encoded entries keyed by the full dist url.
 
@@ -499,7 +502,11 @@ def _compact_dist_urls(entries):
         if first[i] != last[i]:
             break
         size = i + 1
-    prefix = first[:first.rfind("/", 0, size) + 1]
+    common = first[:size].partition("?")[0].partition("#")[0]
+    prefix = common[:common.rfind("/") + 1]
+    if prefix in entries:
+        # A url that ends with `/` is the common directory itself.
+        prefix = prefix[:prefix.rfind("/", 0, len(prefix) - 1) + 1]
 
     compact = {"": prefix}
     for url in urls:

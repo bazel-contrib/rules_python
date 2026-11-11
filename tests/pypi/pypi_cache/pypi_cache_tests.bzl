@@ -1091,19 +1091,21 @@ def _test_pypi_cache_facts_store_urls_relative_to_common_directory(env):
     def _facts_for(urls):
         cache = _cache(env, mctx = mocks.mctx(facts = {}))
         dists = {
-            "sha256:" + url: struct(
+            "sha256:{}".format(i): struct(
+                digest = "sha256:{}".format(i),
                 version = "1.0.0",
                 filename = "pkg-1.0.0-py3-none-any.whl",
+                metadata_url = "",
+                metadata_sha256 = "",
                 url = url,
-                digest = "sha256:" + url,
                 yanked = None,
             )
-            for url in urls
+            for i, url in enumerate(urls)
         }
         key = ("https://{PYPI_INDEX_URL}/pkg/", "https://pypi.org/simple/pkg/", ["1.0.0"])
         cache.setdefault(key, struct(sdists = {}, whls = dists, hashes_by_version = {"1.0.0": sorted(dists)}))
         got = _cache(env, mctx = mocks.mctx(facts = cache.raw_facts())).get(key)
-        got.whls().keys().contains_exactly(dists.keys())
+        got.whls().contains_exactly(dists)
         return cache.raw_facts()["pkg@https://{PYPI_INDEX_URL}"]
 
     # The common prefix ends inside a directory name, so only the full directories are shared.
@@ -1112,8 +1114,8 @@ def _test_pypi_cache_facts_store_urls_relative_to_common_directory(env):
         "https://files.example.com/packages/ac/pkg-1.0.0-py3-none-any.whl",
     ])).contains_exactly({
         "": "https://files.example.com/packages/",
-        "ab/pkg-1.0.0-py3-none-any.whl": "sha256:https://files.example.com/packages/ab/pkg-1.0.0-py3-none-any.whl",
-        "ac/pkg-1.0.0-py3-none-any.whl": "sha256:https://files.example.com/packages/ac/pkg-1.0.0-py3-none-any.whl",
+        "ab/pkg-1.0.0-py3-none-any.whl": "sha256:0",
+        "ac/pkg-1.0.0-py3-none-any.whl": "sha256:1",
     })
 
     # Different hosts share only the scheme.
@@ -1122,8 +1124,67 @@ def _test_pypi_cache_facts_store_urls_relative_to_common_directory(env):
         "https://b.example.com/pkg-1.0.0-py3-none-any.whl",
     ])).contains_exactly({
         "": "https://",
-        "a.example.com/pkg-1.0.0-py3-none-any.whl": "sha256:https://a.example.com/pkg-1.0.0-py3-none-any.whl",
-        "b.example.com/pkg-1.0.0-py3-none-any.whl": "sha256:https://b.example.com/pkg-1.0.0-py3-none-any.whl",
+        "a.example.com/pkg-1.0.0-py3-none-any.whl": "sha256:0",
+        "b.example.com/pkg-1.0.0-py3-none-any.whl": "sha256:1",
+    })
+
+    # A single url shares its own directory.
+    env.expect.that_dict(_facts_for([
+        "https://example.com/files/pkg-1.0.0-py3-none-any.whl",
+    ])).contains_exactly({
+        "": "https://example.com/files/",
+        "pkg-1.0.0-py3-none-any.whl": "sha256:0",
+    })
+
+    env.expect.that_dict(_facts_for([
+        "../../packages/ab/cd/pkg-1.0.0-py3-none-any.whl",
+    ])).contains_exactly({
+        "": "../../packages/ab/cd/",
+        "pkg-1.0.0-py3-none-any.whl": "sha256:0",
+    })
+
+    # The common directory ends before the query string and the fragment.
+    env.expect.that_dict(_facts_for([
+        "https://example.com/files/pkg-1.0.0-py3-none-any.whl?token=a/b",
+        "https://example.com/files/pkg-1.0.0-py3-none-any.whl?token=a/c",
+    ])).contains_exactly({
+        "": "https://example.com/files/",
+        "pkg-1.0.0-py3-none-any.whl?token=a/b": "sha256:0|pkg-1.0.0-py3-none-any.whl",
+        "pkg-1.0.0-py3-none-any.whl?token=a/c": "sha256:1|pkg-1.0.0-py3-none-any.whl",
+    })
+
+    env.expect.that_dict(_facts_for([
+        "https://example.com/files/pkg-1.0.0-py3-none-any.whl#a/b",
+    ])).contains_exactly({
+        "": "https://example.com/files/",
+        "pkg-1.0.0-py3-none-any.whl#a/b": "sha256:0|pkg-1.0.0-py3-none-any.whl",
+    })
+
+    # A url that ends with `/` does not become the common directory.
+    env.expect.that_dict(_facts_for([
+        "https://example.com/files/pkg-1.0.0-py3-none-any.whl/",
+    ])).contains_exactly({
+        "": "https://example.com/files/",
+        "pkg-1.0.0-py3-none-any.whl/": "sha256:0|pkg-1.0.0-py3-none-any.whl",
+    })
+
+    env.expect.that_dict(_facts_for([
+        "https://example.com/files/pkg/",
+        "https://example.com/files/pkg/pkg-1.0.0-py3-none-any.whl",
+    ])).contains_exactly({
+        "": "https://example.com/files/",
+        "pkg/": "sha256:0|pkg-1.0.0-py3-none-any.whl",
+        "pkg/pkg-1.0.0-py3-none-any.whl": "sha256:1",
+    })
+
+    # One url is a prefix of another.
+    env.expect.that_dict(_facts_for([
+        "https://example.com/files/pkg-1.0.0-py3-none-any.whl",
+        "https://example.com/files/pkg-1.0.0-py3-none-any.whl/download",
+    ])).contains_exactly({
+        "": "https://example.com/files/",
+        "pkg-1.0.0-py3-none-any.whl": "sha256:0",
+        "pkg-1.0.0-py3-none-any.whl/download": "sha256:1|pkg-1.0.0-py3-none-any.whl",
     })
 
 _tests.append(_test_pypi_cache_facts_store_urls_relative_to_common_directory)
