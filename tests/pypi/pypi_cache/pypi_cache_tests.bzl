@@ -145,9 +145,10 @@ def _test_pypi_cache_writes_to_facts(env):
     cache.expect_facts().contains_exactly({
         "fact_version": "v5",  # Facts version
         "pkg@https://{PYPI_INDEX_URL}": {
-            "": "https://pypi.org/files/",
-            "pkg-1.0.0-py3-none-any.whl": "sha256:sha_whl||Security issue",
-            "pkg-1.0.0.tar.gz": "sha256:sha_sdist",
+            "https://pypi.org/files/": {
+                "pkg-1.0.0-py3-none-any.whl": "sha256:sha_whl||Security issue",
+                "pkg-1.0.0.tar.gz": "sha256:sha_sdist",
+            },
         },
     })
 
@@ -165,10 +166,11 @@ def _test_pypi_cache_writes_to_facts(env):
     cache.expect_facts().contains_exactly({
         "fact_version": "v5",  # Facts version
         "pkg@https://{PYPI_INDEX_URL}": {
-            "": "https://pypi.org/files/",
-            "pkg-1.0.0-py3-none-any.whl": "sha256:sha_whl||Security issue",
-            "pkg-1.0.0.tar.gz": "sha256:sha_sdist",
-            "pkg-1.1.0-py3-none-any.whl": "sha256:sha_whl_2",
+            "https://pypi.org/files/": {
+                "pkg-1.0.0-py3-none-any.whl": "sha256:sha_whl||Security issue",
+                "pkg-1.0.0.tar.gz": "sha256:sha_sdist",
+                "pkg-1.1.0-py3-none-any.whl": "sha256:sha_whl_2",
+            },
         },
     })
 
@@ -179,9 +181,10 @@ def _test_pypi_cache_reads_from_facts(env):
     mock_ctx = mocks.mctx(facts = {
         "fact_version": "v5",  # Facts version
         "pkg@https://{PYPI_INDEX_URL}": {
-            "": "https://pypi.org/files/",
-            "pkg-1.0.0-py3-none-any.whl": "sha256:sha_whl||Security issue",
-            "pkg-1.0.0.tar.gz": "sha256:sha_sdist",
+            "https://pypi.org/files/": {
+                "pkg-1.0.0-py3-none-any.whl": "sha256:sha_whl||Security issue",
+                "pkg-1.0.0.tar.gz": "sha256:sha_sdist",
+            },
         },
     })
     cache = _cache(env, mctx = mock_ctx)
@@ -265,8 +268,9 @@ def _test_pypi_cache_facts_different_filename(env):
     cache.expect_facts().contains_exactly({
         "fact_version": "v5",
         "pkg@https://{PYPI_INDEX_URL}": {
-            "": "https://pypi.org/files/",
-            "pkg-1.0.0.tar.gz": "sha256:sha_custom|custom-pkg-1.0.0.tar.gz",
+            "https://pypi.org/files/": {
+                "pkg-1.0.0.tar.gz": "sha256:sha_custom|custom-pkg-1.0.0.tar.gz",
+            },
         },
     })
 
@@ -292,11 +296,12 @@ def _test_pypi_cache_reads_from_facts_drops_unaccessed_dists(env):
     mock_ctx = mocks.mctx(facts = {
         "fact_version": "v5",
         "pkg@https://{PYPI_INDEX_URL}": {
-            "": "https://pypi.org/files/",
-            "pkg-1.0.0-py3-none-any.whl": "sha256:sha_whl_1.0.0",
-            "pkg-1.0.0.tar.gz": "sha256:sha_sdist_1.0.0",
-            "pkg-1.1.0-py3-none-any.whl": "sha256:sha_whl_1.1.0",
-            "pkg-1.1.0.tar.gz": "sha256:sha_sdist_1.1.0",
+            "https://pypi.org/files/": {
+                "pkg-1.0.0-py3-none-any.whl": "sha256:sha_whl_1.0.0",
+                "pkg-1.0.0.tar.gz": "sha256:sha_sdist_1.0.0",
+                "pkg-1.1.0-py3-none-any.whl": "sha256:sha_whl_1.1.0",
+                "pkg-1.1.0.tar.gz": "sha256:sha_sdist_1.1.0",
+            },
         },
     })
     cache = _cache(env, mctx = mock_ctx)
@@ -340,9 +345,10 @@ def _test_pypi_cache_reads_from_facts_drops_unaccessed_dists(env):
     cache.expect_facts().contains_exactly({
         "fact_version": "v5",
         "pkg@https://{PYPI_INDEX_URL}": {
-            "": "https://pypi.org/files/",
-            "pkg-1.0.0-py3-none-any.whl": "sha256:sha_whl_1.0.0",
-            "pkg-1.0.0.tar.gz": "sha256:sha_sdist_1.0.0",
+            "https://pypi.org/files/": {
+                "pkg-1.0.0-py3-none-any.whl": "sha256:sha_whl_1.0.0",
+                "pkg-1.0.0.tar.gz": "sha256:sha_sdist_1.0.0",
+            },
         },
     })
 
@@ -376,8 +382,9 @@ def _test_pypi_cache_facts_non_sha256_round_trip(env):
     cache.expect_facts().contains_exactly({
         "fact_version": "v5",  # Facts version
         "pkg@https://{PYPI_INDEX_URL}": {
-            "": "https://pypi.org/files/",
-            "pkg-1.0.0-py3-none-any.whl": "sha512:whl_digest",
+            "https://pypi.org/files/": {
+                "pkg-1.0.0-py3-none-any.whl": "sha512:whl_digest",
+            },
         },
     })
 
@@ -385,8 +392,9 @@ def _test_pypi_cache_facts_non_sha256_round_trip(env):
     cache = _cache(env, mctx = mocks.mctx(facts = {
         "fact_version": "v5",  # Facts version
         "pkg@https://{PYPI_INDEX_URL}": {
-            "": "https://pypi.org/files/",
-            "pkg-1.0.0-py3-none-any.whl": "sha512:whl_digest",
+            "https://pypi.org/files/": {
+                "pkg-1.0.0-py3-none-any.whl": "sha512:whl_digest",
+            },
         },
     }))
 
@@ -460,11 +468,12 @@ def _test_pypi_cache_facts_round_trip_all_entry_shapes(env):
     cache.expect_facts().contains_exactly({
         "fact_version": "v5",
         "pkg@https://{PYPI_INDEX_URL}": {
-            "": "https://pypi.org/files/",
-            "download/custom-yanked.whl": "sha256:custom_yanked_whl|custom_yanked_pkg-1.0.0-py3-none-any.whl|Yanked for testing",
-            "download/custom.whl": "sha256:custom_whl|custom_pkg-1.0.0-py3-none-any.whl",
-            "pkg-1.0.0.tar.gz": "sha256:default_sdist",
-            "pkg-1.0.0.zip": "sha256:yanked_sdist||Security issue | use 2.0.0",
+            "https://pypi.org/files/": {
+                "download/custom-yanked.whl": "sha256:custom_yanked_whl|custom_yanked_pkg-1.0.0-py3-none-any.whl|Yanked for testing",
+                "download/custom.whl": "sha256:custom_whl|custom_pkg-1.0.0-py3-none-any.whl",
+                "pkg-1.0.0.tar.gz": "sha256:default_sdist",
+                "pkg-1.0.0.zip": "sha256:yanked_sdist||Security issue | use 2.0.0",
+            },
         },
     })
 
@@ -578,11 +587,12 @@ def _test_pypi_cache_facts_round_trip_edge_cases(env):
     cache.expect_facts().contains_exactly({
         "fact_version": "v5",
         "pkg@https://{PYPI_INDEX_URL}": {
-            "": "https://pypi.org/files/",
-            "download/renamed.whl": "|pkg-2.0.0-py3-none-any.whl",
-            "pkg-1.0.0-py3-none-any.whl?token=abc": "sha256:query|pkg-1.0.0-py3-none-any.whl",
-            "pkg-1.0.0.tar.gz": "sha256:empty_reason||",
-            "pkg-2.0.0.tar.gz": "||Broken",
+            "https://pypi.org/files/": {
+                "download/renamed.whl": "|pkg-2.0.0-py3-none-any.whl",
+                "pkg-1.0.0-py3-none-any.whl?token=abc": "sha256:query|pkg-1.0.0-py3-none-any.whl",
+                "pkg-1.0.0.tar.gz": "sha256:empty_reason||",
+                "pkg-2.0.0.tar.gz": "||Broken",
+            },
         },
     })
 
@@ -621,8 +631,9 @@ def _test_pypi_cache_facts_no_digest_round_trip(env):
     cache.expect_facts().contains_exactly({
         "fact_version": "v5",
         "pkg@https://{PYPI_INDEX_URL}": {
-            "": "https://pypi.org/files/",
-            "pkg-1.0.0-py3-none-any.whl": "",
+            "https://pypi.org/files/": {
+                "pkg-1.0.0-py3-none-any.whl": "",
+            },
         },
     })
 
@@ -747,8 +758,9 @@ def _test_pypi_cache_index_and_dist_facts_do_not_collide(env):
     cache.expect_facts().contains_exactly({
         "fact_version": "v5",
         "pkg@https://pypi.org/simple": {
-            "": "https://pypi.org/files/",
-            "pkg-1.0.0-py3-none-any.whl": "sha256:whl",
+            "https://pypi.org/files/": {
+                "pkg-1.0.0-py3-none-any.whl": "sha256:whl",
+            },
         },
         "pkg@https://pypi.org/simple/": "https://pypi.org/simple/pkg/",
     })
@@ -869,10 +881,11 @@ def _test_pypi_cache_facts_store_only_selectable_wheels(env):
     cache.expect_facts().contains_exactly({
         "fact_version": "v5",
         "pkg@https://{PYPI_INDEX_URL}": {
-            "": "https://pypi.org/files/",
-            "pkg-1.0.0-cp312-cp312-macosx_11_0_arm64.whl": "sha256:pkg-1.0.0-cp312-cp312-macosx_11_0_arm64.whl",
-            "pkg-1.0.0-py3-none-any.whl": "sha256:pkg-1.0.0-py3-none-any.whl",
-            "pkg-1.0.0.tar.gz": "sha256:pkg-1.0.0.tar.gz",
+            "https://pypi.org/files/": {
+                "pkg-1.0.0-cp312-cp312-macosx_11_0_arm64.whl": "sha256:pkg-1.0.0-cp312-cp312-macosx_11_0_arm64.whl",
+                "pkg-1.0.0-py3-none-any.whl": "sha256:pkg-1.0.0-py3-none-any.whl",
+                "pkg-1.0.0.tar.gz": "sha256:pkg-1.0.0.tar.gz",
+            },
         },
         "wheel_filter": ["cpython|3.12|none,abi3,cp312|any,macosx_*_arm64"],
     })
@@ -909,9 +922,10 @@ def _test_pypi_cache_facts_store_wheels_selectable_by_any_platform(env):
     cache.expect_facts().contains_exactly({
         "fact_version": "v5",
         "pkg@https://{PYPI_INDEX_URL}": {
-            "": "https://pypi.org/files/",
-            "pkg-1.0.0-cp312-cp312-macosx_11_0_arm64.whl": "sha256:pkg-1.0.0-cp312-cp312-macosx_11_0_arm64.whl",
-            "pkg-1.0.0-cp313-cp313-manylinux_2_17_x86_64.whl": "sha256:pkg-1.0.0-cp313-cp313-manylinux_2_17_x86_64.whl",
+            "https://pypi.org/files/": {
+                "pkg-1.0.0-cp312-cp312-macosx_11_0_arm64.whl": "sha256:pkg-1.0.0-cp312-cp312-macosx_11_0_arm64.whl",
+                "pkg-1.0.0-cp313-cp313-manylinux_2_17_x86_64.whl": "sha256:pkg-1.0.0-cp313-cp313-manylinux_2_17_x86_64.whl",
+            },
         },
         "wheel_filter": [
             "cpython|3.12|none,abi3,cp312|any,macosx_*_arm64",
@@ -938,8 +952,9 @@ def _test_pypi_cache_facts_filter_yanked_wheels(env):
     cache.expect_facts().contains_exactly({
         "fact_version": "v5",
         "pkg@https://{PYPI_INDEX_URL}": {
-            "": "https://pypi.org/files/",
-            "pkg-1.0.0-py3-none-any.whl": "sha256:pkg-1.0.0-py3-none-any.whl||Broken build",
+            "https://pypi.org/files/": {
+                "pkg-1.0.0-py3-none-any.whl": "sha256:pkg-1.0.0-py3-none-any.whl||Broken build",
+            },
         },
         "wheel_filter": ["cpython|3.12|none,abi3,cp312|any,macosx_*_arm64"],
     })
@@ -989,10 +1004,11 @@ def _test_pypi_cache_facts_keep_versions_without_selectable_dists(env):
     cache.expect_facts().contains_exactly({
         "fact_version": "v5",
         "pkg@https://{PYPI_INDEX_URL}": {
-            "": "https://pypi.org/files/",
-            "pkg-1.0.0-cp312-cp312-win32.whl": "sha256:pkg-1.0.0-cp312-cp312-win32.whl",
-            "pkg-1.0.0-cp312-cp312-win_amd64.whl": "sha256:pkg-1.0.0-cp312-cp312-win_amd64.whl",
-            "pkg-2.0.0-cp312-cp312-macosx_11_0_arm64.whl": "sha256:pkg-2.0.0-cp312-cp312-macosx_11_0_arm64.whl",
+            "https://pypi.org/files/": {
+                "pkg-1.0.0-cp312-cp312-win32.whl": "sha256:pkg-1.0.0-cp312-cp312-win32.whl",
+                "pkg-1.0.0-cp312-cp312-win_amd64.whl": "sha256:pkg-1.0.0-cp312-cp312-win_amd64.whl",
+                "pkg-2.0.0-cp312-cp312-macosx_11_0_arm64.whl": "sha256:pkg-2.0.0-cp312-cp312-macosx_11_0_arm64.whl",
+            },
         },
         "wheel_filter": ["cpython|3.12|none,abi3,cp312|any,macosx_*_arm64"],
     })
@@ -1032,14 +1048,16 @@ def _test_pypi_cache_facts_filter_wheels_with_the_same_tags(env):
     cache.expect_facts().contains_exactly({
         "fact_version": "v5",
         "other@https://{PYPI_INDEX_URL}": {
-            "": "https://pypi.org/files/",
-            "other-1.0.0-cp312-abi3-macosx_11_0_arm64.whl": "sha256:other-1.0.0-cp312-abi3-macosx_11_0_arm64.whl",
-            "other-2.0.0-cp312-abi3-macosx_11_0_arm64.whl": "sha256:other-2.0.0-cp312-abi3-macosx_11_0_arm64.whl",
+            "https://pypi.org/files/": {
+                "other-1.0.0-cp312-abi3-macosx_11_0_arm64.whl": "sha256:other-1.0.0-cp312-abi3-macosx_11_0_arm64.whl",
+                "other-2.0.0-cp312-abi3-macosx_11_0_arm64.whl": "sha256:other-2.0.0-cp312-abi3-macosx_11_0_arm64.whl",
+            },
         },
         "pkg@https://{PYPI_INDEX_URL}": {
-            "": "https://pypi.org/files/",
-            "pkg-1.0.0-cp312-abi3-macosx_11_0_arm64.whl": "sha256:pkg-1.0.0-cp312-abi3-macosx_11_0_arm64.whl",
-            "pkg-2.0.0-cp312-abi3-macosx_11_0_arm64.whl": "sha256:pkg-2.0.0-cp312-abi3-macosx_11_0_arm64.whl",
+            "https://pypi.org/files/": {
+                "pkg-1.0.0-cp312-abi3-macosx_11_0_arm64.whl": "sha256:pkg-1.0.0-cp312-abi3-macosx_11_0_arm64.whl",
+                "pkg-2.0.0-cp312-abi3-macosx_11_0_arm64.whl": "sha256:pkg-2.0.0-cp312-abi3-macosx_11_0_arm64.whl",
+            },
         },
         "wheel_filter": ["cpython|3.12|none,abi3,cp312|any,macosx_*_arm64"],
     })
@@ -1051,8 +1069,9 @@ def _test_pypi_cache_reads_facts_only_for_the_same_wheel_filter(env):
     facts = {
         "fact_version": "v5",
         "pkg@https://{PYPI_INDEX_URL}": {
-            "": "https://pypi.org/files/",
-            "pkg-1.0.0-py3-none-any.whl": "sha256:whl",
+            "https://pypi.org/files/": {
+                "pkg-1.0.0-py3-none-any.whl": "sha256:whl",
+            },
         },
         "wheel_filter": ["cpython|3.12|none,abi3,cp312|any,macosx_*_arm64"],
     }
@@ -1113,9 +1132,10 @@ def _test_pypi_cache_facts_store_urls_relative_to_common_directory(env):
         "https://files.example.com/packages/ab/pkg-1.0.0-py3-none-any.whl",
         "https://files.example.com/packages/ac/pkg-1.0.0-py3-none-any.whl",
     ])).contains_exactly({
-        "": "https://files.example.com/packages/",
-        "ab/pkg-1.0.0-py3-none-any.whl": "sha256:0",
-        "ac/pkg-1.0.0-py3-none-any.whl": "sha256:1",
+        "https://files.example.com/packages/": {
+            "ab/pkg-1.0.0-py3-none-any.whl": "sha256:0",
+            "ac/pkg-1.0.0-py3-none-any.whl": "sha256:1",
+        },
     })
 
     # Different hosts share only the scheme.
@@ -1123,24 +1143,27 @@ def _test_pypi_cache_facts_store_urls_relative_to_common_directory(env):
         "https://a.example.com/pkg-1.0.0-py3-none-any.whl",
         "https://b.example.com/pkg-1.0.0-py3-none-any.whl",
     ])).contains_exactly({
-        "": "https://",
-        "a.example.com/pkg-1.0.0-py3-none-any.whl": "sha256:0",
-        "b.example.com/pkg-1.0.0-py3-none-any.whl": "sha256:1",
+        "https://": {
+            "a.example.com/pkg-1.0.0-py3-none-any.whl": "sha256:0",
+            "b.example.com/pkg-1.0.0-py3-none-any.whl": "sha256:1",
+        },
     })
 
     # A single url shares its own directory.
     env.expect.that_dict(_facts_for([
         "https://example.com/files/pkg-1.0.0-py3-none-any.whl",
     ])).contains_exactly({
-        "": "https://example.com/files/",
-        "pkg-1.0.0-py3-none-any.whl": "sha256:0",
+        "https://example.com/files/": {
+            "pkg-1.0.0-py3-none-any.whl": "sha256:0",
+        },
     })
 
     env.expect.that_dict(_facts_for([
         "../../packages/ab/cd/pkg-1.0.0-py3-none-any.whl",
     ])).contains_exactly({
-        "": "../../packages/ab/cd/",
-        "pkg-1.0.0-py3-none-any.whl": "sha256:0",
+        "../../packages/ab/cd/": {
+            "pkg-1.0.0-py3-none-any.whl": "sha256:0",
+        },
     })
 
     # The common directory ends before the query string and the fragment.
@@ -1148,33 +1171,37 @@ def _test_pypi_cache_facts_store_urls_relative_to_common_directory(env):
         "https://example.com/files/pkg-1.0.0-py3-none-any.whl?token=a/b",
         "https://example.com/files/pkg-1.0.0-py3-none-any.whl?token=a/c",
     ])).contains_exactly({
-        "": "https://example.com/files/",
-        "pkg-1.0.0-py3-none-any.whl?token=a/b": "sha256:0|pkg-1.0.0-py3-none-any.whl",
-        "pkg-1.0.0-py3-none-any.whl?token=a/c": "sha256:1|pkg-1.0.0-py3-none-any.whl",
+        "https://example.com/files/": {
+            "pkg-1.0.0-py3-none-any.whl?token=a/b": "sha256:0|pkg-1.0.0-py3-none-any.whl",
+            "pkg-1.0.0-py3-none-any.whl?token=a/c": "sha256:1|pkg-1.0.0-py3-none-any.whl",
+        },
     })
 
     env.expect.that_dict(_facts_for([
         "https://example.com/files/pkg-1.0.0-py3-none-any.whl#a/b",
     ])).contains_exactly({
-        "": "https://example.com/files/",
-        "pkg-1.0.0-py3-none-any.whl#a/b": "sha256:0|pkg-1.0.0-py3-none-any.whl",
+        "https://example.com/files/": {
+            "pkg-1.0.0-py3-none-any.whl#a/b": "sha256:0|pkg-1.0.0-py3-none-any.whl",
+        },
     })
 
-    # A url that ends with `/` does not become the common directory.
+    # A url that ends with `/` can be the common directory itself.
     env.expect.that_dict(_facts_for([
         "https://example.com/files/pkg-1.0.0-py3-none-any.whl/",
     ])).contains_exactly({
-        "": "https://example.com/files/",
-        "pkg-1.0.0-py3-none-any.whl/": "sha256:0|pkg-1.0.0-py3-none-any.whl",
+        "https://example.com/files/pkg-1.0.0-py3-none-any.whl/": {
+            "": "sha256:0|pkg-1.0.0-py3-none-any.whl",
+        },
     })
 
     env.expect.that_dict(_facts_for([
         "https://example.com/files/pkg/",
         "https://example.com/files/pkg/pkg-1.0.0-py3-none-any.whl",
     ])).contains_exactly({
-        "": "https://example.com/files/",
-        "pkg/": "sha256:0|pkg-1.0.0-py3-none-any.whl",
-        "pkg/pkg-1.0.0-py3-none-any.whl": "sha256:1",
+        "https://example.com/files/pkg/": {
+            "": "sha256:0|pkg-1.0.0-py3-none-any.whl",
+            "pkg-1.0.0-py3-none-any.whl": "sha256:1",
+        },
     })
 
     # One url is a prefix of another.
@@ -1182,20 +1209,21 @@ def _test_pypi_cache_facts_store_urls_relative_to_common_directory(env):
         "https://example.com/files/pkg-1.0.0-py3-none-any.whl",
         "https://example.com/files/pkg-1.0.0-py3-none-any.whl/download",
     ])).contains_exactly({
-        "": "https://example.com/files/",
-        "pkg-1.0.0-py3-none-any.whl": "sha256:0",
-        "pkg-1.0.0-py3-none-any.whl/download": "sha256:1|pkg-1.0.0-py3-none-any.whl",
+        "https://example.com/files/": {
+            "pkg-1.0.0-py3-none-any.whl": "sha256:0",
+            "pkg-1.0.0-py3-none-any.whl/download": "sha256:1|pkg-1.0.0-py3-none-any.whl",
+        },
     })
 
 _tests.append(_test_pypi_cache_facts_store_urls_relative_to_common_directory)
 
 def _test_pypi_cache_ignores_malformed_dist_facts(env):
-    """Verifies that a dist fact without a string common directory is treated as absent."""
+    """Verifies that a dist fact that does not group its entries by directory is treated as absent."""
     key = ("https://{PYPI_INDEX_URL}/pkg/", "https://pypi.org/simple/pkg/", ["1.0.0"])
     for fact in [
         {"pkg-1.0.0-py3-none-any.whl": "sha256:sha_whl"},
-        {"": 1, "pkg-1.0.0-py3-none-any.whl": "sha256:sha_whl"},
-        {"": None, "pkg-1.0.0-py3-none-any.whl": "sha256:sha_whl"},
+        {"": "https://pypi.org/files/", "pkg-1.0.0-py3-none-any.whl": "sha256:sha_whl"},
+        {"https://pypi.org/files/": None},
         "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl",
     ]:
         cache = _cache(env, mctx = mocks.mctx(facts = {

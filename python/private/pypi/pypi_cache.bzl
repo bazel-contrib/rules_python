@@ -25,8 +25,7 @@ load(":version_from_filename.bzl", "version_from_filename")
 #      `<digest>[|<filename>[|<yanked>]]`.
 # v4: the facts store only the wheels that the `wheel_filter` platforms can
 #      select, so an older reader must not use them.
-# v5: the distribution URLs are stored relative to their longest common
-#      directory, which is stored under the `""` key.
+# v5: the distribution URLs are grouped under their longest common directory.
 _FACT_VERSION = "v5"
 
 def pypi_cache(mctx = None, store = None, wheel_platforms = None):
@@ -408,8 +407,9 @@ def _store_facts(facts, fact_version, index_url, value, wheel_filter = None):
 
       # From the package page, e.g. `foo@https://pypi.org/simple`
       "<distribution>@<root_url>": {
-        "": "<common directory of the dist urls>",  # see `_compact_dist_urls`
-        "<dist url without the common directory>": "<encoded entry>",  # see `_encode_dist_entry`
+        "<common directory of the dist urls>": {  # see `_compact_dist_urls`
+          "<dist url relative to the common directory>": "<encoded entry>",  # see `_encode_dist_entry`
+        },
       },
     }
     ```
@@ -478,20 +478,18 @@ def _index_fact_key(pkg, index_url):
     return pkg + "@" + index_url
 
 def _compact_dist_urls(entries):
-    """Store the dist urls relative to their longest common directory.
+    """Group the dist urls under their longest common directory.
 
     The index usually serves all the files of a distribution from the same host
-    and path, so this removes the part of each url that the entries repeat.
-
-    The common directory ends before any `?` or `#`, and no relative url is
-    empty, so that no dist url overwrites the common directory under the `""` key.
+    and path, so this removes the part of each url that the entries repeat. The
+    common directory ends before any `?` or `#`.
 
     Args:
         entries: {type}`dict[str, str]` the encoded entries keyed by the full dist url.
 
     Returns:
-        {type}`dict[str, str]` the entries keyed by the relative url, with the common
-        directory under the `""` key.
+        {type}`dict[str, dict[str, str]]` the common directory mapped to the entries
+        keyed by the url relative to it.
     """
     urls = sorted(entries.keys())
     if not urls:
@@ -506,33 +504,25 @@ def _compact_dist_urls(entries):
         size = i + 1
     common = first[:size].partition("?")[0].partition("#")[0]
     prefix = common[:common.rfind("/") + 1]
-    if prefix in entries:
-        # A url that ends with `/` is the common directory itself.
-        prefix = prefix[:prefix.rfind("/", 0, len(prefix) - 1) + 1]
 
-    compact = {"": prefix}
-    for url in urls:
-        compact[url[len(prefix):]] = entries[url]
-    return compact
+    return {prefix: {url[len(prefix):]: entries[url] for url in urls}}
 
-def _expand_dist_urls(entries):
+def _expand_dist_urls(groups):
     """Return the entries of {obj}`_compact_dist_urls` keyed by the full dist url.
 
     Malformed entries, e.g. from a botched lockfile merge, return `{}` so that the
     index is fetched again.
     """
-    if type(entries) != "dict":
+    if type(groups) != "dict":
         return {}
 
-    prefix = entries.get("")
-    if type(prefix) != "string":
-        return {}
-
-    return {
-        prefix + url: entry
-        for url, entry in entries.items()
-        if url
-    }
+    expanded = {}
+    for prefix, entries in groups.items():
+        if type(entries) != "dict":
+            return {}
+        for url, entry in entries.items():
+            expanded[prefix + url] = entry
+    return expanded
 
 def _dist_fact_key(index_url):
     """Return the fact key for the distributions of a package index page.
