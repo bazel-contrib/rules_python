@@ -86,6 +86,9 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
   say, Python 3.9 no longer breaks every other hub on hosts that have no CPython
   3.9 build, such as Windows on ARM64
   ([#4184](https://github.com/bazel-contrib/rules_python/issues/4184)).
+* (pypi) Respect dependency-edge platform markers in `uv.lock` when selecting
+  packages and artifacts in {obj}`pip.parse`
+  ([#4287](https://github.com/bazel-contrib/rules_python/issues/4287)).
 * (pypi) Wheel namespace package initializers no longer require a shell or `cp` on the execution platform.
 * (pypi) `pip.parse(uv_lock = ...)` now builds packages with a git source with
   `pip`, from a `name @ git+<url>@<commit>` direct reference pinned to the commit
@@ -172,6 +175,7 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
   toolchains with the new {obj}`uv_toolchains_manifest` repository rule and
   {obj}`uv_register_toolchains` macro.
   ([#1975](https://github.com/bazel-contrib/rules_python/issues/1975))
+
 
 
 
