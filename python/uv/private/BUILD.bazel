@@ -13,6 +13,8 @@
 # limitations under the License.
 
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("//python:py_binary.bzl", "py_binary")
+load("//python:py_library.bzl", "py_library")
 load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
 
 package(default_visibility = ["//:__subpackages__"])
@@ -22,6 +24,40 @@ _NOT_REALLY_PUBLIC = ["//visibility:public"]
 
 distribution_filegroup(
     name = "distribution",
+)
+
+# The `vendor_uv_lock` macro uses these in the packages it is called in.
+exports_files(
+    ["vendor_uv_lock.py"],
+    visibility = _NOT_REALLY_PUBLIC,
+)
+
+py_library(
+    name = "vendor_uv_lock_lib",
+    srcs = ["vendor_uv_lock.py"],
+    visibility = _NOT_REALLY_PUBLIC,
+    deps = [
+        # Only used with Python < 3.11, which does not have `tomllib`.
+        "@pypi__tomli//:lib",
+        "//python/runfiles",
+    ],
+)
+
+py_binary(
+    name = "vendor_uv_lock_tool",
+    srcs = ["vendor_uv_lock.py"],
+    main = "vendor_uv_lock.py",
+    visibility = _NOT_REALLY_PUBLIC,
+    deps = [":vendor_uv_lock_lib"],
+)
+
+bzl_library(
+    name = "vendor_uv_lock",
+    srcs = ["vendor_uv_lock.bzl"],
+    deps = [
+        "//python:py_binary",
+        "@bazel_skylib//rules:diff_test",
+    ],
 )
 
 filegroup(

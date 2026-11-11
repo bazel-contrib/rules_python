@@ -265,8 +265,8 @@ bzl_library(
     srcs = ["patch_whl.bzl"],
     deps = [
         ":parse_whl_name",
+        "//python:features",
         "//python/private:repo_utils",
-        "@rules_python_internal//:rules_python_config",
     ],
 )
 
@@ -371,7 +371,6 @@ bzl_library(
     deps = [
         "//python/private:repo_utils",
         "//python/private:util",
-        "@bazel_skylib//lib:types",
     ],
 )
 
@@ -475,8 +474,8 @@ bzl_library(
     srcs = ["whl_extract.bzl"],
     deps = [
         ":whl_metadata",
+        "//python:features",
         "//python/private:repo_utils",
-        "@rules_python_internal//:rules_python_config",
     ],
 )
 

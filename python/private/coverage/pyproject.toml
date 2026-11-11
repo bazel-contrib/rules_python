@@ -1,0 +1,22 @@
+# The coverage tool used by default for the hermetic toolchains when
+# `python.toolchain(configure_coverage_tool = True)` is used.
+#
+# Newer coverage versions drop support for the older python versions, so there
+# is a dependency for each python version so that the latest supported version
+# is locked for each of them.
+#
+# Run `bazel run //python/private/coverage:requirements.update` to update the
+# `uv.lock` file.
+[project]
+name = "rules_python_coverage"
+version = "0.0.0"
+requires-python = ">=3.9"
+dependencies = [
+    "coverage; python_full_version < '3.10'",
+    "coverage; python_full_version >= '3.10' and python_full_version < '3.11'",
+    "coverage; python_full_version >= '3.11' and python_full_version < '3.12'",
+    "coverage; python_full_version >= '3.12' and python_full_version < '3.13'",
+    "coverage; python_full_version >= '3.13' and python_full_version < '3.14'",
+    "coverage; python_full_version >= '3.14' and python_full_version < '3.15'",
+    "coverage; python_full_version >= '3.15'",
+]

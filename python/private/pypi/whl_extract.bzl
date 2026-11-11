@@ -1,6 +1,6 @@
 """A simple whl extractor."""
 
-load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
+load("//python:features.bzl", "bazel_features")
 load("//python/private:repo_utils.bzl", "repo_utils")
 load(":whl_metadata.bzl", "find_whl_metadata")
 
@@ -32,8 +32,8 @@ def whl_extract(rctx, *, whl_path, logger):
         rctx,
         archive = whl_path,
         output = install_dir_path,
-        supports_whl_extraction = rp_config.supports_whl_extraction,
-        extract_needs_chmod = rp_config.extract_needs_chmod,
+        supports_whl_extraction = bazel_features(native.bazel_version).supports_whl_extraction,
+        extract_needs_chmod = bazel_features(native.bazel_version).extract_needs_chmod,
     )
 
     metadata_file = find_whl_metadata(

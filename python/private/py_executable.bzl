@@ -596,6 +596,7 @@ def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root
         output = site_init,
         substitutions = {
             "%add_runfiles_root_to_sys_path%": add_runfiles_root_to_sys_path,
+            "%coverage_imports%": _get_coverage_imports(ctx, runtime),
             "%coverage_tool%": _get_coverage_tool_runfiles_path(ctx, runtime),
             "%import_all%": "True" if read_possibly_native_flag(ctx, "python_import_all_repositories") else "False",
             "%interpreter_actual_path%": interpreter_actual_path,
@@ -878,6 +879,14 @@ def _venv_details(
 
 def _map_each_identity(v):
     return v
+
+def _get_coverage_imports(ctx, runtime):
+    if (ctx.configuration.coverage_enabled and
+        runtime and
+        getattr(runtime, "coverage_imports", None)):
+        return ":".join(runtime.coverage_imports.to_list())
+    else:
+        return ""
 
 def _get_coverage_tool_runfiles_path(ctx, runtime):
     if (ctx.configuration.coverage_enabled and
@@ -2088,7 +2097,8 @@ def _add_provider_py_runtime_info(providers, runtime_details):
             interpreter = py_runtime_info.interpreter,
             files = py_runtime_info.files,
             coverage_tool = py_runtime_info.coverage_tool,
-            coverage_files = py_runtime_info.coverage_files,
+            # The builtin provider only knows about coverage_tool.
+            coverage_files = py_runtime_info.coverage_files if py_runtime_info.coverage_tool else None,
             python_version = py_runtime_info.python_version,
             stub_shebang = py_runtime_info.stub_shebang,
             bootstrap_template = py_runtime_info.bootstrap_template,

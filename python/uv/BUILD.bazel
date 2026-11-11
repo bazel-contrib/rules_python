@@ -42,6 +42,12 @@ bzl_library(
 )
 
 bzl_library(
+    name = "vendor_uv_lock",
+    srcs = ["vendor_uv_lock.bzl"],
+    deps = ["//python/uv/private:vendor_uv_lock"],
+)
+
+bzl_library(
     name = "repositories",
     srcs = ["repositories.bzl"],
     deps = [

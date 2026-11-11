@@ -1,0 +1,3 @@
+load(":default_platforms_tests.bzl", "default_platforms_test_suite")
+
+default_platforms_test_suite(name = "default_platforms_tests")

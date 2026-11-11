@@ -14,7 +14,6 @@
 
 """Functionality shared by multiple pieces of code."""
 
-load("@bazel_skylib//lib:types.bzl", "types")
 load("//python/private:py_internal.bzl", "py_internal")
 
 def copy_propagating_kwargs(from_kwargs, into_kwargs = None):
@@ -62,7 +61,11 @@ def add_tag(attrs, tag):
 
         # Preserve the input type: this allows a test verifying the underlying
         # rule can accept the tuple for the tags argument.
-        if types.is_tuple(tags):
+        # NOTE: `types.is_tuple` from `@bazel_skylib` is not used, so that
+        # this file can be loaded before the `WORKSPACE` defines
+        # `@bazel_skylib`, e.g. via `whl_library` from
+        # `python/repositories.bzl`.
+        if type(tags) == "tuple":
             attrs["tags"] = tags + (tag,)
         else:
             # List concatenation is necessary because the original value
