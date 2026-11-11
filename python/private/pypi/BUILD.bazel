@@ -373,6 +373,7 @@ bzl_library(
     name = "pypi_cache",
     srcs = ["pypi_cache.bzl"],
     deps = [
+        ":parse_whl_name",
         ":select_whl",
         ":version_from_filename",
     ],

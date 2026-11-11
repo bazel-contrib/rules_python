@@ -8,6 +8,7 @@ In the future the same will be used to:
 - Store PyPI index query results as facts in the MODULE.bazel.lock file
 """
 
+load(":parse_whl_name.bzl", "parse_whl_name")
 load(":select_whl.bzl", "select_whl")
 load(":version_from_filename.bzl", "version_from_filename")
 
@@ -239,6 +240,8 @@ def _wheel_filter(wheel_platforms):
     return struct(
         key = sorted(platforms.keys()),
         platforms = platforms.values(),
+        # `_is_selectable` results by the wheel tags, which many wheels share.
+        selectable_by_tags = {},
     )
 
 _NOOP_LOGGER = struct(debug = lambda *_args, **_kwargs: None)
@@ -247,7 +250,14 @@ def _is_selectable(wheel_filter, dist):
     if wheel_filter == None or not dist.filename.endswith(".whl"):
         return True
 
-    for p in wheel_filter.platforms:
+    parsed = parse_whl_name(dist.filename)
+    tags = "-".join([parsed.python_tag, parsed.abi_tag, parsed.platform_tag])
+    if tags not in wheel_filter.selectable_by_tags:
+        wheel_filter.selectable_by_tags[tags] = _is_selectable_by_any(wheel_filter.platforms, dist)
+    return wheel_filter.selectable_by_tags[tags]
+
+def _is_selectable_by_any(platforms, dist):
+    for p in platforms:
         if select_whl(
             whls = [dist],
             python_version = p.env["python_full_version"],
