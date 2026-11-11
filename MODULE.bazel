@@ -399,6 +399,25 @@ dev_python.single_version_platform_override(
     urls = ["https://github.com/astral-sh/python-build-standalone/releases/download/20250115/cpython-3.13.1+20250115-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"],
 )
 
+# For testing a debug (`Py_DEBUG`) runtime.
+# See //tests/toolchains:debug_runtime_test
+#
+# NOTE: 3.14.10, the newest 3.14, would break //tests/toolchains:build_test.
+dev_python.single_version_platform_override(
+    platform = "linux-x86-debug",
+    python_version = "3.14.4",
+    sha256 = "65db1c71f78ac00553e6353f730ff2f942cc18a5758f5d99c77fd4be5d7719de",
+    strip_prefix = "python/install",
+    target_compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+    target_settings = [
+        "@@//tests/support:is_custom_runtime_linux-x86-debug",
+    ],
+    urls = ["https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.14.4+20260414-x86_64-unknown-linux-gnu-debug-full.tar.zst"],
+)
+
 dev_pip = use_extension(
     "//python/extensions:pip.bzl",
     "pip",
