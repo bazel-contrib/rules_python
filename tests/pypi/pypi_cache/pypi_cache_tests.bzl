@@ -1189,6 +1189,40 @@ def _test_pypi_cache_facts_store_urls_relative_to_common_directory(env):
 
 _tests.append(_test_pypi_cache_facts_store_urls_relative_to_common_directory)
 
+def _test_pypi_cache_ignores_malformed_dist_facts(env):
+    """Verifies that a dist fact without a string common directory is treated as absent."""
+    key = ("https://{PYPI_INDEX_URL}/pkg/", "https://pypi.org/simple/pkg/", ["1.0.0"])
+    for fact in [
+        {"pkg-1.0.0-py3-none-any.whl": "sha256:sha_whl"},
+        {"": 1, "pkg-1.0.0-py3-none-any.whl": "sha256:sha_whl"},
+        {"": None, "pkg-1.0.0-py3-none-any.whl": "sha256:sha_whl"},
+        "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl",
+    ]:
+        cache = _cache(env, mctx = mocks.mctx(facts = {
+            "fact_version": "v5",
+            "pkg@https://{PYPI_INDEX_URL}": fact,
+        }))
+        cache.get(key).equals(None)
+        cache.expect_facts().contains_exactly({})
+
+_tests.append(_test_pypi_cache_ignores_malformed_dist_facts)
+
+def _test_pypi_cache_ignores_v4_facts(env):
+    """Verifies that the v4 facts, which store the full dist urls, are ignored."""
+    mock_ctx = mocks.mctx(facts = {
+        "fact_version": "v4",
+        "pkg@https://{PYPI_INDEX_URL}": {
+            "https://pypi.org/files/pkg-1.0.0-py3-none-any.whl": "sha256:sha_whl",
+        },
+    })
+    cache = _cache(env, mctx = mock_ctx)
+
+    key = ("https://{PYPI_INDEX_URL}/pkg/", "https://pypi.org/simple/pkg/", ["1.0.0"])
+    cache.get(key).equals(None)
+    cache.expect_facts().contains_exactly({})
+
+_tests.append(_test_pypi_cache_ignores_v4_facts)
+
 def pypi_cache_test_suite(name):
     test_suite(
         name = name,

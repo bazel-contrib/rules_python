@@ -514,10 +514,17 @@ def _compact_dist_urls(entries):
     return compact
 
 def _expand_dist_urls(entries):
-    """Return the entries of {obj}`_compact_dist_urls` keyed by the full dist url."""
-    prefix = entries.get("", "")
+    """Return the entries of {obj}`_compact_dist_urls` keyed by the full dist url.
+
+    Malformed entries, e.g. from a botched lockfile merge, return `{}` so that the
+    index is fetched again.
+    """
+    if type(entries) != "dict":
+        return {}
+
+    prefix = entries.get("")
     if type(prefix) != "string":
-        prefix = ""
+        return {}
 
     return {
         prefix + url: entry
