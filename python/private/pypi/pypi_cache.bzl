@@ -415,7 +415,9 @@ def _store_facts(facts, fact_version, index_url, value, wheel_filter = None):
     ```
 
     The facts in memory store the full dist urls. They are made relative only in the
-    facts returned for the lockfile.
+    facts returned for the lockfile. The merge driver replaces a package's fact as a
+    whole, so a merge never expands the urls of one side against the common directory
+    of the other.
 
     Adding a new field to the encoded entry requires bumping `_FACT_VERSION`.
     """
