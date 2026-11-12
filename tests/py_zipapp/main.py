@@ -51,6 +51,9 @@ def main():
         import pkgdep.pkgmod
 
         print(f"dep: {pkgdep.pkgmod}")
+        import markupsafe._speedups
+
+        print(f"native dep: {markupsafe._speedups}")
     except ImportError as e:
         e.add_note(
             "Failed to import a dependency.\n" + "sys.path:\n" + "\n".join(sys.path)

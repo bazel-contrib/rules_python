@@ -1,5 +1,6 @@
 import contextlib
 import os
+import posixpath
 import subprocess
 import unittest
 import zipfile
@@ -26,6 +27,7 @@ class PyZipAppTest(unittest.TestCase):
             )
         self.assertIn("Hello from zipapp", output)
         self.assertIn("dep:", output)
+        self.assertIn("native dep:", output)
 
     def assertHasPathMatchingSuffix(self, namelist, suffix, msg=None):
         if not any(name.endswith(suffix) for name in namelist):
@@ -104,6 +106,34 @@ class PyZipAppTest(unittest.TestCase):
                 # Verify bin/python3 exists and is a symlink
                 python_bin = f"{venv_root}/bin/python3"
                 self.assertZipEntryIsSymlink(zf, python_bin)
+
+                # The venv links a pip dep's shared library individually. It's
+                # stored as a relative symlink to the copy packed from the pip
+                # repo, not as a second copy of the library.
+                venv_file = next(
+                    (
+                        name
+                        for name in namelist
+                        if name.startswith(venv_root + "/lib/")
+                        and "/site-packages/markupsafe/_speedups." in name
+                        and name.endswith(".so")
+                    ),
+                    None,
+                )
+                self.assertIsNotNone(venv_file, "\n".join(namelist))
+                self.assertZipEntryIsSymlink(zf, venv_file)
+                target = posixpath.normpath(
+                    posixpath.join(
+                        posixpath.dirname(venv_file),
+                        zf.read(venv_file).decode("utf-8"),
+                    )
+                )
+                self.assertIn(target, namelist)
+                self.assertNotIn(".venv/", target)
+                self.assertTrue(
+                    (zf.getinfo(target).external_attr >> 16) & 0o170000 != 0o120000,
+                    f"{target} should be the packed file, not another symlink",
+                )
 
             # Verify _bazel_site_init.py exists in site-packages
             self.assertHasPathMatchingSuffix(

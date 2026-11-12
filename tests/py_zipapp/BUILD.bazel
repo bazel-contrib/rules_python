@@ -103,6 +103,10 @@ py_library(
     deps = [
         ":pkgdep",
         ":some_dep",
+        # A pip dep with a native extension. The venv links each shared
+        # library file individually, so it's a runfiles symlink to a file
+        # that's also packed in the zipapp.
+        "@dev_pip//markupsafe",
     ],
 )
 

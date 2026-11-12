@@ -93,6 +93,30 @@ def _map_zip_root_symlinks(entry):
 def _map_explicit_symlinks(entry):
     return "symlink|" + entry.runfiles_path + "|" + entry.link_to_path
 
+def _map_runfiles_symlinks(ctx, runfiles):
+    """Maps runfiles symlinks, avoiding duplicate copies of packed files.
+
+    A runfiles symlink whose target file is also stored at its own runfiles
+    path (e.g. a venv site-packages entry, which points into a pip repo) is
+    stored as a relative symlink to that file instead of a second copy of its
+    content.
+    """
+    packed = {f: None for f in runfiles.files.to_list()}
+    lines = []
+    for prefix, entries, map_entry in [
+        (ctx.workspace_name, runfiles.symlinks, _map_zip_symlinks),
+        ("", runfiles.root_symlinks, _map_zip_root_symlinks),
+    ]:
+        for entry in entries.to_list():
+            if entry.target_file in packed:
+                lines.append("symlink|{}|{}".format(
+                    paths.join(prefix, entry.path),
+                    runfiles_root_path(ctx, entry.target_file.short_path),
+                ))
+            else:
+                lines.append(map_entry(entry))
+    return lines
+
 def _build_manifest(ctx, manifest, runfiles, explicit_symlinks, inputs):
     manifest.add_all(
         # NOTE: Accessing runfiles.empty_filenames materializes them. A lambda
@@ -103,8 +127,14 @@ def _build_manifest(ctx, manifest, runfiles, explicit_symlinks, inputs):
     )
 
     manifest.add_all(runfiles.files, map_each = _map_zip_runfiles)
-    manifest.add_all(runfiles.symlinks, map_each = _map_zip_symlinks)
-    manifest.add_all(runfiles.root_symlinks, map_each = _map_zip_root_symlinks)
+
+    # On Windows, creating symlinks when extracting needs extra privileges, so
+    # only the explicit venv symlinks are stored as symlinks there.
+    if py_internal.get_legacy_external_runfiles(ctx) or is_windows_platform(ctx):
+        manifest.add_all(runfiles.symlinks, map_each = _map_zip_symlinks)
+        manifest.add_all(runfiles.root_symlinks, map_each = _map_zip_root_symlinks)
+    else:
+        manifest.add_all(_map_runfiles_symlinks(ctx, runfiles))
     manifest.add_all(explicit_symlinks, map_each = _map_explicit_symlinks)
 
     inputs.add(runfiles.files)
