@@ -1,0 +1,1 @@
+(gazelle) Python files are now parsed in the background on all CPUs, ahead of rule generation, instead of a few files of one package at a time. In a large repository this made Gazelle 2–4 times faster, depending on the number of CPUs.

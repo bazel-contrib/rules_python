@@ -75,7 +75,7 @@ func (p *python3Parser) parse(pyFilenames *treeset.Set) (*treeset.Set, map[strin
 				defer func() {
 					<-ch
 				}()
-				res, err := NewFileParser().ParseFile(ctx, p.repoRoot, p.relPackagePath, filename)
+				res, err := parseFile(ctx, p.repoRoot, p.relPackagePath, filename)
 				if err != nil {
 					return err
 				}
