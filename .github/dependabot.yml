@@ -76,10 +76,10 @@ updates:
     # their sibling primary hubs to test cross-hub version isolation.
     exclude-paths:
       # keep-sorted start
-      - "/tests/integration/unified_pypi/requirements_b.txt"
-      - "/tests/integration/unified_pypi/requirements_b_without_six.txt"
-      - "/tests/multi_pypi/beta"
-      - "/tests/multi_pypi/beta/**/*"
+      - "tests/integration/unified_pypi/requirements_b.txt"
+      - "tests/integration/unified_pypi/requirements_b_without_six.txt"
+      - "tests/multi_pypi/beta"
+      - "tests/multi_pypi/beta/**/*"
       # keep-sorted end
     patterns:
       - "*"
