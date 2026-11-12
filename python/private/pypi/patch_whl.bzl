@@ -19,7 +19,6 @@ repack patched wheels. Instead, after extracting and patching, we fix
 the RECORD file natively in Starlark and repack using system zip.
 """
 
-load("//python:features.bzl", "bazel_features")
 load("//python/private:repo_utils.bzl", "repo_utils")
 load(":parse_whl_name.bzl", "parse_whl_name")
 
@@ -93,11 +92,19 @@ def patch_whl(rctx, *, whl_path, patches):
     """
     whl_input = rctx.path(whl_path)
 
+    # An empty version is a development build, which is treated as the latest.
+    bazel_version = (99999, 99999)
+    if native.bazel_version:
+        major, minor = native.bazel_version.split(".")[:2]
+        bazel_version = (int(major), int(minor))
+
     repo_utils.extract(
         rctx,
         archive = whl_input,
-        supports_whl_extraction = bazel_features(native.bazel_version).supports_whl_extraction,
-        extract_needs_chmod = bazel_features(native.bazel_version).extract_needs_chmod,
+        # Extracting `.whl` files requires Bazel 8.3.0 and the extracted files
+        # need their permissions fixed before Bazel 8.6.0.
+        supports_whl_extraction = bazel_version >= (8, 3),
+        extract_needs_chmod = bazel_version < (8, 6),
     )
 
     if not patches:

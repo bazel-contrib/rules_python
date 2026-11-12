@@ -1,3 +1,0 @@
-load(":bazel_features_tests.bzl", "bazel_features_test_suite")
-
-bazel_features_test_suite(name = "bazel_features_tests")
