@@ -77,11 +77,13 @@ An entry in `PyInfo.venv_symlinks`
 Files backing this entry in runfiles. Entries may be regular `File` objects or
 directory artifacts (`File.is_directory`).
 
-If any entries are directory artifacts, {obj}`link_to_subpaths` must list every
-file under `link_to_path`, relative to it (left empty when `link_to_path`
-points to a single file), because a directory artifact's contents aren't known
-at analysis time. When {obj}`link_to_subpaths` is non-empty, conflict merging
-uses it instead of `files`, and `files` then only supplies runfiles.
+A directory artifact's contents aren't known at analysis time, so conflict
+merging can't look inside one. To make an entry backed by a directory artifact
+mergeable, list the files under `link_to_path` in {obj}`link_to_subpaths`;
+conflict merging then uses those paths instead of `files`, and `files` only
+supplies runfiles. If {obj}`link_to_subpaths` is empty, the entry is linked as
+a single unit (`venv_path` to `link_to_path`) and can't be merged: analysis
+fails if another entry's files have to be created under its `venv_path`.
 
 Conflict merging occurs when multiple targets have overlapping `venv_path`
 paths, e.g. if one adds files to `venv_path=a/` and another adds files to
@@ -114,10 +116,12 @@ A runfiles-root relative path that `venv_path` will symlink to (if
 :::{include} /_includes/experimental_api.md
 :::
 
-Relative paths of every file under `link_to_path` when `files` contains
-directory artifacts (`File.is_directory`) and `link_to_path` is a directory.
-When non-empty, conflict merging uses these paths instead of `files` (and
-`files` then only supplies runfiles).
+Relative paths of the files under `link_to_path`, for entries whose `files`
+are directory artifacts (`File.is_directory`) and whose `link_to_path` is a
+directory. Optional. When non-empty, it must list every file under
+`link_to_path`, and conflict merging uses these paths instead of `files`
+(`files` then only supplies runfiles). When empty, the entry is linked as a
+single unit and can't be merged with entries under its `venv_path`.
 
 This is for entries whose target isn't a single `File`, so it's mutually
 exclusive with `link_to_file`: `link_to_file` is only used when an entry

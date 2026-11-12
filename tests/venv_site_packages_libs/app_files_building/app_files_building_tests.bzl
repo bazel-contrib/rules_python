@@ -143,15 +143,27 @@ def _assert_tree_artifact_equivalence(
     ])
     env.expect.that_collection(tree_summary).contains_exactly(file_summary)
 
-    other_entries = [
-        _entry(
+    # Make another package conflict with every entry: it adds a file under each
+    # directory entry and claims the same path as each single-file entry (a
+    # file can't have anything created under it).
+    dir_entries = {
+        (e.kind, e.venv_path): True
+        for e in tree_entries
+        if e.link_to_subpaths.to_list()
+    }
+    other_entries = []
+    for e in file_entries:
+        other_path = "+other/site-packages/" + e.venv_path
+        if (e.kind, e.venv_path) in dir_entries:
+            other_file = other_path + "/__other__.py"
+        else:
+            other_file = other_path
+        other_entries.append(_entry(
             e.venv_path,
-            "+other/site-packages/" + e.venv_path,
-            [_file("../+other/site-packages/" + e.venv_path + "/__other__.py")],
+            other_path,
+            [_file("../" + other_file)],
             kind = e.kind,
-        )
-        for e in file_entries
-    ]
+        ))
     file_merged = build_link_map(test_ctx, list(file_entries) + other_entries)
     tree_merged = build_link_map(test_ctx, list(tree_entries) + other_entries)
     for kind, kind_map in file_merged.items():
@@ -968,10 +980,82 @@ def _test_default_mode_directory_merge_impl(env, _):
         site_packages_root = "pkg/site-packages",
     )
     env.expect.that_int(len(direct_entries)).equals(1)
-    direct_merged = build_link_map(test_ctx, list(direct_entries) + [conflicting])
+    other_direct_dir = _entry(
+        "foo",
+        "+other/site-packages/foo",
+        [_file("../+other/site-packages/foo", is_directory = True)],
+    )
+    direct_merged = build_link_map(test_ctx, list(direct_entries) + [other_direct_dir])
     env.expect.that_bool(types.is_string(direct_merged[VenvSymlinkKind.LIB]["foo"])).equals(False)
     env.expect.that_dict(direct_merged[VenvSymlinkKind.LIB]).contains_exactly({
         "foo": direct_dir,
+    })
+
+def _test_unmergeable_overlap_fails(name):
+    analysis_test(
+        name = name,
+        impl = _test_unmergeable_overlap_fails_impl,
+        target = "//python:none",
+    )
+
+_tests.append(_test_unmergeable_overlap_fails)
+
+def _test_unmergeable_overlap_fails_impl(env, _):
+    test_ctx = _ctx()
+    other = _entry(
+        "foo",
+        "+other/site-packages/foo",
+        [_file("../+other/site-packages/foo/other.py")],
+        package = "other",
+    )
+
+    # A directly linked directory File: `foo` would have to be both a symlink
+    # and a directory containing `other.py`.
+    direct_dir = _entry(
+        "foo",
+        "_main/pkg/site-packages/foo",
+        [_file("pkg/site-packages/foo", is_directory = True)],
+        package = "direct",
+    )
+    failures = []
+    build_link_map(test_ctx, [direct_dir, other], _fail = failures.append)
+    env.expect.that_collection(failures).has_size(1)
+    env.expect.that_str(failures[0]).contains("'foo/other.py'")
+    env.expect.that_str(failures[0]).contains("(package: direct)")
+    env.expect.that_str(failures[0]).contains("(package: other)")
+
+    # A directory inside a directory artifact without link_to_subpaths: its
+    # files aren't known, so it can't be merged file by file either. The
+    # result doesn't depend on the order of the entries.
+    tree_dir = _entry(
+        "foo",
+        "_main/pkg/srcs/site-packages/foo",
+        [_file("pkg/srcs", is_directory = True)],
+        package = "tree",
+    )
+    failures = []
+    build_link_map(test_ctx, [other, tree_dir], _fail = failures.append)
+    env.expect.that_collection(failures).has_size(1)
+    env.expect.that_str(failures[0]).contains("'foo/other.py'")
+    env.expect.that_str(failures[0]).contains("(package: tree)")
+
+    # With link_to_subpaths, the same layout merges.
+    tree_dir_with_subpaths = _entry(
+        "foo",
+        "_main/pkg/srcs/site-packages/foo",
+        [_file("pkg/srcs", is_directory = True)],
+        package = "tree",
+        link_to_subpaths = depset(["__init__.py"]),
+    )
+    failures = []
+    merged = build_link_map(
+        test_ctx,
+        [tree_dir_with_subpaths, other],
+        _fail = failures.append,
+    )
+    env.expect.that_collection(failures).has_size(0)
+    env.expect.that_dict(merged[VenvSymlinkKind.LIB]).contains_exactly({
+        "foo/__init__.py": "_main/pkg/srcs/site-packages/foo/__init__.py",
         "foo/other.py": _file("../+other/site-packages/foo/other.py"),
     })
 

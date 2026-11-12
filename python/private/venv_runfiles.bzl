@@ -126,7 +126,7 @@ def create_venv_app_files(ctx, deps, venv_dir_map):
     )
 
 # Visible for testing
-def build_link_map(ctx, entries, return_conflicts = False):
+def build_link_map(ctx, entries, return_conflicts = False, _fail = fail):
     """Compute the mapping of venv paths to their backing objects.
 
     Args:
@@ -136,6 +136,8 @@ def build_link_map(ctx, entries, return_conflicts = False):
         return_conflicts: {type}`bool`. Only present for testing. If True,
             also return a list of the groups that had overlapping paths and had
             to be resolved and merged.
+        _fail: {type}`callable`. Only present for testing. Called with the
+            error message when overlapping entries can't be merged.
 
     Returns:
         {type}`dict[str, dict[str, File | str]]` Mappings of venv paths to their
@@ -184,14 +186,73 @@ def build_link_map(ctx, entries, return_conflicts = False):
                 if return_conflicts:
                     conflicts.append(group)
 
-                # Merge a group of overlapping prefixes
-                _merge_venv_path_group(ctx, group, keep_kind_link_map)
+                # Merge a group of overlapping prefixes. Groups never share
+                # venv paths, so merging into a separate map gives the same
+                # result and limits the nesting check to this group's paths.
+                group_link_map = {}
+                _merge_venv_path_group(ctx, group, group_link_map)
+                _check_no_nested_links(kind, group, group_link_map, _fail)
+                keep_kind_link_map.update(group_link_map)
 
         keep_link_map[kind] = keep_kind_link_map
     if return_conflicts:
         return keep_link_map, conflicts
     else:
         return keep_link_map
+
+def _check_no_nested_links(kind, group, group_link_map, _fail):
+    """Fails if a merged venv path is also the parent of another one.
+
+    An entry linked as a single unit (a directory `File`, or a path inside a
+    directory artifact that has no `link_to_subpaths`) can't have other
+    entries' files created under it: its venv path would have to be both a
+    symlink and a directory.
+
+    Args:
+        kind: {type}`str` the `VenvSymlinkKind` value of the group.
+        group: {type}`list[VenvSymlinkEntry]` the entries that were merged.
+        group_link_map: {type}`dict[str, File | str]` the merged venv paths of
+            the group.
+        _fail: {type}`callable` called with the error message.
+    """
+    for venv_path in group_link_map:
+        parent = paths.dirname(venv_path)
+        for _ in range(venv_path.count("/")):
+            if parent in group_link_map:
+                _fail((
+                    "venv {kind} path '{parent}' is linked as a single " +
+                    "unit, but '{child}' must also be created under it. " +
+                    "Overlapping entries can only be merged when their " +
+                    "files are known at analysis time. Overlapping entries:\n" +
+                    "{overlapping}"
+                ).format(
+                    kind = kind,
+                    parent = parent,
+                    child = venv_path,
+                    overlapping = _describe_entries_above(group, venv_path),
+                ))
+                return
+            parent = paths.dirname(parent)
+
+def _describe_entries_above(group, venv_path):
+    """Describes the entries in `group` that are at or above `venv_path`.
+
+    Args:
+        group: {type}`list[VenvSymlinkEntry]` the entries that were merged.
+        venv_path: {type}`str` the venv path that couldn't be created.
+
+    Returns:
+        {type}`str` one line per entry, for use in an error message.
+    """
+    lines = []
+    for entry in group:
+        if not (venv_path + "/").startswith(entry.venv_path + "/"):
+            continue
+        line = "  '{}' -> {}".format(entry.venv_path, entry.link_to_path)
+        if entry.package:
+            line += " (package: {})".format(entry.package)
+        lines.append(line)
+    return "\n".join(lines)
 
 def _group_venv_path_entries(entries):
     """Group entries by VenvSymlinkEntry.venv_path overlap.
