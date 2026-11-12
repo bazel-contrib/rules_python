@@ -130,7 +130,7 @@ def _build_manifest(ctx, manifest, runfiles, explicit_symlinks, inputs):
 
     # On Windows, creating symlinks when extracting needs extra privileges, so
     # only the explicit venv symlinks are stored as symlinks there.
-    if py_internal.get_legacy_external_runfiles(ctx) or is_windows_platform(ctx):
+    if is_windows_platform(ctx):
         manifest.add_all(runfiles.symlinks, map_each = _map_zip_symlinks)
         manifest.add_all(runfiles.root_symlinks, map_each = _map_zip_root_symlinks)
     else:
