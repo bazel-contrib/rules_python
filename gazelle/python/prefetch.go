@@ -37,6 +37,8 @@ type prefetcher struct {
 	recursive bool
 	sem       chan struct{} // limits concurrent parses
 
+	listDir func(rel string) (walk.DirInfo, error) // walk.GetDirInfo, except in tests
+
 	mu      sync.Mutex
 	results map[prefetchKey]*prefetchResult
 }
@@ -93,6 +95,7 @@ func newPrefetcher(fs *flag.FlagSet, repoRoot, workDir string) *prefetcher {
 		dirs:      dirs,
 		recursive: recursive,
 		sem:       make(chan struct{}, runtime.GOMAXPROCS(0)),
+		listDir:   walk.GetDirInfo,
 		results:   make(map[prefetchKey]*prefetchResult),
 	}
 }
@@ -105,26 +108,7 @@ func (pf *prefetcher) enqueueDir(rel string) {
 	}
 	delete(pf.dirs, rel)
 
-	var keys []prefetchKey
-	var visit func(rel string)
-	visit = func(rel string) {
-		info, err := walk.GetDirInfo(rel) // Gazelle's cached listing, excludes applied
-		if err != nil {
-			return
-		}
-		if pf.recursive {
-			for _, sub := range info.Subdirs {
-				visit(path.Join(rel, sub)) // subdirectories first, like the walk
-			}
-		}
-		for _, f := range info.RegularFiles {
-			if filepath.Ext(f) == ".py" {
-				keys = append(keys, prefetchKey{rel, f})
-			}
-		}
-	}
-	visit(rel)
-
+	keys := pf.pythonFiles(rel)
 	var jobs []*prefetchResult
 	pf.mu.Lock()
 	for _, k := range keys {
@@ -151,6 +135,31 @@ func (pf *prefetcher) enqueueDir(rel string) {
 			}(r)
 		}
 	}()
+}
+
+// pythonFiles lists the Python files in rel, and in its subdirectories if
+// recursive, in the order GenerateRules sees them: subdirectories first.
+func (pf *prefetcher) pythonFiles(rel string) []prefetchKey {
+	var keys []prefetchKey
+	var visit func(rel string)
+	visit = func(rel string) {
+		info, err := pf.listDir(rel) // Gazelle's cached listing, excludes applied
+		if err != nil {
+			return
+		}
+		if pf.recursive {
+			for _, sub := range info.Subdirs {
+				visit(path.Join(rel, sub))
+			}
+		}
+		for _, f := range info.RegularFiles {
+			if filepath.Ext(f) == ".py" {
+				keys = append(keys, prefetchKey{rel, f})
+			}
+		}
+	}
+	visit(rel)
+	return keys
 }
 
 // parseFile returns the prefetched result for a file, or else parses it.

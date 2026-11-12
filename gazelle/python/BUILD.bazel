@@ -140,10 +140,12 @@ go_test(
     name = "default_test",
     srcs = [
         "file_parser_test.go",
+        "prefetch_test.go",
         "std_modules_test.go",
     ],
     embed = [":python"],
     deps = [
+        "@bazel_gazelle//walk",
         "@com_github_stretchr_testify//assert",
     ],
 )
