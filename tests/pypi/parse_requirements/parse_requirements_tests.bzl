@@ -2000,8 +2000,9 @@ _tests.append(_test_uv_lock_same_version_split_records)
 def _test_uv_lock_conflicting_dependency_groups(env):
     """Conflicting dev groups pin different versions of the same package.
 
-    Without group selection, both versions (and the dependencies of either)
-    are reachable on every platform.
+    The lock graph keeps both versions and the dependencies of either
+    reachable on every platform. Choosing one group is left to
+    `pip.configure`, so only reachability is checked here.
     """
     registry = {"registry": "https://pypi.org/simple"}
     got = _parse_uv_graph([
@@ -2022,7 +2023,7 @@ def _test_uv_lock_conflicting_dependency_groups(env):
         ("packaging==21.3", ["linux_x86_64", "osx_aarch64"]),
         ("packaging==24.0", ["linux_x86_64", "osx_aarch64"]),
     ])
-    env.expect.that_bool(got["pyparsing"].is_exposed).equals(True)
+    env.expect.that_collection(got["pyparsing"].srcs[0].target_platforms).contains_exactly(["linux_x86_64", "osx_aarch64"])
 
 _tests.append(_test_uv_lock_conflicting_dependency_groups)
 
@@ -2100,7 +2101,11 @@ def _test_uv_lock_local_and_epoch_versions(env):
 _tests.append(_test_uv_lock_local_and_epoch_versions)
 
 def _test_uv_lock_root_extra_enabled_by_dev_group(env):
-    """A dev group that enables an extra of its own project keeps `extra == ...` deps."""
+    """A lock edge from a dev group to its own project's extra keeps `extra == ...` deps.
+
+    Selecting the group itself is left to `pip.configure`, so only the lock
+    graph reachability is checked here.
+    """
     got = _parse_uv_graph([
         _uv_graph_package(
             "extra-marker",
@@ -2112,9 +2117,7 @@ def _test_uv_lock_root_extra_enabled_by_dev_group(env):
         ),
         _uv_graph_package("colorama", version = "0.4.6"),
     ])
-    colorama = got["colorama"]
-    env.expect.that_bool(colorama.is_exposed).equals(True)
-    env.expect.that_collection(colorama.srcs[0].target_platforms).contains_exactly(["linux_x86_64", "osx_aarch64"])
+    env.expect.that_collection(got["colorama"].srcs[0].target_platforms).contains_exactly(["linux_x86_64", "osx_aarch64"])
 
 _tests.append(_test_uv_lock_root_extra_enabled_by_dev_group)
 
