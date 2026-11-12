@@ -5,6 +5,7 @@ load("//python:py_test.bzl", "py_test")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 load("//python/zipapp:py_zipapp_binary.bzl", "py_zipapp_binary")
 load("//tests/support:support.bzl", "SUPPORTS_BOOTSTRAP_SCRIPT")
+load(":self_root_symlink.bzl", "self_root_symlink")
 
 py_binary(
     name = "venv_bin",
@@ -17,10 +18,18 @@ py_binary(
             "//python/config_settings:bootstrap_impl": "script",
         },
     }),
+    data = [":self_root_symlink"],
     main = "main.py",
     # Pyrefly's bazel-check validator rejects explicit import paths with '.' components from :bin_deps.
     tags = ["no-pyrefly"],
     deps = [":bin_deps"],
+)
+
+# A runfiles root symlink at its target's own runfiles path. The zipapp must
+# store the file there, not a symlink to itself.
+self_root_symlink(
+    name = "self_root_symlink",
+    src = "self_root_symlink.txt",
 )
 
 py_zipapp_binary(

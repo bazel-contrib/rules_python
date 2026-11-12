@@ -135,6 +135,21 @@ class PyZipAppTest(unittest.TestCase):
                     f"{target} should be the packed file, not another symlink",
                 )
 
+            # A runfiles root symlink at its target's own path is stored as the
+            # file, not as a symlink to itself.
+            self_link = next(
+                (n for n in namelist if n.endswith("/py_zipapp/self_root_symlink.txt")),
+                None,
+            )
+            self.assertIsNotNone(self_link, "\n".join(namelist))
+            info = zf.getinfo(self_link)
+            self.assertNotEqual(
+                (info.external_attr >> 16) & 0o170000,
+                0o120000,
+                f"{self_link} should be a file, not a symlink",
+            )
+            self.assertIn(b"its own path", zf.read(self_link))
+
             # Verify _bazel_site_init.py exists in site-packages
             self.assertHasPathMatchingSuffix(
                 namelist, "/site-packages/_bazel_site_init.py"

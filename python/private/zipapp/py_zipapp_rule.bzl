@@ -108,11 +108,15 @@ def _map_runfiles_symlinks(ctx, runfiles):
         ("", runfiles.root_symlinks, _map_zip_root_symlinks),
     ]:
         for entry in entries.to_list():
-            if entry.target_file in packed:
-                lines.append("symlink|{}|{}".format(
-                    paths.join(prefix, entry.path),
-                    runfiles_root_path(ctx, entry.target_file.short_path),
-                ))
+            link_path = paths.normalize(paths.join(prefix, entry.path))
+            target_path = paths.normalize(
+                runfiles_root_path(ctx, entry.target_file.short_path),
+            )
+
+            # A link at the target's own path would point to itself and take
+            # the place of the file, so keep storing the file there.
+            if entry.target_file in packed and link_path != target_path:
+                lines.append("symlink|{}|{}".format(link_path, target_path))
             else:
                 lines.append(map_entry(entry))
     return lines
