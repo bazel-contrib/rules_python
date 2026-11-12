@@ -72,7 +72,7 @@ repos:
         name: Sync downloader configs
         language: system
         entry: ./dev/sync_downloader_configs.py
-        files: downloader_config\.cfg$
+        files: (downloader_config\.cfg|downloader_cfg\.bazelrc)$
         pass_filenames: false
       - id: gazelle
         name: Run Gazelle

@@ -82,6 +82,7 @@ filegroup(
         "MODULE.bazel",
         "WORKSPACE",
         "WORKSPACE.bzlmod",
+        "downloader_cfg.bazelrc",
         "downloader_config.cfg",
         "internal_dev_deps.bzl",
         "internal_dev_setup.bzl",
