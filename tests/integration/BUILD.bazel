@@ -40,6 +40,11 @@ default_test_runner(
 )
 
 rules_python_integration_test(
+    name = "bootstrap_impl_exec_config_test",
+    py_main = "bootstrap_impl_exec_config_test.py",
+)
+
+rules_python_integration_test(
     name = "bzlmod_lockfile_test",
     bazel_versions = ["9.3.1"],
     py_main = "bzlmod_lockfile_test.py",
