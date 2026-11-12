@@ -65,6 +65,12 @@ globs: ".github/workflows/**,.github/actions/**,.github/dependabot.yml"
 * **No `--stamp` or `--embed_label` on Pull Requests**: Only pass `--stamp` and
   `--embed_label` on release builds, never on `pull_request` builds, to avoid
   busting remote/RBE caching.
+* **Cancel Superseded PR Runs (`concurrency`)**: Set top-level `concurrency` on
+  read-only `pull_request` check workflows (`group` keyed by `github.workflow`
+  and `github.event.pull_request.number || github.run_id`, with
+  `cancel-in-progress: true`) so new commits cancel stale PR runs without
+  canceling or serializing `push` runs on `main`. Never set
+  `cancel-in-progress: true` on release, publish, or state-mutating workflows.
 * **Direct `bazel-bin/` Tool Execution**: When a workflow step runs a Bazel
   binary directly from `bazel-bin/<pkg>/<target>` instead of `bazel run`,
   explicitly include `//<pkg>:<target>` in `bazel build` so its `.runfiles` tree
