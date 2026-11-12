@@ -16,7 +16,8 @@
 
 This replaces the previous approach that depended on running Python to
 repack patched wheels. Instead, after extracting and patching, we fix
-the RECORD file natively in Starlark and repack using system zip.
+the RECORD file natively in Starlark and repack using Bazel's zipper, or
+system zip when the zipper is not available.
 """
 
 load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
@@ -80,7 +81,8 @@ def patch_whl(rctx, *, whl_path, patches):
 
     The wheel is extracted, patched, missing RECORD entries are added
     with dummy sha256 and size values, and finally the wheel is
-    repacked using system zip.
+    repacked using Bazel's zipper, or system zip when the zipper is not
+    available.
 
     Args:
         rctx: repository_ctx
@@ -222,14 +224,40 @@ def _collect_files(rctx):
     return result
 
 def _repack_whl(rctx, *, output):
-    """Repack the current directory into a wheel file using system zip."""
+    """Repack the current directory into a wheel file."""
     os_name = repo_utils.get_platforms_os_name(rctx)
     if os_name == "windows":
         _repack_whl_windows(rctx, output = output)
     else:
         _repack_whl_unix(rctx, output = output)
 
+def zipper_params_content(files):
+    """Returns the params file content that makes Bazel's zipper pack `files`.
+
+    The zipper reads one `<name in the zip>=<path on disk>` entry per line and
+    has no way to quote a name, so a path with `=` or a newline can't be passed.
+
+    Args:
+        files: {type}`list[str]` file paths relative to the repo root.
+
+    Returns:
+        {type}`str | None` the content, with the entries sorted so the
+        result is stable, or `None` if a path can't be expressed.
+    """
+    for path in files:
+        if "=" in path or "\n" in path:
+            return None
+    return "".join(["{0}={0}\n".format(path) for path in sorted(files)])
+
 def _repack_whl_unix(rctx, *, output):
+    # Bazel's zipper doesn't need a `zip` binary on the host, and it writes a
+    # fixed timestamp so the repacked wheel is reproducible.
+    zipper = rctx.path(Label("@bazel_tools//tools/zip:zipper/zipper"))
+    params = zipper_params_content(_collect_files(rctx).keys()) if zipper.exists else None
+    if params != None:
+        _repack_whl_zipper(rctx, zipper = zipper, params = params, output = output)
+        return
+
     repo_utils.execute_checked(
         rctx,
         op = "PatchWhl",
@@ -242,6 +270,18 @@ def _repack_whl_unix(rctx, *, output):
             ".",
         ],
     )
+
+def _repack_whl_zipper(rctx, *, zipper, params, output):
+    # The paths go through a params file because a wheel can have more files
+    # than fit on one command line.
+    params_path = "zipper_params.txt"
+    rctx.file(params_path, params)
+    repo_utils.execute_checked(
+        rctx,
+        op = "PatchWhl",
+        arguments = [str(zipper), "c", str(output), "@" + params_path],
+    )
+    rctx.delete(params_path)
 
 def _repack_whl_windows(rctx, *, output):
     powershell_exe = rctx.which("powershell.exe") or rctx.which("powershell")
