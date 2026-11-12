@@ -23,7 +23,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "legacy-cgi", marker = "python_full_version >= '3.13'" },
-    { name = "pypiserver", specifier = ">=2.2.0" },
+    { name = "pypiserver", specifier = ">=2.4.3" },
 ]
 
 [[package]]
@@ -55,7 +55,7 @@ wheels = [
 
 [[package]]
 name = "pypiserver"
-version = "2.4.2"
+version = "2.4.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "defusedxml" },
@@ -63,7 +63,7 @@ dependencies = [
     { name = "packaging" },
     { name = "pip" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/df/88/bd50f0baa457597df4d475f7db2cd9c8cbc7aa9938adaf874f49b896007e/pypiserver-2.4.2.tar.gz", hash = "sha256:131bc2a31ea1eab0e0104ace799dff139789b215465e3d326c65f56df5c160cb", size = 105738, upload-time = "2026-09-20T11:09:33.069Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/63/c8/29abdd9d18d3f0be0c3465124d6e69e701850ee3312bad9645202d996479/pypiserver-2.4.3.tar.gz", hash = "sha256:302737e7182fde89c120c6c53ae9602a55c8bd1449d9c4f364d00ffe602d4535", size = 105806, upload-time = "2026-11-08T21:34:44.534Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/44/56/faa75226948ec5074610f4c4b224a363132a385f304e64501e585e44be4b/pypiserver-2.4.2-py3-none-any.whl", hash = "sha256:c8441d60bbd5f77f5647db8afa3a953e7c155ecd909eb1b6faf42bcc9477ee6a", size = 96258, upload-time = "2026-09-20T11:09:32.008Z" },
+    { url = "https://files.pythonhosted.org/packages/44/52/0c9730f66cd1e355c6bd44ff3aa1d1d64d2a284685b704b257fd49e72292/pypiserver-2.4.3-py3-none-any.whl", hash = "sha256:4ce26b6936f80c2b5c685df742dd268ff5ceeef9a3a724c281b0924afccfa806", size = 96311, upload-time = "2026-11-08T21:34:43.263Z" },
 ]

@@ -64,11 +64,22 @@ updates:
   - package-ecosystem: "uv"
     multi-ecosystem-group: "dev-only"
     directories:
+      # keep-sorted start
       - "/dev"
       - "/dev/**/*"
       - "/examples/**/*"
       - "/gazelle/examples/**/*"
       - "/sphinxdocs/dev"
       - "/tests/**/*"
+      # keep-sorted end
+    # Secondary multi-hub test fixtures intentionally pin older versions than
+    # their sibling primary hubs to test cross-hub version isolation.
+    exclude-paths:
+      # keep-sorted start
+      - "tests/integration/unified_pypi/requirements_b.txt"
+      - "tests/integration/unified_pypi/requirements_b_without_six.txt"
+      - "tests/multi_pypi/beta"
+      - "tests/multi_pypi/beta/**/*"
+      # keep-sorted end
     patterns:
       - "*"
