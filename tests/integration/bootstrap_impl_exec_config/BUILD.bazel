@@ -1,0 +1,15 @@
+load("@rules_python//python:py_binary.bzl", "py_binary")
+
+py_binary(
+    name = "tool",
+    srcs = ["tool.py"],
+)
+
+# Records the first line of the launcher of :tool as built for the exec
+# configuration, which shows the bootstrap it uses.
+genrule(
+    name = "tool_launcher",
+    outs = ["tool_launcher.txt"],
+    cmd = "head -n 1 $(execpath :tool) > $@",
+    tools = [":tool"],
+)
