@@ -26,15 +26,24 @@ exports_files(["requirements.bzl"])
 """
 
 def _impl(rctx):
-    bzl_packages = rctx.attr.packages or rctx.attr.whl_map.keys()
+    if rctx.attr.hide_unexposed_packages:
+        bzl_packages = rctx.attr.packages
+        exposed_packages = bzl_packages
+    else:
+        bzl_packages = rctx.attr.packages or rctx.attr.whl_map.keys()
+        exposed_packages = None
+    testonly_packages = rctx.attr.testonly_packages
     aliases = render_multiplatform_pkg_aliases(
         aliases = {
             key: _whl_config_settings_from_json(values)
             for key, values in rctx.attr.whl_map.items()
         },
+        exposed_packages = exposed_packages,
+        extra_internal_visibility = rctx.attr.extra_internal_visibility,
         extra_hub_aliases = rctx.attr.extra_hub_aliases,
         requirement_cycles = rctx.attr.groups,
         platform_config_settings = rctx.attr.platform_config_settings,
+        testonly_packages = testonly_packages,
     )
     for path, contents in aliases.items():
         rctx.file(path, contents)
@@ -53,18 +62,25 @@ def _impl(rctx):
             "%%PACKAGES%%": render.dict(rctx.attr.whl_map, value_repr = lambda x: "None"),
         },
     )
+
+    # The testonly packages are only listed in `all_testonly_requirements`.
+    all_packages = [p for p in bzl_packages if p not in testonly_packages]
     rctx.template("requirements.bzl", rctx.attr._requirements_bzl_template, substitutions = {
         "%%ALL_DATA_REQUIREMENTS%%": render.list([
             macro_tmpl.format(p, "data")
-            for p in bzl_packages
+            for p in all_packages
         ]),
         "%%ALL_REQUIREMENTS%%": render.list([
             macro_tmpl.format(p, "pkg")
-            for p in bzl_packages
+            for p in all_packages
+        ]),
+        "%%ALL_TESTONLY_REQUIREMENTS%%": render.list([
+            macro_tmpl.format(p, "pkg")
+            for p in testonly_packages
         ]),
         "%%ALL_WHL_REQUIREMENTS_BY_PACKAGE%%": render.dict({
             p: macro_tmpl.format(p, "whl")
-            for p in bzl_packages
+            for p in all_packages
         }),
         "%%MACRO_TMPL%%": macro_tmpl,
     })
@@ -75,13 +91,22 @@ hub_repository = repository_rule(
             doc = "Extra aliases to make for specific wheels in the hub repo.",
             mandatory = True,
         ),
+        "extra_internal_visibility": attr.string_list(
+            default = [],
+            doc = "The extra visibility of the packages that are not exposed, e.g. for the unified hub.",
+        ),
         "groups": attr.string_list_dict(
             mandatory = False,
+        ),
+        "hide_unexposed_packages": attr.bool(
+            default = False,
+            doc = "Make the aliases of the packages that are not in `packages` visible only to the wheel repositories.",
         ),
         "packages": attr.string_list(
             mandatory = False,
             doc = """\
-The list of packages that will be exposed via all_*requirements macros. Defaults to whl_map keys.
+The list of packages that will be exposed via all_*requirements macros. Defaults to whl_map keys
+unless `hide_unexposed_packages` is set.
 """,
         ),
         "platform_config_settings": attr.string_list_dict(
@@ -91,6 +116,10 @@ The list of packages that will be exposed via all_*requirements macros. Defaults
         "repo_name": attr.string(
             mandatory = True,
             doc = "The apparent name of the repo. This is needed because in bzlmod, the name attribute becomes the canonical name.",
+        ),
+        "testonly_packages": attr.string_list(
+            default = [],
+            doc = "The packages whose aliases should be testonly.",
         ),
         "whl_map": attr.string_dict(
             mandatory = True,

@@ -7,6 +7,67 @@ from tests.integration import runner
 
 
 class UnifiedPypiTest(runner.TestCase):
+    def test_configure_hides_unexposed_packages(self):
+        self.run_bazel("test", "//:test_filtered_direct")
+        result = self.run_bazel("build", "//:bin_filtered_six", check=False)
+        self.assertNotEqual(
+            result.exit_code,
+            0,
+            "Expected the alias of the unexposed package to be hidden",
+        )
+        self.assert_result_matches(
+            result,
+            r"alias '[^']*//six:six'.*is not visible from",
+        )
+
+    def test_configure_hides_unexposed_packages_in_unified_hub(self):
+        self.run_bazel("cquery", "//:bin_filtered_six_unified")
+        result = self.run_bazel("build", "//:bin_filtered_six_unified", check=False)
+        self.assertNotEqual(
+            result.exit_code,
+            0,
+            "Expected build to fail during execution phase",
+        )
+        self.assert_result_matches(
+            result,
+            'ERROR: PyPI package "six" is not available when building under PyPI hub "pypi_filtered"\\. Try adding it to the requirements of this hub',
+        )
+
+    def test_configure_testonly(self):
+        self.run_bazel(
+            "test",
+            "//:test_testonly",
+            "//:test_testonly_unified",
+            "//:test_all_testonly_requirements",
+        )
+        self.run_bazel("build", "//:bin_all_requirements")
+        result = self.run_bazel("build", "//:bin_testonly", check=False)
+        self.assertNotEqual(
+            result.exit_code,
+            0,
+            "Expected the testonly package to be rejected in a binary",
+        )
+        self.assert_result_matches(
+            result,
+            r"non-test target '//:bin_testonly' depends on testonly",
+        )
+
+    def test_configure_venvs(self):
+        self.run_bazel(
+            "test", "//:test_venv_colorama", "//:test_venv_dev", "//:test_default"
+        )
+        self.run_bazel("cquery", "//:bin_venv_six")
+        result = self.run_bazel("build", "//:bin_venv_six", check=False)
+        self.assertNotEqual(
+            result.exit_code,
+            0,
+            "Expected build to fail during execution phase",
+        )
+        self.assert_result_matches(
+            result,
+            'ERROR: PyPI package "six" is not available when building under PyPI hub "pypi_b_colorama"\\. Try adding it to the requirements of this hub',
+        )
+
     def test_default_fallback_hub(self):
         self.run_bazel("test", "//:test_default")
 

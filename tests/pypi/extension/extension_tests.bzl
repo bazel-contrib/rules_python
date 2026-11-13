@@ -21,7 +21,7 @@ load("//python/private/pypi:extension.bzl", "build_config", "parse_modules")  # 
 load("//python/private/pypi:platform.bzl", _plat = "platform")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:whl_config_setting.bzl", "whl_config_setting")  # buildifier: disable=bzl-visibility
 load("//tests/support/mocks:mocks.bzl", "mocks")
-load(":pip_parse.bzl", _parse = "pip_parse")
+load(":pip_parse.bzl", _configure = "configure", _parse = "pip_parse")
 
 _tests = []
 
@@ -103,10 +103,11 @@ def _dep(*, name, extra_targets = []):
         extra_targets = extra_targets,
     )
 
-def _mod(*, name, default = _default_tags_default, parse = [], override = [], whl_mods = [], dep = [], is_root = True):
+def _mod(*, name, default = _default_tags_default, parse = [], override = [], whl_mods = [], dep = [], configure = [], is_root = True):
     return struct(
         name = name,
         tags = struct(
+            configure = configure,
             parse = parse,
             override = override,
             whl_mods = whl_mods,
@@ -120,11 +121,15 @@ def _parse_modules(env, **kwargs):
     return env.expect.that_struct(
         parse_modules(**kwargs),
         attrs = dict(
+            configured_hubs = subjects.dict,
+            venvs = subjects.dict,
             declared_deps = subjects.dict,
             default_hub = subjects.str,
             exposed_packages = subjects.dict,
             hub_group_map = subjects.dict,
             hub_whl_map = subjects.dict,
+            testonly_packages = subjects.dict,
+            unified_testonly_packages = subjects.collection,
             unified_hub_requirements_bzl = subjects.bool,
             whl_libraries = subjects.dict,
             whl_mods = subjects.dict,
@@ -814,6 +819,183 @@ simple==0.0.1 \
         })
 
 _tests.append(_test_default_index_setting)
+
+_CONFIGURE_REQUIREMENTS = """\
+simple==0.0.1 \
+    --hash=sha256:deadbeef \
+    --hash=sha256:deadbaaf
+other-pkg==0.0.2 \
+    --hash=sha256:deadbeef \
+    --hash=sha256:deadbaaf
+transitive-pkg==0.0.3 \
+    --hash=sha256:deadbeef \
+    --hash=sha256:deadbaaf
+"""
+
+_CONFIGURE_PYPROJECT = """\
+[project]
+dependencies = ["simple"]
+
+[dependency-groups]
+dev = ["other-pkg"]
+test = ["simple"]
+"""
+
+def _configure_parse_modules(env, *modules):
+    return _parse_modules(
+        env,
+        module_ctx = _pypi_mock_mctx(
+            os_name = "linux",
+            arch_name = "x86_64",
+            mock_files = {
+                "pyproject.toml": _CONFIGURE_PYPROJECT,
+                "requirements.txt": _CONFIGURE_REQUIREMENTS,
+            },
+            *modules
+        ),
+        available_interpreters = {
+            "python_3_15_host": "unit_test_interpreter_target",
+        },
+        minor_mapping = {"3.15": "3.15.19"},
+    )
+
+def _configure_parse(hub_name = "pypi_a", **kwargs):
+    return _parse(
+        hub_name = hub_name,
+        python_version = "3.15",
+        simpleapi_skip = ["simple", "other-pkg", "transitive-pkg"],
+        requirements_lock = "requirements.txt",
+        **kwargs
+    )
+
+def _test_configure(env):
+    # The selection itself is tested in `hub_exposure_tests`.
+    pypi = _configure_parse_modules(
+        env,
+        _mod(
+            name = "rules_python",
+            parse = [_configure_parse(pyproject_toml = "pyproject.toml")],
+            configure = [_configure(hub_name = "pypi_a", dependency_groups = ["test"])],
+        ),
+    )
+
+    pypi.exposed_packages().contains_exactly({"pypi_a": ["simple"]})
+    pypi.configured_hubs().contains_exactly({"pypi_a": struct(
+        hub = "pypi_a",
+        packages = ["simple"],
+        testonly_packages = [],
+    )})
+
+_tests.append(_test_configure)
+
+def _test_configure_testonly(env):
+    pypi = _configure_parse_modules(
+        env,
+        _mod(
+            name = "rules_python",
+            parse = [_configure_parse(pyproject_toml = "pyproject.toml")],
+            configure = [
+                _configure(hub_name = "pypi_a", dependency_groups = ["default"]),
+                _configure(hub_name = "pypi_a", dependency_groups = ["dev", "test"], testonly = True),
+            ],
+        ),
+    )
+
+    pypi.exposed_packages().contains_exactly({"pypi_a": ["other_pkg", "simple"]})
+
+    # `simple` is also selected by the non-testonly tag.
+    pypi.configured_hubs().contains_exactly({"pypi_a": struct(
+        hub = "pypi_a",
+        packages = ["other_pkg", "simple"],
+        testonly_packages = ["other_pkg"],
+    )})
+
+_tests.append(_test_configure_testonly)
+
+def _test_configure_testonly_unified(env):
+    pypi = _configure_parse_modules(
+        env,
+        _mod(
+            name = "rules_python",
+            parse = [
+                _configure_parse(hub_name = "pypi_a", pyproject_toml = "pyproject.toml"),
+                _configure_parse(hub_name = "pypi_b", pyproject_toml = "pyproject.toml"),
+            ],
+            configure = [
+                _configure(hub_name = "pypi_a", dependency_groups = ["default"], testonly = True),
+                _configure(hub_name = "pypi_b", dependency_groups = ["default"]),
+            ],
+        ),
+    )
+
+    pypi.testonly_packages().contains_exactly({"pypi_a": ["simple"], "pypi_b": []})
+
+    # A package is testonly in the unified hub if it is testonly in any hub.
+    pypi.unified_testonly_packages().contains_exactly(["simple"])
+
+_tests.append(_test_configure_testonly_unified)
+
+def _test_configure_default_pyproject(env):
+    # The `pip.default` pyproject.toml is used for the hubs of the root module.
+    pypi = _configure_parse_modules(
+        env,
+        _mod(
+            name = "rules_python",
+            default = _default_tags_default + [_default(pyproject_toml = "pyproject.toml")],
+            parse = [_configure_parse()],
+            configure = [_configure(hub_name = "pypi_a", dependency_groups = ["dev"])],
+        ),
+    )
+
+    pypi.configured_hubs().contains_exactly({"pypi_a": struct(
+        hub = "pypi_a",
+        packages = ["other_pkg"],
+        testonly_packages = [],
+    )})
+
+_tests.append(_test_configure_default_pyproject)
+
+def _test_not_configured_exposes_all(env):
+    # The pyproject.toml does not filter the hub without `pip.configure`.
+    pypi = _configure_parse_modules(
+        env,
+        _mod(
+            name = "rules_python",
+            parse = [_configure_parse()],
+        ),
+    )
+
+    pypi.exposed_packages().contains_exactly({
+        "pypi_a": ["other_pkg", "simple", "transitive_pkg"],
+    })
+    pypi.configured_hubs().contains_exactly({})
+
+_tests.append(_test_not_configured_exposes_all)
+
+def _test_configure_venvs(env):
+    pypi = _configure_parse_modules(
+        env,
+        _mod(
+            name = "rules_python",
+            parse = [_configure_parse(pyproject_toml = "pyproject.toml")],
+            configure = [
+                _configure(hub_name = "pypi_a", venv = "venv_dev", dependency_groups = ["dev"]),
+            ],
+        ),
+    )
+
+    # The hub itself is not configured.
+    pypi.exposed_packages().contains_exactly({
+        "pypi_a": ["other_pkg", "simple", "transitive_pkg"],
+    })
+    pypi.configured_hubs().contains_exactly({})
+    pypi.venvs().contains_exactly({"venv_dev": struct(
+        hub = "pypi_a",
+        packages = ["other_pkg"],
+        testonly_packages = [],
+    )})
+
+_tests.append(_test_configure_venvs)
 
 def extension_test_suite(name):
     """Create the test suite.
