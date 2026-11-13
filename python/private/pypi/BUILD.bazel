@@ -185,6 +185,7 @@ bzl_library(
         ":parse_requirements",
         ":pep508_env",
         ":pep508_evaluate",
+        ":pep508_requirement",
         ":python_tag",
         ":requirements_files_by_platform",
         ":whl_config_setting",
