@@ -308,7 +308,6 @@ def _test_deps_and_aliases(env):
     want_deps_targets = {
         "aliases": {},
         "dep_template": "//{name}:{target}",
-        "extras": [],
         "group_deps": ["bar", "foo"],
         "group_name": "my_group",
         "include": [],

@@ -4,7 +4,6 @@ load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
 load(":generate_whl_library_build_bazel.bzl", "generate_whl_library_build_bazel")
 load(":patch_whl.bzl", "get_whl_patches", "patch_whl")
-load(":pep508_requirement.bzl", "requirement")
 load(":pypi_repo_utils.bzl", "pypi_repo_utils")
 load(":whl_extract.bzl", "whl_extract")
 load(":whl_metadata.bzl", "parse_entry_points", "whl_metadata")
@@ -135,7 +134,7 @@ def patch_and_extract_whl(rctx, *, whl_path, logger, sdist_filename = None, whl_
         group_deps = rctx.attr.group_deps,
         group_name = rctx.attr.group_name,
         namespace_package_files = namespace_package_files,
-        extras = requirement(rctx.attr.requirement).extras,
+        provides_extra = metadata.provides_extra,
         entry_points = entry_points,
         purl = _to_purl(
             index = rctx.attr.index_url,

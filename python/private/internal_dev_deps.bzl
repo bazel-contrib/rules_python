@@ -117,7 +117,7 @@ def _internal_dev_deps_impl(mctx):
         name = "whl_library_extras_direct_dep",
         root = "//tests/pypi/whl_library/testdata/pkg:BUILD.bazel",
         output = "pkg-1.0-any-none-any.whl",
-        requirement = "pkg[optional]",
+        requirement = "pkg",
         # The following is necessary to enable pipstar and make tests faster
         config_load = "@rules_python//tests/pypi/whl_library/testdata:packages.bzl",
         dep_template = "@whl_library_extras_{name}//:{target}",

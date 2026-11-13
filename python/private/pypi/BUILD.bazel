@@ -586,7 +586,6 @@ bzl_library(
     srcs = ["whl_deps_repo.bzl"],
     deps = [
         ":generate_whl_library_build_bazel",
-        ":pep508_requirement",
         "//python/private:repo_utils",
     ],
 )
@@ -597,7 +596,6 @@ bzl_library(
     deps = [
         ":generate_whl_library_build_bazel",
         ":patch_whl",
-        ":pep508_requirement",
         ":pypi_repo_utils",
         ":whl_extract",
         ":whl_metadata",

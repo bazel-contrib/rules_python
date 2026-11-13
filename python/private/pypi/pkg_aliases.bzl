@@ -83,7 +83,6 @@ def pkg_aliases(
         group_name = None,
         extra_aliases = None,
         requires_dist = [],
-        extras = [],
         include = [],
         group_deps = [],
         **kwargs):
@@ -103,8 +102,6 @@ def pkg_aliases(
         extra_aliases: {type}`list[str]` The extra aliases to be created.
         requires_dist: {type}`list[str]` The list of dependencies. Comes from METADATA or a lock
             file.
-        extras: {type}`list[str]` The extras for which we should add extra
-            dependencies when parsing the requires_dist. Comes from METADATA or a lock file.
         include: {type}`list[str]` The subset of packages to include.
             Comes from `//:config.bzl#packages`
         **kwargs: extra kwargs to pass to {bzl:obj}`get_config_settings`.
@@ -129,7 +126,6 @@ def pkg_aliases(
             aliases = {},  # not none
             metadata_name = name,
             requires_dist = requires_dist,
-            extras = extras,
             include = include,
             group_deps = group_deps,
             group_name = group_name,
