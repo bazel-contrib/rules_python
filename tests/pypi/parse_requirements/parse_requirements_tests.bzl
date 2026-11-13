@@ -1754,23 +1754,32 @@ def _uv_graph_package(name, version = "0.0.1", **kwargs):
         "wheels": [{"url": "https://example.org/{}-{}-py3-none-any.whl".format(name, version)}],
     }, **kwargs)
 
-def _parse_uv_graph(packages):
+def _uv_platform(os, arch, whl_platform_tags, python_version = "3.11.0"):
+    major, minor = python_version.split(".")[:2]
+    return struct(
+        env = pep508_env(python_version = python_version, os = os, arch = arch),
+        whl_abi_tags = ["none", "abi3", "cp{}{}".format(major, minor)],
+        whl_platform_tags = ["any"] + whl_platform_tags,
+    )
+
+_UV_GRAPH_PLATFORMS = {
+    "linux_x86_64": _uv_platform("linux", "x86_64", ["manylinux_*_x86_64"]),
+    "osx_aarch64": _uv_platform("osx", "aarch64", ["macosx_*_arm64"]),
+}
+
+def _parse_uv_graph(packages, platforms = _UV_GRAPH_PLATFORMS):
     return {pkg.name: pkg for pkg in parse_requirements(
         ctx = struct(read = lambda _: json.encode({"package": packages})),
         uv_lock = "uv.lock",
-        platforms = {
-            "linux_x86_64": struct(
-                env = pep508_env(python_version = "3.11.0", os = "linux", arch = "x86_64"),
-                whl_abi_tags = ["none", "cp311"],
-                whl_platform_tags = ["any", "manylinux_*_x86_64"],
-            ),
-            "osx_aarch64": struct(
-                env = pep508_env(python_version = "3.11.0", os = "osx", arch = "aarch64"),
-                whl_abi_tags = ["none", "cp311"],
-                whl_platform_tags = ["any", "macosx_*_arm64"],
-            ),
-        },
+        platforms = platforms,
     )}
+
+def _src_by_platform(pkg):
+    return {
+        p: src
+        for src in pkg.srcs
+        for p in src.target_platforms
+    }
 
 def _test_uv_lock_dependency_markers(env):
     for wheels in [
@@ -1939,6 +1948,236 @@ def _test_uv_lock_partial_extra_markers(env):
     env.expect.that_collection(got["union"].srcs[0].target_platforms).contains_exactly(["linux_x86_64", "osx_aarch64"])
 
 _tests.append(_test_uv_lock_partial_extra_markers)
+
+def _test_uv_lock_same_version_split_records(env):
+    """One version split into per-platform records by `tool.uv.environments`."""
+
+    def _whl(platform_tag):
+        return {"url": "https://example.org/markupsafe-3.0.3-cp311-cp311-{}.whl".format(platform_tag)}
+
+    got = _parse_uv_graph(
+        [
+            _uv_graph_package("root", source = {"virtual": "."}, dependencies = [{"name": "markupsafe"}]),
+            _uv_graph_package(
+                "markupsafe",
+                version = "3.0.3",
+                wheels = [_whl("win_amd64")],
+                **{"resolution-markers": ["sys_platform == 'win32'"]}
+            ),
+            _uv_graph_package(
+                "markupsafe",
+                version = "3.0.3",
+                wheels = [_whl("macosx_10_9_x86_64"), _whl("macosx_11_0_arm64")],
+                **{"resolution-markers": ["sys_platform == 'darwin'"]}
+            ),
+            _uv_graph_package(
+                "markupsafe",
+                version = "3.0.3",
+                wheels = [_whl("manylinux_2_17_aarch64"), _whl("manylinux_2_17_x86_64")],
+                **{"resolution-markers": ["sys_platform != 'darwin' and sys_platform != 'win32'"]}
+            ),
+        ],
+        platforms = _UV_GRAPH_PLATFORMS | {
+            "windows_x86_64": _uv_platform("windows", "x86_64", ["win_amd64"]),
+        },
+    )
+    markupsafe = got["markupsafe"]
+    env.expect.that_bool(markupsafe.is_exposed).equals(True)
+    env.expect.that_bool(markupsafe.is_multiple_versions).equals(False)
+    env.expect.that_dict({
+        p: src.filename
+        for p, src in _src_by_platform(markupsafe).items()
+    }).contains_exactly({
+        "linux_x86_64": "markupsafe-3.0.3-cp311-cp311-manylinux_2_17_x86_64.whl",
+        "osx_aarch64": "markupsafe-3.0.3-cp311-cp311-macosx_11_0_arm64.whl",
+        "windows_x86_64": "markupsafe-3.0.3-cp311-cp311-win_amd64.whl",
+    })
+    for src in markupsafe.srcs:
+        env.expect.that_str(src.requirement_line).equals("markupsafe==3.0.3")
+
+_tests.append(_test_uv_lock_same_version_split_records)
+
+def _test_uv_lock_conflicting_dependency_groups(env):
+    """Conflicting dev groups pin different versions of the same package.
+
+    The lock graph keeps both versions and the dependencies of either
+    reachable on every platform. Choosing one group is left to
+    `pip.configure`, so only reachability is checked here.
+    """
+    registry = {"registry": "https://pypi.org/simple"}
+    got = _parse_uv_graph([
+        _uv_graph_package("root", source = {"virtual": "."}, **{"dev-dependencies": {
+            "ambig-a": [{"name": "packaging", "source": registry, "version": "24.0"}],
+            "ambig-b": [{"name": "packaging", "source": registry, "version": "21.3"}],
+        }}),
+        _uv_graph_package("packaging", version = "21.3", dependencies = [{"name": "pyparsing"}]),
+        _uv_graph_package("packaging", version = "24.0"),
+        _uv_graph_package("pyparsing", version = "3.3.2"),
+    ])
+    packaging = got["packaging"]
+    env.expect.that_bool(packaging.is_multiple_versions).equals(True)
+    env.expect.that_collection([
+        (src.requirement_line, src.target_platforms)
+        for src in packaging.srcs
+    ]).contains_exactly([
+        ("packaging==21.3", ["linux_x86_64", "osx_aarch64"]),
+        ("packaging==24.0", ["linux_x86_64", "osx_aarch64"]),
+    ])
+    env.expect.that_collection(got["pyparsing"].srcs[0].target_platforms).contains_exactly(["linux_x86_64", "osx_aarch64"])
+
+_tests.append(_test_uv_lock_conflicting_dependency_groups)
+
+def _test_uv_lock_hashless_wheel(env):
+    """uv omits `hash` for some wheels, e.g. those from `find-links` registries."""
+    got = _parse_uv_graph([
+        _uv_graph_package("root", source = {"virtual": "."}, dependencies = [{"name": "colorama"}]),
+        _uv_graph_package("colorama", version = "0.4.6", wheels = [
+            {"url": "https://example.org/colorama-0.4.6-py2.py3-none-any.whl"},
+        ]),
+    ])
+    colorama = got["colorama"]
+    env.expect.that_bool(colorama.is_exposed).equals(True)
+    env.expect.that_collection(colorama.srcs).has_size(1)
+    env.expect.that_str(colorama.srcs[0].filename).equals("colorama-0.4.6-py2.py3-none-any.whl")
+    env.expect.that_str(colorama.srcs[0].digest).equals("")
+
+_tests.append(_test_uv_lock_hashless_wheel)
+
+def _test_uv_lock_platform_specific_wheels_without_sdist(env):
+    """A package with only Windows wheels and no sdist resolves on Windows only."""
+    got = _parse_uv_graph(
+        [
+            _uv_graph_package("root", source = {"virtual": "."}, dependencies = [{"name": "pywin32"}]),
+            _uv_graph_package("pywin32", version = "311", wheels = [
+                {"url": "https://example.org/pywin32-311-cp311-cp311-{}.whl".format(p)}
+                for p in ["win32", "win_amd64", "win_arm64"]
+            ]),
+        ],
+        platforms = _UV_GRAPH_PLATFORMS | {
+            "windows_x86_64": _uv_platform("windows", "x86_64", ["win_amd64"]),
+        },
+    )
+    pywin32 = got["pywin32"]
+    env.expect.that_bool(pywin32.is_exposed).equals(False)
+    env.expect.that_dict({
+        p: src.filename
+        for p, src in _src_by_platform(pywin32).items()
+    }).contains_exactly({
+        "windows_x86_64": "pywin32-311-cp311-cp311-win_amd64.whl",
+    })
+
+_tests.append(_test_uv_lock_platform_specific_wheels_without_sdist)
+
+def _test_uv_lock_local_and_epoch_versions(env):
+    """PEP 440 local (`+`) and epoch (`!`) segments are kept verbatim."""
+    got = _parse_uv_graph([
+        _uv_graph_package("root", source = {"virtual": "."}, dependencies = [
+            {"name": "jaxlib"},
+            {"name": "metomi-isodatetime"},
+        ]),
+        _uv_graph_package("jaxlib", version = "0.4.25+cuda11.cudnn86", wheels = [
+            {"url": "https://example.org/jaxlib-0.4.25+cuda11.cudnn86-cp311-cp311-manylinux2014_x86_64.whl"},
+        ]),
+        _uv_graph_package(
+            "metomi-isodatetime",
+            version = "1!3.1.0",
+            sdist = {"url": "https://example.org/metomi-isodatetime-1!3.1.0.tar.gz"},
+            wheels = [{"url": "https://example.org/metomi_isodatetime-1!3.1.0-py3-none-any.whl"}],
+        ),
+    ])
+    env.expect.that_collection([
+        (src.requirement_line, src.filename, src.target_platforms)
+        for src in got["jaxlib"].srcs
+    ]).contains_exactly([
+        ("jaxlib==0.4.25+cuda11.cudnn86", "jaxlib-0.4.25+cuda11.cudnn86-cp311-cp311-manylinux2014_x86_64.whl", ["linux_x86_64"]),
+    ])
+    env.expect.that_collection([
+        (src.requirement_line, src.filename, src.target_platforms)
+        for src in got["metomi_isodatetime"].srcs
+    ]).contains_exactly([
+        ("metomi-isodatetime==1!3.1.0", "metomi_isodatetime-1!3.1.0-py3-none-any.whl", ["linux_x86_64", "osx_aarch64"]),
+    ])
+
+_tests.append(_test_uv_lock_local_and_epoch_versions)
+
+def _test_uv_lock_root_extra_enabled_by_dev_group(env):
+    """A lock edge from a dev group to its own project's extra keeps `extra == ...` deps.
+
+    Selecting the group itself is left to `pip.configure`, so only the lock
+    graph reachability is checked here.
+    """
+    got = _parse_uv_graph([
+        _uv_graph_package(
+            "extra-marker",
+            source = {"virtual": "."},
+            **{
+                "dev-dependencies": {"ci": [{"extra": ["build"], "name": "extra-marker"}]},
+                "optional-dependencies": {"build": [{"marker": "extra == 'build'", "name": "colorama"}]},
+            }
+        ),
+        _uv_graph_package("colorama", version = "0.4.6"),
+    ])
+    env.expect.that_collection(got["colorama"].srcs[0].target_platforms).contains_exactly(["linux_x86_64", "osx_aarch64"])
+
+_tests.append(_test_uv_lock_root_extra_enabled_by_dev_group)
+
+def _test_uv_lock_bare_linux_platform_wheels(env):
+    """Wheels with bare `linux_<arch>` platform tags are selected when compatible."""
+    got = _parse_uv_graph(
+        [
+            _uv_graph_package("root", source = {"virtual": "."}, dependencies = [{"name": "grpcio"}]),
+            _uv_graph_package(
+                "grpcio",
+                version = "1.80.0",
+                sdist = {"url": "https://example.org/grpcio-1.80.0.tar.gz"},
+                wheels = [
+                    {"url": "https://example.org/grpcio-1.80.0-cp311-cp311-linux_armv7l.whl"},
+                    {"url": "https://example.org/grpcio-1.80.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl"},
+                ],
+            ),
+        ],
+        platforms = {
+            "linux_armv7": _uv_platform("linux", "armv7", ["linux_armv7l"]),
+            "linux_x86_64": _UV_GRAPH_PLATFORMS["linux_x86_64"],
+        },
+    )
+    env.expect.that_dict({
+        p: src.filename
+        for p, src in _src_by_platform(got["grpcio"]).items()
+    }).contains_exactly({
+        "linux_armv7": "grpcio-1.80.0-cp311-cp311-linux_armv7l.whl",
+        "linux_x86_64": "grpcio-1.80.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+    })
+
+_tests.append(_test_uv_lock_bare_linux_platform_wheels)
+
+def _test_uv_lock_abi3_prefers_newest_cp_version(env):
+    """The most specific compatible abi3 wheel wins on a newer interpreter."""
+    got = _parse_uv_graph(
+        [
+            _uv_graph_package("root", source = {"virtual": "."}, dependencies = [{"name": "cryptography"}]),
+            _uv_graph_package(
+                "cryptography",
+                version = "46.0.5",
+                sdist = {"url": "https://example.org/cryptography-46.0.5.tar.gz"},
+                wheels = [
+                    {"url": "https://example.org/cryptography-46.0.5-cp38-abi3-manylinux_2_34_x86_64.whl"},
+                    {"url": "https://example.org/cryptography-46.0.5-cp311-abi3-manylinux_2_34_x86_64.whl"},
+                ],
+            ),
+        ],
+        platforms = {
+            "cp312_linux_x86_64": _uv_platform("linux", "x86_64", ["manylinux_*_x86_64"], python_version = "3.12.0"),
+        },
+    )
+    env.expect.that_collection([
+        src.filename
+        for src in got["cryptography"].srcs
+    ]).contains_exactly([
+        "cryptography-46.0.5-cp311-abi3-manylinux_2_34_x86_64.whl",
+    ])
+
+_tests.append(_test_uv_lock_abi3_prefers_newest_cp_version)
 
 def parse_requirements_test_suite(name):
     """Create the test suite.
