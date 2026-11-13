@@ -88,7 +88,7 @@ package(default_visibility = ["//visibility:public"])
         extra_loads = extra_loads,
     )
 
-def render_pkg_aliases(*, aliases, requirement_cycles = None, extra_hub_aliases = {}, **kwargs):
+def render_pkg_aliases(*, aliases, requirement_cycles = None, extra_hub_aliases = {}, extras = {}, **kwargs):
     """Create alias declarations for each PyPI package.
 
     The aliases should be appended to the pip_repository BUILD.bazel file. These aliases
@@ -101,6 +101,8 @@ def render_pkg_aliases(*, aliases, requirement_cycles = None, extra_hub_aliases 
         requirement_cycles: any package groups to also add.
         extra_hub_aliases: The list of extra aliases for each whl to be added
           in addition to the default ones.
+        extras: {type}`dict[str, list[str]]` The requested extras for each
+          whl when the aliases are repo names.
         **kwargs: Extra kwargs to pass to the rules.
 
     Returns:
@@ -130,6 +132,7 @@ def render_pkg_aliases(*, aliases, requirement_cycles = None, extra_hub_aliases 
             name = normalize_name(name),
             aliases = pkg_aliases,
             extra_aliases = extra_hub_aliases.get(normalize_name(name), []),
+            extras = extras.get(normalize_name(name), []),
             group_name = whl_group_mapping.get(normalize_name(name)),
             **kwargs
         ).strip()

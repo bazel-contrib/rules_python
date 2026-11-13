@@ -288,6 +288,23 @@ def _test_available_extras(env):
 
 _tests.append(_test_available_extras)
 
+def _test_aliases_with_extras_for_repo_names(env):
+    actual = render_pkg_aliases(
+        aliases = {
+            "foo": "pypi_foo",
+        },
+        extras = {"foo": ["a"]},
+    )
+
+    env.expect.that_str(actual["foo/BUILD.bazel"]).contains("""\
+pkg_aliases(
+    name = "foo",
+    actual = "pypi_foo",
+    extras = ["a"],
+)""")
+
+_tests.append(_test_aliases_with_extras_for_repo_names)
+
 def render_pkg_aliases_test_suite(name):
     """Create the test suite.
 

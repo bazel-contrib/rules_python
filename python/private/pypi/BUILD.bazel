@@ -329,6 +329,7 @@ bzl_library(
         ":hash",
         ":parse_requirements",
         ":pep508_env",
+        ":pep508_requirement",
         ":pip_repository_attrs",
         ":pypi_repo_utils",
         ":render_pkg_aliases",
