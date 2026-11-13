@@ -5,6 +5,7 @@
 
 load("@rules_python//python:pip.bzl", "pip_utils")
 load("@rules_python//python/pip_install:pip_repository.bzl", "whl_config_repo", "whl_library")
+load("@rules_python//python/private/pypi:labels.bzl", "requirement_label", "requirement_labels")  # buildifier: disable=bzl-visibility
 
 all_requirements = [
     "@my_project_pip_deps_vendored_certifi//:pkg",
@@ -79,7 +80,28 @@ _config = {
 _annotations = {}
 
 def requirement(name):
-    return "@my_project_pip_deps_vendored_{}//:{}".format(pip_utils.normalize_name(name), "pkg")
+    """Return the label for the package.
+
+    Args:
+        name: The name of the package with at most one extra, e.g. `foo`,
+            `foo[]` or `foo[bar]`. Use `requirements` for multiple extras.
+
+    Returns:
+        The label of the package.
+    """
+    return requirement_label("@my_project_pip_deps_vendored_{}//:{}", name)
+
+def requirements(*names):
+    """Return the labels for the packages.
+
+    Args:
+        *names: The names of the packages with optional extras, e.g. `foo`,
+            `foo[]`, `foo[bar]` or `foo[bar,baz]`.
+
+    Returns:
+        The list of labels, with a label for each extra of a package.
+    """
+    return requirement_labels("@my_project_pip_deps_vendored_{}//:{}", *names)
 
 def whl_requirement(name):
     return "@my_project_pip_deps_vendored_{}//:{}".format(pip_utils.normalize_name(name), "whl")
@@ -107,8 +129,10 @@ def install_deps(**whl_library_kwargs):
     # Set up the requirement groups
     all_requirement_groups = {}
 
+    # The members are the packages, e.g. `foo`, or the extras of the packages,
+    # e.g. `foo[bar]`.
     requirement_group_mapping = {
-        requirement: group_name
+        requirement.partition("[")[0]: group_name
         for group_name, group_requirements in all_requirement_groups.items()
         for requirement in group_requirements
     }
