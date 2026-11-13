@@ -262,17 +262,17 @@ def _add_group_map(self, group_map):
     # The members are the packages, e.g. `foo`, or the extras of the packages,
     # e.g. `foo[bar]`.
     group_map = {
-        name: [group_member(member) for member in members]
-        for name, members in group_map.items()
+        name: [group_member(whl_name) for whl_name in whls]
+        for name, whls in group_map.items()
     }
     self._group_map.clear()
     self._group_name_by_whl.clear()
 
     self._group_map.update(group_map)
     self._group_name_by_whl.update({
-        member.partition("[")[0]: group_name
-        for group_name, members in self._group_map.items()
-        for member in members
+        whl_name.partition("[")[0]: group_name
+        for group_name, group_whls in self._group_map.items()
+        for whl_name in group_whls
     })
 
 def _add_extra_aliases(self, extra_hub_aliases):
@@ -366,16 +366,16 @@ def _add_whl_library(self, *, python_version, whl, repo):
     self._whl_libraries[repo_name] = repo.args
 
     mapping = self._whl_map.setdefault(whl.name, {})
-    for config_setting in repo.config_settings:
-        if config_setting in mapping and mapping[config_setting] != repo_name:
-            fail(
-                "attempting to override an existing repo '{}' for config setting '{}' with a new repo '{}'".format(
-                    mapping[config_setting],
-                    config_setting,
-                    repo_name,
-                ),
-            )
-        mapping[config_setting] = repo_name
+    if repo.config_setting in mapping and mapping[repo.config_setting] != repo_name:
+        fail(
+            "attempting to override an existing repo '{}' for config setting '{}' with a new repo '{}'".format(
+                mapping[repo.config_setting],
+                repo.config_setting,
+                repo_name,
+            ),
+        )
+    else:
+        mapping[repo.config_setting] = repo_name
 
 ### end of setters, below we have various functions to implement the public methods
 
@@ -629,12 +629,17 @@ def _create_whl_repos(
                 interpreter = interpreter,
                 enable_pipstar_extract = enable_pipstar_extract,
             )
-            _add_whl_library(
-                self,
-                python_version = python_version,
-                whl = whl,
-                repo = repo,
-            )
+            for config_setting in repo.config_settings if repo else []:
+                _add_whl_library(
+                    self,
+                    python_version = python_version,
+                    whl = whl,
+                    repo = struct(
+                        repo_name = repo.repo_name,
+                        args = repo.args,
+                        config_setting = config_setting,
+                    ),
+                )
 
 def _merge_extras(srcs):
     """Merge the sources that differ only in the requested extras.

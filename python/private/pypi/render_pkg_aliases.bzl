@@ -121,8 +121,8 @@ def render_pkg_aliases(*, aliases, requirement_cycles = None, extra_hub_aliases 
         # The members are the packages, e.g. `foo`, or the extras of the
         # packages, e.g. `foo[bar]`.
         requirement_cycles = {
-            name: [group_member(member) for member in members]
-            for name, members in requirement_cycles.items()
+            name: [group_member(whl_name) for whl_name in whls]
+            for name, whls in requirement_cycles.items()
         }
 
         for group_name, members in requirement_cycles.items():
