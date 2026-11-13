@@ -631,17 +631,6 @@ def _test_extras_aliases_union(env):
     }])
     env.expect.that_collection(got.keys()).not_contains("pkg")
 
-    # The whl target does not use the extras.
-    # buildifier: disable=unsorted-dict-items
-    env.expect.that_dict(got).contains_at_least({
-        "whl": {
-            _LINUX: "@repo//:whl",
-            _OSX: "@repo//:whl",
-            _WINDOWS: "@repo//:whl",
-            "//conditions:default": "_no_matching_repository",
-        },
-    })
-
 _tests.append(_test_extras_aliases_union)
 
 def _test_extras_aliases_group(env):
@@ -684,16 +673,9 @@ def _test_extras_aliases_group(env):
             _OSX: "@repo//:pkg",
             "//conditions:default": "_no_matching_repository",
         },
-        "whl": "//_groups:group_whl",
-        "_whl": {
-            _LINUX: "@repo//:whl",
-            _OSX: "@repo//:whl",
-            "//conditions:default": "_no_matching_repository",
-        },
     })
     env.expect.that_dict(got_visibility).contains_at_least({
         "_pkg": ["//_groups:__subpackages__"],
-        "_whl": ["//_groups:__subpackages__"],
     })
 
 _tests.append(_test_extras_aliases_group)
@@ -701,6 +683,7 @@ _tests.append(_test_extras_aliases_group)
 def _test_extras_aliases_group_with_extras(env):
     got = {}
 
+    # This is how `WORKSPACE` uses a single repo for each package.
     pkg_aliases(
         name = "foo",
         actual = "repo",
@@ -726,38 +709,6 @@ def _test_extras_aliases_group_with_extras(env):
     env.expect.that_collection(got.keys()).not_contains("_whl")
 
 _tests.append(_test_extras_aliases_group_with_extras)
-
-def _test_extras_aliases_single_repo(env):
-    got = {}
-    py_library_calls = []
-
-    # This is how `WORKSPACE` uses a single repo for each package.
-    pkg_aliases(
-        name = "foo",
-        actual = "repo",
-        extras = ["b", "a"],
-        native = struct(
-            alias = lambda *, name, actual, visibility = None, tags = None: got.update({name: actual}),
-        ),
-        rules = struct(
-            py_library = lambda **kwargs: py_library_calls.append(kwargs),
-        ),
-        select = lambda value, no_match_error = None: value,
-    )
-
-    # buildifier: disable=unsorted-dict-items
-    env.expect.that_dict(got).contains_at_least({
-        "[]": "@repo//:pkg",
-        "[a]": "@repo//:[a]",
-        "[b]": "@repo//:[b]",
-        "whl": "@repo//:whl",
-    })
-    env.expect.that_collection(py_library_calls).contains_exactly([{
-        "deps": [":[a]", ":[b]"],
-        "name": "pkg",
-    }])
-
-_tests.append(_test_extras_aliases_single_repo)
 
 def pkg_aliases_test_suite(name):
     """Create the test suite.

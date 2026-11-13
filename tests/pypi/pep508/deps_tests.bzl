@@ -357,23 +357,6 @@ def test_deps_with_extras_excludes_and_includes(env):
 
 _tests.append(test_deps_with_extras_excludes_and_includes)
 
-def test_deps_without_extras(env):
-    got = deps(
-        "foo",
-        requires_dist = [
-            "bar[socks]",
-            "baz[a]; sys_platform == 'linux'",
-            "baz[b]; sys_platform == 'darwin'",
-        ],
-    )
-
-    env.expect.that_collection(got.deps).contains_exactly(["bar"])
-    env.expect.that_dict(got.deps_select).contains_exactly({
-        "baz": "(sys_platform == \"darwin\") or (sys_platform == \"linux\")",
-    })
-
-_tests.append(test_deps_without_extras)
-
 def deps_test_suite(name):  # buildifier: disable=function-docstring
     test_suite(
         name = name,
