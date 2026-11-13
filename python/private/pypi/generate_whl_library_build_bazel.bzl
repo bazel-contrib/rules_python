@@ -44,11 +44,9 @@ package(default_visibility = ["//visibility:public"])
 )
 """
 
-_PURL = """\
-package_metadata(
-    name = "package_metadata",
-    purl = {purl},
-    visibility = ["//:__subpackages__"],
+_PACKAGE_METADATA = """\
+whl_package_metadata(
+{kwargs}
 )
 """
 
@@ -66,7 +64,8 @@ def generate_whl_library_build_bazel(
         metadata_version: The version to use for tag generation.
         annotation: The annotation for the build file.
         config_load: {type}`str` The location from where to load the config.
-        purl: The purl.
+        purl: {type}`dict[str, str] | None` The fields of the PyPI PURL passed
+            to {obj}`whl_package_metadata`.
         requires_dist: {type}`list[str]` The list of dependencies from the METADATA file.
         **kwargs: Extra args serialized to be passed to the
             {obj}`whl_library_targets`.
@@ -75,9 +74,7 @@ def generate_whl_library_build_bazel(
         A complete BUILD file as a string
     """
 
-    loads = [
-        """load("@package_metadata//rules:package_metadata.bzl", "package_metadata")""",
-    ]
+    loads = []
 
     if kwargs.get("repo"):
         fn = "whl_library_deps_targets"
@@ -103,6 +100,8 @@ def generate_whl_library_build_bazel(
     loads.extend([
         """load("@rules_python//python/private/pypi:{}.bzl", "{}")""".format(fn, fn),
     ])
+    if purl:
+        loads.append("""load("@rules_python//python/private/pypi:whl_package_metadata.bzl", "whl_package_metadata")""")
 
     additional_content = []
     if annotation:
@@ -124,7 +123,10 @@ def generate_whl_library_build_bazel(
                     for k, v in sorted(kwargs.items())
                 ])),
             ),
-        ] + ([_PURL.format(purl = repr(purl))] if purl else []) + additional_content,
+        ] + ([_PACKAGE_METADATA.format(kwargs = render.indent("\n".join([
+            "{} = {},".format(k, repr(v))
+            for k, v in sorted(purl.items())
+        ])))] if purl else []) + additional_content,
     )
 
     # NOTE: Ensure that we terminate with a new line

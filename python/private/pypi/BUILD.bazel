@@ -598,7 +598,6 @@ bzl_library(
         ":whl_metadata",
         "//python/private:normalize_name",
         "//python/private:repo_utils",
-        "@package_metadata//purl:srcs",
     ],
 )
 
@@ -625,6 +624,15 @@ bzl_library(
         ":venv_rewrite_shebang",
         "//python:py_library",
         "@bazel_skylib//rules:copy_file",
+    ],
+)
+
+bzl_library(
+    name = "whl_package_metadata",
+    srcs = ["whl_package_metadata.bzl"],
+    deps = [
+        "@package_metadata//purl:srcs",
+        "@package_metadata//rules:srcs",
     ],
 )
 

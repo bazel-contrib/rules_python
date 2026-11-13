@@ -1,6 +1,5 @@
 ""
 
-load("@package_metadata//purl:purl.bzl", "purl")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
 load(":generate_whl_library_build_bazel.bzl", "generate_whl_library_build_bazel")
@@ -42,21 +41,25 @@ def _move_scripts_needing_shebang_rewrite(rctx, entry_points):
 
 def _to_purl(*, index, metadata, filename):
     """
-    Produce a PyPI PURL from the metadata.
+    Return the fields of the PyPI PURL from the metadata.
+
+    The PURL is built in the generated BUILD file, so that `@package_metadata`
+    is not loaded by the repository rules.
 
     https://github.com/package-url/purl-spec/blob/main/types-doc/pypi-definition.md
     """
 
     # https://github.com/package-url/purl-spec/blob/main/types-doc/pypi-definition.md#name-definition
-    name = normalize_name(metadata.name).replace("_", "-")
-
-    builder = purl.builder().type("pypi").name(name).version(metadata.version)
+    purl = {
+        "distribution": normalize_name(metadata.name).replace("_", "-"),
+        "version": metadata.version,
+    }
     if index:
-        builder.add_qualifier("repository_url", index)
+        purl["repository_url"] = index
     if filename:
-        builder.add_qualifier("file_name", filename)
+        purl["file_name"] = filename
 
-    return builder.build()
+    return purl
 
 def _remove_files(rctx, *basenames):
     paths = list(rctx.path(".").readdir())
