@@ -115,6 +115,22 @@ def _internal_dev_deps_impl(mctx):
         dep_template = "@whl_library_extras_{name}//:{target}",
     )
     _whl_library_from_dir(
+        name = "whl_library_extras_pkg",
+        root = "//tests/pypi/whl_library/testdata/pkg:BUILD.bazel",
+        output = "pkg-1.0-any-none-any.whl",
+        # The following is necessary to enable pipstar and make tests faster
+        config_load = "@rules_python//tests/pypi/whl_library/testdata:packages.bzl",
+        dep_template = "@whl_library_extras_{name}//:{target}",
+    )
+    _whl_library_from_dir(
+        name = "whl_library_extras_consumer",
+        root = "//tests/pypi/whl_library/testdata/consumer:BUILD.bazel",
+        output = "consumer-1.0-any-none-any.whl",
+        # The following is necessary to enable pipstar and make tests faster
+        config_load = "@rules_python//tests/pypi/whl_library/testdata:packages.bzl",
+        dep_template = "@whl_library_extras_{name}//:{target}",
+    )
+    _whl_library_from_dir(
         name = "whl_library_extras_optional_dep",
         root = "//tests/pypi/whl_library/testdata/optional_dep:BUILD.bazel",
         output = "optional_dep-1.0-any-none-any.whl",
