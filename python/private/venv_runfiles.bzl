@@ -215,9 +215,16 @@ def _check_no_nested_links(kind, group, group_link_map, _fail):
             the group.
         _fail: {type}`callable` called with the error message.
     """
+
+    # Directories that were already walked up from. Files usually share
+    # directories, so this avoids checking the same parents for every path.
+    checked_dirs = {}
     for venv_path in group_link_map:
-        parent = paths.dirname(venv_path)
+        parent = venv_path.rpartition("/")[0]
         for _ in range(venv_path.count("/")):
+            if parent in checked_dirs:
+                break
+            checked_dirs[parent] = None
             if parent in group_link_map:
                 _fail((
                     "venv {kind} path '{parent}' is linked as a single " +
@@ -232,7 +239,7 @@ def _check_no_nested_links(kind, group, group_link_map, _fail):
                     overlapping = _describe_entries_above(group, venv_path),
                 ))
                 return
-            parent = paths.dirname(parent)
+            parent = parent.rpartition("/")[0]
 
 def _describe_entries_above(group, venv_path):
     """Describes the entries in `group` that are at or above `venv_path`.

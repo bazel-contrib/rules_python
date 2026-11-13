@@ -1039,6 +1039,21 @@ def _test_unmergeable_overlap_fails_impl(env, _):
     env.expect.that_str(failures[0]).contains("'foo/other.py'")
     env.expect.that_str(failures[0]).contains("(package: tree)")
 
+    # The single unit can be any ancestor, not only the immediate parent.
+    other_subdir = _entry(
+        "foo",
+        "+other/site-packages/foo",
+        [
+            _file("../+other/site-packages/foo/sub/a.py"),
+            _file("../+other/site-packages/foo/sub/b.py"),
+        ],
+        package = "other",
+    )
+    failures = []
+    build_link_map(test_ctx, [tree_dir, other_subdir], _fail = failures.append)
+    env.expect.that_collection(failures).has_size(1)
+    env.expect.that_str(failures[0]).contains("'foo/sub/a.py'")
+
     # With link_to_subpaths, the same layout merges.
     tree_dir_with_subpaths = _entry(
         "foo",
