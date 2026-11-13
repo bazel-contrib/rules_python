@@ -41,21 +41,25 @@ def _move_scripts_needing_shebang_rewrite(rctx, entry_points):
 
 def _to_purl(*, index, metadata, filename):
     """
-    Produce a PyPI PURL from the metadata.
+    Return the fields of the PyPI PURL from the metadata.
+
+    The PURL is built in the generated BUILD file, so that `@package_metadata`
+    is not loaded by the repository rules.
 
     https://github.com/package-url/purl-spec/blob/main/types-doc/pypi-definition.md
     """
 
     # https://github.com/package-url/purl-spec/blob/main/types-doc/pypi-definition.md#name-definition
-    name = normalize_name(metadata.name).replace("_", "-")
-
-    qualifiers = {}
+    purl = {
+        "distribution": normalize_name(metadata.name).replace("_", "-"),
+        "version": metadata.version,
+    }
     if index:
-        qualifiers["repository_url"] = index
+        purl["repository_url"] = index
     if filename:
-        qualifiers["file_name"] = filename
+        purl["file_name"] = filename
 
-    return "pkg:pypi/{}@{}?{}".format(name, metadata.version, "&".join(["{}={}".format(key, val) for key, val in qualifiers.items()]))
+    return purl
 
 def _remove_files(rctx, *basenames):
     paths = list(rctx.path(".").readdir())

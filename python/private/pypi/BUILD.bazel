@@ -630,6 +630,15 @@ bzl_library(
 )
 
 bzl_library(
+    name = "whl_package_metadata",
+    srcs = ["whl_package_metadata.bzl"],
+    deps = [
+        "@package_metadata//purl:srcs",
+        "@package_metadata//rules:srcs",
+    ],
+)
+
+bzl_library(
     name = "argparse",
     srcs = ["argparse.bzl"],
 )
