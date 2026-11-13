@@ -434,7 +434,7 @@ the {obj}`PyCommonApi` utilities.
 The automatically generated pyc files that are directly provided by the target.
 The direct counterpart of {obj}`transitive_implicit_pyc_files`.
 
-::::{versionadded} VERSION_NEXT_FEATURE
+::::{versionadded} 2.5.0
 ::::
 """,
         "direct_original_sources": """
@@ -583,7 +583,7 @@ example, from `pyi_deps`). This information is not included into the final
 output of a program. Type checkers should merge this into their information to
 augment the analyzed output.
 
-::::{versionadded} VERSION_NEXT_FEATURE
+::::{versionadded} 2.5.0
 ::::
 """,
         "uses_shared_libraries": """
@@ -664,7 +664,7 @@ def _PyInfoBuilder_typedef():
     Builder for {obj}`PyInfo.type_checking_info`. `None` on nested
     type-checking builders.
 
-    ::::{versionadded} VERSION_NEXT_FEATURE
+    ::::{versionadded} 2.5.0
     ::::
     :::
 
@@ -927,7 +927,7 @@ def _PyInfoBuilder_merge_type_checking(self, *infos, direct = []):
     `type_checking_info`) into {obj}`type_checking_info`, excluding runtime
     fields like `imports` and `transitive_sources` from the top-level `PyInfo`.
 
-    :::{versionadded} VERSION_NEXT_FEATURE
+    :::{versionadded} 2.5.0
     :::
 
     Args:

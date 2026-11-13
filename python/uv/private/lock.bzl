@@ -131,7 +131,7 @@ def _up(x, directory, short_path = False):
     elif hasattr(x, "path"):
         x = x.path
 
-    if not directory:
+    if not directory or paths.is_absolute(x):
         return x
 
     prefix = "/".join([".."] * len(directory.split("/")))
@@ -660,11 +660,11 @@ def lock(
     extension, under WORKSPACE via {obj}`uv_register_toolchains`.
     :::
 
-    :::{versionchanged} VERSION_NEXT_PATCH
+    :::{versionchanged} 2.5.0
     The `name.run` target uses the `uv` cache by default.
     :::
 
-    :::{versionchanged} VERSION_NEXT_FEATURE
+    :::{versionchanged} 2.5.0
     WORKSPACE builds are supported; previously the targets were marked
     incompatible unless bzlmod was enabled.
     :::

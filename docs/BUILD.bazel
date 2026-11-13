@@ -25,6 +25,11 @@ package(default_visibility = ["//:__subpackages__"])
 
 licenses(["notice"])  # Apache 2.0
 
+exports_files(
+    ["readthedocs_build.sh"],
+    visibility = ["//:__subpackages__"],
+)
+
 # We only build for Linux and Mac because:
 # 1. The actual doc process only runs on Linux
 # 2. Mac is a common development platform, and is close enough to Linux

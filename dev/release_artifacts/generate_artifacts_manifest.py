@@ -1,5 +1,16 @@
 #!/usr/bin/env python3
-"""Generates an artifacts_manifest.json file for built release artifacts."""
+"""Generates artifacts_manifest.json and artifacts_manifest.bzl files.
+
+Reads built release binaries named ``<artifact>-<triple>[.exe]`` from
+``artifacts_dir`` and writes their SHA-256 digests, download URLs, and platform
+constraints to both JSON and Starlark manifest files.
+
+Usage:
+    dev/release_artifacts/generate_artifacts_manifest.py \\
+        --bzl-output=artifacts_manifest.bzl \\
+        --json-output=artifacts_manifest.json \\
+        -- 2.4.0 release-artifacts [bazel-contrib/rules_python]
+"""
 
 from __future__ import annotations
 
@@ -86,18 +97,42 @@ def generate_manifest(
     return {"artifacts": dict(sorted(artifacts.items()))}
 
 
+def render_json(manifest: dict[str, dict[str, list[ArtifactEntry]]]) -> str:
+    return json.dumps(manifest, indent=2, sort_keys=True) + "\n"
+
+
+def render_bzl(manifest: dict[str, dict[str, list[ArtifactEntry]]]) -> str:
+    manifest_json = render_json(manifest)
+    # Embedded in a Starlark string literal, so it must not end the literal
+    # early or rely on escape sequences.
+    if '"""' in manifest_json or "\\" in manifest_json:
+        raise ValueError("Manifest JSON cannot be embedded in a .bzl string")
+    return (
+        '"""Manifest of prebuilt tool binaries for this release."""\n'
+        "\n"
+        f'ARTIFACTS_MANIFEST_JSON = """\n{manifest_json}"""\n'
+    )
+
+
 def _main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--bzl-output",
+        type=Path,
+        required=True,
+        help="Path to write the Starlark (.bzl) manifest file.",
+    )
+    parser.add_argument(
+        "--json-output",
+        type=Path,
+        required=True,
+        help="Path to write the JSON (.json) manifest file.",
+    )
     parser.add_argument("tag", help="Release tag name (e.g. 2.4.0).")
     parser.add_argument(
         "artifacts_dir",
         type=Path,
         help="Directory containing built <artifact>-<triple>[.exe] files.",
-    )
-    parser.add_argument(
-        "output_file",
-        type=Path,
-        help="Path to the artifacts_manifest.json file to write.",
     )
     parser.add_argument(
         "repo",
@@ -108,14 +143,16 @@ def _main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         manifest = generate_manifest(args.tag, args.artifacts_dir, args.repo)
+        outputs = (
+            (args.json_output, render_json(manifest)),
+            (args.bzl_output, render_bzl(manifest)),
+        )
     except ValueError as err:
         print(f"::error::{err}")
         return 1
-    args.output_file.parent.mkdir(parents=True, exist_ok=True)
-    args.output_file.write_text(
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    for out_path, content in outputs:
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(content, encoding="utf-8")
     return 0
 
 

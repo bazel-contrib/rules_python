@@ -34,3 +34,10 @@ config_setting(
         ":custom_runtime": "linux-x86-install-only-stripped",
     },
 )
+
+config_setting(
+    name = "is_custom_runtime_linux-x86-debug",
+    flag_values = {
+        ":custom_runtime": "linux-x86-debug",
+    },
+)

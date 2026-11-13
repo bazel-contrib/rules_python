@@ -22,7 +22,12 @@ fi
 while IFS= read -r bin; do
   if [[ "$triple_arg" == "linux" ]]; then
     name="${bin##*/}"
-    triple="${name#*-}"
+    if [[ "$name" =~ ^.+-(aarch64|armv7|i686|powerpc64le|riscv64gc|x86_64)-(.+)$ ]]; then
+      triple="${BASH_REMATCH[1]}-${BASH_REMATCH[2]}"
+    else
+      echo "::error::$bin: cannot parse triple from $name"
+      exit 1
+    fi
   else
     triple="$triple_arg"
   fi

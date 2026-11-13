@@ -1,3 +1,0 @@
-# Intentionally empty in git so source checkouts build tools from source.
-# In releases, this contains a JSON manifest of prebuilt tool binaries.
-# Generated during the release process and bundled into the release archive.

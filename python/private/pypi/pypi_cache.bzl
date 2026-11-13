@@ -1,6 +1,6 @@
 """A cache for the PyPI index contents evaluation.
 
-This is design to work as the following:
+This is designed to work as the following:
 - in-memory cache for results of PyPI index queries, so that we are not calling PyPI multiple times
   for the same package for different hub repos.
 
@@ -15,8 +15,13 @@ load(":version_from_filename.bzl", "version_from_filename")
 # recomputed.
 #
 # v2: the `dist_hashes` values and the `dist_yanked` keys are canonical
-#     `<algo>:<digest>` strings instead of bare sha256 hex digests.
-_FACT_VERSION = "v2"
+#      `<algo>:<digest>` strings instead of bare sha256 hex digests.
+# v3: facts are shallow and compact. Index URL facts are keyed by
+#      `<pkg_normalized>@<index_url>` and distribution facts are keyed by
+#      `<distribution>@<root_url>`. Each distribution URL maps to a single
+#      string with only the information that cannot be derived from the URL:
+#      `<digest>[|<filename>[|<yanked>]]`.
+_FACT_VERSION = "v3"
 
 def pypi_cache(mctx = None, store = None):
     """The cache for PyPI index queries.
@@ -210,50 +215,50 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
         return None
 
     if type(requested_versions) == "dict":
-        result = _filter_packages(
-            dists = known_facts.get("index_urls", {}).get(index_url, {}),
-            requested_versions = requested_versions,
-        )
-        if result:
-            if len(result) != len(requested_versions):
+        result = {}
+        for pkg in requested_versions.keys():
+            url = known_facts.get(_index_fact_key(pkg, index_url))
+            if url == None:
                 # If the results are incomplete, return None, so that we can
                 # fetch sources from the internet again.
                 return None
+            result[pkg] = url
 
-            # Only persist the accessed (requested) packages. Packages that
-            # exist in known_facts but are not in requested_versions (e.g.
-            # removed from all requirements files) are dropped from the
-            # computed facts so they get cleaned up from the lockfile.
-            _store_facts(facts, facts_version, index_url, result)
-        return result
+        # Only persist the accessed (requested) packages. Packages that
+        # exist in known_facts but are not in requested_versions (e.g.
+        # removed from all requirements files) are dropped from the
+        # computed facts so they get cleaned up from the lockfile.
+        return _store_facts(facts, facts_version, index_url, result)
 
+    fact_key = _dist_fact_key(index_url)
     known_sources = {}
-
-    root_url, _, distribution = index_url.rstrip("/").rpartition("/")
-    distribution = distribution.rstrip("/")
-    root_url = root_url.rstrip("/")
-
     retrieved_versions = {}
+    used_entries = {}
 
-    for url, digest in known_facts.get("dist_hashes", {}).get(root_url, {}).get(distribution, {}).items():
-        filename = known_facts.get("dist_filenames", {}).get(root_url, {}).get(distribution, {}).get(url)
-        if not filename:
-            _, _, filename = url.rpartition("/")
+    for url, entry in known_facts.get(fact_key, {}).items():
+        if type(entry) != "string":
+            # Defensive: `fact_version` guards against older schemas, but the
+            # facts come from a user-editable lockfile (e.g. a botched merge),
+            # so skip anything that is not an encoded entry instead of failing.
+            continue
+
+        filename, digest, yanked = _decode_dist_entry(entry, url)
 
         version = version_from_filename(filename)
         if version not in requested_versions:
-            # TODO @aignas 2026-01-21: do the check by requested digests at some point
-            # We don't have sufficient info in the lock file, need to call the API
-            #
             continue
 
         retrieved_versions[version] = True
+        used_entries[url] = entry
 
         if filename.endswith(".whl"):
             dists = known_sources.setdefault("whls", {})
         else:
             dists = known_sources.setdefault("sdists", {})
 
+        # NOTE: an empty digest is kept so that the result matches the
+        # output of `parse_simpleapi_html` for indexes that do not advertise
+        # any hashes.
         known_sources.setdefault("hashes_by_version", {}).setdefault(version, []).append(digest)
 
         dists.setdefault(digest, struct(
@@ -263,7 +268,7 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
             metadata_url = "",
             metadata_sha256 = "",
             url = url,
-            yanked = known_facts.get("dist_yanked", {}).get(root_url, {}).get(distribution, {}).get(digest),
+            yanked = yanked,
         ))
 
     if not known_sources:
@@ -275,7 +280,13 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
         # internet again.
         return None
 
-    output = struct(
+    # Persist these facts for the next run because we have used them. The raw
+    # entries are copied as-is instead of re-encoding the decoded structs, so
+    # that a no-op run leaves the lockfile unchanged.
+    facts["fact_version"] = facts_version
+    facts.setdefault(fact_key, {}).update(used_entries)
+
+    return struct(
         whls = known_sources.get("whls", {}),
         sdists = known_sources.get("sdists", {}),
         hashes_by_version = {
@@ -284,9 +295,6 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
         },
     )
 
-    # Persist these facts for the next run because we have used them.
-    return _store_facts(facts, facts_version, index_url, output)
-
 def _store_facts(facts, fact_version, index_url, value):
     """Store values as facts in the lock file.
 
@@ -294,6 +302,25 @@ def _store_facts(facts, fact_version, index_url, value):
     storing what we would need to fetch from the internet. Any derivative
     information we can get from this that can be achieved using pure Starlark
     functions should be done in Starlark.
+
+    All keys are top-level so that Bazel's lockfile merge driver can merge
+    concurrent changes to different packages cleanly. The schema is:
+
+    ```
+    facts: {
+      "fact_version": "<_FACT_VERSION>",
+
+      # From the index page, e.g. `foo@https://pypi.org/simple/`
+      "<pkg_normalized>@<index_url>": "<package page URL>",
+
+      # From the package page, e.g. `foo@https://pypi.org/simple`
+      "<distribution>@<root_url>": {
+        "<dist url>": "<encoded entry>",  # see `_encode_dist_entry`
+      },
+    }
+    ```
+
+    Adding a new field to the encoded entry requires bumping `_FACT_VERSION`.
     """
     if not value:
         return value
@@ -301,51 +328,110 @@ def _store_facts(facts, fact_version, index_url, value):
     facts["fact_version"] = fact_version
 
     if type(value) == "dict":
-        # facts: {
-        #   "index_urls": {
-        #     "<index_url>": {
-        #       "<pkg_normalized>": "<dist_url>",
-        #     },
-        #   },
-        # },
         for pkg, url in value.items():
-            facts.setdefault("index_urls", {}).setdefault(index_url, {})[pkg] = url
+            facts[_index_fact_key(pkg, index_url)] = url
         return value
 
-    root_url, _, distribution = index_url.rstrip("/").rpartition("/")
-    distribution = distribution.rstrip("/")
-    root_url = root_url.rstrip("/")
+    fact_key = _dist_fact_key(index_url)
+    entries = facts.setdefault(fact_key, {})
 
-    # The schema is
-    # facts: {
-    #   "dist_hashes": {
-    #     "<index_url>": {
-    #       "<last segment>": {
-    #         # An empty string if the index does not advertise any digest.
-    #         "<dist url>": "<algo>:<digest>",
-    #       },
-    #     },
-    #   },
-    #   "dist_filenames": {
-    #     "<index_url>": {
-    #       "<last segment>": {
-    #         "<dist url>": "<filename>",   # if it is different from the URL
-    #       },
-    #     },
-    #   },
-    #   "dist_yanked": {
-    #     "<index_url>": {
-    #       "<last segment>": {
-    #         "<algo>:<digest>": "<reason>",   # if the package is yanked
-    #       },
-    #     },
-    #   },
-    # },
-    for digest, d in (value.sdists | value.whls).items():
-        facts.setdefault("dist_hashes", {}).setdefault(root_url, {}).setdefault(distribution, {}).setdefault(d.url, digest)
-        if not d.url.endswith(d.filename):
-            facts.setdefault("dist_filenames", {}).setdefault(root_url, {}).setdefault(distribution, {}).setdefault(d.url, d.filename)
-        if d.yanked != None:
-            facts.setdefault("dist_yanked", {}).setdefault(root_url, {}).setdefault(distribution, {}).setdefault(digest, d.yanked)
+    # NOTE: iterate separately instead of `sdists | whls`, because both are
+    # keyed by digest and hashless sdists and wheels would collide on `""`.
+    for dists in (value.sdists, value.whls):
+        for digest, d in dists.items():
+            entries[d.url] = _encode_dist_entry(digest, d)
 
     return value
+
+def _index_fact_key(pkg, index_url):
+    """Return the fact key for a package found on an index page.
+
+    The key is `<pkg_normalized>@<index_url>`, so that the lockfile entries
+    are grouped by the package name.
+
+    The `index_url` always ends with `/` (see `simpleapi_download`), whereas
+    the `root_url` in {obj}`_dist_fact_key` never does. This is what keeps
+    the two kinds of keys from colliding for the same package and index.
+
+    Args:
+        pkg: {type}`str` The normalized package name.
+        index_url: {type}`str` The URL of the index page, e.g.
+            `https://pypi.org/simple/`.
+
+    Returns:
+        {type}`str` The fact key, e.g. `foo@https://pypi.org/simple/`.
+    """
+    return pkg + "@" + index_url
+
+def _dist_fact_key(index_url):
+    """Return the fact key for the distributions of a package index page.
+
+    The key is `<distribution>@<root_url>`, so that the lockfile entries are
+    grouped by the package name. The `root_url` never ends with `/`, which
+    keeps it distinct from the {obj}`_index_fact_key` for the same package.
+
+    Args:
+        index_url: {type}`str` The URL of the package page in the index, e.g.
+            `https://pypi.org/simple/foo/`.
+
+    Returns:
+        {type}`str` The fact key, e.g. `foo@https://pypi.org/simple`.
+    """
+    root_url, _, distribution = index_url.rstrip("/").rpartition("/")
+    return distribution + "@" + root_url.rstrip("/")
+
+def _encode_dist_entry(digest, dist):
+    """Encode a distribution into a compact string.
+
+    The format is `<digest>[|<filename>[|<yanked>]]`. Only the digest is
+    stored if the filename can be derived from the URL and the distribution
+    is not yanked, which is the common case. Otherwise the optional fields are
+    appended in a fixed order so that reading the value back is unambiguous:
+
+    * `<digest>` - the filename is the URL basename and it is not yanked.
+    * `<digest>|<filename>` - the filename differs from the URL basename.
+    * `<digest>||<yanked>` - the filename is the URL basename and it is yanked.
+    * `<digest>|<filename>|<yanked>` - both differ.
+
+    The yank reason is the last field, so it may itself contain `|`. An empty
+    yank reason is still distinct from not being yanked.
+
+    Args:
+        digest: {type}`str` The canonical `<algo>:<digest>` value.
+        dist: {type}`struct` The distribution struct to encode.
+
+    Returns:
+        {type}`str` The compact representation of the distribution.
+    """
+    _, _, default_filename = dist.url.rpartition("/")
+    has_diff = dist.filename != default_filename
+    is_yanked = dist.yanked != None
+
+    if is_yanked:
+        return "|".join([digest, dist.filename if has_diff else "", dist.yanked])
+    elif has_diff:
+        return digest + "|" + dist.filename
+    else:
+        return digest
+
+def _decode_dist_entry(entry, url):
+    """Decode a distribution from its compact string representation.
+
+    Args:
+        entry: {type}`str` The compact representation created by
+            `_encode_dist_entry`.
+        url: {type}`str` The distribution URL, used to derive the default
+            filename.
+
+    Returns:
+        A tuple of `(filename, digest, yanked)`.
+    """
+    parts = entry.split("|", 2)
+    digest = parts[0]
+    filename = parts[1] if len(parts) > 1 else ""
+    yanked = parts[2] if len(parts) > 2 else None
+
+    if not filename:
+        _, _, filename = url.rpartition("/")
+
+    return filename, digest, yanked

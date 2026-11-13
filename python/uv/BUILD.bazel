@@ -32,11 +32,7 @@ current_toolchain(
     # Marked manual so that `bazel test //...` passes
     # even if no toolchain is registered.
     tags = ["manual"],
-    # EXPERIMENTAL: Visibility is restricted to allow for changes.
-    visibility = [
-        "//:__subpackages__",
-        "@rules_python//examples:__subpackages__",
-    ],
+    visibility = ["//visibility:public"],
 )
 
 bzl_library(

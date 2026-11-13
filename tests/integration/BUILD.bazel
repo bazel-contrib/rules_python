@@ -41,7 +41,7 @@ default_test_runner(
 
 rules_python_integration_test(
     name = "bzlmod_lockfile_test",
-    bazel_versions = ["9.1.0"],
+    bazel_versions = ["9.3.1"],
     py_main = "bzlmod_lockfile_test.py",
 )
 
@@ -49,7 +49,7 @@ test_suite(
     name = "subset",
     tags = ["manual"],
     tests = [
-        "bzlmod_lockfile_test_bazel_9.1.0",
+        "bzlmod_lockfile_test_bazel_9.3.1",
         "local_toolchains_test_bazel_self",
         "uv_lock_test_bazel_self",
         "validate_test_main_test_bazel_self",
@@ -117,7 +117,7 @@ rules_python_integration_test(
 
 rules_python_integration_test(
     name = "prebuilt_toolchain_test",
-    py_data = ["//crates/exe_zip_maker"],
+    py_data = ["//crates/shrubbery"],
     py_deps = ["//python/runfiles"],
     py_main = "prebuilt_toolchain_test.py",
     target_compatible_with = SUPPORTS_BZLMOD + NOT_WINDOWS,

@@ -169,7 +169,7 @@ def _local_runtime_repo_impl(rctx):
     # appropriate path.
     interpreter_path = info["base_executable"]
 
-    # NOTE: Keep in sync with recursive glob in define_local_runtime_toolchain_impl
+    # LINT.IfChange(include_path)
     include_path = rctx.path(info["include"])
 
     # The reported include path may not exist, and watching a non-existant
@@ -185,6 +185,7 @@ def _local_runtime_repo_impl(rctx):
     # appear as part of this repo.
     logger.debug(lambda: "Symlinking {} to include".format(include_path))
     rctx.symlink(include_path, "include")
+    # LINT.ThenChange(//python/private/local_runtime_repo_setup.bzl:includes)
 
     rctx.report_progress("Symlinking external Python shared libraries")
 

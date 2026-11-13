@@ -5,6 +5,7 @@ import json
 import re
 import subprocess
 import sys
+import urllib.parse
 
 
 def check_cli(cmd_name, install_url):
@@ -32,7 +33,8 @@ def get_build_url_from_pr(pr_number):
         checks = json.loads(res.stdout)
         for c in checks:
             link = c.get("link", "")
-            if "buildkite.com" in link:
+            parsed_link = urllib.parse.urlsplit(link)
+            if parsed_link.netloc in ("buildkite.com", "www.buildkite.com"):
                 return link.split("#")[0]
         print(f"❌ No Buildkite checks found for PR #{pr_number}.", file=sys.stderr)
         sys.exit(1)

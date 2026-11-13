@@ -13,17 +13,19 @@
 # limitations under the License.
 
 ---
+# LINT.IfChange(buildifier)
 buildifier:
-  # keep these arguments in sync with .pre-commit-config.yaml
   # Use a specific version to avoid skew issues when new versions are released.
   version: 8.2.1
   warnings: "all"
+# LINT.ThenChange(//.pre-commit-config.yaml:buildifier)
 # NOTE: Minimum supported version is 7.x
+# LINT.IfChange(minimum_supported_version)
 .minimum_supported_version: &minimum_supported_version
   # For testing minimum supported version.
-  # NOTE: Keep in sync with //:version.bzl
   bazel: 7.x
   skip_in_bazel_downstream_pipeline: "Bazel 7 required"
+# LINT.ThenChange(//version.bzl:minimum_bazel_version)
 .reusable_config: &reusable_config
   # USE_BAZEL_DIFF is disabled because target_compatible_with is used heavily,
   # but BazelCI's bazel-diff integration errors when handling them.
@@ -61,9 +63,16 @@ buildifier:
   test_flags:
     ? "--noenable_bzlmod"
     ? "--test_tag_filters=-integration-test"
+  coverage_flags:
+    ? "--noenable_bzlmod"
+    ? "--test_tag_filters=-integration-test"
 .common_workspace_flags: &common_workspace_flags
   skip_in_bazel_downstream_pipeline: "Bazel 9 doesn't support workspace"
   test_flags:
+    ? "--noenable_bzlmod"
+    ? "--enable_workspace"
+    ? "--test_tag_filters=-integration-test"
+  coverage_flags:
     ? "--noenable_bzlmod"
     ? "--enable_workspace"
     ? "--test_tag_filters=-integration-test"
@@ -110,7 +119,7 @@ buildifier:
     - //tests:version_3_14_test
     - //tests:version_default_test
 
-# Keep in sync with .bcr/gazelle/presubmit.yml
+# LINT.IfChange(gazelle_common_bcr)
 .gazelle_common_bcr: &gazelle_common_bcr
     bazel: ${{ bazel }}
     working_directory: gazelle/examples/bzlmod_build_file_generation
@@ -127,20 +136,21 @@ buildifier:
       - ":modules_map"
     test_targets:
       - "//..."
+# LINT.ThenChange(//.bcr/gazelle/presubmit.yml:tasks)
 
 
 matrix:
-  # Keep in sync with .bcr/presubmit.yml
+  # LINT.IfChange(bcr_matrix)
   platform:
     - ubuntu2204
-    - debian11
+    - debian13
     - macos_arm64
     - windows
-  # Keep in sync with .bcr/presubmit.yml
   bazel: [7.x, 8.x, 9.x]
+  # LINT.ThenChange(//.bcr/presubmit.yml:matrix)
 
 tasks:
-  # Keep in sync with .bcr/presubmit.yml
+  # LINT.IfChange(bcr_test)
   bcr_test:
     name: "BCR: Bazel {bazel}"
     platform: ${{ platform }}
@@ -154,20 +164,22 @@ tasks:
       - "//..."
     test_targets:
       - "//..."
+  # LINT.ThenChange(//.bcr/presubmit.yml:tasks)
 
-  # Keep in sync with .bcr/gazelle/presubmit.yml
+  # LINT.IfChange(gazelle_bcr)
   gazelle_bcr_ubuntu:
     <<: *gazelle_common_bcr
     name: "Gazelle: BCR, Bazel {bazel}"
     platform: ubuntu2204
-  gazelle_bcr_debian11:
+  gazelle_bcr_debian:
     <<: *gazelle_common_bcr
     name: "Gazelle: BCR, Bazel {bazel}"
-    platform: debian11
+    platform: debian13
   gazelle_bcr_macos_arm64:
     <<: *gazelle_common_bcr
     name: "Gazelle: BCR, Bazel {bazel}"
     platform: macos_arm64
+  # LINT.ThenChange(//.bcr/gazelle/presubmit.yml:matrix)
 
   gazelle_extension_min:
     <<: *common_workspace_flags_min_bazel
@@ -294,7 +306,7 @@ tasks:
   debian:
     <<: *reusable_config
     name: "Default: Debian, Bazel {bazel}"
-    platform: debian11
+    platform: debian13
     bazel: ${{ bazel }}
   macos_arm64:
     <<: *reusable_config
@@ -360,7 +372,7 @@ tasks:
     <<: *common_workspace_flags
     name: "examples/build_file_generation: Debian, workspace"
     working_directory: examples/build_file_generation
-    platform: debian11
+    platform: debian13
   integration_test_build_file_generation_macos_workspace:
     <<: *reusable_build_test_all
     <<: *common_workspace_flags
@@ -397,7 +409,7 @@ tasks:
     <<: *coverage_targets_example_multi_python
     name: "examples/multi_python_versions: Debian, workspace"
     working_directory: examples/multi_python_versions
-    platform: debian11
+    platform: debian13
   integration_test_multi_python_versions_macos_workspace:
     <<: *reusable_build_test_all
     <<: *common_workspace_flags
@@ -436,7 +448,7 @@ tasks:
     <<: *reusable_build_test_all
     name: "examples/pip_parse: Debian"
     working_directory: examples/pip_parse
-    platform: debian11
+    platform: debian13
   integration_test_pip_parse_macos:
     <<: *reusable_build_test_all
     name: "examples/pip_parse: MacOS"
@@ -466,7 +478,7 @@ tasks:
     <<: *common_workspace_flags
     name: "examples/pip_parse_vendored: Debian"
     working_directory: examples/pip_parse_vendored
-    platform: debian11
+    platform: debian13
   integration_test_pip_parse_vendored_macos:
     <<: *reusable_build_test_all
     <<: *common_workspace_flags
@@ -483,7 +495,7 @@ tasks:
   integration_test_bazelinbazel_debian:
     <<: *common_bazelinbazel_config
     name: "tests/integration bazel-in-bazel: Debian"
-    platform: debian11
+    platform: debian13
   # The bazelinbazel tests were disabled on Mac to save CI jobs slots, and
   # have bitrotted a bit. For now, just run a subset of what we're most
   # interested in.
@@ -525,7 +537,7 @@ tasks:
     <<: *reusable_build_test_all
     name: "compile_pip_requirements: Debian"
     working_directory: tests/integration/compile_pip_requirements
-    platform: debian11
+    platform: debian13
     shell_commands:
     # Make a change to the locked requirements and then assert that //:requirements.update does the
     # right thing.
@@ -604,7 +616,7 @@ tasks:
   integration_compile_pip_requirements_test_from_external_repo_debian:
     name: "compile_pip_requirements_test_from_external_repo: Debian"
     working_directory: tests/integration/compile_pip_requirements_test_from_external_repo
-    platform: debian11
+    platform: debian13
     shell_commands:
     # Assert that @compile_pip_requirements//:requirements_test does the right thing.
     - "bazel test @compile_pip_requirements//..."

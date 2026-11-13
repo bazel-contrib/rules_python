@@ -2,3 +2,4 @@
 common:fast-tests --build_tests_only=true
 common:fast-tests --build_tag_filters=-large,-enormous,-integration-test
 common:fast-tests --test_tag_filters=-large,-enormous,-integration-test
+import %workspace%/../downloader_cfg.bazelrc

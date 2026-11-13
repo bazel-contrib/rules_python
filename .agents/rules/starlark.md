@@ -42,6 +42,17 @@ globs: "*.bzl,BUILD,BUILD.bazel,*.bazel"
   `allow_single_file = True`, when the attribute may accept `py_binary` (whose
   `DefaultInfo.files` has multiple files).
 
+## Forwarding Executables in `executable = True` Rules
+* When an `executable = True` rule forwards an underlying executable target
+  (from an attribute or resolved toolchain):
+  * Declare the output preserving `target_executable.extension` (e.g., `.exe`
+    on Windows) and materialize it with `ctx.actions.symlink(output = out,
+    target_file = target_executable, is_executable = True)`.
+  * Set `files = depset([out])`, and merge
+    `ctx.runfiles(files = [target_executable])` with the underlying target's
+    `default_runfiles` in `DefaultInfo(files = depset([out]), executable = out,
+    runfiles = ...)`.
+
 ## native.test_suite API
 * Don't forward target `tags` to `native.test_suite`; tags on test suites filter
   tests instead of setting target execution behavior.
@@ -89,7 +100,12 @@ globs: "*.bzl,BUILD,BUILD.bazel,*.bazel"
   `$(execpaths ...)`.
 * Do not define overlapping `filegroup` targets or `exports_files` globs in the
   same `BUILD` package; reconcile or compose them.
-* Move complex loops and branching out of `BUILD` files into `.bzl` macros.
+* Move loops and conditional target definitions out of `BUILD` files into `.bzl`
+  helper macros using `if`/`else` statements. Never instantiate targets via
+  top-level `rule_a(...) if cond else rule_b(...)` ternaries (or suppress
+  `no-effect` / `duplicated-name` buildifier warnings in `BUILD` files).
+  * **Why**: Keeping `BUILD` files declarative ensures they remain processable
+    by tools like `buildifier` and `buildozer`.
 * When exposing data files across packages, define a named `filegroup` in the
   owning package rather than referencing raw source files in caller `data`.
 
@@ -118,7 +134,10 @@ globs: "*.bzl,BUILD,BUILD.bazel,*.bazel"
   `@bazel_skylib//lib:dicts.bzl` when merging dictionaries.
 * **Type Checks (`@bazel_skylib//lib:types.bzl`)**: Prefer `types.is_*` helpers
   (e.g., `types.is_dict(x)`, `types.is_list(x)`, `types.is_string(x)`) from
-  `@bazel_skylib//lib:types.bzl` instead of `type(x)` comparisons.
+  `@bazel_skylib//lib:types.bzl` instead of `type(x)` comparisons. Do not use
+  runtime type checks to support union parameter or field types (`str` vs.
+  `struct`, `str` vs. `list[str]`); enforce a single canonical type across all
+  callers and test fixtures.
 * **Non-Info Provider Naming**: Add `# buildifier: disable=name-conventions`
   above `provider()` declarations that do not end in `Info` (e.g. `*Fileset`).
 * **`config_setting` Naming**: Prefix `config_setting` names with `is_` (e.g.
@@ -130,6 +149,8 @@ globs: "*.bzl,BUILD,BUILD.bazel,*.bazel"
 * **Concise API Docstrings**: Keep docstrings brief: state purpose and
   arguments, link to shared symbols (`{obj}`) or guides (`{ref}`) instead of
   repeating rules, and put extended examples in `docs/`.
+* When returning a `struct(...)` of fields, add a comment above each field
+  describing its value.
 * **Workaround Comments**: Comment non-obvious workarounds with the intent, why
   the direct approach fails, and why the workaround works.
 * **No Bazel Copyright Headers**: Do not add Bazel copyright headers to new or

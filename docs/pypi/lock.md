@@ -4,8 +4,10 @@
 # Lock
 
 :::{note}
-`rules_python` supports `requirements.txt` and `uv.lock` (bzlmod only)
-formats.
+`rules_python` supports `requirements.txt` and `uv.lock` formats. Generating
+`uv.lock` with {obj}`lock` and consuming it to install packages via
+{attr}`pip.parse.uv_lock` or {attr}`pip_parse.uv_lock` is supported under
+both `bzlmod` and `WORKSPACE`.
 
 #{gh-issue}`2787` tracks `pylock.toml` support.
 :::
@@ -70,8 +72,6 @@ compile_pip_requirements(
 ### uv pip compile
 
 We also have a setup for the `uv pip compile` way of generating lock files.
-This is well tested with the public PyPI index, but you may hit some rough
-edges with private mirrors.
 
 #### Setup
 
@@ -94,6 +94,9 @@ uv.configure(version = "0.13.5")
 
 Without `version`, the default version specified by `rules_python` is used.
 See {obj}`uv.configure` for using a mirror, explicit URLs or extra platforms.
+To run the configured `uv` binary directly, run
+`bazel run @rules_python//python/uv/bin:uv -- <args>` (or add
+`use_repo(uv, "uv")` and run `bazel run @uv//:uv -- <args>`).
 
 (uv-workspace-setup)=
 ##### WORKSPACE
@@ -231,10 +234,14 @@ lock(
    `diff_test` from `bazel_skylib`.
 :::
 
-## uv.lock (bzlmod only)
+## uv.lock
 
 The {obj}`lock` rule also supports generating cross-platform `uv.lock` files
-using `uv lock` when {arg}`lock.out` ends with `.lock` (such as `uv.lock`).
+using `uv lock` when {arg}`lock.out` ends with `.lock` (such as `uv.lock`),
+under both `bzlmod` and `WORKSPACE` (see the `uv` toolchain setup in the
+`uv pip compile` section above). Because `uv.lock` already records distribution
+URLs and hashes across platforms, {obj}`pip.parse` does not need to query the
+PyPI Simple API or store distribution hashes in `MODULE.bazel.lock`.
 
 ### Example usage
 
@@ -262,6 +269,30 @@ pip.parse(
 )
 use_repo(pip, "my_deps")
 ```
+
+Under `WORKSPACE`, pass it to {obj}`pip_parse` via {attr}`pip_parse.uv_lock`
+instead:
+
+```starlark
+load("@rules_python//python:pip.bzl", "pip_parse")
+
+pip_parse(
+    name = "my_deps",
+    python_interpreter_target = "@python_3_13_host//:python",
+    uv_lock = "//:uv.lock",
+)
+
+load("@my_deps//:requirements.bzl", "install_deps")
+
+install_deps()
+```
+
+The distributions that are the same on all platforms are downloaded with the
+Bazel downloader using the URLs and hashes from `uv.lock`, and the generated
+`requirements.bzl` records them so that it can be vendored. For the
+distributions that differ between platforms, `pip` selects the distribution for
+the host platform from the ones locked in `uv.lock`. See the
+`examples/pip_parse_vendored` example.
 
 `[tool.uv]` settings auto-detection and the {arg}`lock.project` attribute work
 the same way as described in the `uv pip compile` section above.

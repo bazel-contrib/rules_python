@@ -206,6 +206,10 @@ def _python_repository_impl(rctx):
         for patch in patches:
             rctx.patch(patch, strip = rctx.attr.patch_strip)
 
+    # Debug (`Py_DEBUG`) builds add a "d" ABI flag to the include dir and
+    # libpython names, but not to the stdlib dir.
+    debug = rctx.path("include/python{}d".format(python_short_version)).exists
+
     # Write distutils.cfg to the Python installation.
     if "windows" in platform:
         distutils_path = "Lib/distutils/distutils.cfg"
@@ -223,7 +227,10 @@ def _python_repository_impl(rctx):
         # dyld lookup errors. To fix, set the full path to the dylib as
         # it appears in the Bazel workspace as its LC_ID_DYLIB using
         # the `install_name_tool` bundled with macOS.
-        dylib = "libpython{}.dylib".format(python_short_version)
+        dylib = "libpython{}{}.dylib".format(
+            python_short_version,
+            "d" if debug else "",
+        )
         repo_utils.execute_checked(
             rctx,
             op = "python_repository.FixUpDyldIdPath",
@@ -300,6 +307,7 @@ define_hermetic_runtime_toolchain_impl(
     extra_files_glob_include = {extra_files_glob_include},
     extra_files_glob_exclude = {extra_files_glob_exclude},
     interpreter_has_static_libpython = {interpreter_has_static_libpython},
+    debug = {debug},
     python_version = {python_version},
     python_bin = {python_bin},
     coverage_tool = {coverage_tool},
@@ -308,6 +316,7 @@ define_hermetic_runtime_toolchain_impl(
         extra_files_glob_exclude = render.list(glob_exclude),
         extra_files_glob_include = render.list(glob_include),
         interpreter_has_static_libpython = str(interpreter_has_static_libpython),
+        debug = str(debug),
         python_bin = render.str(python_bin),
         python_version = render.str(rctx.attr.python_version),
         coverage_tool = render.str(coverage_tool),
@@ -322,6 +331,7 @@ define_hermetic_runtime_toolchain_impl(
         "coverage_tool": rctx.attr.coverage_tool,
         "distutils": rctx.attr.distutils,
         "distutils_content": rctx.attr.distutils_content,
+        "libpython": rctx.attr.libpython,
         "name": rctx.attr.name,
         "netrc": rctx.attr.netrc,
         "patch_strip": rctx.attr.patch_strip,

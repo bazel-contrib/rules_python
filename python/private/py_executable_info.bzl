@@ -127,7 +127,7 @@ Runfiles that are specific to the application within the venv: its `site-package
 files and the symlinks to the application's dependencies. A subset of
 {obj}`app_runfiles`. May be None if venv mode is not enabled.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.5.0
 :::
 """,
     },

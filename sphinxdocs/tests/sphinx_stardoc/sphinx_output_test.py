@@ -122,6 +122,42 @@ class SphinxOutputTest(parameterized.TestCase):
     def test_xrefs(self, text, href):
         self.assert_xref("xrefs", text=text, href=href)
 
+    def _find_flag_body(self, flag_id):
+        doc = self._doc_element("target")
+        for dl in doc.findall(".//dl[@class='bzl flag']"):
+            if dl.find(f"dt[@id='{flag_id}']") is not None:
+                return dl.find("dd")
+        self.fail(f"No flag found with id={flag_id!r}")
+
+    def _assert_flag_fields(self, flag_id, expected_fields, expected_paragraphs):
+        dd = self._find_flag_body(flag_id)
+        self.assertEqual(["dl", "p"], [child.tag for child in dd])
+        field_list = dd.find("dl")
+        self.assertIsNotNone(field_list)
+        dts = ["".join(dt.itertext()) for dt in field_list.findall("dt")]
+        dds = ["".join(d.itertext()).strip() for d in field_list.findall("dd")]
+        self.assertEqual(expected_fields, list(zip(dts, dds, strict=True)))
+        paragraphs = ["".join(p.itertext()).strip() for p in dd.findall("p")]
+        self.assertEqual(expected_paragraphs, paragraphs)
+
+    def test_flag_without_scope(self):
+        dd = self._find_flag_body("myflag")
+        self.assertIsNone(dd.find("dl"))
+
+    def test_flag_with_scope(self):
+        self._assert_flag_fields(
+            "scopedflag",
+            [("Scope:", "universal")],
+            ["Some doc about scopedflag"],
+        )
+
+    def test_flag_with_scope_and_existing_field_list(self):
+        self._assert_flag_fields(
+            "scopedflag_with_fields",
+            [("Scope:", "project"), ("Default:", "True")],
+            ["Some doc about scopedflag_with_fields"],
+        )
+
 
 if __name__ == "__main__":
     absltest.main()

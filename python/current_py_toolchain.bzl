@@ -70,7 +70,7 @@ current_py_toolchain = rule(
     respectively.
     :::
 
-    :::{versionchanged} VERSION_NEXT_FEATURE
+    :::{versionchanged} 2.5.0
     Exposes make variables from the underlying toolchain's `template_vars`
     (see {rule}`py_runtime_pair`).
     :::

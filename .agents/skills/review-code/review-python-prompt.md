@@ -32,5 +32,15 @@ project's Python conventions:
    probing for direct `python3` execution outside Bazel, flag it as `SHOULD-FIX`
    if unjustified, or ensure the `Justification & Exception Auditor` evaluates
    any stated justification for human sign-off.
+10. Security & Sensitive Data:
+    - Flag substring domain checks on URLs (`"domain.com" in url`); require
+      `urllib.parse.urlsplit(url)` with exact `netloc` checks.
+    - Flag plaintext logging of secrets and sensitive variable names
+      (`password`, `secret`, `api_key`), even in tests. Require non-sensitive
+      names (`mock_token`) and explicit CodeQL annotations
+      (`# codeql[py/clear-text-logging-sensitive-data]`) for intentional mock
+      outputs.
+11. Data Classes: Verify `@dataclasses.dataclass` definitions include comments
+    above each field describing its value.
 
 @.agents/skills/review-code/review-report-format.md

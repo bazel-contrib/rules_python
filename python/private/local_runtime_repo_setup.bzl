@@ -99,6 +99,7 @@ def define_local_runtime_toolchain_impl(
             system_provided = True,
         )
 
+    # LINT.IfChange(includes)
     native.filegroup(
         name = "includes",
         srcs = native.glob(
@@ -107,6 +108,7 @@ def define_local_runtime_toolchain_impl(
             allow_empty = True,  # A Python install may not have C headers
         ),
     )
+    # LINT.ThenChange(//python/private/local_runtime_repo.bzl:include_path)
 
     # header libraries.
     cc_library(

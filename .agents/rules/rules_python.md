@@ -24,8 +24,14 @@ description: rules_python-specific Bzlmod, PyPI, and rule usage invariants
 
 ## Internal Labels & Helpers
 * **Toolchain Type Labels**: Define toolchain type constants in
-  `//python/private/toolchain_types:toolchain_types.bzl` and targets in
+  `//python/private:toolchain_types.bzl` and internal toolchain type targets in
   `//python/private/toolchain_types:BUILD.bazel`.
+* **`@rules_python_internal` Cycle Avoidance**: Never load
+  `@rules_python_internal//...` in `.bzl` files transitively loaded by
+  `//python/extensions:config.bzl` (such as
+  `//python/private:toolchain_types.bzl` or
+  `//python/private/toolchains:repo.bzl`), because `config.bzl` generates
+  `@rules_python_internal` and will trigger a Bzlmod Skyframe cycle.
 * **`render` Helpers (`//python/private:text_util.bzl`)**: Use `render.*`
   (`render.string`, `render.toolchain`, `render.call`, `render.list`) instead of
   `repr()` for Starlark calls; use `json.encode_indent()` for data constants.
@@ -33,9 +39,28 @@ description: rules_python-specific Bzlmod, PyPI, and rule usage invariants
   `bzl_library` `deps` for files loading `@bazel_tools//...`.
 
 ## WORKSPACE & Bzlmod Parity
-* Match Bzlmod extension defaults, tag schemas (e.g., `configure` list of
-  dicts), and single-hub multi-version structure in `WORKSPACE` macros. Share
-  configuration and hub logic in common private `.bzl` helpers.
+* **Extend Existing Rules Over Adding Parallel Rules**: When bringing a Bzlmod
+  tag attribute (such as `pip.parse(uv_lock = ...)`) to an existing `WORKSPACE`
+  rule or macro (`pip_parse` / `pip_repository`), add the attribute to the
+  existing rule and reuse its pipeline (`parse_requirements` ->
+  `requirements.bzl.tmpl.workspace` -> `whl_library`) instead of creating a
+  separate rule or duplicating Bzlmod's hub/spoke repo graph.
+* **Extract Shared Pure Helpers from Bzlmod Extensions**: When `WORKSPACE` code
+  needs pure functions or data defined in a Bzlmod extension file (such as
+  `default_platforms()` in `extension.bzl`), move them into a standalone
+  Bzlmod-agnostic `.bzl` file instead of duplicating definitions.
+* **Preserve Vendored `requirements.bzl` Portability in `WORKSPACE`**:
+  `pip_repository` outputs (`requirements.bzl`) may be vendored and evaluated
+  on any host platform. Only emit direct Bazel downloader attributes (`urls`,
+  `integrity`, `filename`) into `requirements.bzl` when a package resolves to
+  the same distribution across all target platforms
+  (`len({src.url: None for src in whl.srcs}) == 1`); otherwise append
+  `--hash=<digest>` flags to the requirement line so `pip` selects the host
+  wheel while enforcing lockfile hashes.
+* For new `WORKSPACE` macros without an existing rule counterpart, match Bzlmod
+  extension defaults, tag schemas (e.g., `configure` list of dicts), and
+  single-hub multi-version structure, sharing configuration and hub logic in
+  common private `.bzl` helpers.
 * When `WORKSPACE` repos depend on downloaded manifests, split setup into a
   manifest repo rule (writes unfiltered `DIST_MANIFESTS` and a bound
   registration macro to `dist_manifest.bzl`) and a registration macro (filters

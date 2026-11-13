@@ -1,3 +1,4 @@
 common --lockfile_mode=off
 test --test_output=errors
 build --enable_runfiles
+import %workspace%/../downloader_cfg.bazelrc

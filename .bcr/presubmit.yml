@@ -14,9 +14,12 @@
 
 bcr_test_module:
   module_path: "examples/bzlmod"
+  # LINT.IfChange(matrix)
   matrix:
-    platform: ["debian11", "macos", "ubuntu2204", "windows"]
+    platform: ["debian13", "macos", "ubuntu2204", "windows"]
     bazel: [7.x, 8.x, 9.x]
+  # LINT.ThenChange(//.bazelci/presubmit.yml:bcr_matrix)
+  # LINT.IfChange(tasks)
   tasks:
     run_tests:
       name: "Run test module"
@@ -31,3 +34,4 @@ bcr_test_module:
         - "//..."
       test_targets:
         - "//..."
+  # LINT.ThenChange(//.bazelci/presubmit.yml:bcr_test)

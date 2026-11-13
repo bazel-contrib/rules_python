@@ -354,8 +354,12 @@ bzl_library(
     name = "coverage_deps",
     srcs = ["coverage_deps.bzl"],
     deps = [
+        ":repo_utils",
         ":version_label",
+        "//python:versions",
         "//python/private:bazel_tools",
+        "//python/private/pypi:pep508_evaluate",
+        "//python/private/pypi:select_whl",
     ],
 )
 
@@ -563,6 +567,7 @@ bzl_library(
         ":toolchain_types",
         ":transition_labels",
         ":venv_runfiles",
+        "//python/private/toolchains:shrubbery_toolchain",
         "@bazel_skylib//lib:dicts",
         "@bazel_skylib//lib:paths",
         "@bazel_skylib//lib:structs",
@@ -795,6 +800,12 @@ bzl_library(
 )
 
 bzl_library(
+    name = "python_toolchain_type",
+    srcs = ["python_toolchain_type.bzl"],
+    deps = ["@rules_python_internal//:rules_python_config"],
+)
+
+bzl_library(
     name = "pythons_hub",
     srcs = ["pythons_hub.bzl"],
     deps = [
@@ -902,10 +913,7 @@ bzl_library(
 bzl_library(
     name = "util",
     srcs = ["util.bzl"],
-    deps = [
-        ":py_internal",
-        "@bazel_skylib//lib:types",
-    ],
+    deps = [":py_internal"],
 )
 
 bzl_library(
@@ -938,6 +946,11 @@ bzl_library(
     name = "sentinel_impl",
     srcs = ["sentinel_impl.bzl"],
     deps = [":py_info"],
+)
+
+bzl_library(
+    name = "artifacts_manifest",
+    srcs = ["artifacts_manifest.bzl"],
 )
 
 bzl_library(

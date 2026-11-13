@@ -4,21 +4,15 @@
 #   see dev/release_artifacts/build.sh. Linux x86_64 runners cross-compile the
 #   files for other Linux CPUs. macOS and Windows files need those OSes' SDKs,
 #   so they're built on those OSes.
-# - `SHA256SUMS` and `artifacts_manifest.json` for the built platform binaries.
+# - `SHA256SUMS`, `artifacts_manifest.json`, and `artifacts_manifest.bzl` for
+#   the built platform binaries.
 # - The release source archive (`rules_python-<ref>.tar.gz`) and
 #   `release_notes.txt`.
 # - The `bazel_runfiles` wheel (`//python/runfiles:wheel.dist`).
 name: "Release: Build Artifacts"
 
 on:
-  pull_request:
   workflow_call:
-    inputs:
-      ref:
-        description: "The git ref (e.g. release tag) to build"
-        required: true
-        type: string
-  workflow_dispatch:
     inputs:
       ref:
         description: "The git ref (e.g. release tag) to build. Defaults to the selected ref."
@@ -60,7 +54,7 @@ jobs:
           - triple: i686-pc-windows-msvc
             runner: windows-2022
           - triple: linux
-            runner: ubuntu-24.04
+            runner: ubuntu-latest
     env:
       REF: ${{ inputs.ref || github.sha }}
       TRIPLE: ${{ matrix.triple }}
@@ -107,7 +101,7 @@ jobs:
 
   build_wheel:
     name: Build wheel
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     timeout-minutes: 30
@@ -131,7 +125,7 @@ jobs:
         env:
           INPUT_REF: ${{ inputs.ref }}
         # ${INPUT_REF:+...} expands to the --stamp and --embed_label flags only
-        # when INPUT_REF is non-empty (release builds, not pull_request builds).
+        # when INPUT_REF is non-empty (release builds, not CI builds).
         run: >-
           bazel build
           ${INPUT_REF:+--stamp "--embed_label=$INPUT_REF"}
@@ -152,7 +146,7 @@ jobs:
   package:
     name: Package release
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     timeout-minutes: 15
@@ -187,7 +181,9 @@ jobs:
           hashFiles('release-artifacts/*') != ''
         run: >-
           dev/release_artifacts/generate_artifacts_manifest.py
-          "$REF" release-artifacts artifacts_manifest.json
+          --bzl-output=artifacts_manifest.bzl
+          --json-output=artifacts_manifest.json
+          -- "$REF" release-artifacts
 
       - name: Upload artifacts manifest
         if: hashFiles('artifacts_manifest.json') != ''

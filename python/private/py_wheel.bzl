@@ -43,7 +43,7 @@ Python ABI tag. 'none' for pure-Python wheels.
 Supports make variables, e.g. `abi = "$(PY_WHEEL_ABI_TAG)"`. See
 {rule}`py_runtime_pair` for variables provided by the Python toolchain.
 
-:::{versionchanged} VERSION_NEXT_FEATURE
+:::{versionchanged} 2.5.0
 Python toolchain make variables (such as `$(PY_WHEEL_ABI_TAG)`) are available by
 default.
 :::
@@ -89,7 +89,7 @@ platform = select({
 
 Supports make variables.
 
-:::{versionchanged} VERSION_NEXT_FEATURE
+:::{versionchanged} 2.5.0
 Supports make variables.
 :::
 """,
@@ -102,7 +102,7 @@ Supported Python version(s), eg `py3`, `cp35.cp36`, etc.
 Supports make variables, e.g. `python_tag = "$(PY_WHEEL_PYTHON_TAG)"`. See
 {rule}`py_runtime_pair` for variables provided by the Python toolchain.
 
-:::{versionchanged} VERSION_NEXT_FEATURE
+:::{versionchanged} 2.5.0
 Python toolchain make variables (such as `$(PY_WHEEL_PYTHON_TAG)`) are available
 by default.
 :::
@@ -290,7 +290,7 @@ Python versions required by this distribution, e.g. '>=3.5,<3.7'.
 Supports make variables, e.g. `python_requires = "==$(PY_MAJOR_DOT_MINOR).*"`.
 See {rule}`py_runtime_pair` for variables provided by the Python toolchain.
 
-:::{versionchanged} VERSION_NEXT_FEATURE
+:::{versionchanged} 2.5.0
 Supports make variables.
 :::
 """,

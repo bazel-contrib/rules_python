@@ -16,7 +16,8 @@
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "subjects")
-load("//python/private/pypi:extension.bzl", "build_config", "default_platforms", "parse_modules")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:default_platforms.bzl", "default_platforms")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:extension.bzl", "build_config", "parse_modules")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:platform.bzl", _plat = "platform")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:whl_config_setting.bzl", "whl_config_setting")  # buildifier: disable=bzl-visibility
 load("//tests/support/mocks:mocks.bzl", "mocks")
@@ -46,6 +47,7 @@ def _default(
         config_settings = None,
         default_hub = "",
         env = None,
+        envsubst = None,
         index_url = None,
         marker = None,
         netrc = None,
@@ -61,6 +63,7 @@ def _default(
         config_settings = config_settings,
         default_hub = default_hub,
         env = env or {},
+        envsubst = envsubst or [],
         index_url = index_url or "",
         marker = marker or "",
         netrc = netrc,
@@ -724,10 +727,57 @@ def _test_default_index_setting(env):
             # `my_module` is setting the default.
             want_index_url = "https://pypi.internal.org/simple",
         ),
+        struct(
+            modules = [
+                _mod(
+                    name = "my_module",
+                    default = [
+                        _default(
+                            index_url = "${RULES_PYTHON_PIP_INDEX_URL}",
+                            envsubst = ["RULES_PYTHON_PIP_INDEX_URL"],
+                        ),
+                    ],
+                    parse = [
+                        _parse(
+                            hub_name = "pypi_a",
+                            python_version = "3.15",
+                            requirements_lock = "requirements.txt",
+                        ),
+                    ],
+                ),
+            ],
+            environ = {"RULES_PYTHON_PIP_INDEX_URL": "https://pypi.internal.org/simple"},
+            want_index_url = "https://pypi.internal.org/simple",
+        ),
+        struct(
+            modules = [
+                _mod(
+                    name = "my_module",
+                    default = [
+                        _default(
+                            index_url = "${RULES_PYTHON_PIP_INDEX_URL}",
+                            envsubst = ["RULES_PYTHON_PIP_INDEX_URL"],
+                        ),
+                    ],
+                    parse = [
+                        _parse(
+                            hub_name = "pypi_a",
+                            python_version = "3.15",
+                            requirements_lock = "requirements_with_index_url.txt",
+                        ),
+                    ],
+                ),
+            ],
+            environ = {"RULES_PYTHON_PIP_INDEX_URL": "https://pypi.internal.org/simple"},
+            # We want the file to have lower precedence than our default if the
+            # `my_module` is setting the default.
+            want_index_url = "https://pypi.internal.org/simple",
+        ),
     ]:
         pypi = _parse_modules(
             env,
             module_ctx = _pypi_mock_mctx(
+                environ = getattr(test, "environ", {}),
                 os_name = "linux",
                 arch_name = "x86_64",
                 mock_files = {

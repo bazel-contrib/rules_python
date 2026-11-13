@@ -55,14 +55,18 @@ execution logs, or check checklists in the PR description.
 
 * **Run local checks before pushing:** Run `bazel test --config=fast-tests`
   and `buildifier` locally before opening or updating a PR.
-* **Post AI disclosure as a PR comment (not in the PR description):** When an
-  AI agent creates or interacts on a PR, post a single comment after the PR is
-  created so maintainers understand who/what they are interacting with. State
-  the level of human oversight (e.g., `human-reviewed`, `semi-autonomous`, or
-  `autonomous`) and explain how comments on the PR will be handled (e.g.,
-  whether an agent automatically monitors and replies to review comments,
-  whether a human reviews and approves agent responses/changes before posting,
-  or whether the human author handles comments directly).
+* **Post AI disclosure when creating a PR or posting comments:**
+  * When initially creating a new PR, post a single comment right after
+    creation so maintainers understand who/what they are interacting with:
+    explain how comments on the PR will be handled (e.g., whether an agent
+    automatically monitors and replies to review comments, whether a human
+    reviews and approves agent responses/changes before posting, or whether the
+    human author handles comments directly). Do not post a standalone AI
+    disclosure comment merely for pushing commits to an existing PR (such as
+    updating a Dependabot PR).
+  * When posting a PR comment or review reply, end the comment with an
+    italicized line identifying it as an agent-generated comment and stating
+    whether it was automatically generated or reviewed/approved by the user.
 * **No CI status spam or commit narration:** Do not post comments for every CI
   run, and do not narrate build IDs, commit SHAs, patch line/file counts, or
   trivial diff details (e.g., stating a push is "comment-only"). GitHub
@@ -243,10 +247,10 @@ When modifying locked/resolved requirements files:
 
 When updating the minimum Python version for dev/docs tooling (e.g. following
 Dependabot alerts):
-  * Update `python_version` in both `lock(name = "requirements", ...)` and
-    `lock(name = "uv_lock", ...)` within `dev/BUILD.bazel`.
-  * Regenerate lockfiles by running:
-    `bazel run //dev:requirements.update && bazel run //dev:uv_lock.update`
+  * Update `python_version` in `lock(name = "uv_lock", ...)` within
+    `dev/BUILD.bazel`.
+  * Regenerate the lockfile by running:
+    `bazel run //dev:uv_lock.update`
   * Verify docs build via `bazel build //docs:docs`.
 
 ## rules_python idiosyncrasies

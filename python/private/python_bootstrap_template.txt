@@ -331,11 +331,13 @@ def extract_zip(zip_path, dest_dir):
 
 # Create the runfiles tree by extracting the zip file
 def create_runfiles_root():
+  # LINT.IfChange(runfiles_root_structure)
   temp_dir = tempfile.mkdtemp('', 'Bazel.runfiles_')
   extract_zip(os.path.dirname(__file__), temp_dir)
   # IMPORTANT: Later code does `rm -fr` on dirname(runfiles_root) -- it's
   # important that deletion code be in sync with this directory structure
   return join(temp_dir, 'runfiles')
+  # LINT.ThenChange(:runfiles_root_cleanup)
 
 def _symlink_tree(link_from, link_to):
     # Ensure the source is an absolute path to simplify symlinking
@@ -659,11 +661,13 @@ def main():
   delete_dirs = []
 
   if IS_ZIPFILE:
+    # LINT.IfChange(runfiles_root_cleanup)
     runfiles_root = create_runfiles_root()
     # NOTE: dirname() is called because create_runfiles_root() creates a
     # sub-directory within a temporary directory, and we want to remove the
     # whole temporary directory.
     delete_dirs.append(dirname(runfiles_root))
+    # LINT.ThenChange(:runfiles_root_structure)
   else:
     runfiles_root = find_runfiles_root(main_rel_path)
 

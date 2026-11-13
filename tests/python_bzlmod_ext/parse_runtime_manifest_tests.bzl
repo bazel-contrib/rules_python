@@ -181,21 +181,6 @@ ce18fdfd47c66830a40ea9b9e314a14b1636bbfd684501bc5ca1fc6d55a7933f  https://exampl
     })
 
     env.expect.that_dict(structs.to_dict(parsed[2])).contains_exactly({
-        "arch": "x86_64",
-        "archive_flavor": "full",
-        "build_flavor": "lto",
-        "build_version": "20260414",
-        "freethreaded": False,
-        "libc": "musl",
-        "location": "https://example.com/cpython-3.10.20+20260414-x86_64_v2-unknown-linux-musl-lto-full.tar.zst",
-        "microarch": "v2",
-        "os": "linux",
-        "python_version": "3.10.20",
-        "sha256": "ce18fdfd47c66830a40ea9b9e314a14b1636bbfd684501bc5ca1fc6d55a7933f",
-        "vendor": "unknown",
-    })
-
-    env.expect.that_dict(structs.to_dict(parsed[3])).contains_exactly({
         "arch": "aarch64",
         "archive_flavor": "full",
         "build_flavor": "pgo+lto",
@@ -210,7 +195,52 @@ ce18fdfd47c66830a40ea9b9e314a14b1636bbfd684501bc5ca1fc6d55a7933f  https://exampl
         "vendor": "apple",
     })
 
+    env.expect.that_dict(structs.to_dict(parsed[3])).contains_exactly({
+        "arch": "x86_64",
+        "archive_flavor": "full",
+        "build_flavor": "lto",
+        "build_version": "20260414",
+        "freethreaded": False,
+        "libc": "musl",
+        "location": "https://example.com/cpython-3.10.20+20260414-x86_64_v2-unknown-linux-musl-lto-full.tar.zst",
+        "microarch": "v2",
+        "os": "linux",
+        "python_version": "3.10.20",
+        "sha256": "ce18fdfd47c66830a40ea9b9e314a14b1636bbfd684501bc5ca1fc6d55a7933f",
+        "vendor": "unknown",
+    })
+
 _tests.append(_test_parse_runtime_manifest)
+
+def _test_parse_runtime_manifest_ranks_debug_last(name):
+    rt_util.helper_target(
+        native.filegroup,
+        name = name + "_subject",
+    )
+    analysis_test(
+        name = name,
+        target = name + "_subject",
+        impl = _test_parse_runtime_manifest_ranks_debug_last_impl,
+    )
+
+def _test_parse_runtime_manifest_ranks_debug_last_impl(env, target):
+    _ = target  # @unused
+    content = """
+1111111111111111111111111111111111111111111111111111111111111111  cpython-3.11.18+20261026-ppc64le-unknown-linux-gnu-debug-full.tar.zst
+2222222222222222222222222222222222222222222222222222222222222222  cpython-3.14.10+20261026-armv7-unknown-linux-gnueabi-freethreaded+debug-full.tar.zst
+3333333333333333333333333333333333333333333333333333333333333333  cpython-3.14.10+20261026-armv7-unknown-linux-gnueabi-freethreaded+pgo+lto-full.tar.zst
+4444444444444444444444444444444444444444444444444444444444444444  cpython-3.11.18+20261026-ppc64le-unknown-linux-gnu-pgo+lto-full.tar.zst
+"""
+    parsed = parse_runtime_manifest(content)
+    got_locations = [entry.location for entry in parsed]
+    env.expect.that_collection(got_locations).contains_exactly([
+        "cpython-3.14.10+20261026-armv7-unknown-linux-gnueabi-freethreaded+pgo+lto-full.tar.zst",
+        "cpython-3.11.18+20261026-ppc64le-unknown-linux-gnu-pgo+lto-full.tar.zst",
+        "cpython-3.11.18+20261026-ppc64le-unknown-linux-gnu-debug-full.tar.zst",
+        "cpython-3.14.10+20261026-armv7-unknown-linux-gnueabi-freethreaded+debug-full.tar.zst",
+    ]).in_order()
+
+_tests.append(_test_parse_runtime_manifest_ranks_debug_last)
 
 def parse_runtime_manifest_test_suite(name):
     """Defines the test suite for manifest parsing.

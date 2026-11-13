@@ -19,7 +19,7 @@ def pytest_test(
         **kwargs):
     """Run pytest tests.
 
-    :::{versionadded} VERSION_NEXT_FEATURE
+    :::{versionadded} 2.5.0
     :::
 
     Args:

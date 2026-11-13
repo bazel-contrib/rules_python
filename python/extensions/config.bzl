@@ -88,13 +88,14 @@ def _config_impl(module_ctx):
             if mod.is_root:
                 explicit_init_py_modules[""] = str(tag.default)
 
-    configure_tool_toolchains(module_ctx)
+    configure_tool_toolchains()
     internal_config_repo(
         name = "rules_python_internal",
         transition_setting_generators = transition_setting_generators,
         transition_settings = transition_settings,
         explicit_init_py_modules = explicit_init_py_modules,
         tool_deps_dev_only = tool_deps_dev_only,
+        toolchain_type_in_rules_python = bazel_features.rules._toolchain_type_in_rules_python,
     )
 
     pypi_deps()

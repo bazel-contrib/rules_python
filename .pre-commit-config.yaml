@@ -20,17 +20,31 @@ repos:
     rev: v5.0.0  # Use the ref you want to point at
     hooks:
       - id: check-merge-conflict
+  - repo: https://github.com/google/keep-sorted
+    # LINT.IfChange(keep_sorted)
+    rev: v0.10.0
+    # LINT.ThenChange(//.github/workflows/ci.yaml:keep_sorted)
+    hooks:
+      - id: keep-sorted
+  - repo: https://github.com/simonepri/ifttt-lint
+    # LINT.IfChange(ifttt_lint)
+    rev: v0.11.3
+    # LINT.ThenChange(//.github/workflows/ci.yaml:ifttt_lint)
+    hooks:
+      - id: ifttt-lint
+      - id: ifttt-lint-diff
+  # LINT.IfChange(buildifier)
   - repo: https://github.com/keith/pre-commit-buildifier
     rev: 8.2.1
     hooks:
       - id: buildifier
         args: &args
-          # Keep this argument in sync with .bazelci/presubmit.yaml
           - --warnings=all
       - id: buildifier-lint
         args: *args
+  # LINT.ThenChange(//.bazelci/presubmit.yml:buildifier)
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    # Keep in sync with .github/workflows/ruff.yaml
+    # LINT.IfChange(ruff)
     rev: v0.15.14
     hooks:
       - id: ruff-check
@@ -38,6 +52,7 @@ repos:
         exclude: testdata
       - id: ruff-format
         exclude: testdata
+    # LINT.ThenChange(//.github/workflows/ci.yaml:ruff)
   - repo: local
     hooks:
       - id: update-deleted-packages
@@ -57,7 +72,7 @@ repos:
         name: Sync downloader configs
         language: system
         entry: ./dev/sync_downloader_configs.py
-        files: downloader_config\.cfg$
+        files: (downloader_config\.cfg|downloader_cfg\.bazelrc)$
         pass_filenames: false
       - id: gazelle
         name: Run Gazelle

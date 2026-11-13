@@ -50,7 +50,7 @@ class ExampleTest(unittest.TestCase):
             "",
             proc.stderr.decode("utf-8").strip(),
         )
-        self.assertRegex(proc.stdout.decode("utf-8").strip(), r"^pylint 2\.17\.7")
+        self.assertRegex(proc.stdout.decode("utf-8").strip(), r"^pylint 4\.")
 
     def test_pylint_report_has_expected_warnings(self):
         rlocation_path = os.environ.get("PYLINT_REPORT")
@@ -61,10 +61,12 @@ class ExampleTest(unittest.TestCase):
         pylint_report = pathlib.Path(runfiles.Create().Rlocation(rlocation_path))
         self.assertTrue(pylint_report.exists(), f"'{pylint_report}' does not exist")
 
+        report_text = pylint_report.read_text().strip()
         self.assertRegex(
-            pylint_report.read_text().strip(),
-            r"W8201: Logging should be used instead of the print\(\) function\. \(print-function\)",
+            report_text,
+            r"C0116: Missing function or method docstring \(missing-function-docstring\)",
         )
+        self.assertNotRegex(report_text, r"unused-import")
 
 
 if __name__ == "__main__":

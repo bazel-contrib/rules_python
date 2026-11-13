@@ -75,6 +75,7 @@ license(
 )
 
 exports_files([
+    ".clippy.toml",
     "LICENSE",
     "version.bzl",
 ])
@@ -83,6 +84,7 @@ exports_files(
     [
         ".bazelrc",
         ".bazelversion",
+        ".pre-commit-config.yaml",
         "MODULE.bazel",
         "buildbuddy.bazelrc",
     ],
@@ -98,6 +100,30 @@ exports_files(
     visibility = ["//docs:__subpackages__"],
 )
 
+# LINT.IfChange(synced_files)
+filegroup(
+    name = "downloader_configs",
+    srcs = [
+        "downloader_cfg.bazelrc",
+        "downloader_config.cfg",
+    ],
+    visibility = ["//tests:__subpackages__"],
+)
+
+# Expose gazelle's synced downloader configs from the root package:
+# rules_python_gazelle_plugin is not a bazel_dep in root MODULE.bazel, and
+# .bazelrc.deleted_packages disables //gazelle so Bazel ignores
+# gazelle/BUILD.bazel and treats gazelle/* as part of //.
+filegroup(
+    name = "gazelle_downloader_configs",
+    srcs = [
+        "gazelle/downloader_cfg.bazelrc",
+        "gazelle/downloader_config.cfg",
+    ],
+    visibility = ["//tests:__subpackages__"],
+)
+# LINT.ThenChange(//dev/sync_downloader_configs.py:synced_files)
+
 filegroup(
     name = "distribution",
     srcs = [
@@ -110,6 +136,7 @@ filegroup(
         "internal_dev_deps.bzl",
         "internal_dev_setup.bzl",
         "version.bzl",
+        ":downloader_configs",
         "//command_line_option:distribution",
         "//crates:distribution",
         "//python:distribution",

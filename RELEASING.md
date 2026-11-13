@@ -70,9 +70,9 @@ gh workflow run release_publish.yaml --ref <TAG> -f publish_to_pypi=false
 ### Release artifacts
 
 The release workflow also builds `//dev/release_artifacts:artifacts_for_release`
-for each platform and uploads the built artifacts and `SHA256SUMS` to the GitHub
-release. For now, build failures only emit a warning rather than failing the
-release.
+for each platform and uploads the built artifacts, `artifacts_manifest.json`,
+and `SHA256SUMS` to the GitHub release. For now, build failures only emit a
+warning rather than failing the release.
 
 Presubmit builds it for every platform too: natively on each CI host, and
 through `//dev/release_artifacts:cross_compiled_artifacts` for the others.
@@ -84,7 +84,7 @@ publishing workflow can be triggered manually using the GitHub CLI (`gh`) or
 via the [GitHub Actions UI](https://github.com/bazel-contrib/rules_python/actions/workflows/publish_pypi.yaml):
 
 ```shell
-gh workflow run publish_pypi.yaml --ref <TAG> -f tag_name=<TAG>
+gh workflow run publish_pypi.yaml --ref <TAG>
 ```
 
 ### Determining Semantic Version

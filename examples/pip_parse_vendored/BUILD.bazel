@@ -6,12 +6,12 @@ load("@rules_python//python/uv:lock.bzl", "lock")
 load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
 load("//:requirements.bzl", "all_data_requirements", "all_requirements", "all_whl_requirements", "requirement")
 
-# This rule adds a convenient way to update the requirements.txt
+# This rule adds a convenient way to update the uv.lock
 # lockfile based on the pyproject.toml.
 lock(
-    name = "requirements",
+    name = "uv_lock",
     srcs = ["pyproject.toml"],
-    out = "requirements.txt",
+    out = "uv.lock",
 )
 
 # The requirements.bzl file is using the hub repo to access packages via the
@@ -56,7 +56,7 @@ sh_binary(
 )
 
 # Similarly ensures that the requirements.bzl file is updated
-# based on the requirements.txt lockfile.
+# based on the uv.lock lockfile.
 diff_test(
     name = "test_vendored",
     failure_message = "Please run:  bazel run //:vendor_requirements",

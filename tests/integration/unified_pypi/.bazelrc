@@ -1,1 +1,2 @@
 common --experimental_enable_bzlmod
+import %workspace%/../downloader_cfg.bazelrc

@@ -86,6 +86,20 @@ def _test_up(env):
 
 _basic_tests.append(_test_up)
 
+def _test_up_absolute(env):
+    up = lock_testing.up
+    env.expect.that_str(
+        up("/usr/bin/python3", "dev"),
+    ).equals("/usr/bin/python3")
+    env.expect.that_str(
+        up("/usr/bin/python3", "a/b/c"),
+    ).equals("/usr/bin/python3")
+    env.expect.that_str(
+        up("C:/Python312/python.exe", "dev"),
+    ).equals("C:/Python312/python.exe")
+
+_basic_tests.append(_test_up_absolute)
+
 def lock_test_suite(name):
     """The test suite with various lock-related integration tests
 

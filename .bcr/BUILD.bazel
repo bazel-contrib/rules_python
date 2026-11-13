@@ -1,0 +1,5 @@
+filegroup(
+    name = "config_yml",
+    srcs = ["config.yml"],
+    visibility = ["//:__subpackages__"],
+)

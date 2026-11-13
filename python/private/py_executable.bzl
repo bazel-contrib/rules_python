@@ -19,6 +19,7 @@ load("@bazel_skylib//lib:structs.bzl", "structs")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
+load("//python/private/toolchains:shrubbery_toolchain.bzl", "get_shrubbery_tool")
 load(":attr_builders.bzl", "attrb")
 load(
     ":attributes.bzl",
@@ -73,6 +74,7 @@ load(
     "CC_TOOLCHAIN_TYPE",
     "EXEC_TOOLS_TOOLCHAIN_TYPE",
     "LAUNCHER_MAKER_TOOLCHAIN_TYPE",
+    "SHRUBBERY_TOOLCHAIN_TYPE",
     TOOLCHAIN_TYPE = "TARGET_TOOLCHAIN_TYPE",
 )
 load(":transition_labels.bzl", "TRANSITION_LABELS")
@@ -82,6 +84,21 @@ _py_builtins = py_internal
 _EXTERNAL_PATH_PREFIX = "external"
 _ZIP_RUNFILES_DIRECTORY_NAME = "runfiles"
 _INIT_PY = "__init__.py"
+
+def _build_data_stamp_transition_impl(settings, attr):
+    # stamp = 1 reads the real version file even in --nostamp builds. stamp = 0
+    # never reads it, and stamp = -1 follows --stamp, so both keep the config.
+    if attr.stamp == 1:
+        return {"//command_line_option:stamp": True}
+    return {"//command_line_option:stamp": settings["//command_line_option:stamp"]}
+
+# Applies the `stamp` attribute to the build data inputs only. Transitioning
+# the whole executable would rebuild its deps in a separate configuration.
+_build_data_stamp_transition = transition(
+    implementation = _build_data_stamp_transition_impl,
+    inputs = ["//command_line_option:stamp"],
+    outputs = ["//command_line_option:stamp"],
+)
 
 # Non-Google-specific attributes for executables
 # These attributes are for rules that accept Python sources.
@@ -244,6 +261,7 @@ accepting arbitrary Python versions.
         "_uncachable_version_file": lambda: attrb.Label(
             default = "//python/private:uncachable_version_file",
             allow_files = True,
+            cfg = _build_data_stamp_transition,
         ),
         "_venvs_use_declare_symlink_flag": lambda: attrb.Label(
             default = labels.VENVS_USE_DECLARE_SYMLINK,
@@ -1126,10 +1144,16 @@ def _create_executable_zip_file(
     args.add(prelude)
     args.add(zip_file)
     args.add(output)
+    exe_zip_maker = get_shrubbery_tool(
+        ctx,
+        "exe_zip_maker",
+        ctx.attr._exe_zip_maker,
+    )
     actions_run(
         ctx,
-        executable = ctx.attr._exe_zip_maker,
-        arguments = [args],
+        executable = exe_zip_maker.executable,
+        toolchain = exe_zip_maker.toolchain,
+        arguments = exe_zip_maker.prefix_args + [args],
         inputs = depset([prelude, zip_file]),
         outputs = [output],
         mnemonic = "PyBuildExecutableZip",
@@ -1227,7 +1251,9 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
 
     # Sourceless precompiled builds omit the main py file from outputs, so
     # main has to be pointed to the precompiled main instead.
-    if (main_py not in precompile_result.keep_srcs and
+    # NOTE: main_py is None when main_module is used
+    if (main_py != None and
+        main_py not in precompile_result.keep_srcs and
         PycCollectionAttr.is_pyc_collection_enabled(ctx)):
         main_py = precompile_result.py_to_pyc_map[main_py]
 
@@ -2186,9 +2212,6 @@ def _transition_executable_impl(settings, attr):
     if attr.python_version and attr.python_version not in ("PY2", "PY3"):
         settings[labels.PYTHON_VERSION] = attr.python_version
 
-    if attr.stamp != -1:
-        settings["//command_line_option:stamp"] = str(attr.stamp)
-
     return settings
 
 def create_executable_rule(*, attrs, **kwargs):
@@ -2236,18 +2259,17 @@ def create_executable_rule_builder(implementation, **kwargs):
             ruleb.ToolchainType(TOOLCHAIN_TYPE),
             ruleb.ToolchainType(EXEC_TOOLS_TOOLCHAIN_TYPE, mandatory = False),
             ruleb.ToolchainType(CC_TOOLCHAIN_TYPE, mandatory = False),
+            ruleb.ToolchainType(SHRUBBERY_TOOLCHAIN_TYPE, mandatory = False),
         ] + ([ruleb.ToolchainType(LAUNCHER_MAKER_TOOLCHAIN_TYPE)] if rp_config.bazel_9_or_later else []),
         cfg = dict(
             implementation = _transition_executable_impl,
             inputs = TRANSITION_LABELS + [
                 labels.PYTHON_VERSION,
-                "//command_line_option:stamp",
                 "//command_line_option:build_runfile_links",
                 "//command_line_option:enable_runfiles",
             ],
             outputs = TRANSITION_LABELS + [
                 labels.PYTHON_VERSION,
-                "//command_line_option:stamp",
                 "//command_line_option:build_runfile_links",
                 "//command_line_option:enable_runfiles",
             ],

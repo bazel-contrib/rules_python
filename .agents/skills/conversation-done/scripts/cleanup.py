@@ -32,15 +32,29 @@ import argparse
 import asyncio
 import dataclasses
 import glob
+import json
 import os
 import shutil
 import signal
 import stat
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 
 PROTECTED_BRANCHES = frozenset({"main", "master", "HEAD"})
 PROTECTED_REMOTES = frozenset({"upstream"})
+# Maximum conversation title length displayed by the UI.
+_CONVERSATION_TITLE_MAX_LENGTH = 70
+_DONE_TITLE_PREFIX = "done "
+# Local loopback Language Server RPC timeout in seconds.
+_LS_RPC_TIMEOUT_SECONDS = 5
+_GET_TRAJECTORIES_METHOD = (
+    "exa.language_server_pb.LanguageServerService/GetAllCascadeTrajectories"
+)
+_UPDATE_ANNOTATIONS_METHOD = (
+    "exa.language_server_pb.LanguageServerService/UpdateConversationAnnotations"
+)
 
 
 @dataclasses.dataclass
@@ -519,16 +533,17 @@ async def execute_cleanup_target(
     leave_branch: bool = False,
     leave_remote: bool = False,
     dry_run: bool = False,
-) -> list[str]:
-    """Executes cleanup on a single target and returns deleted resource descriptions."""
+) -> tuple[list[str], bool]:
+    """Executes cleanup on a single target and returns deleted resources and success."""
     log(f"\nCleaning up target resources for: {target.worktree_path or target.branch}")
     deleted: list[str] = []
+    succeeded = True
 
     if target.is_main_worktree:
         log_error(
             "Target is the main repository! Refusing to clean up main repository."
         )
-        return deleted
+        return deleted, False
 
     # 1. Clean up Bazel output bases
     if not leave_bazel_output_base and target.bazel_output_bases:
@@ -538,6 +553,8 @@ async def execute_cleanup_target(
             log(f"  - Output base: {ob} ({size_str})")
             if await shutdown_and_remove_bazel_output_base(ob, dry_run=dry_run):
                 deleted.append(f"Bazel output base: {ob} ({size_str})")
+            else:
+                succeeded = False
     elif leave_bazel_output_base:
         log("1. Leaving Bazel output base intact.")
     else:
@@ -548,6 +565,8 @@ async def execute_cleanup_target(
         log("2. Cleaning up Git worktree:")
         if await remove_git_worktree(main_repo, target.worktree_path, dry_run=dry_run):
             deleted.append(f"Git worktree: {target.worktree_path}")
+        else:
+            succeeded = False
     elif leave_worktree:
         log("2. Leaving Git worktree directory on disk.")
     else:
@@ -564,6 +583,7 @@ async def execute_cleanup_target(
             deleted.append(f"Local branch: {target.branch}")
         else:
             log_warn(f"  {msg}")
+            succeeded = False
     elif leave_branch:
         log("3. Leaving local branch intact.")
     else:
@@ -585,12 +605,89 @@ async def execute_cleanup_target(
             deleted.append(f"Remote branch: {target.remote}/{target.branch}")
         else:
             log_warn(f"  {msg}")
+            succeeded = False
     elif leave_remote:
         log("4. Leaving remote branch intact.")
     elif target.branch and target.remote:
         log(f"4. Remote branch '{target.branch}' not present on '{target.remote}'.")
 
-    return deleted
+    return deleted, succeeded
+
+
+def format_done_title(current_title: str) -> str:
+    """Prepends 'done ' to a conversation title and truncates to max length."""
+    cleaned = " ".join(current_title.splitlines()).strip()
+    if not cleaned:
+        return _DONE_TITLE_PREFIX.strip()
+
+    if cleaned.lower().startswith(_DONE_TITLE_PREFIX):
+        prefixed = _DONE_TITLE_PREFIX + cleaned[len(_DONE_TITLE_PREFIX) :].lstrip()
+    else:
+        prefixed = f"{_DONE_TITLE_PREFIX}{cleaned}"
+
+    return prefixed[:_CONVERSATION_TITLE_MAX_LENGTH].rstrip()
+
+
+def prefix_conversation_title(
+    conversation_id: str,
+    ls_address: str,
+    csrf_header_value: str,
+    dry_run: bool,
+) -> None:
+    """Prepends 'done ' to the active conversation title via the Language Server."""
+    headers = {
+        "Content-Type": "application/json",
+        "x-codeium-csrf-token": csrf_header_value,
+    }
+    list_url = f"http://{ls_address}/{_GET_TRAJECTORIES_METHOD}"
+    list_req = urllib.request.Request(
+        list_url,
+        data=b"{}",
+        headers=headers,
+    )
+    try:
+        with urllib.request.urlopen(list_req, timeout=_LS_RPC_TIMEOUT_SECONDS) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+    except (urllib.error.URLError, json.JSONDecodeError, OSError) as exc:
+        log_warn(f"Failed to query conversation title: {exc}")
+        return
+
+    summaries = payload.get("trajectorySummaries") or {}
+    entry = summaries.get(conversation_id) or {}
+    annotations = entry.get("annotations") or {}
+    current_title = annotations.get("title") or entry.get("summary") or ""
+    if not current_title:
+        return
+
+    new_title = format_done_title(current_title)
+    if new_title == current_title:
+        return
+
+    if dry_run:
+        log(f"  [Dry Run] Would rename conversation to: {new_title}")
+        return
+
+    update_url = f"http://{ls_address}/{_UPDATE_ANNOTATIONS_METHOD}"
+    update_body = json.dumps(
+        {
+            "cascadeId": conversation_id,
+            "annotations": {"title": new_title},
+            "mergeAnnotations": True,
+        }
+    ).encode("utf-8")
+    update_req = urllib.request.Request(
+        update_url,
+        data=update_body,
+        headers=headers,
+    )
+    try:
+        with urllib.request.urlopen(
+            update_req, timeout=_LS_RPC_TIMEOUT_SECONDS
+        ) as resp:
+            resp.read()
+        log(f"Renamed conversation to: {new_title}")
+    except (urllib.error.URLError, OSError) as exc:
+        log_warn(f"Failed to rename conversation: {exc}")
 
 
 async def list_resources(main_repo: str) -> None:
@@ -767,8 +864,9 @@ async def async_main() -> None:
             return
 
     deleted_resources: list[str] = []
+    all_succeeded = True
     for target in targets:
-        deleted = await execute_cleanup_target(
+        deleted, succeeded = await execute_cleanup_target(
             main_repo,
             target,
             leave_bazel_output_base=args.leave_bazel_output_base,
@@ -778,6 +876,8 @@ async def async_main() -> None:
             dry_run=args.dry_run,
         )
         deleted_resources.extend(deleted)
+        if not succeeded:
+            all_succeeded = False
 
     summary_header = (
         "\nResources that would be deleted (dry run):"
@@ -790,6 +890,19 @@ async def async_main() -> None:
             log(f"  - {resource}")
     else:
         log("  None")
+
+    if all_succeeded:
+        conversation_id = os.environ.get("ANTIGRAVITY_CONVERSATION_ID", "").strip()
+        ls_address = os.environ.get("ANTIGRAVITY_LS_ADDRESS", "").strip()
+        csrf_header_value = os.environ.get("ANTIGRAVITY_CSRF_TOKEN", "").strip()
+        if conversation_id and ls_address and csrf_header_value:
+            prefix_conversation_title(
+                conversation_id=conversation_id,
+                ls_address=ls_address,
+                csrf_header_value=csrf_header_value,
+                dry_run=args.dry_run,
+            )
+
     log("\nCleanup completed.")
 
 
