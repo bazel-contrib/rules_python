@@ -8,7 +8,13 @@ loading the repository rules, e.g. in `WORKSPACE`.
 load("@package_metadata//purl:purl.bzl", "purl")
 load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
 
-def whl_package_metadata(*, distribution, version, repository_url = None, file_name = None):
+def whl_package_metadata(
+        *,
+        distribution,
+        version,
+        repository_url = None,
+        file_name = None,
+        name = "package_metadata"):
     """Create the `package_metadata` target with a PyPI PURL.
 
     See https://github.com/package-url/purl-spec/blob/main/types-doc/pypi-definition.md
@@ -18,6 +24,7 @@ def whl_package_metadata(*, distribution, version, repository_url = None, file_n
         version: {type}`str` the version of the package.
         repository_url: {type}`str | None` the index URL.
         file_name: {type}`str | None` the name of the whl or sdist file.
+        name: {type}`str` the name of the target.
     """
     builder = purl.builder().type("pypi").name(distribution).version(version)
     if repository_url:
@@ -26,7 +33,7 @@ def whl_package_metadata(*, distribution, version, repository_url = None, file_n
         builder.add_qualifier("file_name", file_name)
 
     package_metadata(
-        name = "package_metadata",
+        name = name,
         purl = builder.build(),
         visibility = ["//:__subpackages__"],
     )
