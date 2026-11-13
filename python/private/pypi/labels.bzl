@@ -39,6 +39,61 @@ def extra_label(extra):
     """
     return "[{}]".format(extra)
 
+def _labels(tmpl, requirement):
+    name, bracket, extras = requirement.partition("[")
+    name = normalize_name(name.strip())
+    if not bracket:
+        return [tmpl.format(name, PY_LIBRARY_PUBLIC_LABEL)]
+
+    extras, _, _ = extras.partition("]")
+    extras = sorted([
+        normalize_name(extra.strip())
+        for extra in extras.split(",")
+        if extra.strip()
+    ])
+    return [tmpl.format(name, extra_label(extra)) for extra in extras or [""]]
+
+def requirement_label(tmpl, requirement, *, fail = fail):
+    """Return the label for a requirement in a hub repository.
+
+    Args:
+        tmpl: {type}`str` the label template with two `{}` placeholders for
+            the package name and the target name.
+        requirement: {type}`str` the name of the package with at most one
+            extra, e.g. `foo`, `foo[]` or `foo[bar]`.
+        fail: the function to call on errors, used in tests.
+
+    Returns:
+        {type}`str` the label of the `pkg` target if no extras are given, the
+        label of the `[]` target if empty extras are given, or the label of
+        the `[extra]` target if one extra is given.
+    """
+    labels = _labels(tmpl, requirement)
+    if len(labels) > 1:
+        fail("Only a single extra is supported by 'requirement', use 'requirements(\"{}\")' instead to get a list of labels.".format(requirement))
+
+    return labels[0]
+
+def requirement_labels(tmpl, *requirements):
+    """Return the labels for requirements in a hub repository.
+
+    Args:
+        tmpl: {type}`str` the label template with two `{}` placeholders for
+            the package name and the target name.
+        *requirements: {type}`str` the names of the packages with optional
+            extras, e.g. `foo`, `foo[]`, `foo[bar]` or `foo[bar,baz]`.
+
+    Returns:
+        {type}`list[str]` the labels for each requirement, with an `[extra]`
+        label for each extra of a requirement. Each `[extra]` target includes
+        the package.
+    """
+    return [
+        label
+        for requirement in requirements
+        for label in _labels(tmpl, requirement)
+    ]
+
 def group_member(spec):
     """Normalize a member of a dependency group.
 
