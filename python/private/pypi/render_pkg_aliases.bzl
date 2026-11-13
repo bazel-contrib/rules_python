@@ -46,10 +46,11 @@ def _repr_dict(*, value_repr = repr, **kwargs):
     return {k: value_repr(v) for k, v in kwargs.items() if v}
 
 def _repr_config_setting(alias):
-    if alias.target_platforms:
+    if alias.target_platforms or alias.extras:
         return render.call(
             "whl_config_setting",
             **_repr_dict(
+                extras = alias.extras,
                 target_platforms = alias.target_platforms,
                 version = alias.version,
             )

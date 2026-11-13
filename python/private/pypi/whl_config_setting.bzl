@@ -14,7 +14,7 @@
 
 "A small function to create an alias for a whl distribution"
 
-def whl_config_setting(*, version = None, target_platforms = None):
+def whl_config_setting(*, version = None, target_platforms = None, extras = None):
     """The bzl_packages value used by by the render_pkg_aliases function.
 
     This contains the minimum amount of information required to generate correct
@@ -27,6 +27,8 @@ def whl_config_setting(*, version = None, target_platforms = None):
             is no match found during a select.
         target_platforms: {type}`list[str] | None` the list of target_platforms for this
             distribution.
+        extras: {type}`list[str] | None` the extras of the distribution that
+            are requested on the target platforms.
 
     Returns:
         a struct with the validated and parsed values.
@@ -55,4 +57,5 @@ def whl_config_setting(*, version = None, target_platforms = None):
         # Make the struct hashable
         target_platforms = tuple(target_platforms) if target_platforms else None,
         version = version,
+        extras = tuple(sorted(extras)) if extras else None,
     )

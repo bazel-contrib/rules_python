@@ -247,6 +247,28 @@ def _test_get_flag_versions_from_alias_target_platforms(env):
 
 _tests.append(_test_get_flag_versions_from_alias_target_platforms)
 
+def _test_aliases_with_extras(env):
+    actual = render_pkg_aliases(
+        aliases = {
+            "foo": {
+                whl_config_setting(version = "3.2", extras = ["b", "a"]): "pypi_32_foo",
+            },
+        },
+    )
+
+    env.expect.that_str(actual["foo/BUILD.bazel"]).contains("""\
+pkg_aliases(
+    name = "foo",
+    actual = {
+        whl_config_setting(
+            extras = ("a", "b"),
+            version = "3.2",
+        ): "pypi_32_foo",
+    },
+)""")
+
+_tests.append(_test_aliases_with_extras)
+
 def render_pkg_aliases_test_suite(name):
     """Create the test suite.
 
