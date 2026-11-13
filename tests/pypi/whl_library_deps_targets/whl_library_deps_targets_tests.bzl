@@ -369,6 +369,90 @@ def _test_extras_in_group_legacy(env):
 
 _tests.append(_test_extras_in_group_legacy)
 
+def _test_deps_with_extras(env):
+    filegroup_calls = []
+    py_library_calls = []
+    env_marker_setting_calls = []
+    missing_calls = []
+
+    whl_library_deps_targets(
+        name = "foo-0-py3-none-any.whl",
+        metadata_name = "foo",
+        dep_template = "@pypi//{name}:{target}",
+        requires_dist = [
+            "bar[socks]",
+            "baz[a,b]; sys_platform == 'linux'",
+            "baz; sys_platform == 'darwin'",
+            "qux[missing]",
+        ],
+        # The values are the extras that are available in the hub
+        include = {
+            "bar": ["socks"],
+            "baz": ["a", "b"],
+            "qux": [],
+        },
+        repo = None,
+        aliases = {},
+        native = struct(
+            filegroup = lambda **kwargs: filegroup_calls.append(kwargs),
+            alias = lambda **kwargs: None,
+        ),
+        rules = struct(
+            py_library = lambda **kwargs: py_library_calls.append(kwargs),
+            env_marker_setting = lambda **kwargs: env_marker_setting_calls.append(kwargs),
+            missing_extra_error = lambda **kwargs: missing_calls.append(kwargs),
+        ),
+    )
+
+    # The dependencies use the targets with the extras, the missing extras use
+    # a target that fails the build with a helpful message.
+    env.expect.that_collection([
+        (c["name"], c["deps"])
+        for c in py_library_calls
+    ]).contains_exactly([
+        ("pkg", ["srcs", "@pypi//bar:[socks]", ":_missing_qux[missing]"] + select({
+            ":is_include_baz_2_true": ["@pypi//baz:pkg"],
+            "//conditions:default": [],
+        }) + select({
+            ":is_include_baz[a]_true": ["@pypi//baz:[a]"],
+            "//conditions:default": [],
+        }) + select({
+            ":is_include_baz[b]_true": ["@pypi//baz:[b]"],
+            "//conditions:default": [],
+        })),
+    ])
+    env.expect.that_collection(missing_calls).contains_exactly([
+        {
+            "name": "_missing_qux[missing]",
+            "package_name": "qux",
+            "extra": "missing",
+            "required_by": "foo",
+            "visibility": ["//visibility:private"],
+        },
+    ])  # buildifier: @unsorted-dict-items
+
+    # The whl targets do not use the extras.
+    env.expect.that_collection([
+        (c["name"], c["data"])
+        for c in filegroup_calls
+    ]).contains_exactly([
+        ("whl", ["@pypi//bar:whl", "@pypi//qux:whl"] + select({
+            ":is_include_baz_true": ["@pypi//baz:whl"],
+            "//conditions:default": [],
+        })),
+    ])
+    env.expect.that_collection([
+        (c["name"], c["expression"])
+        for c in env_marker_setting_calls
+    ]).contains_exactly([
+        ("include_baz", "(sys_platform == \"darwin\") or (sys_platform == \"linux\")"),
+        ("include_baz_2", "sys_platform == \"darwin\""),
+        ("include_baz[a]", "sys_platform == \"linux\""),
+        ("include_baz[b]", "sys_platform == \"linux\""),
+    ])
+
+_tests.append(_test_deps_with_extras)
+
 def _test_deps_with_extras_without_hub_info(env):
     py_library_calls = []
 

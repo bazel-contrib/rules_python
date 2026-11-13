@@ -612,6 +612,7 @@ bzl_library(
     deps = [
         ":env_marker_setting",
         ":labels",
+        ":missing_package",
         ":pep508_deps",
         "//python:py_library",
         "//python/private:normalize_name",

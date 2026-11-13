@@ -243,3 +243,22 @@ def _non_versioned_platform(p, *, strict = False):
         return p
     else:
         fail("Expected to always have a platform in the form '{{abi}}_{{os}}_{{arch}}', got: {}".format(p))
+
+def available_extras(aliases):
+    """Return the extras that are available in the hub for each package.
+
+    Args:
+        aliases: {type}`dict[str, dict[struct, str]]` the packages to the
+            {obj}`whl_config_setting` instances and the repo names.
+
+    Returns:
+        {type}`dict[str, list[str]]` the sorted extras for each package.
+    """
+    return {
+        pkg: sorted({
+            extra: None
+            for setting in settings
+            for extra in setting.extras or []
+        })
+        for pkg, settings in aliases.items()
+    }

@@ -15,7 +15,7 @@
 ""
 
 load("//python/private:text_util.bzl", "render")
-load(":render_pkg_aliases.bzl", "render_multiplatform_pkg_aliases")
+load(":render_pkg_aliases.bzl", "available_extras", "render_multiplatform_pkg_aliases")
 load(":whl_config_setting.bzl", "whl_config_setting")
 
 _BUILD_FILE_CONTENTS = """\
@@ -27,11 +27,12 @@ exports_files(["requirements.bzl"])
 
 def _impl(rctx):
     bzl_packages = rctx.attr.packages or rctx.attr.whl_map.keys()
+    whl_map = {
+        key: _whl_config_settings_from_json(values)
+        for key, values in rctx.attr.whl_map.items()
+    }
     aliases = render_multiplatform_pkg_aliases(
-        aliases = {
-            key: _whl_config_settings_from_json(values)
-            for key, values in rctx.attr.whl_map.items()
-        },
+        aliases = whl_map,
         extra_hub_aliases = rctx.attr.extra_hub_aliases,
         requirement_cycles = rctx.attr.groups,
         platform_config_settings = rctx.attr.platform_config_settings,
@@ -50,7 +51,9 @@ def _impl(rctx):
         "config.bzl",
         rctx.attr._config_template,
         substitutions = {
-            "%%PACKAGES%%": render.dict(rctx.attr.whl_map, value_repr = lambda x: "None"),
+            # The available extras of each package for the spoke repositories
+            # to check if the extras of their dependencies are available.
+            "%%PACKAGES%%": render.dict(available_extras(whl_map), value_repr = render.list),
         },
     )
     rctx.template("requirements.bzl", rctx.attr._requirements_bzl_template, substitutions = {

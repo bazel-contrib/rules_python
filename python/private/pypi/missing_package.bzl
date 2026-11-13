@@ -1,4 +1,4 @@
-"""Rule for generating an execution-phase action failure when a PyPI package is missing."""
+"""Rules for generating an execution-phase action failure when a PyPI package or its extra is missing."""
 
 load("//python/private:py_info.bzl", "PyInfo")
 load("//python/private:reexports.bzl", "BuiltinPyInfo")
@@ -43,5 +43,27 @@ missing_package_error = rule(
     attrs = {
         "hub_name": attr.string(mandatory = True),
         "package_name": attr.string(mandatory = True),
+    },
+)
+
+def _missing_extra_error_impl(ctx):
+    return _error(ctx, (
+        'The PyPI package "{pkg}" requires "{dep}[{extra}]", but the extra "{extra}" of ' +
+        '"{dep}" is not available in the hub. Add "{dep}[{extra}]" to the requirements or ' +
+        "the lock file of the hub, e.g. by compiling the requirements with the extras kept " +
+        "(`--no-strip-extras`) or by adding the extra to the project dependencies."
+    ).format(
+        pkg = ctx.attr.required_by,
+        dep = ctx.attr.package_name,
+        extra = ctx.attr.extra,
+    ))
+
+missing_extra_error = rule(
+    implementation = _missing_extra_error_impl,
+    doc = "A target that fails the build with a helpful message when an extra of a PyPI package is missing.",
+    attrs = {
+        "extra": attr.string(mandatory = True),
+        "package_name": attr.string(mandatory = True),
+        "required_by": attr.string(mandatory = True),
     },
 )

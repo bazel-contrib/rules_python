@@ -15,6 +15,7 @@ load(
     "extra_label",
     "group_member",
 )
+load(":missing_package.bzl", "missing_extra_error")
 load(":pep508_deps.bzl", "deps")
 
 def whl_library_deps_targets(
@@ -35,6 +36,7 @@ def whl_library_deps_targets(
         rules = struct(
             py_library = py_library,
             env_marker_setting = env_marker_setting,
+            missing_extra_error = missing_extra_error,
         )):
     """Create all of the whl_library targets.
 
@@ -51,7 +53,11 @@ def whl_library_deps_targets(
         provides_extra: {type}`list[str]` The list of extras that the package
             provides. For each extra the `[<extra>]` target is created
             that includes the package and the dependencies of that extra.
-        include: {type}`list[str]` The list of packages to include.
+        include: {type}`list[str] | dict[str, list[str] | None]` The list
+            of packages to include. If it is a dict, then the values are the
+            extras of each package that are available in the hub and the
+            dependencies on the extras that are not available will fail the
+            build with a helpful message.
         group_name: {type}`str | None` name of the dependency group (if any).
         dep_template: {type}`str | None` The dep_template to use.
         tags: {type}`list[str]` The tags set on the targets.
@@ -158,12 +164,21 @@ def whl_library_deps_targets(
     # dep and the expression.
     settings = {}
 
+    # The dependencies on extras that are not available in the hub.
+    missing_extras = {}
+
     def _pkg_label(dep):
         dep_name, _, extra = dep.partition("[")
         if not extra:
             return dep_template.format(name = dep_name, target = PY_LIBRARY_PUBLIC_LABEL)
 
-        return dep_template.format(name = dep_name, target = extra_label(extra.rstrip("]")))
+        extra = extra.rstrip("]")
+        available = include.get(dep_name) if type(include) == type({}) else None
+        if available != None and extra not in available:
+            missing_extras[dep] = (dep_name, extra)
+            return ":_missing_" + dep
+
+        return dep_template.format(name = dep_name, target = extra_label(extra))
 
     whl_label = lambda dep: dep_template.format(name = dep, target = WHEEL_FILE_PUBLIC_LABEL)
 
@@ -223,6 +238,15 @@ def whl_library_deps_targets(
         rules.env_marker_setting(
             name = name,
             expression = expression,
+            visibility = ["//visibility:private"],
+        )
+
+    for dep, (dep_name, extra) in sorted(missing_extras.items()):
+        rules.missing_extra_error(
+            name = "_missing_" + dep,
+            package_name = dep_name,
+            extra = extra,
+            required_by = metadata_name,
             visibility = ["//visibility:private"],
         )
 
