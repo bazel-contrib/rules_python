@@ -16,16 +16,30 @@
 """
 
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
+load("@rules_cc//cc/common:cc_shared_library_hint_info.bzl", "CcSharedLibraryHintInfo")
 load("//python/private:toolchain_types.bzl", "PY_CC_TOOLCHAIN_TYPE")
+
+def _forward_headers(ctx, headers):
+    # Report the owners of forwarded libraries (e.g. the Windows import
+    # libraries) so cc_binary with dynamic_deps doesn't drop them.
+    providers = headers.providers_map
+    owners = {
+        linker_input.owner: None
+        for linker_input in providers["CcInfo"].linking_context.linker_inputs.to_list()
+    }
+    return providers.values() + [CcSharedLibraryHintInfo(
+        attributes = [],
+        owners = owners.keys() or [ctx.label],
+    )]
 
 def _current_py_cc_headers_impl(ctx):
     py_cc_toolchain = ctx.toolchains[PY_CC_TOOLCHAIN_TYPE].py_cc_toolchain
-    return py_cc_toolchain.headers.providers_map.values()
+    return _forward_headers(ctx, py_cc_toolchain.headers)
 
 current_py_cc_headers = rule(
     implementation = _current_py_cc_headers_impl,
     toolchains = [PY_CC_TOOLCHAIN_TYPE],
-    provides = [CcInfo],
+    provides = [CcInfo, CcSharedLibraryHintInfo],
     doc = """
 Provides the currently active Python toolchain's C headers.
 
@@ -41,6 +55,11 @@ cc_library(
     deps = ["@rules_python//python/cc:current_py_cc_headers"]
 )
 ```
+
+:::{versionchanged} VERSION_NEXT_PATCH
+The Windows import libraries are no longer dropped by `cc_binary` with
+`dynamic_deps`.
+:::
 """,
 )
 
@@ -54,12 +73,12 @@ def _current_py_cc_headers_abi3_impl(ctx):
         ).format(
             PY_CC_TOOLCHAIN_TYPE,
         ))
-    return py_cc_toolchain.headers_abi3.providers_map.values()
+    return _forward_headers(ctx, py_cc_toolchain.headers_abi3)
 
 current_py_cc_headers_abi3 = rule(
     implementation = _current_py_cc_headers_abi3_impl,
     toolchains = [PY_CC_TOOLCHAIN_TYPE],
-    provides = [CcInfo],
+    provides = [CcInfo, CcSharedLibraryHintInfo],
     doc = """
 Provides the currently active Python toolchain's C ABI3 headers.
 
@@ -77,6 +96,11 @@ cc_library(
 ```
 
 :::{versionadded} 1.7.0
+:::
+
+:::{versionchanged} VERSION_NEXT_PATCH
+The Windows import libraries are no longer dropped by `cc_binary` with
+`dynamic_deps`.
 :::
 """,
 )
