@@ -685,12 +685,27 @@ parameters like `{major}` and `{minor}` which will be replaced with python versi
 `cp{major}{minor}` will result in `cp313` given the full python version is `3.13.5`.
 Will always  include `"none"` even if it is not specified.
 
+The python tag of the wheels using the stable ABI (`abi3` and `abi3t`) is treated as the
+minimum supported Python version, e.g. a `cp315-abi3t` wheel is selected for Python `3.15`
+and above.
+
+The default platforms use the following values:
+* `["abi3", "cp{major}{minor}"]` for the GIL-enabled builds.
+* `["abi3t", "cp{major}{minor}t"]` for the free-threaded builds, where `abi3t` is the
+  stable ABI for the free-threaded builds as specified in
+  [PEP 803](https://peps.python.org/pep-0803/). The GIL-enabled builds only select `abi3t`
+  wheels if they are also tagged as `abi3` (e.g. `cp315-abi3.abi3t`).
+
 :::{note}
 We select a single wheel and the last match will take precedence.
 :::
 
 :::{seealso}
 See official [docs](https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/#abi-tag) for more information.
+:::
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+The default free-threaded platforms select the `abi3t` wheels.
 :::
 """,
     ),
