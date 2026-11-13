@@ -1316,9 +1316,42 @@ class _BzlTarget(_BzlObject):
 # TODO: Integrate with the option directive, since flags are options, afterall.
 # https://www.sphinx-doc.org/en/master/usage/domains/standard.html#directive-option
 class _BzlFlag(_BzlTarget):
-    """Documents a flag"""
+    """Documents a flag.
+
+    Flags can optionally have their scope specified using the `:scope:` option.
+
+    ```
+    :::{bzl:flag} foo
+    :scope: universal
+    :::
+    ```
+    """
 
     _TARGET_TYPE = _TargetType.FLAG
+
+    option_spec = _BzlTarget.option_spec | {
+        # keep-sorted start
+        "scope": docutils_directives.unchanged_required,
+        # keep-sorted end
+    }
+
+    @override
+    def transform_content(self, contentnode: addnodes.desc_content) -> None:
+        super().transform_content(contentnode)
+        scope = self.options.get("scope")
+        if not scope:
+            return
+        field = docutils_nodes.field(
+            "",
+            docutils_nodes.field_name("", _("Scope")),
+            docutils_nodes.field_body("", docutils_nodes.paragraph("", scope)),
+        )
+        if len(contentnode) > 0 and isinstance(
+            contentnode[0], docutils_nodes.field_list
+        ):
+            contentnode[0].insert(0, field)
+        else:
+            contentnode.insert(0, docutils_nodes.field_list("", field))
 
     @override
     def _get_signature_object_type(self) -> str:

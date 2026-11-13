@@ -21,3 +21,19 @@ Some doc about relativetarget
 :::{bzl:flag} myflag
 
 :::
+
+:::{bzl:flag} scopedflag
+:scope: universal
+
+Some doc about scopedflag
+
+:::
+
+:::{bzl:flag} scopedflag_with_fields
+:scope: project
+
+:default: True
+
+Some doc about scopedflag_with_fields
+
+:::
