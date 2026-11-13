@@ -65,7 +65,7 @@ def _repr_actual(aliases):
     else:
         return render.dict(aliases, key_repr = _repr_config_setting)
 
-def _render_common_aliases(*, name, aliases, **kwargs):
+def _render_common_aliases(*, name, aliases, visibility, **kwargs):
     pkg_aliases = render.call(
         "pkg_aliases",
         name = repr(name),
@@ -80,14 +80,22 @@ def _render_common_aliases(*, name, aliases, **kwargs):
     return """\
 load("@rules_python//python/private/pypi:pkg_aliases.bzl", "pkg_aliases")
 {extra_loads}
-package(default_visibility = ["//visibility:public"])
+package(default_visibility = {visibility})
 
 {aliases}""".format(
         aliases = pkg_aliases,
         extra_loads = extra_loads,
+        visibility = render.list(visibility),
     )
 
-def render_pkg_aliases(*, aliases, requirement_cycles = None, extra_hub_aliases = {}, **kwargs):
+def render_pkg_aliases(
+        *,
+        aliases,
+        requirement_cycles = None,
+        extra_hub_aliases = {},
+        exposed_packages = None,
+        testonly_packages = [],
+        **kwargs):
     """Create alias declarations for each PyPI package.
 
     The aliases should be appended to the pip_repository BUILD.bazel file. These aliases
@@ -100,6 +108,10 @@ def render_pkg_aliases(*, aliases, requirement_cycles = None, extra_hub_aliases 
         requirement_cycles: any package groups to also add.
         extra_hub_aliases: The list of extra aliases for each whl to be added
           in addition to the default ones.
+        exposed_packages: The packages that should be public. When set, the
+            aliases of the other packages are only visible to the wheel
+            repositories.
+        testonly_packages: The packages whose aliases should be testonly.
         **kwargs: Extra kwargs to pass to the rules.
 
     Returns:
@@ -124,20 +136,58 @@ def render_pkg_aliases(*, aliases, requirement_cycles = None, extra_hub_aliases 
             for whl_name in group_whls
         }
 
-    files = {
-        "{}/BUILD.bazel".format(normalize_name(name)): _render_common_aliases(
-            name = normalize_name(name),
+    testonly_packages = {
+        normalize_name(name): None
+        for name in testonly_packages
+    }
+
+    public = ["//visibility:public"]
+    if exposed_packages != None:
+        exposed_packages = {normalize_name(name): None for name in exposed_packages}
+    internal_visibility = _internal_visibility(aliases, has_groups = bool(requirement_cycles))
+
+    files = {}
+    for name, pkg_aliases in aliases.items():
+        name = normalize_name(name)
+        visibility = public
+        if exposed_packages != None and name not in exposed_packages:
+            visibility = internal_visibility
+        files["{}/BUILD.bazel".format(name)] = _render_common_aliases(
+            name = name,
             aliases = pkg_aliases,
-            extra_aliases = extra_hub_aliases.get(normalize_name(name), []),
-            group_name = whl_group_mapping.get(normalize_name(name)),
+            extra_aliases = extra_hub_aliases.get(name, []),
+            group_name = whl_group_mapping.get(name),
+            visibility = visibility,
+            testonly = name in testonly_packages,
             **kwargs
         ).strip()
-        for name, pkg_aliases in aliases.items()
-    }
 
     if requirement_cycles:
         files["_groups/BUILD.bazel"] = generate_group_library_build_bazel("", requirement_cycles)
     return files
+
+def _internal_visibility(aliases, has_groups = False):
+    """The visibility of the packages that are not exposed.
+
+    The wheel repositories depend on the aliases of the hub, so the aliases
+    have to be visible to them.
+    """
+    repo_names = {}
+    for pkg_aliases in aliases.values():
+        if type(pkg_aliases) == type(""):
+            repo_names[pkg_aliases] = None
+            continue
+
+        for repo_name in pkg_aliases.values():
+            repo_names[repo_name] = None
+
+    visibility = [
+        "@{}//:__pkg__".format(repo_name)
+        for repo_name in sorted(repo_names)
+    ]
+    if has_groups:
+        visibility.append("//_groups:__pkg__")
+    return visibility
 
 def _major_minor(python_version):
     major, _, tail = python_version.partition(".")

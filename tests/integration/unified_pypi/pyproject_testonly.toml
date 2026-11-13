@@ -1,0 +1,6 @@
+[project]
+name = "unified-pypi"
+version = "0.0.0"
+
+[dependency-groups]
+test = ["iniconfig"]
