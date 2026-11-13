@@ -95,3 +95,31 @@ platform(
         "@platforms//os:windows",
     ],
 )
+
+# The pypi_filtered hub only makes its pyproject.toml packages public.
+py_test(
+    name = "test_filtered_direct",
+    srcs = ["test_default.py"],
+    main = "test_default.py",
+    deps = ["@pypi_filtered//colorama"],
+)
+
+# six is not exposed by pypi_filtered, so it is missing in the unified hub.
+py_binary(
+    name = "bin_filtered_six_unified",
+    srcs = ["bin_six_a.py"],
+    config_settings = {
+        "@rules_python//python/config_settings:venv": "pypi_filtered",
+    },
+    main = "bin_six_a.py",
+    tags = ["manual"],
+    deps = ["@pypi//six"],
+)
+
+py_binary(
+    name = "bin_filtered_six",
+    srcs = ["bin_six_a.py"],
+    main = "bin_six_a.py",
+    tags = ["manual"],
+    deps = ["@pypi_filtered//six"],
+)
