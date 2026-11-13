@@ -1,0 +1,6 @@
+package(default_visibility = ["//tests:__subpackages__"])
+
+exports_files(
+    ["cleanup.py"],
+    visibility = ["//tests:__subpackages__"],
+)
