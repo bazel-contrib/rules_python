@@ -1257,7 +1257,18 @@ Then the python interpreter will be available as `my_python_name`.
     attrs = {
         "configure_coverage_tool": attr.bool(
             mandatory = False,
-            doc = "Whether or not to configure the default coverage tool provided by `rules_python` for the compatible toolchains.",
+            doc = """\
+Whether or not to configure the default coverage tool provided by `rules_python` for the compatible
+toolchains.
+
+The coverage tool is the `coverage` package from the `@rules_python_coverage` pip hub. See
+{doc}`/coverage` for more details.
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+The coverage tool is the `coverage` package from the `@rules_python_coverage` pip hub, which
+supports all of the platforms configured with {obj}`pip.default`.
+:::
+""",
         ),
         "ignore_root_user_error": attr.bool(
             default = True,

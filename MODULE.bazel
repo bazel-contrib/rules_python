@@ -97,7 +97,30 @@ pip.dep(name = "pytest")
 pip.dep(name = "pytest-bazel")
 pip.dep(name = "pytest-randomly")
 pip.dep(name = "pytest-shard")
-use_repo(pip, "pypi", "rules_python_publish_deps")
+
+# The default coverage tool for the hermetic toolchains, see
+# `python.toolchain.configure_coverage_tool`. The versions that do not have a
+# registered toolchain are ignored.
+[
+    pip.parse(
+        download_only = True,
+        hub_name = "rules_python_coverage",
+        python_version = python_version,
+        target_platforms = ["*"],
+        uv_lock = "//python/private/coverage:uv.lock",
+    )
+    for python_version in [
+        "3.9",
+        "3.10",
+        "3.11",
+        "3.12",
+        "3.13",
+        "3.14",
+        "3.15",
+    ]
+]
+
+use_repo(pip, "pypi", "rules_python_coverage", "rules_python_publish_deps")
 
 bazel_dep(
     name = "rules_rust",
@@ -382,6 +405,26 @@ dev_python.toolchain(
     configure_coverage_tool = True,
     python_version = "3.12.16",
 )
+
+# For testing the coverage collection with the coverage tool from a PyPI hub.
+# See //tests/coverage:coverage_from_pypi_test
+dev_python.toolchain(
+    python_version = "3.13.13",
+)
+
+[
+    dev_python.single_version_platform_override(
+        coverage_tool = "@dev_pip//coverage",
+        platform = platform,
+        python_version = "3.13.13",
+    )
+    for platform in [
+        "aarch64-apple-darwin",
+        "aarch64-unknown-linux-gnu",
+        "x86_64-apple-darwin",
+        "x86_64-unknown-linux-gnu",
+    ]
+]
 
 # For testing an arbitrary runtime triggered by a custom flag.
 # See //tests/toolchains:custom_platform_toolchain_test
