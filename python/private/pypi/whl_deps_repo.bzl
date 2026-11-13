@@ -25,10 +25,6 @@ For example if your whl depends on `numpy` and your Python package repo is named
     "group_name": attr.string(
         doc = "Name of the group, if any.",
     ),
-    "requirement": attr.string(
-        mandatory = True,
-        doc = "Python requirement string describing the package to make available, if 'urls' or 'whl_file' is given, then this only needs to include foo[any_extras] as a bare minimum.",
-    ),
 }
 
 def _whl_deps_repo_impl(rctx):

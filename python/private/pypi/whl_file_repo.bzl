@@ -36,8 +36,8 @@ def download_whl(rctx, *, logger):
         auth = get_auth(rctx, urls),
     )
     if not rctx.attr.sha256 and not rctx.attr.integrity:
-        logger.warn("Please update the requirement line to include the hash:\n{} \\\n    --hash=sha256:{}".format(
-            rctx.attr.requirement,
+        logger.warn("Please update the requirement line of '{}' to include the hash:\n    --hash=sha256:{}".format(
+            filename,
             result.sha256,
         ))
     if not result.success:
@@ -50,7 +50,6 @@ whl_file_repo_attrs = {
     "index_url": attr.string(doc = "The index URL used to resolve relative wheel URLs."),
     "integrity": attr.string(doc = "The expected SRI checksum, used when sha256 is unset."),
     "patches": attr.label_keyed_string_dict(doc = "Patch labels mapped to their strip levels."),
-    "requirement": attr.string(doc = "The requirement used in download diagnostics."),
     "sha256": attr.string(doc = "The expected SHA256 checksum."),
     "urls": attr.string_list(doc = "The wheel download URLs."),
     "whl_file": attr.label(doc = "A caller-owned wheel to use instead of downloading."),

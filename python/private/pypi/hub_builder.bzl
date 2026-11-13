@@ -775,8 +775,11 @@ def _whl_repo(
         interpreter,
         enable_pipstar_extract = False):
     args = dict(whl_library_args)
-    args["requirement"] = src.requirement_line
     is_whl = src.filename.endswith(".whl")
+    if not (src.url and is_whl):
+        # The requirement line is only needed for `pip` to download or build
+        # the wheel.
+        args["requirement"] = src.requirement_line
 
     if src.extra_pip_args and not is_whl:
         # pip is not used to download wheels and the python

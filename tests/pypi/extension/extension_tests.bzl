@@ -808,7 +808,6 @@ simple==0.0.1 \
                 "filename": "simple-0.0.1-py3-none-any.whl",
                 "index_url": test.want_index_url,
                 "integrity": "sha256-3q2+7w==",
-                "requirement": "simple==0.0.1",
                 "urls": ["file://simple-0.0.1-py3-none-any.whl"],
             },
         })
