@@ -1,0 +1,12 @@
+load(":win_libs_tests.bzl", "win_libs_test_suite")
+
+package(
+    default_testonly = True,
+    default_visibility = ["//visibility:private"],
+)
+
+licenses(["notice"])
+
+win_libs_test_suite(
+    name = "win_libs_tests",
+)
