@@ -176,7 +176,9 @@ bzl_library(
 
 ## Building and testing
 
-Tests are under the `tests/` directory.
+Tests are under the `tests/` directory, except tests for agent scripts under
+`.agents/`, which stay co-located with the agent code (run with
+`bazel test --config=fast-tests //.agents/...`).
 
 When testing, add `--config=fast-tests`.
 
