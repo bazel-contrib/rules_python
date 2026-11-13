@@ -913,10 +913,7 @@ bzl_library(
 bzl_library(
     name = "util",
     srcs = ["util.bzl"],
-    deps = [
-        ":py_internal",
-        "@bazel_skylib//lib:types",
-    ],
+    deps = [":py_internal"],
 )
 
 bzl_library(
