@@ -182,6 +182,7 @@ bzl_library(
     deps = [
         ":attrs",
         ":hash",
+        ":labels",
         ":parse_requirements",
         ":pep508_env",
         ":pep508_evaluate",
@@ -327,6 +328,7 @@ bzl_library(
     deps = [
         ":default_platforms",
         ":hash",
+        ":labels",
         ":parse_requirements",
         ":pep508_env",
         ":pep508_requirement",
@@ -389,6 +391,7 @@ bzl_library(
     srcs = ["render_pkg_aliases.bzl"],
     deps = [
         ":generate_group_library_build_bazel",
+        ":labels",
         "//python/private:normalize_name",
         "//python/private:text_util",
     ],

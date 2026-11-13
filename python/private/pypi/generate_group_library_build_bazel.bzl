@@ -22,6 +22,8 @@ load(
     "PY_LIBRARY_PUBLIC_LABEL",
     "WHEEL_FILE_IMPL_LABEL",
     "WHEEL_FILE_PUBLIC_LABEL",
+    "extra_label",
+    "group_member",
 )
 
 _PRELUDE = """\
@@ -60,34 +62,35 @@ def _generate_group_libraries(repo_prefix, group_name, group_members):
         repo_prefix: str; the pip_parse repo prefix.
         group_name: str; the name which the user provided for the dep group.
         group_members: list[str]; the names of the _packages_ (not repositories)
-          which make up the group.
+          which make up the group, optionally with a single extra, e.g. `foo[bar]`.
     """
 
-    group_members = sorted(group_members)
+    # The members are the packages, e.g. `foo`, or the extras of the packages,
+    # e.g. `foo[bar]`. The whl targets do not use the extras, so only the
+    # packages are members for the whl targets.
+    members = sorted([group_member(d) for d in group_members])
+    lib_targets = []
+    whl_targets = []
+    for member in members:
+        name, _, extra = member.partition("[")
+        if extra:
+            lib_targets.append((name, "_" + extra_label(extra.rstrip("]"))))
+        else:
+            lib_targets.append((name, PY_LIBRARY_IMPL_LABEL))
+            whl_targets.append((name, WHEEL_FILE_IMPL_LABEL))
 
     if repo_prefix:
-        lib_dependencies = [
-            "@%s%s//:%s" % (repo_prefix, normalize_name(d), PY_LIBRARY_IMPL_LABEL)
-            for d in group_members
-        ]
-        whl_file_deps = [
-            "@%s%s//:%s" % (repo_prefix, normalize_name(d), WHEEL_FILE_IMPL_LABEL)
-            for d in group_members
-        ]
-        visibility = [
-            "@%s%s//:__pkg__" % (repo_prefix, normalize_name(d))
-            for d in group_members
-        ]
+        label_tmpl = "@" + repo_prefix + "{}//:{}"
+        visibility = sorted({
+            "@%s%s//:__pkg__" % (repo_prefix, name): None
+            for name, _ in lib_targets
+        })
     else:
-        lib_dependencies = [
-            "//%s:%s" % (normalize_name(d), PY_LIBRARY_IMPL_LABEL)
-            for d in group_members
-        ]
-        whl_file_deps = [
-            "//%s:%s" % (normalize_name(d), WHEEL_FILE_IMPL_LABEL)
-            for d in group_members
-        ]
+        label_tmpl = "//{}:{}"
         visibility = ["//:__subpackages__"]
+
+    lib_dependencies = [label_tmpl.format(name, target) for name, target in lib_targets]
+    whl_file_deps = [label_tmpl.format(name, target) for name, target in whl_targets]
 
     return _GROUP_TEMPLATE.format(
         name = normalize_name(group_name),

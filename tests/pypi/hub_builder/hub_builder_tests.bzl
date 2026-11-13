@@ -1713,6 +1713,46 @@ Attempting to create a duplicate library pypi_315_foo for foo with different arg
 
 _tests.append(_test_err_duplicate_repos)
 
+def _test_groups_with_extras(env):
+    builder = hub_builder(env)
+    builder.pip_parse(
+        _mock_mctx(
+            os_name = "osx",
+            arch_name = "aarch64",
+            mock_files = {
+                "requirements.txt": """\
+simple==0.0.1 --hash=sha256:deadbeef
+other==0.0.1 --hash=sha256:deadbaaf
+""",
+            },
+        ),
+        _parse(
+            hub_name = "pypi",
+            python_version = "3.15",
+            requirements_lock = "requirements.txt",
+            experimental_requirement_cycles = {
+                "group": ["Simple[Foo]", "other"],
+            },
+        ),
+    )
+    pypi = builder.build()
+
+    pypi.group_map().contains_exactly({
+        "group": ["simple[foo]", "other"],
+    })
+    pypi.whl_libraries().contains_at_least({
+        "pypi_315_simple": {
+            "config_load": "@pypi//:config.bzl",
+            "dep_template": "@pypi//{name}:{target}",
+            "group_deps": ["simple[foo]", "other"],
+            "group_name": "group",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "simple==0.0.1 --hash=sha256:deadbeef",
+        },
+    })
+
+_tests.append(_test_groups_with_extras)
+
 def hub_builder_test_suite(name):
     """Create the test suite.
 

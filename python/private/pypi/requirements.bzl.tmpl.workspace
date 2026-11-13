@@ -68,8 +68,10 @@ def install_deps(**whl_library_kwargs):
     # Set up the requirement groups
     all_requirement_groups = %%ALL_REQUIREMENT_GROUPS%%
 
+    # The members are the packages, e.g. `foo`, or the extras of the packages,
+    # e.g. `foo[bar]`.
     requirement_group_mapping = {
-        requirement: group_name
+        requirement.partition("[")[0]: group_name
         for group_name, group_requirements in all_requirement_groups.items()
         for requirement in group_requirements
     }

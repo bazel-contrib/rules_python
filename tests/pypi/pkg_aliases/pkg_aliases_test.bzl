@@ -698,6 +698,35 @@ def _test_extras_aliases_group(env):
 
 _tests.append(_test_extras_aliases_group)
 
+def _test_extras_aliases_group_with_extras(env):
+    got = {}
+
+    pkg_aliases(
+        name = "foo",
+        actual = "repo",
+        extras = ["bar"],
+        group_name = "group",
+        # Only the `bar` extra is the member of the group.
+        group_extras = ["bar"],
+        native = struct(
+            alias = lambda *, name, actual, visibility = None, tags = None: got.update({name: actual}),
+        ),
+        select = lambda value, no_match_error = None: value,
+    )
+
+    # buildifier: disable=unsorted-dict-items
+    env.expect.that_dict(got).contains_at_least({
+        "pkg": "//_groups:group_pkg",
+        "[]": "@repo//:pkg",
+        "[bar]": "//_groups:group_pkg",
+        "_[bar]": "@repo//:[bar]",
+        "whl": "@repo//:whl",
+    })
+    env.expect.that_collection(got.keys()).not_contains("_pkg")
+    env.expect.that_collection(got.keys()).not_contains("_whl")
+
+_tests.append(_test_extras_aliases_group_with_extras)
+
 def _test_extras_aliases_single_repo(env):
     got = {}
     py_library_calls = []

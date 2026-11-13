@@ -83,6 +83,7 @@ def pkg_aliases(
         name,
         actual,
         group_name = None,
+        group_extras = None,
         extra_aliases = None,
         requires_dist = [],
         extras = [],
@@ -100,6 +101,10 @@ def pkg_aliases(
             the aliases to point to mapping to repositories. The keys are passed
             to bazel skylib's `selects.with_or`, so they can be tuples as well.
         group_name: {type}`str` The group name that the pkg belongs to.
+        group_extras: {type}`list[str] | None` The members of the group in
+            this package, where an empty string is the package without extras
+            and the other values are the extras, e.g. `["", "bar"]`. Defaults
+            to the package without extras if `group_name` is set.
         group_deps: {type}`list[str]` The packages that are in the given group. Comes
             as an arg through the hub repository.
         extra_aliases: {type}`list[str]` The extra aliases to be created.
@@ -112,9 +117,10 @@ def pkg_aliases(
             Comes from `//:config.bzl#packages`
         **kwargs: extra kwargs to pass to {bzl:obj}`get_config_settings`.
     """
-
-    # The package without extras is the member of the group.
-    group_extras = [""] if group_name else []
+    if not group_name:
+        group_extras = []
+    elif group_extras == None:
+        group_extras = [""]
 
     _native = kwargs.pop("native", native)
     rules = kwargs.pop("rules", struct(

@@ -9,6 +9,7 @@ load("//python/private:version.bzl", "version")
 load("//python/private:version_label.bzl", "version_label")
 load(":attrs.bzl", "use_isolated")
 load(":hash.bzl", "hash")
+load(":labels.bzl", "group_member")
 load(":parse_requirements.bzl", "parse_requirements")
 load(":pep508_env.bzl", "env")
 load(":pep508_evaluate.bzl", "evaluate")
@@ -258,18 +259,20 @@ def _add_group_map(self, group_map):
     # cycles for different abis/oses? For now we will need the users to
     # assume the same groups across all versions/platforms until we start
     # using an alternative cycle resolution strategy.
+    # The members are the packages, e.g. `foo`, or the extras of the packages,
+    # e.g. `foo[bar]`.
     group_map = {
-        name: [normalize_name(whl_name) for whl_name in whls]
-        for name, whls in group_map.items()
+        name: [group_member(member) for member in members]
+        for name, members in group_map.items()
     }
     self._group_map.clear()
     self._group_name_by_whl.clear()
 
     self._group_map.update(group_map)
     self._group_name_by_whl.update({
-        whl_name: group_name
-        for group_name, group_whls in self._group_map.items()
-        for whl_name in group_whls
+        member.partition("[")[0]: group_name
+        for group_name, members in self._group_map.items()
+        for member in members
     })
 
 def _add_extra_aliases(self, extra_hub_aliases):

@@ -22,6 +22,7 @@ load(
     ":generate_group_library_build_bazel.bzl",
     "generate_group_library_build_bazel",
 )  # buildifier: disable=bzl-visibility
+load(":labels.bzl", "group_member")
 
 NO_MATCH_ERROR_MESSAGE_TEMPLATE = """\
 No matching wheel for current configuration's Python version.
@@ -115,17 +116,23 @@ def render_pkg_aliases(*, aliases, requirement_cycles = None, extra_hub_aliases 
         fail("The aliases need to be provided as a dict, got: {}".format(type(aliases)))
 
     whl_group_mapping = {}
+    group_extras = {}
     if requirement_cycles:
+        # The members are the packages, e.g. `foo`, or the extras of the
+        # packages, e.g. `foo[bar]`.
         requirement_cycles = {
-            name: [normalize_name(whl_name) for whl_name in whls]
-            for name, whls in requirement_cycles.items()
+            name: [group_member(member) for member in members]
+            for name, members in requirement_cycles.items()
         }
 
-        whl_group_mapping = {
-            whl_name: group_name
-            for group_name, group_whls in requirement_cycles.items()
-            for whl_name in group_whls
-        }
+        for group_name, members in requirement_cycles.items():
+            for member in members:
+                whl_name, _, extra = member.partition("[")
+                whl_group_mapping[whl_name] = group_name
+                group_extras.setdefault(whl_name, []).append(extra.rstrip("]"))
+
+        # The package without extras is the default member.
+        group_extras = {k: v for k, v in group_extras.items() if v != [""]}
 
     files = {
         "{}/BUILD.bazel".format(normalize_name(name)): _render_common_aliases(
@@ -134,6 +141,7 @@ def render_pkg_aliases(*, aliases, requirement_cycles = None, extra_hub_aliases 
             extra_aliases = extra_hub_aliases.get(normalize_name(name), []),
             extras = extras.get(normalize_name(name), []),
             group_name = whl_group_mapping.get(normalize_name(name)),
+            group_extras = group_extras.get(normalize_name(name)),
             **kwargs
         ).strip()
         for name, pkg_aliases in aliases.items()

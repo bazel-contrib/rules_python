@@ -22,6 +22,7 @@ load("//python/private:text_util.bzl", "render")
 load("//python/private:version.bzl", "version")
 load(":default_platforms.bzl", "default_platforms")
 load(":hash.bzl", "hash")
+load(":labels.bzl", "group_member")
 load(":parse_requirements.bzl", "host_platform", "parse_requirements", "select_requirement")
 load(":pep508_env.bzl", "env")
 load(":pep508_requirement.bzl", "strip_extras", parse_requirement = "requirement")
@@ -222,7 +223,11 @@ def _pip_repository_impl(rctx):
     # label referencing a package which may not be installed on the current
     # platform.
     requirement_cycles = {
-        normalize_name(name): sorted([normalize_name(d) for d in group if normalize_name(d) in bzl_packages])
+        normalize_name(name): sorted([
+            group_member(d)
+            for d in group
+            if group_member(d).partition("[")[0] in bzl_packages
+        ])
         for name, group in requirement_cycles.items()
     }
 
