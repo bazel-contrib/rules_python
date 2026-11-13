@@ -1,4 +1,5 @@
 load("@rules_multirun//:defs.bzl", "multirun")
+load("//python:py_library.bzl", "py_library")
 load("//python/uv:lock.bzl", "lock")  # buildifier: disable=bzl-visibility
 
 licenses(["notice"])
@@ -8,6 +9,13 @@ exports_files(
         "download_bazel.py",
         "verified_download.py",
     ],
+    visibility = ["//:__subpackages__"],
+)
+
+py_library(
+    name = "sync_downloader_configs",
+    srcs = ["sync_downloader_configs.py"],
+    imports = [".."],
     visibility = ["//:__subpackages__"],
 )
 
