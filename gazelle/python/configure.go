@@ -43,6 +43,7 @@ func (py *Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Conf
 // This is called once with the root configuration when Gazelle starts.
 // CheckFlags may set default values in flags or make implied changes.
 func (py *Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
+	activePrefetcher.Store(newPrefetcher(fs, c.RepoRoot, c.WorkDir))
 	return nil
 }
 
@@ -90,6 +91,8 @@ func (py *Configurer) KnownDirectives() []string {
 // f is the build file for the current directory or nil if there is no
 // existing build file.
 func (py *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
+	activePrefetcher.Load().enqueueDir(rel)
+
 	// Create the root config.
 	if _, exists := c.Exts[languageName]; !exists {
 		rootConfig := pythonconfig.New(c.RepoRoot, "")

@@ -15,6 +15,7 @@ go_library(
         "kinds.go",
         "language.go",
         "parser.go",
+        "prefetch.go",
         "resolve.go",
         "std_modules.go",
         "target.go",
@@ -33,6 +34,7 @@ go_library(
         "@bazel_gazelle//repo",
         "@bazel_gazelle//resolve",
         "@bazel_gazelle//rule",
+        "@bazel_gazelle//walk",
         "@com_github_bazelbuild_buildtools//build",
         "@com_github_bmatcuk_doublestar_v4//:doublestar",
         "@com_github_emirpasic_gods//lists/singlylinkedlist",
@@ -138,10 +140,12 @@ go_test(
     name = "default_test",
     srcs = [
         "file_parser_test.go",
+        "prefetch_test.go",
         "std_modules_test.go",
     ],
     embed = [":python"],
     deps = [
+        "@bazel_gazelle//walk",
         "@com_github_stretchr_testify//assert",
     ],
 )
