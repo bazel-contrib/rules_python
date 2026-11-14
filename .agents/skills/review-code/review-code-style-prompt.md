@@ -21,5 +21,9 @@ cross-language code style, control flow, refactoring, and CLI conventions:
    verify comments or docstrings document what those paths are relative to.
 7. Synchronized Sections: Flag plain `# Keep in sync` comments for paired code
    or config blocks and require `LINT.IfChange` / `LINT.ThenChange` directives.
+8. Porting & Rewrites: When porting or rewriting code across languages or
+   subsystems (even if the original files are unchanged in `git diff`), inspect
+   the original source and test files and verify the new implementation and
+   tests preserve every test case and non-obvious invariant or spec comment.
 
 @.agents/skills/review-code/review-report-format.md

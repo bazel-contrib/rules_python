@@ -71,7 +71,6 @@ Order definitions within a file as:
   each failing item sorted, one per line, with its location and reason.
 
 ## Porting & Rewrites
-* When porting or rewriting an existing implementation (across languages or
-  subsystems), cross-check every test case and non-obvious invariant or spec
-  comment in the original code and test suite against the new implementation and
-  tests so edge-case coverage and rationale are preserved.
+* When porting or rewriting code across languages or subsystems, cross-check
+  every original test case and non-obvious invariant or spec comment against the
+  new implementation and tests to preserve edge-case coverage and rationale.

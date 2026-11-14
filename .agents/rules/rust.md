@@ -34,10 +34,11 @@ When adding or updating a Rust crate dependency:
   builds), platform-incompatible OS crates, or heavy unused subsystems, and
   document the reason in a comment.
 * **Compression backends**: For `zip`/`flate2` DEFLATE workloads, prefer
-  pure-Rust `zlib-rs` (`zip` feature `deflate-flate2-zlib-rs` plus `flate2`
-  `runtime_detection` with `default-features = false`) over `miniz_oxide` so
-  throughput matches or exceeds C `zlib` while preserving pure-Rust `musl`
-  cross-compilation and deterministic bitstreams.
+  pure-Rust `zlib-rs` (`flate2` features `["zlib-rs", "runtime_detection"]`,
+  plus `zip` feature `deflate-flate2-zlib-rs` when using `zip`, both with
+  `default-features = false`) over `miniz_oxide` so throughput matches or
+  exceeds C `zlib` while preserving pure-Rust `musl` cross-compilation and
+  deterministic bitstreams.
 * **Regenerate lockfiles**: Update `Cargo.lock` and `Cargo.Bazel.lock` with
   `CARGO_BAZEL_REPIN=1`; never hand-edit generated lockfiles.
 
@@ -107,7 +108,7 @@ When adding or updating a Rust crate dependency:
   variants and errors compose across crate boundaries; such a type still
   converts into `anyhow::Error` for free at the CLI layer.
 * **Document `# Errors`**: Add `# Errors` rustdoc sections on fallible `pub fn`
-  library items stating the conditions under which `Err` is returned.
+  library items stating when they return `Err`.
 * **Tests may panic**: `unwrap()`, `expect()`, `panic!`, and indexing are
   allowed in test code (`.clippy.toml` sets `allow-*-in-tests`). When using
   `expect()`, write the message in std's recommended style, stating why the

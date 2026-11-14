@@ -1,6 +1,6 @@
 ---
 trigger: model_decision
-description: rules to apply to pull request descriptions
+description: Pull request titles, descriptions, commits, comments, and replies
 ---
 
 @CONTRIBUTING.md
@@ -80,13 +80,14 @@ Before drafting any pull request description, strictly adhere to the rules in
     posting it:
     `*This is an agent-generated comment reviewed and approved by the user.*`
 * **Reply Style (`arXiv:2610.29162v1`)**: Keep review replies to 1-3 short
-  sentences (~15-60 words) leading with the commit hash or direct answer. Use
-  animate subjects with concrete verbs (`"I replaced X in <sha>"`, `"str::lines
-  strips \r\n"`); avoid inanimate agentive subjects (`"This commit
+  sentences (~15-60 words) leading with the commit hash or direct answer. Pair
+  direct subjects with concrete verbs (`"I replaced X in <sha>"`, `"str::lines
+  strips \r\n"`); avoid inanimate subjects with agentive verbs (`"This commit
   facilitates..."`), denominal verbs, 3+ stacked nouns, center-embedded relative
   clauses, and excessive inline backticks. Critically evaluate each comment
   against source/specs first and push back concisely when a premise does not
   hold.
 * **Thread Resolution**: Reply via `addPullRequestReviewThreadReply` (`gh api
-  graphql`, batching at most 3-4 mutations per request), and **do not** resolve
-  reviewer threads (`resolveReviewThread`) unless explicitly instructed.
+  graphql`, batching at most 3-4 mutations per request to avoid `502 Bad
+  Gateway` timeouts), and **do not** resolve review threads
+  (`resolveReviewThread`) unless explicitly instructed.
