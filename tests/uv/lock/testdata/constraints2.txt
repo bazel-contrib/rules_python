@@ -1,1 +1,1 @@
-charset-normalizer==3.4.0
+charset-normalizer==3.5.2

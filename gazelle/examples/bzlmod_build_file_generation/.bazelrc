@@ -14,3 +14,6 @@ common:bazel7.x --incompatible_python_disallow_native_rules
 # rules_python code. In the BCR presubmits, this override is removed
 # and the bazel_dep version of rules_python is used.
 common --override_module=rules_python=../../../
+
+import %workspace%/../../downloader_cfg.bazelrc
+common --experimental_downloader_config=../../downloader_config.cfg

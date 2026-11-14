@@ -19,5 +19,7 @@ cross-language code style, control flow, refactoring, and CLI conventions:
    `Justification & Exception Auditor` evaluates it for human sign-off.
 6. Relative Paths: When an object, field, or return value holds relative paths,
    verify comments or docstrings document what those paths are relative to.
+7. Synchronized Sections: Flag plain `# Keep in sync` comments for paired code
+   or config blocks and require `LINT.IfChange` / `LINT.ThenChange` directives.
 
 @.agents/skills/review-code/review-report-format.md

@@ -59,8 +59,12 @@ Order definitions within a file as:
   error messages for CLI flags that bypass safety checks.
 
 ## Sorting
-* Add `keep-sorted start` and `keep-sorted end` markers on list and dict config
-  or registry tables, even when they have a single entry.
+* Add `keep-sorted` `start` and `end` markers on list and dict config or
+  registry tables, even when they have a single entry.
+
+## Synchronized Sections (`ifttt-lint`)
+* Use `LINT.IfChange(<name>)` and `LINT.ThenChange(<target>)` directives instead
+  of plain `# Keep in sync` comments for paired code or config sections.
 
 ## Bulk Logging
 * In bulk operations, log a single summary line on success; on failure, list

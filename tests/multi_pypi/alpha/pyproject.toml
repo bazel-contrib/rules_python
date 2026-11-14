@@ -3,5 +3,5 @@ name = "multi-pypi-test-alpha"
 version = "0.1.0"
 requires-python = ">=3.14"
 dependencies = [
-    "more-itertools==9.1.0"
+    "more-itertools==11.2.1"
 ]

@@ -22,50 +22,50 @@ Why we also run `bazel --version` with retries:
 from __future__ import annotations
 
 import asyncio
-import hashlib
-import io
 import os
 import platform
 import shutil
 import stat
 import sys
-import tarfile
-import urllib.request
 from pathlib import Path
 
-DOWNLOAD_TIMEOUT_SECONDS = 120
-MAX_ATTEMPTS = 5
-INITIAL_DELAY_SECONDS = 2.0
+import verified_download
 
-# Maps "<os>-<arch>" to a list of (url, sha256) tuples tried in order.
+DOWNLOAD_TIMEOUT_SECONDS = verified_download.DEFAULT_TIMEOUT_SECONDS
+MAX_ATTEMPTS = verified_download.DEFAULT_MAX_ATTEMPTS
+INITIAL_DELAY_SECONDS = verified_download.DEFAULT_INITIAL_DELAY_SECONDS
+
+# Maps "<os>-<arch>" to (url, sha256, archive_member) tuples tried in order.
 # Primary URLs use v1.30.0 (latest GitHub release); the npm mirror fallback uses
 # 1.28.1 (latest version published to the npm registry).
 # fmt: off
-BAZELISK_URLS: dict[str, list[tuple[str, str]]] = {
+BAZELISK_URLS: dict[str, list[tuple[str, str, str]]] = {
+    # keep-sorted start block=yes
     "darwin-amd64": [
-        ("https://github.com/bazelbuild/bazelisk/releases/download/v1.30.0/bazelisk-darwin-amd64", "a0e6468b0c6b812f782d8cbfb05824121f6980c0bd70aaa1774fb8272bb7b2ad"),
-        ("https://registry.npmjs.org/@bazel/bazelisk/-/bazelisk-1.28.1.tgz", "023225736cea5dc88f2b0807d5b1af4eb0f69a4ed45e3994b2c18c263bc80e48"),
+        ("https://github.com/bazelbuild/bazelisk/releases/download/v1.30.0/bazelisk-darwin-amd64", "a0e6468b0c6b812f782d8cbfb05824121f6980c0bd70aaa1774fb8272bb7b2ad", ""),
+        ("https://registry.npmjs.org/@bazel/bazelisk/-/bazelisk-1.28.1.tgz", "023225736cea5dc88f2b0807d5b1af4eb0f69a4ed45e3994b2c18c263bc80e48", "package/bazelisk-darwin_amd64"),
     ],
     "darwin-arm64": [
-        ("https://github.com/bazelbuild/bazelisk/releases/download/v1.30.0/bazelisk-darwin-arm64", "555d2ff912ccd336d0060bdb5251ef2f62629c6f8fbadb59005a45d5625793ec"),
-        ("https://registry.npmjs.org/@bazel/bazelisk/-/bazelisk-1.28.1.tgz", "dea3f3f5de2dbc5e269e0132cdd369d5efe738f7b973d5d4eb2b4f7055a97b39"),
+        ("https://github.com/bazelbuild/bazelisk/releases/download/v1.30.0/bazelisk-darwin-arm64", "555d2ff912ccd336d0060bdb5251ef2f62629c6f8fbadb59005a45d5625793ec", ""),
+        ("https://registry.npmjs.org/@bazel/bazelisk/-/bazelisk-1.28.1.tgz", "dea3f3f5de2dbc5e269e0132cdd369d5efe738f7b973d5d4eb2b4f7055a97b39", "package/bazelisk-darwin_arm64"),
     ],
     "linux-amd64": [
-        ("https://github.com/bazelbuild/bazelisk/releases/download/v1.30.0/bazelisk-linux-amd64", "a248ae2b2b62b5baebb748f6fba7203bff1a27e5d01b55399a8406744cb539e8"),
-        ("https://registry.npmjs.org/@bazel/bazelisk/-/bazelisk-1.28.1.tgz", "22e7d3a188699982f661cf4687137ee52d1f24fec1ec893d91a6c4d791a75de8"),
+        ("https://github.com/bazelbuild/bazelisk/releases/download/v1.30.0/bazelisk-linux-amd64", "a248ae2b2b62b5baebb748f6fba7203bff1a27e5d01b55399a8406744cb539e8", ""),
+        ("https://registry.npmjs.org/@bazel/bazelisk/-/bazelisk-1.28.1.tgz", "22e7d3a188699982f661cf4687137ee52d1f24fec1ec893d91a6c4d791a75de8", "package/bazelisk-linux_amd64"),
     ],
     "linux-arm64": [
-        ("https://github.com/bazelbuild/bazelisk/releases/download/v1.30.0/bazelisk-linux-arm64", "b2bcc040c213b44586b121bda6d983c35df121b917c3a7a66fb16f2fa0df1a4f"),
-        ("https://registry.npmjs.org/@bazel/bazelisk/-/bazelisk-1.28.1.tgz", "8ded44b58a0d9425a4178af26cf17693feac3b87bdcfef0a2a0898fcd1afc9f2"),
+        ("https://github.com/bazelbuild/bazelisk/releases/download/v1.30.0/bazelisk-linux-arm64", "b2bcc040c213b44586b121bda6d983c35df121b917c3a7a66fb16f2fa0df1a4f", ""),
+        ("https://registry.npmjs.org/@bazel/bazelisk/-/bazelisk-1.28.1.tgz", "8ded44b58a0d9425a4178af26cf17693feac3b87bdcfef0a2a0898fcd1afc9f2", "package/bazelisk-linux_arm64"),
     ],
     "windows-amd64": [
-        ("https://github.com/bazelbuild/bazelisk/releases/download/v1.30.0/bazelisk-windows-amd64.exe", "5d14a31e9d8a363c48ba1900dbd56764d730835232eb0d113cce255856ffe3ef"),
-        ("https://registry.npmjs.org/@bazel/bazelisk/-/bazelisk-1.28.1.tgz", "b9d65a1f7c2d7af885a96a4fd5aa36b40fb41816d30944390569eef908bdc954"),
+        ("https://github.com/bazelbuild/bazelisk/releases/download/v1.30.0/bazelisk-windows-amd64.exe", "5d14a31e9d8a363c48ba1900dbd56764d730835232eb0d113cce255856ffe3ef", ""),
+        ("https://registry.npmjs.org/@bazel/bazelisk/-/bazelisk-1.28.1.tgz", "b9d65a1f7c2d7af885a96a4fd5aa36b40fb41816d30944390569eef908bdc954", "package/bazelisk-windows_amd64.exe"),
     ],
     "windows-arm64": [
-        ("https://github.com/bazelbuild/bazelisk/releases/download/v1.30.0/bazelisk-windows-arm64.exe", "cb832b1d157e0dc5f89108da426f9c6fe087f5b15873e072480ec49cc5afe488"),
-        ("https://registry.npmjs.org/@bazel/bazelisk/-/bazelisk-1.28.1.tgz", "85ba3d92a8bdcbecc06657b8c0ae30f4307b552d601d9d6246f8a98aec36c346"),
+        ("https://github.com/bazelbuild/bazelisk/releases/download/v1.30.0/bazelisk-windows-arm64.exe", "cb832b1d157e0dc5f89108da426f9c6fe087f5b15873e072480ec49cc5afe488", ""),
+        ("https://registry.npmjs.org/@bazel/bazelisk/-/bazelisk-1.28.1.tgz", "85ba3d92a8bdcbecc06657b8c0ae30f4307b552d601d9d6246f8a98aec36c346", "package/bazelisk-windows_arm64.exe"),
     ],
+    # keep-sorted end
 }
 # fmt: on
 
@@ -88,17 +88,6 @@ def _detect_arch() -> str:
     if raw in ("arm64", "aarch64"):
         return "arm64"
     raise RuntimeError(f"Unsupported architecture: {raw}")
-
-
-def _verify_sha256_bytes(data: bytes, expected: str) -> bool:
-    actual = hashlib.sha256(data).hexdigest().lower()
-    if actual != expected.lower():
-        print(
-            f"::warning::SHA-256 mismatch: expected {expected.lower()}, got {actual}",
-            flush=True,
-        )
-        return False
-    return True
 
 
 def _bazelisk_cache_dir(os_name: str) -> Path:
@@ -142,41 +131,6 @@ def _add_to_path(bin_dir: Path) -> None:
     )
 
 
-def _read_url(url: str) -> bytes:
-    with urllib.request.urlopen(url, timeout=DOWNLOAD_TIMEOUT_SECONDS) as resp:
-        return resp.read()
-
-
-async def _fetch_bazelisk(
-    url: str, os_name: str, arch_name: str, ext: str
-) -> bytes | None:
-    try:
-        data = await asyncio.to_thread(_read_url, url)
-        if url.endswith(".tgz"):
-            member_name = f"package/bazelisk-{os_name}_{arch_name}{ext}"
-            with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as tar:
-                member = tar.extractfile(member_name)
-                if member is None:
-                    return None
-                return member.read()
-        return data
-    except Exception as exc:  # noqa: BLE001
-        print(f"::warning::Failed to fetch {url}: {exc}", flush=True)
-        return None
-
-
-def _install_bazelisk_binary(
-    data: bytes, bin_dir: Path, bazel_bin: Path, bazelisk_bin: Path
-) -> None:
-    bin_dir.mkdir(parents=True, exist_ok=True)
-    bazel_bin.write_bytes(data)
-    exec_bits = stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
-    bazel_bin.chmod(bazel_bin.stat().st_mode | exec_bits)
-    shutil.copy2(bazel_bin, bazelisk_bin)
-    bazelisk_bin.chmod(bazelisk_bin.stat().st_mode | exec_bits)
-    _add_to_path(bin_dir)
-
-
 async def _setup_bazelisk(
     max_attempts: int = MAX_ATTEMPTS,
     initial_delay: float = INITIAL_DELAY_SECONDS,
@@ -193,47 +147,38 @@ async def _setup_bazelisk(
     bazel_bin = bin_dir / f"bazel{ext}"
     bazelisk_bin = bin_dir / f"bazelisk{ext}"
 
-    if bazel_bin.is_file():
-        actual_sha = hashlib.sha256(bazel_bin.read_bytes()).hexdigest().lower()
-        if any(actual_sha == sha256.lower() for _, sha256 in sources):
-            exec_bits = stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
-            bazel_bin.chmod(bazel_bin.stat().st_mode | exec_bits)
-            if not bazelisk_bin.is_file():
-                shutil.copy2(bazel_bin, bazelisk_bin)
-                bazelisk_bin.chmod(bazelisk_bin.stat().st_mode | exec_bits)
-            _add_to_path(bin_dir)
-            return
+    try:
+        await verified_download.download_verified_file(
+            bazel_bin,
+            sources,
+            executable=True,
+            timeout=DOWNLOAD_TIMEOUT_SECONDS,
+            max_attempts=max_attempts,
+            initial_delay=initial_delay,
+        )
+    except verified_download.DownloadError:
+        print(
+            f"::error::Failed to download Bazelisk after {max_attempts} attempts",
+            flush=True,
+        )
+        _clean_bazelisk_cache()
+        sys.exit(1)
 
-    delay = initial_delay
-    for attempt in range(1, max_attempts + 1):
-        for url, expected_sha in sources:
-            data = await _fetch_bazelisk(url, os_name, arch_name, ext)
-            if data is not None and _verify_sha256_bytes(data, expected_sha):
-                _install_bazelisk_binary(data, bin_dir, bazel_bin, bazelisk_bin)
-                return
-
-        if attempt < max_attempts:
-            print(
-                f"::warning::Failed to download Bazelisk "
-                f"(attempt {attempt}/{max_attempts}); retrying in {delay:g}s...",
-                flush=True,
-            )
-            await asyncio.sleep(delay)
-            delay *= 2
-
-    print(
-        f"::error::Failed to download Bazelisk after {max_attempts} attempts",
-        flush=True,
-    )
-    _clean_bazelisk_cache()
-    sys.exit(1)
+    bazel_sha = verified_download.sha256_bytes(bazel_bin.read_bytes())
+    if (
+        not bazelisk_bin.is_file()
+        or verified_download.sha256_bytes(bazelisk_bin.read_bytes()) != bazel_sha
+    ):
+        shutil.copy2(bazel_bin, bazelisk_bin)
+        exec_bits = stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+        bazelisk_bin.chmod(bazelisk_bin.stat().st_mode | exec_bits)
+    _add_to_path(bin_dir)
 
 
 async def _run_bazel_version() -> bool:
     bazel_exe = shutil.which("bazel", path=os.environ.get("PATH")) or "bazel"
     proc = await asyncio.create_subprocess_exec(bazel_exe, "--version")
-    returncode = await proc.wait()
-    return returncode == 0
+    return (await proc.wait()) == 0
 
 
 async def _download_bazel(
