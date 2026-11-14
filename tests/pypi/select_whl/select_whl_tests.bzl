@@ -2,6 +2,7 @@
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "REPO_VERBOSITY_ENV_VAR", "repo_utils")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:default_platforms.bzl", "default_platforms")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:select_whl.bzl", "select_whl")  # buildifier: disable=bzl-visibility
 
 WHL_LIST = [
@@ -546,6 +547,162 @@ def _test_android(env):
     )
 
 _tests.append(_test_android)
+
+def _default_abi_tags(platform, python_version):
+    major, _, minor = python_version.partition(".")
+    return ["none"] + [
+        tag.format(major = major, minor = minor)
+        for tag in default_platforms()[platform]["whl_abi_tags"]
+    ]
+
+# See https://peps.python.org/pep-0803/
+ABI3T_WHL_LIST = [
+    "pkg-0.0.1-py3-none-any.whl",
+    "pkg-0.0.1-cp315-abi3-manylinux_2_17_x86_64.whl",
+    "pkg-0.0.1-cp315-abi3t-manylinux_2_17_x86_64.whl",
+    "pkg-0.0.1-cp316-abi3t-manylinux_2_17_x86_64.whl",
+    "pkg-0.0.1-cp315-cp315-manylinux_2_17_x86_64.whl",
+    "pkg-0.0.1-cp315-cp315t-manylinux_2_17_x86_64.whl",
+    "pkg-0.0.1-cp316-cp316t-manylinux_2_17_x86_64.whl",
+]
+
+def _test_abi3t_freethreaded(env):
+    got = _select_whl(
+        whls = [
+            "pkg-0.0.1-py3-none-any.whl",
+            "pkg-0.0.1-cp315-abi3-manylinux_2_17_x86_64.whl",
+            "pkg-0.0.1-cp315-abi3t-manylinux_2_17_x86_64.whl",
+            "pkg-0.0.1-cp315-cp315-manylinux_2_17_x86_64.whl",
+        ],
+        whl_platform_tags = ["any", "manylinux_*_x86_64"],
+        whl_abi_tags = _default_abi_tags("linux_x86_64_freethreaded", "3.15"),
+        python_version = "3.15",
+        limit = 3,
+    )
+    _match(
+        env,
+        got,
+        # The free-threaded builds cannot use `abi3` or `cp315` wheels.
+        "pkg-0.0.1-py3-none-any.whl",
+        "pkg-0.0.1-cp315-abi3t-manylinux_2_17_x86_64.whl",
+    )
+
+_tests.append(_test_abi3t_freethreaded)
+
+def _test_abi3t_prefer_version_specific(env):
+    got = _select_whl(
+        whls = ABI3T_WHL_LIST,
+        whl_platform_tags = ["any", "manylinux_*_x86_64"],
+        whl_abi_tags = _default_abi_tags("linux_x86_64_freethreaded", "3.15"),
+        python_version = "3.15",
+        limit = 3,
+    )
+    _match(
+        env,
+        got,
+        # The last item has the most priority
+        "pkg-0.0.1-py3-none-any.whl",
+        "pkg-0.0.1-cp315-abi3t-manylinux_2_17_x86_64.whl",
+        "pkg-0.0.1-cp315-cp315t-manylinux_2_17_x86_64.whl",
+    )
+
+_tests.append(_test_abi3t_prefer_version_specific)
+
+def _test_abi3t_python_tag_is_minimum_version(env):
+    # The `cp315-abi3t` wheel can be used on 3.15 and above, whilst the
+    # `cp316-abi3t` wheel cannot be used on 3.15.
+    for python_version, want in {
+        "3.14": [
+            "pkg-0.0.1-py3-none-any.whl",
+        ],
+        "3.15": [
+            "pkg-0.0.1-py3-none-any.whl",
+            "pkg-0.0.1-cp315-abi3t-manylinux_2_17_x86_64.whl",
+        ],
+        "3.16": [
+            "pkg-0.0.1-py3-none-any.whl",
+            "pkg-0.0.1-cp315-abi3t-manylinux_2_17_x86_64.whl",
+            "pkg-0.0.1-cp316-abi3t-manylinux_2_17_x86_64.whl",
+        ],
+        "3.17": [
+            "pkg-0.0.1-py3-none-any.whl",
+            "pkg-0.0.1-cp315-abi3t-manylinux_2_17_x86_64.whl",
+            "pkg-0.0.1-cp316-abi3t-manylinux_2_17_x86_64.whl",
+        ],
+    }.items():
+        got = _select_whl(
+            whls = [
+                "pkg-0.0.1-py3-none-any.whl",
+                "pkg-0.0.1-cp315-abi3t-manylinux_2_17_x86_64.whl",
+                "pkg-0.0.1-cp316-abi3t-manylinux_2_17_x86_64.whl",
+            ],
+            whl_platform_tags = ["any", "manylinux_*_x86_64"],
+            whl_abi_tags = _default_abi_tags("linux_x86_64_freethreaded", python_version),
+            python_version = python_version,
+            limit = 3,
+        )
+        _match(env, got, *want)
+
+_tests.append(_test_abi3t_python_tag_is_minimum_version)
+
+def _test_abi3t_newer_cpxt_preferred(env):
+    got = _select_whl(
+        whls = ABI3T_WHL_LIST,
+        whl_platform_tags = ["any", "manylinux_*_x86_64"],
+        whl_abi_tags = _default_abi_tags("linux_x86_64_freethreaded", "3.16"),
+        python_version = "3.16",
+        limit = 4,
+    )
+    _match(
+        env,
+        got,
+        # The last item has the most priority
+        "pkg-0.0.1-py3-none-any.whl",
+        "pkg-0.0.1-cp315-abi3t-manylinux_2_17_x86_64.whl",
+        "pkg-0.0.1-cp316-abi3t-manylinux_2_17_x86_64.whl",
+        "pkg-0.0.1-cp316-cp316t-manylinux_2_17_x86_64.whl",
+    )
+
+_tests.append(_test_abi3t_newer_cpxt_preferred)
+
+def _test_abi3t_not_selected_on_gil_builds(env):
+    got = _select_whl(
+        whls = [
+            "pkg-0.0.1-py3-none-any.whl",
+            "pkg-0.0.1-cp315-abi3t-manylinux_2_17_x86_64.whl",
+            "pkg-0.0.1-cp315-cp315t-manylinux_2_17_x86_64.whl",
+        ],
+        whl_platform_tags = ["any", "manylinux_*_x86_64"],
+        whl_abi_tags = _default_abi_tags("linux_x86_64", "3.15"),
+        python_version = "3.15",
+        limit = 3,
+    )
+    _match(
+        env,
+        got,
+        # The GIL-enabled builds cannot use `abi3t` only wheels.
+        "pkg-0.0.1-py3-none-any.whl",
+    )
+
+_tests.append(_test_abi3t_not_selected_on_gil_builds)
+
+def _test_abi3_abi3t_compressed_tag(env):
+    whls = [
+        "pkg-0.0.1-py3-none-any.whl",
+        "pkg-0.0.1-cp315-abi3.abi3t-manylinux_2_17_x86_64.whl",
+    ]
+    for platform in ["linux_x86_64", "linux_x86_64_freethreaded"]:
+        got = _select_whl(
+            whls = whls,
+            whl_platform_tags = ["any", "manylinux_*_x86_64"],
+            whl_abi_tags = _default_abi_tags(platform, "3.15"),
+            python_version = "3.15",
+        )
+
+        # The wheels compatible with both ABIs can be used on both builds.
+        _match(env, [got], "pkg-0.0.1-cp315-abi3.abi3t-manylinux_2_17_x86_64.whl")
+
+_tests.append(_test_abi3_abi3t_compressed_tag)
 
 def select_whl_test_suite(name):
     """Create the test suite.

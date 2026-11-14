@@ -43,7 +43,7 @@ def _test_simple(env):
     }
 
     for give, want in tests.items():
-        for abi in ["", "abi3", "none"]:
+        for abi in ["", "abi3", "abi3t", "none"]:
             got = whl_target_platforms(give, abi)
             env.expect.that_collection(got).contains_exactly(want)
 

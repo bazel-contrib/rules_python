@@ -26,7 +26,15 @@ def _platform(
         "marker": "python_version >= '3.13'" if freethreaded else marker,
         "name": name,
         "os_name": os_name,
-        "whl_abi_tags": ["cp{major}{minor}t"] if freethreaded else [
+        # The free-threaded builds can use the `abi3t` stable ABI wheels, see
+        # https://peps.python.org/pep-0803/. The python tag of the `abi3t` wheels
+        # is the minimum supported version, which is handled in the same way as
+        # for `abi3` when selecting the wheels. The GIL-enabled builds cannot
+        # use `abi3t` wheels unless they are also tagged with `abi3`, e.g.
+        # `cp315-abi3.abi3t`.
+        #
+        # The last item has the highest priority.
+        "whl_abi_tags": ["abi3t", "cp{major}{minor}t"] if freethreaded else [
             "abi3",
             "cp{major}{minor}",
         ],

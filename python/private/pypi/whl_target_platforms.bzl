@@ -64,7 +64,10 @@ def whl_target_platforms(platform_tag, abi_tag = ""):
     cpus = _cpu_from_tag(platform_tag)
 
     abi = None
-    if abi_tag not in ["", "none", "abi3"]:
+
+    # The stable ABI tags (`abi3` and `abi3t`, see https://peps.python.org/pep-0803/)
+    # do not identify a single interpreter ABI.
+    if abi_tag not in ["", "none", "abi3", "abi3t"]:
         abi = abi_tag
 
     # TODO @aignas 2024-05-29: this code is present in many places, I think

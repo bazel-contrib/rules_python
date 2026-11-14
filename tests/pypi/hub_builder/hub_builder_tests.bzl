@@ -66,7 +66,7 @@ def hub_builder(
                         "@platforms//os:{}".format(os),
                         "@platforms//cpu:{}".format(cpu),
                     ],
-                    whl_abi_tags = ["cp{major}{minor}t"] if freethreaded else ["abi3", "cp{major}{minor}"],
+                    whl_abi_tags = ["abi3t", "cp{major}{minor}t"] if freethreaded else ["abi3", "cp{major}{minor}"],
                     whl_platform_tags = whl_platform_tags,
                 )
                 for (os, cpu, freethreaded), whl_platform_tags in {
