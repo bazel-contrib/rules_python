@@ -24,12 +24,19 @@ in `git diff`:
    - Check feature selection: default features should remain enabled unless
      defaults pull in C `-sys` libraries, target-incompatible OS crates, or
      heavy unused subsystems (with a comment explaining why
-     `default_features = False` is set).
+     `default_features = False` is set). For `zip`/`flate2` DEFLATE workloads,
+     verify crate specs select pure-Rust `zlib-rs` (`flate2` features
+     `["zlib-rs", "runtime_detection"]` and `zip` `deflate-flate2-zlib-rs`
+     with `default-features = false`) over `miniz_oxide`.
 4. Idiomatic Rust, CLI & Crate Design:
    - Verify workspace crates use `edition = "2024"`, flatten nested conditionals
-     with early guards and `let`-chains, and use `str` pattern methods
+     with early guards and `let`-chains, prefer `str` pattern methods
      (`split_once`, `rsplit_once`, `strip_prefix`/`strip_suffix`) over manual
-     index slicing.
+     index slicing, iterate lines with `str::lines()` instead of
+     `.replace("\r\n", "\n")`, and pass `parent` directly to
+     `fs::create_dir_all(parent)` without `!parent.as_os_str().is_empty()`.
+   - Verify fallible `pub fn` library items include `# Errors` rustdoc
+     sections stating when they return `Err`.
    - Verify "parse, don't validate": flag stringly-typed `String` options where
      `bool`, enums, validated `PathBuf`, or pre-compiled `Regex` belong in
      `parse_args`.
