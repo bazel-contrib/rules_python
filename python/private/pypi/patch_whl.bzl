@@ -253,10 +253,16 @@ def _repack_whl_unix(rctx, *, output):
     # Bazel's zipper doesn't need a `zip` binary on the host, and it writes a
     # fixed timestamp so the repacked wheel is reproducible.
     zipper = rctx.path(Label("@bazel_tools//tools/zip:zipper/zipper"))
-    params = zipper_params_content(_collect_files(rctx).keys()) if zipper.exists else None
-    if params != None:
-        _repack_whl_zipper(rctx, zipper = zipper, params = params, output = output)
-        return
+    if zipper.exists:
+        params = zipper_params_content(_collect_files(rctx).keys())
+        if params != None:
+            _repack_whl_zipper(
+                rctx,
+                zipper = zipper,
+                params = params,
+                output = output,
+            )
+            return
 
     repo_utils.execute_checked(
         rctx,
@@ -279,7 +285,12 @@ def _repack_whl_zipper(rctx, *, zipper, params, output):
     repo_utils.execute_checked(
         rctx,
         op = "PatchWhl",
-        arguments = [str(zipper), "c", str(output), "@" + params_path],
+        arguments = [
+            str(zipper),
+            "c",  # Create uncompressed archive (omits C).
+            str(output),
+            "@" + params_path,
+        ],
     )
     rctx.delete(params_path)
 
