@@ -428,18 +428,19 @@ fn test_escaping_and_pep440_normalization() {
 fn test_expand_metadata_requires_shared_file_with_and_without_extra() {
     let tmp = TempDir::new("shared_reqs");
     let reqs_file = tmp.path().join("shared.txt");
-    fs::write(&reqs_file, "tomli>=2.0.0\nstarlark # inline comment\n")
+    fs::write(&reqs_file, "tomli>=2.0.0\r\nstarlark # inline comment\r\n")
         .expect("shared.txt should be writable");
 
     // Regression check: when the same @file path appears both bare and with `; extra == '...'`,
-    // expanding the bare directive must not corrupt the extra directive's line.
+    // expanding the bare directive must not corrupt the extra directive's line; `\r\n` inputs are
+    // handled directly via `str::lines` and emitted with `\n`.
     let raw = format!(
         concat!(
-            "Metadata-Version: 2.1\n",
-            "Name: shared\n",
-            "Requires-Dist: @{reqs}\n",
-            "Provides-Extra: dev\n",
-            "Requires-Dist: @{reqs}; extra == 'dev'\n",
+            "Metadata-Version: 2.1\r\n",
+            "Name: shared\r\n",
+            "Requires-Dist: @{reqs}\r\n",
+            "Provides-Extra: dev\r\n",
+            "Requires-Dist: @{reqs}; extra == 'dev'\r\n",
         ),
         reqs = reqs_file.display(),
     );

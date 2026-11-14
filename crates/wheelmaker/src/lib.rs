@@ -2,8 +2,8 @@
 //!
 //! Mirrors `tools/wheelmaker.py` with two intentional differences stemming from its pure-Rust
 //! dependencies:
-//! * Compressed `.whl` archives use `flate2`'s pure-Rust DEFLATE backend rather than C `zlib`, so
-//!   compressed byte streams (and outer `.whl` file digests) differ while archive entries and
+//! * Compressed `.whl` archives use `flate2`'s pure-Rust `zlib-rs` backend rather than C `zlib`,
+//!   so compressed byte streams (and outer `.whl` file digests) differ while archive entries and
 //!   `RECORD` SHA-256 digests are identical.
 //! * `Requires-Dist` lines parsed through `pep508_rs` normalize distribution names (PEP 503),
 //!   extra names (PEP 685), and environment markers (algebraic PEP 508 simplification).
@@ -258,6 +258,11 @@ fn format_requirement(req: &pep508_rs::Requirement<pep508_rs::VerbatimUrl>) -> S
 ///
 /// Uses `pep508_rs`, which normalizes package names (PEP 503), extra names (PEP 685), and
 /// environment markers.
+///
+/// # Errors
+///
+/// Returns an error if `reqs_text` is not a valid PEP 508 requirement or `extra` is not a valid
+/// PEP 508 marker expression.
 pub fn get_new_requirement_line(reqs_text: &str, extra: &str) -> Result<String> {
     let mut req = pep508_rs::Requirement::<pep508_rs::VerbatimUrl>::from_str(reqs_text.trim())
         .with_context(|| format!("parsing requirement {reqs_text:?}"))?;
@@ -285,25 +290,24 @@ pub fn resolve_stamp_with_lines(argument: &str, status_lines: &[String]) -> Stri
     resolved
 }
 
-fn read_text_universal_newlines(path: &Path) -> Result<String> {
-    let raw = fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
-    Ok(raw.replace("\r\n", "\n"))
+fn read_text(path: &Path) -> Result<String> {
+    fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))
 }
 
 /// Expands `Requires-Dist:` lines in `metadata` (both inline requirements with `;` markers and
 /// `@file` requirement-file directives).
+///
+/// # Errors
+///
+/// Returns an error if a referenced `@file` requirements file cannot be read, or if an inline
+/// requirement, extra marker, or requirements-file entry is not valid PEP 508 syntax.
 pub fn expand_metadata_requires(metadata: &str) -> Result<String> {
-    let normalized = metadata.replace("\r\n", "\n");
-    let mut out = String::with_capacity(normalized.len());
+    let mut out = String::with_capacity(metadata.len());
 
-    for raw_line in normalized.split_inclusive('\n') {
-        let (meta_line, line_ending) = match raw_line.strip_suffix('\n') {
-            Some(line) => (line, "\n"),
-            None => (raw_line, ""),
-        };
-
+    for meta_line in metadata.lines() {
         let Some(after_prefix) = meta_line.strip_prefix("Requires-Dist: ") else {
-            out.push_str(raw_line);
+            out.push_str(meta_line);
+            out.push('\n');
             continue;
         };
 
@@ -311,13 +315,14 @@ pub fn expand_metadata_requires(metadata: &str) -> Result<String> {
             // Normal inline requirement: only re-format when a `;` marker/extra is present,
             // matching `tools/wheelmaker.py`.
             let Some((package, extra)) = after_prefix.rsplit_once(';') else {
-                out.push_str(raw_line);
+                out.push_str(meta_line);
+                out.push('\n');
                 continue;
             };
             let formatted = get_new_requirement_line(package, extra.trim())
                 .with_context(|| format!("in metadata line {meta_line:?}"))?;
             out.push_str(&formatted);
-            out.push_str(line_ending);
+            out.push('\n');
             continue;
         };
 
@@ -326,28 +331,23 @@ pub fn expand_metadata_requires(metadata: &str) -> Result<String> {
             Some((f, e)) => (f, e.trim()),
             None => (after_at, ""),
         };
-        let req_file_text = read_text_universal_newlines(Path::new(file_part))?;
-        let mut reqs = Vec::new();
-        for reqs_line in req_file_text.lines() {
-            let reqs_text = reqs_line.trim();
-            if reqs_text.is_empty() || reqs_text.starts_with('#') || reqs_text.starts_with('-') {
-                continue;
-            }
-            // Strip inline comments.
-            let reqs_text = match reqs_text.split_once('#') {
-                Some((before_comment, _)) => before_comment,
-                None => reqs_text,
-            };
+        let req_file_text = read_text(Path::new(file_part))?;
+        // If the referenced requirements file has no requirements, nothing is pushed and the
+        // directive line is dropped entirely.
+        for reqs_text in req_file_text
+            .lines()
+            .map(str::trim)
+            .filter(|line| !(line.is_empty() || line.starts_with(['#', '-'])))
+            .map(|line| {
+                // Strip inline comments.
+                line.split_once('#')
+                    .map_or(line, |(before_comment, _)| before_comment)
+            })
+        {
             let formatted = get_new_requirement_line(reqs_text, extra)
                 .with_context(|| format!("in requirements file {file_part}"))?;
-            reqs.push(formatted);
-        }
-
-        // If the referenced requirements file has no requirements, drop the directive line
-        // (including its trailing newline) entirely.
-        if !reqs.is_empty() {
-            out.push_str(&reqs.join("\n"));
-            out.push_str(line_ending);
+            out.push_str(&formatted);
+            out.push('\n');
         }
     }
 
@@ -355,6 +355,8 @@ pub fn expand_metadata_requires(metadata: &str) -> Result<String> {
 }
 
 fn create_parent_dir(path: &Path) -> Result<()> {
+    // `Path::parent` returns `Some("")` for bare filenames like `"foo.whl"`, and
+    // `fs::create_dir_all("")` fails with `NotFound`.
     if let Some(parent) = path.parent()
         && !parent.as_os_str().is_empty()
     {
@@ -372,7 +374,7 @@ fn create_parent_dir(path: &Path) -> Result<()> {
 fn collect_sorted_inputs(options: &Options) -> Result<Vec<(String, PathBuf)>> {
     let mut input_files = options.input_file.clone();
     for list_path in &options.input_file_list {
-        let content = read_text_universal_newlines(list_path)?;
+        let content = read_text(list_path)?;
         for line in content.lines() {
             if line.is_empty() {
                 continue;
@@ -402,8 +404,8 @@ fn resolve_name_and_version(options: &Options) -> Result<(String, String)> {
     else {
         return Ok((options.name.clone(), options.version.clone()));
     };
-    let volatile_text = read_text_universal_newlines(volatile_path)?;
-    let stable_text = read_text_universal_newlines(stable_path)?;
+    let volatile_text = read_text(volatile_path)?;
+    let stable_text = read_text(stable_path)?;
     let status_lines: Vec<String> = volatile_text
         .lines()
         .chain(stable_text.lines())
@@ -438,11 +440,18 @@ pub fn build_wheel(options: &Options) -> Result<()> {
     whl.add_string(&maker.distinfo_path("WHEEL"), wheel_contents.as_bytes())?;
 
     let description = match &options.description_file {
-        Some(desc_path) => Some(read_text_universal_newlines(desc_path)?),
+        Some(desc_path) => {
+            let mut desc = read_text(desc_path)?;
+            // Normalize CRLF on Windows so `<dist-info>/METADATA` stays LF-only across platforms.
+            if desc.contains("\r\n") {
+                desc = desc.replace("\r\n", "\n");
+            }
+            Some(desc)
+        }
         None => None,
     };
 
-    let raw_metadata = read_text_universal_newlines(&options.metadata_file)?;
+    let raw_metadata = read_text(&options.metadata_file)?;
     let expanded_metadata = expand_metadata_requires(&raw_metadata)?;
     let final_metadata = maker.format_metadata(&expanded_metadata, description.as_deref())?;
     whl.add_string(&maker.distinfo_path("METADATA"), final_metadata.as_bytes())?;
