@@ -56,6 +56,11 @@ VenvSymlinkKind = struct(
 
 def _VenvSymlinkEntry_init(**kwargs):
     kwargs.setdefault("link_to_file", None)
+    link_to_subpaths = kwargs.get("link_to_subpaths")
+    if link_to_subpaths == None:
+        kwargs["link_to_subpaths"] = depset()
+        return kwargs
+    _check_arg_type("link_to_subpaths", "depset", link_to_subpaths)
     return kwargs
 
 # A provider is used for memory efficiency.
@@ -69,10 +74,20 @@ An entry in `PyInfo.venv_symlinks`
         "files": """
 :type: depset[File]
 
-Files under `link_to_path`.
+Files backing this entry in runfiles. Entries may be regular `File` objects or
+directory artifacts (`File.is_directory`).
 
-This is only used when multiple targets have overlapping `venv_path` paths. e.g.
-if one adds files to `venv_path=a/` and another adds files to `venv_path=a/b/`.
+A directory artifact's contents aren't known at analysis time, so conflict
+merging can't look inside one. To make an entry backed by a directory artifact
+mergeable, list the files under `link_to_path` in {obj}`link_to_subpaths`;
+conflict merging then uses those paths instead of `files`, and `files` only
+supplies runfiles. If {obj}`link_to_subpaths` is empty, the entry is linked as
+a single unit (`venv_path` to `link_to_path`) and can't be merged: analysis
+fails if another entry's files have to be created under its `venv_path`.
+
+Conflict merging occurs when multiple targets have overlapping `venv_path`
+paths, e.g. if one adds files to `venv_path=a/` and another adds files to
+`venv_path=a/b/`.
 """,
         "kind": """
 :type: str
@@ -94,6 +109,27 @@ A file that `venv_path` should point to. The file to link to should also be in
 
 A runfiles-root relative path that `venv_path` will symlink to (if
 `link_to_file` is `None`). If `None`, it means to not create it in the venv.
+""",
+        "link_to_subpaths": """
+:type: depset[str]
+
+:::{include} /_includes/experimental_api.md
+:::
+
+Relative paths of the files under `link_to_path`, for entries whose `files`
+are directory artifacts (`File.is_directory`) and whose `link_to_path` is a
+directory. Optional. When non-empty, it must list every file under
+`link_to_path`, and conflict merging uses these paths instead of `files`
+(`files` then only supplies runfiles). When empty, the entry is linked as a
+single unit and can't be merged with entries under its `venv_path`.
+
+This is for entries whose target isn't a single `File`, so it's mutually
+exclusive with `link_to_file`: `link_to_file` is only used when an entry
+doesn't conflict, whereas `link_to_subpaths` is only used during conflict
+merging.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
 """,
         "package": """
 :type: str | None
@@ -125,6 +161,13 @@ def _VenvSymlinkEntryBuilder_typedef():
     :type: DepsetBuilder[File]
     :::
 
+    ::::{field} link_to_subpaths
+    :type: DepsetBuilder[str]
+
+    :::{versionadded} VERSION_NEXT_FEATURE
+    :::
+    ::::
+
     :::{versionadded} 2.2.0
     :::
     """
@@ -141,6 +184,7 @@ def _VenvSymlinkEntryBuilder():
             "version": None,
         },
         files = builders.DepsetBuilder(),
+        link_to_subpaths = builders.DepsetBuilder(),
         get_kind = lambda: _VenvSymlinkEntryBuilder_get_kind(self),
         set_kind = lambda k: _VenvSymlinkEntryBuilder_set_kind(self, k),
         get_link_to_file = lambda: _VenvSymlinkEntryBuilder_get_link_to_file(self),
@@ -327,6 +371,7 @@ def _VenvSymlinkEntryBuilder_build(self):
         kind = self._state["kind"],
         link_to_file = self._state["link_to_file"],
         link_to_path = self._state["link_to_path"],
+        link_to_subpaths = self.link_to_subpaths.build(),
         package = self._state["package"],
         venv_path = self._state["venv_path"],
         version = self._state["version"],
