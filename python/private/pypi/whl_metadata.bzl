@@ -56,7 +56,7 @@ def parse_whl_metadata(contents):
         "requires_dist": [],
         "version": "",
     }
-    for line in contents.strip().split("\n"):
+    for line in contents.strip().splitlines():
         if not line:
             # Stop parsing on first empty line, which marks the end of the
             # headers containing the metadata.
@@ -70,10 +70,10 @@ def parse_whl_metadata(contents):
             parsed["version"] = value.strip()
         elif line.startswith(_REQUIRES_DIST):
             _, _, value = line.partition(_REQUIRES_DIST)
-            parsed["requires_dist"].append(value.strip(" "))
+            parsed["requires_dist"].append(value.strip())
         elif line.startswith(_PROVIDES_EXTRA):
             _, _, value = line.partition(_PROVIDES_EXTRA)
-            parsed["provides_extra"].append(value.strip(" "))
+            parsed["provides_extra"].append(value.strip())
 
     return struct(
         name = parsed["name"],
