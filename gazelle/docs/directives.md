@@ -923,7 +923,13 @@ Setting the directive to `false` makes Gazelle ignore `pytest_plugins`
 declarations in the package and its subpackages: their entries are neither
 added as dependencies nor validated. Ordinary imports are unaffected.
 
-For example, given this Python file:
+For example, with `# gazelle:python_generation_mode file` and these two
+Python files in the repository root:
+
+```python
+# plugins.py
+import pytest
+```
 
 ```python
 # foo_test.py
@@ -933,7 +939,15 @@ pytest_plugins = ["plugins"]
 `# gazelle:python_resolve_pytest_plugins true` (the default) results in:
 
 ```starlark
+# gazelle:python_generation_mode file
 # gazelle:python_resolve_pytest_plugins true
+
+py_library(
+    name = "plugins",
+    srcs = ["plugins.py"],
+    visibility = ["//:__subpackages__"],
+    deps = ["@pip//pytest"],
+)
 
 py_test(
     name = "foo_test",
@@ -942,10 +956,19 @@ py_test(
 )
 ```
 
-And `# gazelle:python_resolve_pytest_plugins false` results in:
+And `# gazelle:python_resolve_pytest_plugins false` results in no dependency
+on `:plugins`:
 
 ```starlark
+# gazelle:python_generation_mode file
 # gazelle:python_resolve_pytest_plugins false
+
+py_library(
+    name = "plugins",
+    srcs = ["plugins.py"],
+    visibility = ["//:__subpackages__"],
+    deps = ["@pip//pytest"],
+)
 
 py_test(
     name = "foo_test",
