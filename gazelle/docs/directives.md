@@ -181,6 +181,12 @@ The Python-specific directives are:
   * Default: `true`
   * Allowed Values: `true`, `false`
 
+[`# gazelle:python_resolve_pytest_plugins bool`](#directive-python-resolve-pytest-plugins)
+: Controls whether module-level `pytest_plugins` declarations are resolved into
+  target dependencies.
+  * Default: `true`
+  * Allowed Values: `true`, `false`
+
 (directive-python-extension)=
 ## `python_extension`
 
@@ -929,5 +935,75 @@ py_test(
     deps = [
         ":conftest",
     ],
+)
+```
+
+
+(directive-python-resolve-pytest-plugins)=
+## `python_resolve_pytest_plugins`
+
+:::{versionadded} VERSION_NEXT_FEATURE
+{gh-pr}`4207`
+:::
+
+Gazelle resolves static, module-level `pytest_plugins` declarations into
+dependencies (see {ref}`gazelle-pytest-plugins`). The
+`python_resolve_pytest_plugins` directive controls this behavior. It defaults
+to `true`.
+
+Setting the directive to `false` makes Gazelle ignore `pytest_plugins`
+declarations in the package and its subpackages: their entries are neither
+added as dependencies nor validated. Ordinary imports are unaffected.
+
+For example, with `# gazelle:python_generation_mode file` and these two
+Python files in the repository root:
+
+```python
+# plugins.py
+import pytest
+```
+
+```python
+# foo_test.py
+pytest_plugins = ["plugins"]
+```
+
+`# gazelle:python_resolve_pytest_plugins true` (the default) results in:
+
+```starlark
+# gazelle:python_generation_mode file
+# gazelle:python_resolve_pytest_plugins true
+
+py_library(
+    name = "plugins",
+    srcs = ["plugins.py"],
+    visibility = ["//:__subpackages__"],
+    deps = ["@pip//pytest"],
+)
+
+py_test(
+    name = "foo_test",
+    srcs = ["foo_test.py"],
+    deps = [":plugins"],
+)
+```
+
+And `# gazelle:python_resolve_pytest_plugins false` results in no dependency
+on `:plugins`:
+
+```starlark
+# gazelle:python_generation_mode file
+# gazelle:python_resolve_pytest_plugins false
+
+py_library(
+    name = "plugins",
+    srcs = ["plugins.py"],
+    visibility = ["//:__subpackages__"],
+    deps = ["@pip//pytest"],
+)
+
+py_test(
+    name = "foo_test",
+    srcs = ["foo_test.py"],
 )
 ```
