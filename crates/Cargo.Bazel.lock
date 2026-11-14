@@ -1,46 +1,6 @@
 {
-  "checksum": "8e165a9ec4f3cc11a7107ce46a496182b8693e631158f49a6e6c6cfd868452e7",
+  "checksum": "2d0ce215f26718cc18a9b0d2ec186981b34870f61dd4e7fbe3e24330778493bc",
   "crates": {
-    "adler2 2.0.1": {
-      "name": "adler2",
-      "version": "2.0.1",
-      "package_url": "https://github.com/oyvindln/adler2",
-      "repository": {
-        "Http": {
-          "url": "https://static.crates.io/crates/adler2/2.0.1/download",
-          "sha256": "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
-        }
-      },
-      "targets": [
-        {
-          "Library": {
-            "crate_name": "adler2",
-            "crate_root": "src/lib.rs",
-            "srcs": {
-              "allow_empty": true,
-              "include": [
-                "**/*.rs"
-              ]
-            }
-          }
-        }
-      ],
-      "library_target_name": "adler2",
-      "common_attrs": {
-        "compile_data_glob": [
-          "**"
-        ],
-        "edition": "2021",
-        "version": "2.0.1"
-      },
-      "license": "0BSD OR MIT OR Apache-2.0",
-      "license_ids": [
-        "0BSD",
-        "Apache-2.0",
-        "MIT"
-      ],
-      "license_file": "LICENSE-0BSD"
-    },
     "aho-corasick 1.1.5": {
       "name": "aho-corasick",
       "version": "1.1.5",
@@ -1110,22 +1070,17 @@
         "crate_features": {
           "common": [
             "any_impl",
-            "default",
-            "miniz_oxide",
+            "any_zlib",
             "runtime_detection",
-            "rust_backend"
+            "zlib-rs"
           ],
           "selects": {}
         },
         "deps": {
           "common": [
             {
-              "id": "crc32fast 1.5.4",
-              "target": "crc32fast"
-            },
-            {
-              "id": "miniz_oxide 0.9.1",
-              "target": "miniz_oxide"
+              "id": "zlib-rs 0.6.8",
+              "target": "zlib_rs"
             }
           ],
           "selects": {}
@@ -2353,68 +2308,6 @@
         "Unlicense"
       ],
       "license_file": "LICENSE-MIT"
-    },
-    "miniz_oxide 0.9.1": {
-      "name": "miniz_oxide",
-      "version": "0.9.1",
-      "package_url": "https://github.com/Frommi/miniz_oxide/tree/master/miniz_oxide",
-      "repository": {
-        "Http": {
-          "url": "https://static.crates.io/crates/miniz_oxide/0.9.1/download",
-          "sha256": "b63fbc4a50860e98e7b2aa7804ded1db5cbc3aff9193adaff57a6931bf7c4b4c"
-        }
-      },
-      "targets": [
-        {
-          "Library": {
-            "crate_name": "miniz_oxide",
-            "crate_root": "src/lib.rs",
-            "srcs": {
-              "allow_empty": true,
-              "include": [
-                "**/*.rs"
-              ]
-            }
-          }
-        }
-      ],
-      "library_target_name": "miniz_oxide",
-      "common_attrs": {
-        "compile_data_glob": [
-          "**"
-        ],
-        "crate_features": {
-          "common": [
-            "default",
-            "simd",
-            "simd-adler32",
-            "with-alloc"
-          ],
-          "selects": {}
-        },
-        "deps": {
-          "common": [
-            {
-              "id": "adler2 2.0.1",
-              "target": "adler2"
-            },
-            {
-              "id": "simd-adler32 0.3.10",
-              "target": "simd_adler32"
-            }
-          ],
-          "selects": {}
-        },
-        "edition": "2021",
-        "version": "0.9.1"
-      },
-      "license": "MIT OR Zlib OR Apache-2.0",
-      "license_ids": [
-        "Apache-2.0",
-        "MIT",
-        "Zlib"
-      ],
-      "license_file": "LICENSE"
     },
     "nix 0.31.3": {
       "name": "nix",
@@ -3758,44 +3651,6 @@
         "MIT"
       ],
       "license_file": "LICENSE-APACHE"
-    },
-    "simd-adler32 0.3.10": {
-      "name": "simd-adler32",
-      "version": "0.3.10",
-      "package_url": "https://github.com/mcountryman/simd-adler32",
-      "repository": {
-        "Http": {
-          "url": "https://static.crates.io/crates/simd-adler32/0.3.10/download",
-          "sha256": "3a219298ac11a56ea9a6d2120044824d6f01aeb034955e7af7bc16858527deea"
-        }
-      },
-      "targets": [
-        {
-          "Library": {
-            "crate_name": "simd_adler32",
-            "crate_root": "src/lib.rs",
-            "srcs": {
-              "allow_empty": true,
-              "include": [
-                "**/*.rs"
-              ]
-            }
-          }
-        }
-      ],
-      "library_target_name": "simd_adler32",
-      "common_attrs": {
-        "compile_data_glob": [
-          "**"
-        ],
-        "edition": "2018",
-        "version": "0.3.10"
-      },
-      "license": "MIT",
-      "license_ids": [
-        "MIT"
-      ],
-      "license_file": "LICENSE.md"
     },
     "smallvec 1.16.5": {
       "name": "smallvec",
@@ -5238,7 +5093,8 @@
         "crate_features": {
           "common": [
             "_deflate-any",
-            "deflate-flate2"
+            "deflate-flate2",
+            "deflate-flate2-zlib-rs"
           ],
           "selects": {}
         },
@@ -5312,6 +5168,13 @@
         "compile_data_glob": [
           "**"
         ],
+        "crate_features": {
+          "common": [
+            "rust-allocator",
+            "std"
+          ],
+          "selects": {}
+        },
         "edition": "2021",
         "version": "0.6.8"
       },

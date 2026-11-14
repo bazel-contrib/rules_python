@@ -100,7 +100,7 @@ class WheelTest(unittest.TestCase):
             {
                 # keep-sorted start
                 "python": "ef5afd9f6c3ff569ef7e5b2799d3a2ec9675d029414f341e0abd7254d6b9a25d",
-                "rust": "7b0ddefcee45535ba6808761e540332fe5488deb53ff37f5006416a9fd1b48ef",
+                "rust": "abb3ff8d5bb5142cdb476b46e91f586043e10a540170ed66050fbc5c1e19ae32",
                 # keep-sorted end
             },
         )
@@ -131,7 +131,7 @@ class WheelTest(unittest.TestCase):
             {
                 # keep-sorted start
                 "python": "7322902ab63fd702afb9730843496637058b5d7449208c624875d06d191d386e",
-                "rust": "01eacc04389891449feadac17a3fabcb8258398518327671c9f031a760293db0",
+                "rust": "6281a39185200fb7028a376a915b5b7cd636f007f4151c1805ff0445a4b4d580",
                 # keep-sorted end
             },
         )
@@ -233,7 +233,7 @@ second = second.main:s""",
             {
                 # keep-sorted start
                 "python": "6d08fbb30864cee89396e7857c910c92bec56b6586d40a64b796b4812af15fbf",
-                "rust": "1d34e7c704448673a6a4458b887f4e70f6874a7646778828c079e0ac2e454db1",
+                "rust": "d13f280f8340e0faf6bd776f97ed8e0b2ced2cea338a33f32d6ab56aac068254",
                 # keep-sorted end
             },
         )
@@ -311,7 +311,7 @@ UNKNOWN
             {
                 # keep-sorted start
                 "python": "0b5a35251ad35fd9e14f3f7e77993f59a7341268f24fb0a255b403cee60d429e",
-                "rust": "1b45e76f5618d7125b8a0ea0fd4de841c250575a73869fb67293d95325f763b8",
+                "rust": "9a40c04d9b04039286f738f6ad7386d2cab180072e560f826a0a322a6c342990",
                 # keep-sorted end
             },
         )
@@ -351,7 +351,7 @@ UNKNOWN
             {
                 # keep-sorted start
                 "python": "437127690584a035dc37542f64c38d1a6d6652655afc81f5a9472706343aae23",
-                "rust": "512f75085e9b0919daeaef32d0ebc5aa419bc23c65641a32ea38a72295e61a06",
+                "rust": "8763921f3936b556ae0a934f6318216fe3c4ab57c765041398369b54bfb24502",
                 # keep-sorted end
             },
         )
@@ -391,7 +391,7 @@ UNKNOWN
             {
                 # keep-sorted start
                 "python": "265cc2ba4c99d0b62f1922f357de961f15f416bcee93ff307e4d4f04e4c067a3",
-                "rust": "510aa10aa0daa69e9903c946b046d6b998cc85209c715333ffc412e324880833",
+                "rust": "76e5d5a77b8a3c5305692b6596aacdfc01e5e4d40bfdfc21141741995b75ebd4",
                 # keep-sorted end
             },
         )
@@ -422,7 +422,7 @@ UNKNOWN
             {
                 # keep-sorted start
                 "python": "cb1d0bf64df1cbf23b7d4473a1c113cedbbea0d23209cdb4d2e5fe2edc68ceec",
-                "rust": "cc1060cccda6e422ec8bf92006e0c0a0ae7986d637814144de4dedb87fb448c6",
+                "rust": "80ef6fadc4402593d1b6ea8d00efe1ecb24678c294d61454708aab6ac584e930",
                 # keep-sorted end
             },
         )
@@ -493,7 +493,7 @@ Tag: cp38-abi3-{os_string}_{arch}
             {
                 # keep-sorted start
                 "python": "2358a8ee58dd7ed1a89862e368a0eb00e83ec5de28995ecf0f3c38c2524102dc",
-                "rust": "1c0e3c6f2f529466c5f2fb93d1a1a21da47e4695571be738e794e5dde484e756",
+                "rust": "31287051700911cfd754df9e63f3849a744497b8c2159a196a88276d97ea9922",
                 # keep-sorted end
             },
         )

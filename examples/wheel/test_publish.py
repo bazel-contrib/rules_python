@@ -15,7 +15,7 @@ _WHEELMAKER_IMPL = os.environ["WHEELMAKER_IMPL"]
 _EXPECTED_WHEEL_SHA256 = {
     # keep-sorted start
     "python": "ef5afd9f6c3ff569ef7e5b2799d3a2ec9675d029414f341e0abd7254d6b9a25d",
-    "rust": "7b0ddefcee45535ba6808761e540332fe5488deb53ff37f5006416a9fd1b48ef",
+    "rust": "abb3ff8d5bb5142cdb476b46e91f586043e10a540170ed66050fbc5c1e19ae32",
     # keep-sorted end
 }
 
