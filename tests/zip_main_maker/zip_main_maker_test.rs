@@ -13,6 +13,14 @@ use zip_main_maker_lib::{
 
 static TEST_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
+fn finalize_hex(hasher: Sha256) -> String {
+    hasher
+        .finalize()
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
+}
+
 fn unwrap_run_options(cli: Cli) -> Options {
     match cli {
         Cli::Run(opts) => opts,
@@ -90,7 +98,7 @@ fn test_creates_zip_main() {
         hasher.update(format!("1|symlink.txt|{}", symlink_path.display()).as_bytes());
         hasher.update(file1_path.to_string_lossy().as_bytes());
     }
-    let expected_hash = format!("{:x}", hasher.finalize());
+    let expected_hash = finalize_hex(hasher);
 
     let content = fs::read_to_string(&output_path).expect("output should be readable");
     assert_eq!(content, format!("hash={expected_hash}\nfoo=bar\n"));
@@ -141,7 +149,7 @@ fn test_symlink_type_hashes_rest_only() {
     // "rf-empty|pkg/__init__.py" sorts before "symlink|pkg/link.py|/nonexistent/target/on/disk.py"
     hasher.update(b"pkg/__init__.py");
     hasher.update(b"pkg/link.py|/nonexistent/target/on/disk.py");
-    let expected_hash = format!("{:x}", hasher.finalize());
+    let expected_hash = finalize_hex(hasher);
 
     assert_eq!(actual_hash, expected_hash);
 }
@@ -168,7 +176,7 @@ fn test_empty_manifest_and_empty_substitution_value() {
     ]);
     assert_eq!(code, ExitCode::SUCCESS);
 
-    let empty_sha256 = format!("{:x}", Sha256::new().finalize());
+    let empty_sha256 = finalize_hex(Sha256::new());
     let rendered = fs::read_to_string(&out).expect("output should be readable");
     assert_eq!(rendered, format!("OPT=''\nHASH='{empty_sha256}'\n"));
 }
@@ -200,7 +208,7 @@ fn test_is_symlink_minus_one_valid_vs_broken() {
     let mut h_valid = Sha256::new();
     h_valid.update(line_valid.split_once('|').unwrap().1.as_bytes());
     h_valid.update(b"real_file_bytes");
-    assert_eq!(hash_valid, format!("{:x}", h_valid.finalize()));
+    assert_eq!(hash_valid, finalize_hex(h_valid));
 
     let manifest_broken = tmp.path().join("manifest_broken.txt");
     let line_broken = format!("rf-file|-1|broken_sym.txt|{}", broken_symlink.display());
@@ -211,7 +219,7 @@ fn test_is_symlink_minus_one_valid_vs_broken() {
     let mut h_broken = Sha256::new();
     h_broken.update(line_broken.split_once('|').unwrap().1.as_bytes());
     h_broken.update(missing_target.to_string_lossy().as_bytes());
-    assert_eq!(hash_broken, format!("{:x}", h_broken.finalize()));
+    assert_eq!(hash_broken, finalize_hex(h_broken));
 }
 
 #[test]
@@ -324,7 +332,7 @@ fn test_is_symlink_zero_vs_one_on_symlink() {
     let mut h0 = Sha256::new();
     h0.update(line_0.split_once('|').unwrap().1.as_bytes());
     h0.update(b"target_file_payload");
-    assert_eq!(hash_0, format!("{:x}", h0.finalize()));
+    assert_eq!(hash_0, finalize_hex(h0));
 
     // When is_symlink == "1", it reads the symlink target path via readlink and hashes the path
     // bytes.
@@ -336,7 +344,7 @@ fn test_is_symlink_zero_vs_one_on_symlink() {
     let mut h1 = Sha256::new();
     h1.update(line_1.split_once('|').unwrap().1.as_bytes());
     h1.update(target_file.to_string_lossy().as_bytes());
-    assert_eq!(hash_1, format!("{:x}", h1.finalize()));
+    assert_eq!(hash_1, finalize_hex(h1));
     assert_ne!(hash_0, hash_1);
 }
 
@@ -366,7 +374,7 @@ fn test_large_file_streaming_and_crlf_manifest() {
     expected.update(b"empty.py");
     expected.update(line1.split_once('|').unwrap().1.as_bytes());
     expected.update(&payload);
-    assert_eq!(hash_lf, format!("{:x}", expected.finalize()));
+    assert_eq!(hash_lf, finalize_hex(expected));
 }
 
 #[test]

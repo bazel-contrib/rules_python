@@ -45,7 +45,7 @@ class PipInstallTest(unittest.TestCase):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        self.assertEqual(proc.stdout.decode("utf-8").strip(), "yamllint 1.28.0")
+        self.assertEqual(proc.stdout.decode("utf-8").strip(), "yamllint 1.38.0")
 
     def test_data(self):
         actual = os.environ.get("WHEEL_DATA_CONTENTS")

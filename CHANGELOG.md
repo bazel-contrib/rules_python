@@ -29,6 +29,18 @@ Unreleased changes are tracked as individual files in the [news/](./news)
 directory, or view the [latest generated
 changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 
+{#v2-5-1}
+## [2.5.1] - 2026-11-13
+
+[2.5.1]: https://github.com/bazel-contrib/rules_python/releases/tag/2.5.1
+
+{#v2-5-1-fixed}
+### Fixed
+* (binaries/tests) The {obj}`stamp` attribute no longer transitions the
+  {flag}`--stamp` flag for the whole target, so dependencies of executables with
+  `stamp = 0` or `stamp = 1` are no longer built in a separate configuration.
+
+
 {#v2-5-0}
 ## [2.5.0] - 2026-10-31
 
@@ -86,6 +98,9 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
   say, Python 3.9 no longer breaks every other hub on hosts that have no CPython
   3.9 build, such as Windows on ARM64
   ([#4184](https://github.com/bazel-contrib/rules_python/issues/4184)).
+* (pypi) Respect dependency-edge platform markers in `uv.lock` when selecting
+  packages and artifacts in {obj}`pip.parse`
+  ([#4287](https://github.com/bazel-contrib/rules_python/issues/4287)).
 * (pypi) Wheel namespace package initializers no longer require a shell or `cp` on the execution platform.
 * (pypi) `pip.parse(uv_lock = ...)` now builds packages with a git source with
   `pip`, from a `name @ git+<url>@<commit>` direct reference pinned to the commit
@@ -147,6 +162,9 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
   {obj}`--@rules_python//python/config_settings:venv`. The `all_*` lists are not
   provided, since they could only list one hub's packages; load them from a
   concrete hub.
+* (pypi) Added {attr}`pip.default.envsubst` to expand environment variables in
+  {attr}`pip.default.index_url`
+  ([#4123](https://github.com/bazel-contrib/rules_python/issues/4123)).
 * (rules) Added {obj}`PyInfo.direct_implicit_pyc_files` and
   {obj}`PyExecutableInfo.venv_runfiles`.
 * (rules) Added {obj}`pytest_test`, which facilitates running of pytest tests.
@@ -169,6 +187,8 @@ changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
   toolchains with the new {obj}`uv_toolchains_manifest` repository rule and
   {obj}`uv_register_toolchains` macro.
   ([#1975](https://github.com/bazel-contrib/rules_python/issues/1975))
+
+
 
 
 

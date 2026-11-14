@@ -28,7 +28,10 @@ in `git diff` against the project's Starlark coding rules and conventions:
 11. Verify no compatibility logic or feature guards target Bazel versions
     older than `MINIMUM_BAZEL_VERSION` in `//:version.bzl`.
 12. Inspect the full `BUILD` file (not just the diff hunk) to flag overlapping
-    or redundant `filegroup`, `exports_files`, or `glob(...)` definitions.
+    or redundant `filegroup`, `exports_files`, or `glob(...)` definitions, and
+    flag top-level target-instantiation ternaries (`rule_a(...) if cond else
+    rule_b(...)`) that belong in a `.bzl` helper macro so `BUILD` files remain
+    processable by `buildifier` and `buildozer`.
 13. Check macro and rule hygiene: forward unused wrapper arguments via
     `**kwargs`, silence unused variables with `_ = a, b  # @unused`, require
     comments above each field when returning a `struct(...)` of fields, prefer

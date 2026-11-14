@@ -28,8 +28,10 @@ updates:
   - package-ecosystem: "github-actions"
     multi-ecosystem-group: "dev-only"
     directories:
+      # keep-sorted start
       - "/"
-      - "/.github/actions/setup-bazel"
+      - "/.github/actions/*"
+      # keep-sorted end
     patterns:
       - "*"
 
@@ -48,15 +50,36 @@ updates:
       - "/crates/**/*"
     patterns:
       - "*"
+    ignore:
+      # keep-sorted start block=yes
+      # zip >= 9.1.0 fails on powerpc64le-unknown-linux-musl until rules_rust
+      # defines a powerpc64le config_setting; keep below 9.1.0 (see
+      # crates/Cargo.toml). Unpatched zip <= 9.0.5 advisories (reading,
+      # extraction, AES/legacy-decoder flaws) do not apply: crates/zipper only
+      # creates zips via ZipWriter (ZipArchive is test-only).
+      - dependency-name: "zip"
+        versions: [">= 9.1.0"]
+      # keep-sorted end
 
   - package-ecosystem: "uv"
     multi-ecosystem-group: "dev-only"
     directories:
+      # keep-sorted start
       - "/dev"
       - "/dev/**/*"
       - "/examples/**/*"
       - "/gazelle/examples/**/*"
       - "/sphinxdocs/dev"
       - "/tests/**/*"
+      # keep-sorted end
+    # Secondary multi-hub test fixtures intentionally pin older versions than
+    # their sibling primary hubs to test cross-hub version isolation.
+    exclude-paths:
+      # keep-sorted start
+      - "tests/integration/unified_pypi/requirements_b.txt"
+      - "tests/integration/unified_pypi/requirements_b_without_six.txt"
+      - "tests/multi_pypi/beta"
+      - "tests/multi_pypi/beta/**/*"
+      # keep-sorted end
     patterns:
       - "*"

@@ -85,6 +85,21 @@ _EXTERNAL_PATH_PREFIX = "external"
 _ZIP_RUNFILES_DIRECTORY_NAME = "runfiles"
 _INIT_PY = "__init__.py"
 
+def _build_data_stamp_transition_impl(settings, attr):
+    # stamp = 1 reads the real version file even in --nostamp builds. stamp = 0
+    # never reads it, and stamp = -1 follows --stamp, so both keep the config.
+    if attr.stamp == 1:
+        return {"//command_line_option:stamp": True}
+    return {"//command_line_option:stamp": settings["//command_line_option:stamp"]}
+
+# Applies the `stamp` attribute to the build data inputs only. Transitioning
+# the whole executable would rebuild its deps in a separate configuration.
+_build_data_stamp_transition = transition(
+    implementation = _build_data_stamp_transition_impl,
+    inputs = ["//command_line_option:stamp"],
+    outputs = ["//command_line_option:stamp"],
+)
+
 # Non-Google-specific attributes for executables
 # These attributes are for rules that accept Python sources.
 EXECUTABLE_ATTRS = dicts.add(
@@ -246,6 +261,7 @@ accepting arbitrary Python versions.
         "_uncachable_version_file": lambda: attrb.Label(
             default = "//python/private:uncachable_version_file",
             allow_files = True,
+            cfg = _build_data_stamp_transition,
         ),
         "_venvs_use_declare_symlink_flag": lambda: attrb.Label(
             default = labels.VENVS_USE_DECLARE_SYMLINK,
@@ -2196,9 +2212,6 @@ def _transition_executable_impl(settings, attr):
     if attr.python_version and attr.python_version not in ("PY2", "PY3"):
         settings[labels.PYTHON_VERSION] = attr.python_version
 
-    if attr.stamp != -1:
-        settings["//command_line_option:stamp"] = str(attr.stamp)
-
     return settings
 
 def create_executable_rule(*, attrs, **kwargs):
@@ -2252,13 +2265,11 @@ def create_executable_rule_builder(implementation, **kwargs):
             implementation = _transition_executable_impl,
             inputs = TRANSITION_LABELS + [
                 labels.PYTHON_VERSION,
-                "//command_line_option:stamp",
                 "//command_line_option:build_runfile_links",
                 "//command_line_option:enable_runfiles",
             ],
             outputs = TRANSITION_LABELS + [
                 labels.PYTHON_VERSION,
-                "//command_line_option:stamp",
                 "//command_line_option:build_runfile_links",
                 "//command_line_option:enable_runfiles",
             ],

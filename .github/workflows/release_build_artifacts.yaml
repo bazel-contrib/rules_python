@@ -54,7 +54,7 @@ jobs:
           - triple: i686-pc-windows-msvc
             runner: windows-2022
           - triple: linux
-            runner: ubuntu-24.04
+            runner: ubuntu-latest
     env:
       REF: ${{ inputs.ref || github.sha }}
       TRIPLE: ${{ matrix.triple }}
@@ -101,7 +101,7 @@ jobs:
 
   build_wheel:
     name: Build wheel
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     timeout-minutes: 30
@@ -146,7 +146,7 @@ jobs:
   package:
     name: Package release
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     timeout-minutes: 15

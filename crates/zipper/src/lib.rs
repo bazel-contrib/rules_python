@@ -12,7 +12,7 @@ use std::process::ExitCode;
 
 use anyhow::{Context, Result, bail};
 use zip::write::SimpleFileOptions;
-use zip::{CompressionMethod, DateTime, ZIP64_BYTES_THR, ZipWriter};
+use zip::{CompressionMethod, DateTime, System, ZIP64_BYTES_THR, ZipWriter};
 use zip_manifest::{RawManifestEntry, SymlinkMode, parse_manifest_line};
 
 /// `BufWriter` capacity for the output zip.
@@ -332,8 +332,11 @@ fn mode_from_metadata(meta: &Metadata) -> u32 {
 const FIXED_TIMESTAMP: DateTime = DateTime::DEFAULT;
 
 fn file_options(compress_level: u32, unix_mode: u32) -> SimpleFileOptions {
+    // Use `System::Unix` (matching `tools/zipapp/zipper.py`'s `create_system = 3`) so
+    // `zip` preserves `unix_permissions` on Windows too instead of synthesizing DOS modes.
     let options = SimpleFileOptions::default()
         .last_modified_time(FIXED_TIMESTAMP)
+        .system(System::Unix)
         .unix_permissions(unix_mode);
     if compress_level == 0 {
         options.compression_method(CompressionMethod::Stored)
@@ -345,9 +348,11 @@ fn file_options(compress_level: u32, unix_mode: u32) -> SimpleFileOptions {
 }
 
 /// Options for symlink entries. `add_symlink` already sets `0o777 | S_IFLNK` and always stores
-/// symlinks uncompressed, so only the timestamp needs fixing.
+/// symlinks uncompressed, so only the timestamp and system need fixing.
 fn symlink_options() -> SimpleFileOptions {
-    SimpleFileOptions::default().last_modified_time(FIXED_TIMESTAMP)
+    SimpleFileOptions::default()
+        .last_modified_time(FIXED_TIMESTAMP)
+        .system(System::Unix)
 }
 
 fn write_entry<W: Write + Seek>(

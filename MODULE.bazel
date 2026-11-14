@@ -4,7 +4,7 @@ module(
     compatibility_level = 1,
 )
 
-bazel_dep(name = "bazel_features", version = "1.21.0")
+bazel_dep(name = "bazel_features", version = "1.55.0")
 bazel_dep(name = "bazel_skylib", version = "1.8.2")
 bazel_dep(name = "package_metadata", version = "0.0.7")
 bazel_dep(name = "platforms", version = "0.0.11")
@@ -22,6 +22,9 @@ TOOL_DEPS_DEV_ONLY = False
 rules_python_config = use_extension("//python/extensions:config.bzl", "config")
 rules_python_config.internal_configure(
     tool_deps_dev_only = TOOL_DEPS_DEV_ONLY,
+)
+rules_python_config.explicit_init_py(
+    default = True,
 )
 use_repo(
     rules_python_config,
@@ -80,11 +83,6 @@ pip = use_extension("//python/extensions:pip.bzl", "pip")
 pip.parse(
     hub_name = "rules_python_publish_deps",
     python_version = "3.14",
-    requirements_by_platform = {
-        "//tools/publish:requirements_darwin.txt": "osx_*",
-        "//tools/publish:requirements_linux.txt": "linux_*",
-        "//tools/publish:requirements_windows.txt": "windows_*",
-    },
     target_platforms = [
         "linux_aarch64",
         "linux_x86_64",
@@ -93,6 +91,7 @@ pip.parse(
         "windows_aarch64",
         "windows_x86_64",
     ],
+    uv_lock = "//tools/publish:uv.lock",
 )
 pip.dep(name = "pytest")
 pip.dep(name = "pytest-bazel")
@@ -112,54 +111,15 @@ rust_crates = use_extension(
     dev_dependency = TOOL_DEPS_DEV_ONLY,
 )
 
-# keep-sorted start block=yes by_regex=package\s*=\s*"([^"]+)" newline_separated=yes
-rust_crates.spec(
-    package = "anyhow",
-    version = "1.0.104",
-)
-rust_crates.spec(
-    package = "argfile",
-    version = "1.0.0",
-)
-
-# Not used directly; it's a transitive dep of zip. zip's `deflate-flate2`
-# feature enables flate2 without selecting a backend, so a top-level spec is
-# needed to pick the pure-Rust `rust_backend` and avoid the C zlib backend,
-# which can't cross-compile for dev/platforms.
-rust_crates.spec(
-    default_features = False,
-    features = ["rust_backend"],
-    package = "flate2",
-    version = "1.1.10",
-)
-rust_crates.spec(
-    package = "lexopt",
-    version = "0.3.2",
-)
-rust_crates.spec(
-    package = "sha2",
-    version = "0.10.8",
-)
-
-# NOTE: zip 9.x added mandatory target-conditional OS deps (getrandom, nix,
-# windows-sys) that fail on powerpc64le-unknown-linux-musl until rules_rust
-# defines a powerpc64le @rules_rust//rust/platform config_setting. Keep on the
-# latest 8.x release until rules_rust supports powerpc64le platform selection.
-rust_crates.spec(
-    default_features = False,
-    features = ["deflate-flate2"],
-    package = "zip",
-    version = "8.6.0",
-)
-# keep-sorted end
-
 # The crates must build for every platform in dev/platforms. Conditional
 # dependencies are resolved for these triples; rules_rust matches them by CPU
 # and OS, e.g. i686-unknown-linux-gnu also matches the i686-unknown-linux-musl
-# platform.
-rust_crates.from_specs(
+# platform. Direct dependencies live in //crates:Cargo.toml so Dependabot can
+# track Cargo updates and security alerts.
+rust_crates.from_cargo(
     cargo_lockfile = "//crates:Cargo.lock",
     lockfile = "//crates:Cargo.Bazel.lock",
+    manifests = ["//crates:Cargo.toml"],
     supported_platform_triples = [
         "aarch64-apple-darwin",
         "aarch64-pc-windows-msvc",
@@ -177,7 +137,7 @@ rust_crates.from_specs(
 # rules_rust has no @rules_rust//rust/platform config_setting for Linux ppc64le,
 # so don't mark the crates as incompatible with platforms that don't match one
 # of the triples above. Such platforms get only the unconditional dependencies,
-# which suffice for anyhow, argfile, flate2, lexopt, sha2, and zip.
+# which suffice for anyhow, flate2, lexopt, sha2, and zip.
 rust_crates.render_config(
     generate_target_compatible_with = False,
 )
@@ -196,6 +156,14 @@ bazel_dep(name = "rules_shell", version = "0.3.0", dev_dependency = True)
 bazel_dep(name = "rules_multirun", version = "0.9.0", dev_dependency = True)
 bazel_dep(name = "bazel_ci_rules", version = "1.0.0", dev_dependency = True)
 bazel_dep(name = "rules_pkg", version = "1.2.0", dev_dependency = True)
+bazel_dep(name = "toolchains_buildbuddy", version = "0.0.4", dev_dependency = True)
+
+buildbuddy = use_extension(
+    "@toolchains_buildbuddy//:extensions.bzl",
+    "buildbuddy",
+    dev_dependency = True,
+)
+buildbuddy.platform(buildbuddy_container_image = "UBUNTU24_04_IMAGE")
 
 rust = use_extension(
     "@rules_rust//rust:extensions.bzl",
@@ -405,6 +373,16 @@ dev_python.override(
     register_all_versions = True,
 )
 
+# For testing the coverage collection with the bundled coverage tool.
+# See //tests/coverage:coverage_collection_test
+#
+# NOTE: A full version is used so that the toolchain is named after it and does
+# not shadow the toolchains that are checked in //tests/toolchains.
+dev_python.toolchain(
+    configure_coverage_tool = True,
+    python_version = "3.12.16",
+)
+
 # For testing an arbitrary runtime triggered by a custom flag.
 # See //tests/toolchains:custom_platform_toolchain_test
 dev_python.single_version_platform_override(
@@ -419,6 +397,25 @@ dev_python.single_version_platform_override(
         "@@//tests/support:is_custom_runtime_linux-x86-install-only-stripped",
     ],
     urls = ["https://github.com/astral-sh/python-build-standalone/releases/download/20250115/cpython-3.13.1+20250115-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"],
+)
+
+# For testing a debug (`Py_DEBUG`) runtime.
+# See //tests/toolchains:debug_runtime_test
+#
+# NOTE: 3.14.10, the newest 3.14, would break //tests/toolchains:build_test.
+dev_python.single_version_platform_override(
+    platform = "linux-x86-debug",
+    python_version = "3.14.4",
+    sha256 = "65db1c71f78ac00553e6353f730ff2f942cc18a5758f5d99c77fd4be5d7719de",
+    strip_prefix = "python/install",
+    target_compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+    target_settings = [
+        "@@//tests/support:is_custom_runtime_linux-x86-debug",
+    ],
+    urls = ["https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.14.4+20260414-x86_64-unknown-linux-gnu-debug-full.tar.zst"],
 )
 
 dev_pip = use_extension(
@@ -453,17 +450,17 @@ dev_pip.parse(
     download_only = True,
     hub_name = "pypiserver",
     python_version = "3.14",
-    requirements_lock = "//examples/wheel:requirements_server.txt",
+    uv_lock = "//examples/wheel:uv.lock",
 )
 dev_pip.parse(
     hub_name = "pypi_alpha",
     python_version = "3.14",
-    requirements_lock = "//tests/multi_pypi/alpha:requirements.txt",
+    uv_lock = "//tests/multi_pypi/alpha:uv.lock",
 )
 dev_pip.parse(
     hub_name = "pypi_beta",
     python_version = "3.14",
-    requirements_lock = "//tests/multi_pypi/beta:requirements.txt",
+    uv_lock = "//tests/multi_pypi/beta:uv.lock",
 )
 use_repo(dev_pip, "dev_pip", "pypi_alpha", "pypi_beta", "pypiserver")
 
@@ -475,7 +472,7 @@ bazel_binaries = use_extension(
     dev_dependency = True,
 )
 
-# Keep in sync with //:version.bzl
+# LINT.IfChange(bazel_binaries)
 bazel_binaries.local(
     name = "self",
     path = "tests/integration/bazel_from_env",
@@ -497,6 +494,7 @@ use_repo(
     # "build_bazel_bazel_rolling",
     "build_bazel_bazel_self",
 )
+# LINT.ThenChange(//version.bzl:supported_bazel_versions)
 
 # TODO @aignas 2025-01-27: should this be moved to `//python/extensions:uv.bzl` or should
 # it stay as it is? I think I may prefer to move it.
@@ -505,11 +503,15 @@ uv = use_extension("//python/uv:uv.bzl", "uv")
 # Here is how we can define platforms for the `uv` binaries - this will affect
 # all of the downstream callers because we are using the extension without
 # `dev_dependency = True`.
+# LINT.IfChange(uv_defaults)
 uv.default(
     base_url = "https://github.com/astral-sh/uv/releases/download",
     manifest_filename = "dist-manifest.json",
     version = "0.13.5",
 )
+
+# LINT.ThenChange(//python/uv/private/uv_defaults.bzl:uv_defaults)
+# LINT.IfChange(uv_platforms)
 uv.default(
     compatible_with = [
         "@platforms//os:macos",
@@ -566,6 +568,8 @@ uv.default(
     ],
     platform = "x86_64-unknown-linux-gnu",
 )
+
+# LINT.ThenChange(//python/uv/private/uv_defaults.bzl:uv_platforms)
 use_repo(uv, "uv")
 
 register_toolchains("@uv//:all")

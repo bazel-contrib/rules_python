@@ -55,6 +55,8 @@ def manifest_entry_sort_key(entry):
     Returns:
       A sortable tuple where lower values are preferred.
     """
+    flavor_parts = entry.build_flavor.replace("-", "+").split("+")
+    debug_rank = 1 if "debug" in flavor_parts else 0
     flavor_rank = {
         "full": 3,
         "install_only": 1,
@@ -67,7 +69,7 @@ def manifest_entry_sort_key(entry):
         microarch_rank = int(microarch[1:])
     else:
         microarch_rank = 999
-    return (flavor_rank, microarch_rank)
+    return (debug_rank, flavor_rank, microarch_rank)
 
 def parse_filename(filename):
     """Parses a python-build-standalone filename (or URL) into its components.
@@ -240,4 +242,4 @@ def parse_runtime_manifest(content):
                 sha256 = sha256,
                 **parsed
             ))
-    return results
+    return sorted(results, key = manifest_entry_sort_key)

@@ -1,0 +1,65 @@
+name: "Download Tool"
+description: "Download, SHA-256-verify, and cache a tool binary"
+
+inputs:
+  name:
+    description: "Tool binary name (used in the cache key and cached filename)"
+    required: true
+  urls:
+    description: "Comma- or newline-separated list of URLs to download the tool binary from"
+    required: true
+  sha256:
+    description: "Expected hex SHA-256 digest of the tool binary"
+    required: true
+  archive-member:
+    description: >-
+      Optional archive member path to extract when the downloaded payload is a
+      tar or zip archive
+    required: false
+    default: ""
+
+outputs:
+  path:
+    description: "Path to the verified executable binary"
+    value: ${{ steps.tool_path.outputs.path }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Resolve tool path
+      id: tool_path
+      shell: bash
+      env:
+        TOOL_NAME: ${{ inputs.name }}
+        TOOL_SHA256: ${{ inputs.sha256 }}
+      run: >-
+        [[ "${HOME}" != *[$'\r\n']*
+        && "${TOOL_NAME}" =~ ^[a-zA-Z0-9._-]+$
+        && "${TOOL_SHA256}" =~ ^[0-9a-fA-F]{64}$ ]]
+        || { printf '::error::Invalid tool name or sha256 digest\n'; exit 1; };
+        printf 'path=%s\n'
+        "${HOME}/.cache/download-tool/${TOOL_SHA256}/${TOOL_NAME}"
+        >> "${GITHUB_OUTPUT}"
+
+    - name: Cache tool
+      id: cache
+      uses: actions/cache@v6
+      with:
+        path: ${{ steps.tool_path.outputs.path }}
+        key: ${{ inputs.name }}-${{ inputs.sha256 }}
+
+    - name: Download and verify tool
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        TOOL_ARCHIVE_MEMBER: ${{ inputs.archive-member }}
+        TOOL_PATH: ${{ steps.tool_path.outputs.path }}
+        TOOL_SHA256: ${{ inputs.sha256 }}
+        TOOL_URLS: ${{ inputs.urls }}
+      run: >-
+        "${GITHUB_ACTION_PATH}/../../../dev/verified_download.py"
+        --urls "${TOOL_URLS}"
+        --sha256 "${TOOL_SHA256}"
+        --archive-member "${TOOL_ARCHIVE_MEMBER}"
+        --executable
+        --output "${TOOL_PATH}"

@@ -1,0 +1,4 @@
+import %workspace%/../../../downloader_cfg.bazelrc
+# Bazel resolves --experimental_downloader_config relative to the active
+# workspace directory rather than the imported .bazelrc file's directory.
+common --experimental_downloader_config=../../../downloader_config.cfg

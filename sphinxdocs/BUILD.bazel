@@ -2,16 +2,30 @@ package(default_visibility = ["//visibility:public"])
 
 exports_files(["pyproject.toml"])
 
+# LINT.IfChange(synced_files)
+filegroup(
+    name = "downloader_configs",
+    srcs = [
+        "downloader_cfg.bazelrc",
+        "downloader_config.cfg",
+    ],
+    visibility = ["@rules_python//tests:__subpackages__"],
+)
+# LINT.ThenChange(//BUILD.bazel:synced_files)
+
 filegroup(
     name = "distribution",
     srcs = glob(
         ["**/*"],
         exclude = [
             "bazel-*/**",
+            "downloader_cfg.bazelrc",
+            "downloader_config.cfg",
             "integration_tests/**",
             "tests/**",
         ],
     ) + [
+        ":downloader_configs",
         "//dev:distribution",
         "//sphinxdocs:distribution",
     ],

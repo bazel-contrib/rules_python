@@ -30,6 +30,7 @@ that @rules_python//python is only concerned with the core rules.
 
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
+load("//python/private:python_toolchain_type.bzl", "python_toolchain_type")
 load(":current_py_toolchain.bzl", "current_py_toolchain")
 
 package(default_visibility = ["//visibility:public"])
@@ -115,9 +116,8 @@ alias(
 
 # The toolchain type for Python rules. Provides a Python 2 and/or Python 3
 # runtime.
-alias(
+python_toolchain_type(
     name = "toolchain_type",
-    actual = "@bazel_tools//tools/python:toolchain_type",
 )
 
 toolchain_type(

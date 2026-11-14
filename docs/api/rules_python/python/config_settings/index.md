@@ -5,7 +5,7 @@
 
 # //python/config_settings
 
-:::{bzl:flag} add_srcs_to_runfiles
+::::{bzl:flag} add_srcs_to_runfiles
 Determines if the `srcs` of targets are added to their runfiles.
 
 More specifically, the sources added to runfiles are the `.py` files in `srcs`.
@@ -17,14 +17,16 @@ Values:
   behavior is `disabled`.
 * `disabled`: Don't add `srcs` to a target's runfiles.
 * `enabled`:  Add `srcs` to a target's runfiles.
-::::{versionadded} 0.37.0
-::::
-::::{deprecated} 0.37.0
-This is a transition flag and will be removed in a subsequent release.
-::::
+:::{versionadded} 0.37.0
 :::
+:::{deprecated} 0.37.0
+This is a transition flag and will be removed in a subsequent release.
+:::
+::::
 
 ::::{bzl:flag} build_python_zip
+:scope: universal
+
 Controls if a `py_binary/py_test` output is a self-executable zipapp.
 
 When enabled, the output of `py_binary` or `py_test` targets will be a
@@ -67,6 +69,8 @@ Setting this flag adds the debugger dependency, but doesn't automatically set
 ::::
 
 ::::{bzl:flag} experimental_python_import_all_repositories
+:scope: universal
+
 Controls whether repository directories are added to the import path.
 
 When enabled, the top-level directories in the runfiles root directory (which
@@ -88,7 +92,10 @@ This flag replaces the Bazel builtin
 ::::
 
 ::::{bzl:flag} python_path
-A fallback path to use for Python for particular legacy Windows-specific code paths.
+:scope: universal
+
+A fallback path to use for Python for particular legacy Windows-specific code
+paths.
 
 Deprecated, do not use. This flag is largely a no-op and was replaced by
 toolchains. It only remains for some legacy Windows code-paths that will
@@ -105,6 +112,8 @@ Use toolchains instead.
 ::::
 
 :::{bzl:flag} python_version
+:scope: universal
+
 Determines the default hermetic Python toolchain version. This can be set to
 one of the values that `rules_python` maintains.
 :::
@@ -114,6 +123,8 @@ Parses the value of the `python_version` and transforms it into a `X.Y` value.
 :::
 
 ::::{bzl:flag} incompatible_default_to_explicit_init_py
+:scope: universal
+
 Controls if missing `__init__.py` files are generated or not.
 
 If false, `py_binary` and `py_test` will, for every `*.py` and `*.so` file,
@@ -442,6 +453,7 @@ Values:
 ::::
 
 ::::{bzl:flag} venvs_use_declare_symlink
+:scope: universal
 
 Determines if relative symlinks are created using `declare_symlink()` at build
 time.

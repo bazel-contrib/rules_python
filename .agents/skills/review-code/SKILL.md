@@ -88,7 +88,8 @@ file from `.agents/skills/review-code/`:
       definition order, guard clauses, fail-closed `else`, single input form,
       no unrequested knobs/aliases, no speculative validation or defensive
       `None` checks, no nested comprehensions, naming precision,
-      simplification, `keep-sorted` markers, and CLI safety annotations.
+      simplification, `keep-sorted` markers, `LINT.IfChange` /
+      `LINT.ThenChange` directives, and CLI safety annotations.
 
 11. Shell Script Sub-Agent (`Role: "Shell Script Auditor"`):
     - Prompt file:
@@ -119,6 +120,20 @@ file from `.agents/skills/review-code/`:
       crate legitimacy and latest `crates.io` versions, feature pruning for
       cross-compilation, library crate structure, and `rustfmt`).
 
+14. Comment Readability Sub-Agent (`Role: "Comment Readability Editor"`):
+    - Prompt file:
+      `.agents/skills/review-code/review-comment-readability-prompt.md`
+    - Focus: Polishes `Problem`, `Draft Comment`, and `Draft Reply` text for
+      rendered readability—enforcing the mechanical `Draft Comment` structure
+      (`<brief/concise description of issue>`, bounded `Suggested fix:`, and
+      optional `Where:` when multiple locations are affected), cutting dense
+      "wall of text" paragraphs down to 1–2 short, direct sentences, ensuring
+      suggested error/message wording is explicitly included in `Draft Comment`
+      (not left only in `Proposed Fix`), removing excessive inline backticks
+      when listing multiple identifiers (such as `UPPER_SNAKE_CASE` constants)
+      so text does not jump repeatedly into and out of code formatting, and
+      stripping outer backtick wrappers.
+
 ### Action Instructions
 - Immediately create a user-facing review artifact named
   `code-review-results.md` in the conversation artifact directory so progress
@@ -126,15 +141,24 @@ file from `.agents/skills/review-code/`:
 - Have sub-agents run `git diff $(git merge-base HEAD upstream/main)` to audit
   committed and uncommitted branch changes without newer `upstream/main`
   commits.
-- Launch all sub-agents concurrently using `invoke_subagent`.
+- Launch all domain sub-agents concurrently using `invoke_subagent`.
+- Pass candidate findings from the domain sub-agents through the
+  `Comment Readability Sub-Agent` (`Role: "Comment Readability Editor"`, prompt
+  `.agents/skills/review-code/review-comment-readability-prompt.md`) to
+  eliminate jarring backtick-switching across identifier lists and polish prose
+  readability as results stream into `code-review-results.md`.
 - Update `code-review-results.md` as sub-agent responses come in, applying the
-  Synthesis & Anti-Noise Gate (below) and omitting all passing-check prose. Do
-  not use bold for the introduction or lead-in of a bulleted list or bullet
-  item; use **bold** for any questions the user needs to answer. Structure
+  Synthesis & Anti-Noise Gate (below), including a clickable link to the PR (or
+  branch name for local unpushed changes) and a brief 2-sentence overview of
+  what the PR does, and omitting all passing-check prose. Do not use bold for
+  the introduction or lead-in of a bulleted list or bullet item; use **bold**
+  for any questions the user needs to answer. Structure
   `code-review-results.md` as follows:
 
   ````markdown
-  # Code Review: <Target / PR>
+  # Code Review: [<PR #N: Title>](<PR_URL>)
+
+  <Brief 2-sentence overview of what the PR does and why.>
 
   Verdict: `<PASS | NEEDS_FIXES | NEEDS_HUMAN_SIGN_OFF>` (<N> open, <H>
   needing human sign-off, <M> resolved)
@@ -158,7 +182,7 @@ file from `.agents/skills/review-code/`:
     ```
   * Author Response: <If the author replied to this comment thread, quote or
     summarize their response here, bolding any question to answer.>
-  * Draft Reply: `<proposed reply in user's voice, if applicable>`
+  * Draft Reply: <proposed reply in user's voice, if applicable>
 
   ## Resolved Issues
 
@@ -187,14 +211,19 @@ file from `.agents/skills/review-code/`:
   concise summary with the overall verdict and a clickable markdown link to
   `code-review-results.md` in the response.
 - If reviewing a PR belonging to another user and at least one net-new candidate
-  comment remains after the Anti-Noise Gate, prompt the user via `ask_question`
-  (including a clickable `[code-review-results.md](file:///...)` link in the
-  `question` prompt text) to choose whether to:
-  1. Post the feedback as non-draft comments
-  2. Approve PR and post non-draft comments
-  3. Post the feedback as draft comments
-  4. Review the feedback
-  5. Do not post comments
+  comment remains after the Anti-Noise Gate, prompt the user via a single
+  multi-select (`is_multi_select: true`) `ask_question` question (including a
+  clickable `[code-review-results.md](file:///...)` link in the `question`
+  prompt text) with the following options:
+  1. Post non-draft comments
+  2. Post draft comments
+  3. Review feedback further
+  4. Also approve PR
+  5. Also fix issues
+  6. Also push fixes to PR
+- When fixing and pushing open issues that also had non-draft review comments
+  posted, reply to each fixed review thread with the commit SHA (and disclosure
+  line) and resolve the thread.
 - If reviewing or re-reviewing a PR belonging to another user and the verdict is
   `PASS` (0 open issues and 0 net-new candidate comments) while the PR is not
   yet approved by the user, prompt the user via `ask_question` (including a
@@ -202,6 +231,7 @@ file from `.agents/skills/review-code/`:
   prompt text) to choose whether to:
   1. Approve PR
   2. Do nothing
+  3. Re-review
 - Immediately before posting comments (after `ask_question` returns), re-fetch
   the latest PR description, commits, and review comments (`gh pr view`), move
   any issues addressed in the interim to `## Resolved Issues` in
@@ -260,3 +290,6 @@ posting comments, filter out noise:
     suppressing naming precision or simplification findings.
 12. Deduplicate Against Existing Comments: Inspect existing PR review comments
     and suppress candidate comments that duplicate feedback already posted.
+13. Preserve Documented Rule Findings: Keep every sub-agent finding backed by
+    `.agents/rules/` or `AGENTS.md` in `## Open Issues`, regardless of `NIT`
+    severity or legacy patterns in existing files.

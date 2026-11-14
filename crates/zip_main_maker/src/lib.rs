@@ -10,7 +10,7 @@
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::fs::{self, File};
-use std::io;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -18,6 +18,9 @@ use anyhow::{Context, Result, bail};
 use lexopt::prelude::*;
 use sha2::{Digest, Sha256};
 use zip_manifest::{SymlinkMode, parse_manifest_line};
+
+/// Read buffer size when streaming file contents into SHA-256 (matches `zip_main_maker.py`).
+const BLOCK_SIZE: usize = 256 * 1024;
 
 /// Template placeholder replaced with the computed SHA-256 hex digest of the application inputs.
 pub const APP_HASH_PLACEHOLDER: &str = "%APP_HASH%";
@@ -62,6 +65,7 @@ pub fn compute_inputs_hash(manifest_path: &Path) -> Result<String> {
     manifest_lines.sort_unstable();
 
     let mut hasher = Sha256::new();
+    let mut buffer = vec![0u8; BLOCK_SIZE];
 
     for line in manifest_lines {
         let parsed = parse_manifest_line(line)
@@ -87,12 +91,20 @@ pub fn compute_inputs_hash(manifest_path: &Path) -> Result<String> {
         } else {
             let mut file =
                 File::open(path).with_context(|| format!("opening {}", path.display()))?;
-            io::copy(&mut file, &mut hasher)
-                .with_context(|| format!("hashing {}", path.display()))?;
+            loop {
+                let n = file
+                    .read(&mut buffer)
+                    .with_context(|| format!("hashing {}", path.display()))?;
+                if n == 0 {
+                    break;
+                }
+                hasher.update(&buffer[..n]);
+            }
         }
     }
 
-    Ok(format!("{:x}", hasher.finalize()))
+    let digest = hasher.finalize();
+    Ok(digest.iter().map(|b| format!("{b:02x}")).collect())
 }
 
 /// Reads `template_path`, applies `substitutions`, and writes the result to `output_path`.
