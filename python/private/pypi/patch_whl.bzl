@@ -16,8 +16,8 @@
 
 This replaces the previous approach that depended on running Python to
 repack patched wheels. Instead, after extracting and patching, we fix
-the RECORD file natively in Starlark and repack using Bazel's zipper, or
-system zip when the zipper is not available.
+the RECORD file natively in Starlark and repack using Bazel's zipper
+(falling back to system zip when paths cannot be passed to zipper).
 """
 
 load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
@@ -81,8 +81,8 @@ def patch_whl(rctx, *, whl_path, patches):
 
     The wheel is extracted, patched, missing RECORD entries are added
     with dummy sha256 and size values, and finally the wheel is
-    repacked using Bazel's zipper, or system zip when the zipper is not
-    available.
+    repacked using Bazel's zipper (falling back to system zip when paths
+    cannot be passed to zipper).
 
     Args:
         rctx: repository_ctx
@@ -253,16 +253,15 @@ def _repack_whl_unix(rctx, *, output):
     # Bazel's zipper doesn't need a `zip` binary on the host, and it writes a
     # fixed timestamp so the repacked wheel is reproducible.
     zipper = rctx.path(Label("@bazel_tools//tools/zip:zipper/zipper"))
-    if zipper.exists:
-        params = zipper_params_content(_collect_files(rctx).keys())
-        if params != None:
-            _repack_whl_zipper(
-                rctx,
-                zipper = zipper,
-                params = params,
-                output = output,
-            )
-            return
+    params = zipper_params_content(_collect_files(rctx).keys())
+    if params != None:
+        _repack_whl_zipper(
+            rctx,
+            zipper = zipper,
+            params = params,
+            output = output,
+        )
+        return
 
     repo_utils.execute_checked(
         rctx,
