@@ -74,6 +74,44 @@ class AnalyzeCiFailureTest(unittest.TestCase):
             errors, ["ERROR: Analysis of target '//foo:bar' failed: build failed"]
         )
 
+    def test_buildkite_apc_timestamp_prefix_stripped_from_errors(self) -> None:
+        errors, _ = self._classify_log(
+            "\x1b_bk;t=1794137028816\x07ERROR: Build did NOT complete successfully\n"
+            "_bk;t=1794137028817 FAILED: Build did NOT complete successfully\n"
+        )
+        self.assertEqual(
+            errors,
+            [
+                "ERROR: Build did NOT complete successfully",
+                "FAILED: Build did NOT complete successfully",
+            ],
+        )
+
+    def test_runner_dns_and_git_mirror_checkout_classified_as_flake(self) -> None:
+        for log_text in (
+            "fatal: unable to access 'https://github.com/bazel-contrib/rules_python.git/': Could not resolve host: github.com\n",
+            "Error: getting/updating git mirror: exit status 128\n",
+            "HTTPSConnectionPool(host='docs.python.org', port=443): Temporary failure in name resolution\n",
+        ):
+            with self.subTest(log_text=log_text):
+                _, plan = self._classify_log(log_text)
+                self.assertIn(_FLAKE_BANNER, plan)
+
+    def test_windows_modextwd_cleanup_permission_denied_classified_as_flake(
+        self,
+    ) -> None:
+        errors, plan = self._classify_log(
+            "WARNING: errors encountered while analyzing target '//tests/py_zipapp:system_python_bin'\n"
+            "Failed to clean up module context directory: C:/b/nzh6davs/modextwd/rules_rust++crate/cargo-bazel.exe (Permission denied)\n"
+        )
+        self.assertEqual(
+            errors,
+            [
+                "Failed to clean up module context directory: C:/b/nzh6davs/modextwd/rules_rust++crate/cargo-bazel.exe (Permission denied)"
+            ],
+        )
+        self.assertIn(_FLAKE_BANNER, plan)
+
 
 if __name__ == "__main__":
     unittest.main()

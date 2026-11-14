@@ -55,7 +55,9 @@ automatically waits for an in-progress workflow run to finish before triggering
 
 4. **Rebuild Full Build**:
    Re-runs the entire pipeline/workflow build from scratch via `bk build
-   rebuild` or `gh run rerun`:
+   rebuild` or `gh run rerun`. Prefer default in-place job retries (mode 1 or
+   3, without `--rebuild`) when most Buildkite jobs have already passed, so
+   passing jobs are preserved; reserve `--rebuild` for mass early failures:
    ```bash
    ./.agents/skills/retry-ci-job/scripts/retry_ci_jobs.py \
      --pr <pr_number> --rebuild
