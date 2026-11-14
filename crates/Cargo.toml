@@ -15,6 +15,7 @@ path = "shrubbery/src/lib.rs"
 [dependencies]
 # keep-sorted start
 anyhow = "1.0.104"
+argfile = "1.0.0"
 # Transitive dep of zip: zip's `deflate-flate2` leaves the backend unset, so a
 # top-level pin keeps flate2 on its default pure-Rust backend.
 flate2 = "1.1.11"

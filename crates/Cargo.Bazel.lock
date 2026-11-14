@@ -1,5 +1,5 @@
 {
-  "checksum": "bfd96f7f72752644dc2fe47b6acdae808884857b765d1a28115a0f4004754152",
+  "checksum": "269e4f7e54f04390547ffeddbf8945aa1cc32a2730cccd1792ad1ad16239b24b",
   "crates": {
     "adler2 2.0.1": {
       "name": "adler2",
@@ -110,6 +110,103 @@
         ]
       },
       "license": "MIT OR Apache-2.0",
+      "license_ids": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "license_file": "LICENSE-APACHE"
+    },
+    "argfile 1.0.0": {
+      "name": "argfile",
+      "version": "1.0.0",
+      "package_url": "https://github.com/rust-cli/argfile.git",
+      "repository": {
+        "Http": {
+          "url": "https://static.crates.io/crates/argfile/1.0.0/download",
+          "sha256": "99489a733dea0d2930bfa59c243146a8513ce7b0991b9d006647687cc61f53e7"
+        }
+      },
+      "targets": [
+        {
+          "Library": {
+            "crate_name": "argfile",
+            "crate_root": "src/lib.rs",
+            "srcs": {
+              "allow_empty": true,
+              "include": [
+                "**/*.rs"
+              ]
+            }
+          }
+        }
+      ],
+      "library_target_name": "argfile",
+      "common_attrs": {
+        "compile_data_glob": [
+          "**"
+        ],
+        "crate_features": {
+          "common": [
+            "default"
+          ],
+          "selects": {}
+        },
+        "deps": {
+          "common": [
+            {
+              "id": "fs-err 3.3.2",
+              "target": "fs_err"
+            },
+            {
+              "id": "os_str_bytes 7.2.1",
+              "target": "os_str_bytes"
+            }
+          ],
+          "selects": {}
+        },
+        "edition": "2021",
+        "version": "1.0.0"
+      },
+      "license": "MIT OR Apache-2.0",
+      "license_ids": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "license_file": "LICENSE-APACHE"
+    },
+    "autocfg 1.5.1": {
+      "name": "autocfg",
+      "version": "1.5.1",
+      "package_url": "https://github.com/cuviper/autocfg",
+      "repository": {
+        "Http": {
+          "url": "https://static.crates.io/crates/autocfg/1.5.1/download",
+          "sha256": "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
+        }
+      },
+      "targets": [
+        {
+          "Library": {
+            "crate_name": "autocfg",
+            "crate_root": "src/lib.rs",
+            "srcs": {
+              "allow_empty": true,
+              "include": [
+                "**/*.rs"
+              ]
+            }
+          }
+        }
+      ],
+      "library_target_name": "autocfg",
+      "common_attrs": {
+        "compile_data_glob": [
+          "**"
+        ],
+        "edition": "2015",
+        "version": "1.5.1"
+      },
+      "license": "Apache-2.0 OR MIT",
       "license_ids": [
         "Apache-2.0",
         "MIT"
@@ -686,6 +783,83 @@
       ],
       "license_file": "LICENSE-APACHE"
     },
+    "fs-err 3.3.2": {
+      "name": "fs-err",
+      "version": "3.3.2",
+      "package_url": "https://github.com/andrewhickman/fs-err",
+      "repository": {
+        "Http": {
+          "url": "https://static.crates.io/crates/fs-err/3.3.2/download",
+          "sha256": "b5c95b673b8f6f7235229ae11c5642d81b04c2e64c1e2fb417bc0cf73ca45f29"
+        }
+      },
+      "targets": [
+        {
+          "Library": {
+            "crate_name": "fs_err",
+            "crate_root": "src/lib.rs",
+            "srcs": {
+              "allow_empty": true,
+              "include": [
+                "**/*.rs"
+              ]
+            }
+          }
+        },
+        {
+          "BuildScript": {
+            "crate_name": "build_script_build",
+            "crate_root": "build.rs",
+            "srcs": {
+              "allow_empty": true,
+              "include": [
+                "**/*.rs"
+              ]
+            }
+          }
+        }
+      ],
+      "library_target_name": "fs_err",
+      "common_attrs": {
+        "compile_data_glob": [
+          "**"
+        ],
+        "extra_deps": {
+          "common": [
+            ":build_script_build"
+          ],
+          "selects": {}
+        },
+        "edition": "2018",
+        "version": "3.3.2"
+      },
+      "build_script_attrs": {
+        "compile_data_glob": [
+          "**"
+        ],
+        "compile_data_glob_excludes": [
+          "**/*.rs"
+        ],
+        "data_glob": [
+          "**"
+        ],
+        "deps": {
+          "common": [
+            {
+              "id": "autocfg 1.5.1",
+              "target": "autocfg"
+            }
+          ],
+          "selects": {}
+        }
+      },
+      "license": "MIT OR Apache-2.0",
+      "license_ids": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "license_file": "LICENSE-APACHE"
+    },
     "hashbrown 0.17.1": {
       "name": "hashbrown",
       "version": "0.17.1",
@@ -1161,6 +1335,62 @@
       ],
       "license_file": "LICENSE"
     },
+    "os_str_bytes 7.2.1": {
+      "name": "os_str_bytes",
+      "version": "7.2.1",
+      "package_url": "https://github.com/dylni/os_str_bytes",
+      "repository": {
+        "Http": {
+          "url": "https://static.crates.io/crates/os_str_bytes/7.2.1/download",
+          "sha256": "73b489f051c9d2f4299ddf8d55e33c65c86a7b76f49359af15f79ebe541d1595"
+        }
+      },
+      "targets": [
+        {
+          "Library": {
+            "crate_name": "os_str_bytes",
+            "crate_root": "src/lib.rs",
+            "srcs": {
+              "allow_empty": true,
+              "include": [
+                "**/*.rs"
+              ]
+            }
+          }
+        }
+      ],
+      "library_target_name": "os_str_bytes",
+      "common_attrs": {
+        "compile_data_glob": [
+          "**"
+        ],
+        "crate_features": {
+          "common": [
+            "default",
+            "memchr",
+            "raw_os_str"
+          ],
+          "selects": {}
+        },
+        "deps": {
+          "common": [
+            {
+              "id": "memchr 2.8.3",
+              "target": "memchr"
+            }
+          ],
+          "selects": {}
+        },
+        "edition": "2021",
+        "version": "7.2.1"
+      },
+      "license": "MIT OR Apache-2.0",
+      "license_ids": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "license_file": "LICENSE-APACHE"
+    },
     "rules_python_crates 0.0.1": {
       "name": "rules_python_crates",
       "version": "0.0.1",
@@ -1190,6 +1420,10 @@
             {
               "id": "anyhow 1.0.104",
               "target": "anyhow"
+            },
+            {
+              "id": "argfile 1.0.0",
+              "target": "argfile"
             },
             {
               "id": "flate2 1.1.11",
@@ -1589,6 +1823,7 @@
   },
   "direct_deps": [
     "anyhow 1.0.104",
+    "argfile 1.0.0",
     "flate2 1.1.11",
     "lexopt 0.3.2",
     "sha2 0.11.1",
