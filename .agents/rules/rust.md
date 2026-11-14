@@ -53,12 +53,26 @@ When adding or updating a Rust crate dependency:
   and `PathBuf`; never round-trip `OsString -> String -> PathBuf` via
   `to_string_lossy()`. Return `std::process::ExitCode` from `main()` and
   `run_cli`.
+* **Symbolic constants in `match` arms**: When string tokens (subcommand names,
+  CLI flags, or wire-format tags) appear across multiple sites (`match` arms,
+  registries, or error messages), group them as constants in a module (`mod
+  flags`, `mod subcommands`) and match via qualified paths (`flags::TEMPLATE`,
+  `subcommands::ZIPPER`). A misspelled bare identifier in a Rust `match` arm
+  parses as a catch-all variable binding, whereas a module-qualified path fails
+  compilation (`E0531`). Keep raw string literals in tests so tests catch typos
+  in constant values, and pass `case=no` to `keep-sorted` when `_` vs.
+  uppercase ASCII would invert runtime lowercase sort order (`"zip_main_maker"`
+  < `"zipper"`, whereas `ZIPPER` < `ZIP_MAIN_MAKER`).
 * **Collections**: Default to `Vec` and `HashMap`/`HashSet` over
-  `BTreeMap`/`BTreeSet` unless sorted-key traversal is a data-structure
+  `BTreeMap`/`BTreeSet` (and over `Vec<(K, V)>` linear scans when insertion
+  order is not required) unless sorted-key traversal is a data-structure
   invariant. Sort a `Vec` at formatting or output boundaries when deterministic
-  order is required.
+  order is required; omit defensive key sorting when template placeholders are
+  disjoint delimited tokens (e.g., `%KEY%`).
 * **Cohesive file organization**: Place core logic in library crates
-  (`src/lib.rs`) so unit tests call library functions directly. Group CLI
+  (`src/lib.rs`) so unit tests call library functions directly, and extract
+  shared wire/manifest parsers into a small workspace library crate rather than
+  duplicating line parsing across sibling `shrubbery` crates. Group CLI
   option structs, `parse_args`, and `run_cli` together in one contiguous
   section rather than splitting `parse_args` at the top and `run_cli` at the
   bottom around domain logic.
@@ -94,8 +108,11 @@ When adding or updating a Rust crate dependency:
   `allow-*-in-tests` settings only recognize `#[test]` functions and
   `#[cfg(test)]` items, so helper functions in integration-test crates
   (`tests/*/*_test.rs`) would be flagged. Code under `#[cfg(unix)]` must
-  leave no `unused_mut`/`useless_vec` behind on Windows; rebind instead of
-  conditionally `push`ing.
+  leave no `unused_mut`/`useless_vec` behind on Windows: initialize base
+  collections as fixed-size arrays (`[...]`) or strings rather than `vec![...]`
+  before rebinding under `#[cfg(unix)]` (spot-check the non-Unix branch locally
+  on Linux by temporarily flipping `#[cfg(unix)]` to `#[cfg(windows)]` before
+  pushing).
 * **WORKSPACE-mode stub**: Any new `@rules_rust//...` flag or aspect
   referenced from `.bazelrc` must also exist in
   `tests/modules/rules_rust_stub/`, which WORKSPACE CI jobs use in place of

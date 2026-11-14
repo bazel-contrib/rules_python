@@ -1,0 +1,18 @@
+load("//python:py_library.bzl", "py_library")
+load("//python:py_test.bzl", "py_test")
+
+package(default_visibility = ["//visibility:private"])
+
+py_library(
+    name = "analyze_ci_failure",
+    testonly = True,
+    srcs = ["analyze_ci_failure.py"],
+    imports = ["."],
+)
+
+py_test(
+    name = "analyze_ci_failure_test",
+    size = "small",
+    srcs = ["analyze_ci_failure_test.py"],
+    deps = [":analyze_ci_failure"],
+)

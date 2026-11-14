@@ -8,7 +8,10 @@ import sys
 import urllib.parse
 import urllib.request
 
-_ANSI_ESCAPE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+_ANSI_ESCAPE = re.compile(
+    r"\x1B(?:[_\]][^\x07\x1B]*(?:\x07|\x1B\\)|[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])"
+)
+_BUILDKITE_TIMESTAMP = re.compile(r"^_?bk;t=\d+\s*")
 _HTTP_5XX_DOWNLOAD_ERROR = re.compile(r"get returned 5\d\d\b", re.IGNORECASE)
 
 _HTTP_GATEWAY_ERRORS = (
@@ -19,36 +22,55 @@ _HTTP_GATEWAY_ERRORS = (
     # keep-sorted end
 )
 
-_ERROR_KEYWORDS = _HTTP_GATEWAY_ERRORS + (
+_DNS_OR_GIT_MIRROR_ERRORS = (
     # keep-sorted start
-    "##[error]",
-    "connection reset by peer",
-    "critical path",
-    "curl: (",
-    "errno 5",
-    "error downloading [",
-    "error during connect:",
-    "error waiting for container",
-    "error:",
-    "error]",
-    "exception",
-    "exit code",
-    "exit-code",
-    "failed:",
-    "fatal",
-    "fatal:",
-    "filenotfounderror",
-    "get returned 5",
-    "input/output error",
-    "no such package",
-    "no such target",
-    "status 125",
-    "traceback",
-    "unable to find bazelisk version",
-    "user command error:",
-    "would be reformatted",
-    "would reformat:",
+    "could not resolve host:",
+    "getting/updating git mirror:",
+    "temporary failure in name resolution",
     # keep-sorted end
+)
+
+_MODEXTWD_CLEANUP_ERRORS = (
+    # keep-sorted start
+    "failed to clean up module context directory:",
+    # keep-sorted end
+)
+
+_ERROR_KEYWORDS = (
+    _HTTP_GATEWAY_ERRORS
+    + _DNS_OR_GIT_MIRROR_ERRORS
+    + _MODEXTWD_CLEANUP_ERRORS
+    + (
+        # keep-sorted start
+        "##[error]",
+        "connection reset by peer",
+        "critical path",
+        "curl: (",
+        "errno 5",
+        "error downloading [",
+        "error during connect:",
+        "error waiting for container",
+        "error:",
+        "error]",
+        "exception",
+        "exit code",
+        "exit-code",
+        "failed:",
+        "fatal",
+        "fatal:",
+        "filenotfounderror",
+        "get returned 5",
+        "input/output error",
+        "no such package",
+        "no such target",
+        "status 125",
+        "traceback",
+        "unable to find bazelisk version",
+        "user command error:",
+        "would be reformatted",
+        "would reformat:",
+        # keep-sorted end
+    )
 )
 
 
@@ -200,8 +222,8 @@ def parse_log(log_path):
     errors = []
     for line in lines:
         clean_line = _ANSI_ESCAPE.sub("", line).strip()
-        # Clean buildkite timestamp prefix: _bk;t=...
-        clean_line = re.sub(r"^_bk;t=\d+\s*", "", clean_line)
+        # Strip pre-stripped `_bk;t=` / `bk;t=` prefixes in addition to APC sequences.
+        clean_line = _BUILDKITE_TIMESTAMP.sub("", clean_line)
         lower_line = clean_line.lower()
         if clean_line and any(kw in lower_line for kw in _ERROR_KEYWORDS):
             errors.append(clean_line)
@@ -271,6 +293,19 @@ def create_plan(job_name, log_path, errors):
             "Transient network error fetching Bazelisk release metadata during "
             "GitHub Actions `setup-bazel` step (`Unable to find Bazelisk version`). "
             "This is an infrastructure network flake, not a codebase bug."
+        )
+    elif _contains_any(errors, _DNS_OR_GIT_MIRROR_ERRORS):
+        is_flake = True
+        flake_reason = (
+            "Transient CI runner DNS resolution or git mirror checkout failure. "
+            "This is an infrastructure network flake, not a codebase bug."
+        )
+    elif _contains_any(errors, _MODEXTWD_CLEANUP_ERRORS):
+        is_flake = True
+        flake_reason = (
+            "Transient Windows file-lock race while Bazel cleaned up a temporary "
+            "`modextwd` module extension directory (`Permission denied`). "
+            "This is an infrastructure flake, not a codebase bug."
         )
 
     classification = (
