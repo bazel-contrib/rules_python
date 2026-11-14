@@ -342,11 +342,7 @@ pub fn expand_metadata_requires(metadata: &str) -> Result<String> {
 }
 
 fn create_parent_dir(path: &Path) -> Result<()> {
-    // `Path::parent` returns `Some("")` for bare filenames like `"foo.whl"`, and
-    // `fs::create_dir_all("")` fails with `NotFound`.
-    if let Some(parent) = path.parent()
-        && !parent.as_os_str().is_empty()
-    {
+    if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
             .with_context(|| format!("creating directory {}", parent.display()))?;
     }
