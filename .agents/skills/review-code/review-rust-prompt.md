@@ -39,8 +39,12 @@ in `git diff`:
    - Verify `Vec` and `HashMap`/`HashSet` are preferred over `BTreeMap`/
      `BTreeSet` unless sorted traversal is an invariant, CLI types/`parse_args`/
      `run_cli` are grouped cohesively (no top/bottom CLI sandwich), tests use
-     real temporary directories instead of mocked filesystem IO, and `rustfmt`
-     + `bazel test --config=fast-tests` pass.
+     real temporary directories instead of mocked filesystem IO, repeated
+     string tokens in `match` arms / registries / diagnostics use
+     module-qualified constants (`mod::CONST`), sibling crates share format
+     parsers instead of duplicating them, `#[cfg(unix)]` test fixtures avoid
+     leaving `vec![...]` (`clippy::useless_vec`) on Windows, and `rustfmt` +
+     `bazel test --config=fast-tests` pass.
 5. Guardrails: Never nitpick generated `Cargo.lock` or `Cargo.Bazel.lock`
    formatting; only flag stale lockfiles or unvetted/outdated crate versions.
 
