@@ -33,15 +33,26 @@ When adding or updating a Rust crate dependency:
   C `-sys` libraries (breaking hermetic cross-compiled and static `musl`
   builds), platform-incompatible OS crates, or heavy unused subsystems, and
   document the reason in a comment.
+* **Compression backends**: For `zip`/`flate2` DEFLATE workloads, prefer
+  pure-Rust `zlib-rs` (`zip` feature `deflate-flate2-zlib-rs` plus `flate2`
+  `runtime_detection` with `default-features = false`) over `miniz_oxide` so
+  throughput matches or exceeds C `zlib` while preserving pure-Rust `musl`
+  cross-compilation and deterministic bitstreams.
 * **Regenerate lockfiles**: Update `Cargo.lock` and `Cargo.Bazel.lock` with
   `CARGO_BAZEL_REPIN=1`; never hand-edit generated lockfiles.
 
 ## Idiomatic Rust, CLI Design & Crate Layout
 * **Edition & control flow**: Use `edition = "2024"`. Flatten nested
   conditionals with early `continue`/`return` guards and `let`-chains
-  (`if let Some(p) = out.parent() && !p.as_os_str().is_empty()`). Prefer `str`
-  pattern methods (`split_once`, `rsplit_once`, `strip_prefix`, `strip_suffix`)
-  over manual index slicing.
+  (`if let Some(ext) = path.extension() && ext == "whl"`).
+* **String & line processing**: Prefer `str` pattern methods (`split_once`,
+  `rsplit_once`, `strip_prefix`, `strip_suffix`) over manual index slicing.
+  Iterate lines directly with `str::lines()` (`.map(str::trim).filter(...)`)
+  instead of pre-allocating `.replace("\r\n", "\n")` (`str::lines()` strips both
+  `\n` and `\r\n`).
+* **Filesystem parent directories**: Pass `parent` directly to
+  `fs::create_dir_all(parent)` without `!parent.as_os_str().is_empty()` (`""` is
+  already a no-op).
 * **Parse, don't validate**: Parse CLI flags and raw inputs into strong types
   (`bool`, enums, validated `PathBuf`, pre-compiled `Regex`) in `parse_args`
   rather than storing stringly-typed `String` fields or deferring validation to
@@ -95,6 +106,8 @@ When adding or updating a Rust crate dependency:
   `std::error::Error` with `#[from]`/`#[source]`) so callers can match on
   variants and errors compose across crate boundaries; such a type still
   converts into `anyhow::Error` for free at the CLI layer.
+* **Document `# Errors`**: Add `# Errors` rustdoc sections on fallible `pub fn`
+  library items stating the conditions under which `Err` is returned.
 * **Tests may panic**: `unwrap()`, `expect()`, `panic!`, and indexing are
   allowed in test code (`.clippy.toml` sets `allow-*-in-tests`). When using
   `expect()`, write the message in std's recommended style, stating why the
