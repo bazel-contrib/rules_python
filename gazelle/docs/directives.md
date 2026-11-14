@@ -923,6 +923,32 @@ Setting the directive to `false` makes Gazelle ignore `pytest_plugins`
 declarations in the package and its subpackages: their entries are neither
 added as dependencies nor validated. Ordinary imports are unaffected.
 
+For example, given this Python file:
+
+```python
+# foo_test.py
+pytest_plugins = ["plugins"]
+```
+
+`# gazelle:python_resolve_pytest_plugins true` (the default) results in:
+
+```starlark
+# gazelle:python_resolve_pytest_plugins true
+
+py_test(
+    name = "foo_test",
+    srcs = ["foo_test.py"],
+    deps = [":plugins"],
+)
+```
+
+And `# gazelle:python_resolve_pytest_plugins false` results in:
+
 ```starlark
 # gazelle:python_resolve_pytest_plugins false
+
+py_test(
+    name = "foo_test",
+    srcs = ["foo_test.py"],
+)
 ```
