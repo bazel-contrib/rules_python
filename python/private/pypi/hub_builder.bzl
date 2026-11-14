@@ -9,9 +9,11 @@ load("//python/private:version.bzl", "version")
 load("//python/private:version_label.bzl", "version_label")
 load(":attrs.bzl", "use_isolated")
 load(":hash.bzl", "hash")
+load(":labels.bzl", "group_member")
 load(":parse_requirements.bzl", "parse_requirements")
 load(":pep508_env.bzl", "env")
 load(":pep508_evaluate.bzl", "evaluate")
+load(":pep508_requirement.bzl", "requirement", "strip_extras")
 load(":python_tag.bzl", "python_tag")
 load(":requirements_files_by_platform.bzl", "requirements_files_by_platform")
 load(":whl_config_setting.bzl", "whl_config_setting")
@@ -257,8 +259,10 @@ def _add_group_map(self, group_map):
     # cycles for different abis/oses? For now we will need the users to
     # assume the same groups across all versions/platforms until we start
     # using an alternative cycle resolution strategy.
+    # The members are the packages, e.g. `foo`, or the extras of the packages,
+    # e.g. `foo[bar]`.
     group_map = {
-        name: [normalize_name(whl_name) for whl_name in whls]
+        name: [group_member(whl_name) for whl_name in whls]
         for name, whls in group_map.items()
     }
     self._group_map.clear()
@@ -266,7 +270,7 @@ def _add_group_map(self, group_map):
 
     self._group_map.update(group_map)
     self._group_name_by_whl.update({
-        whl_name: group_name
+        whl_name.partition("[")[0]: group_name
         for group_name, group_whls in self._group_map.items()
         for whl_name in group_whls
     })
@@ -606,7 +610,8 @@ def _create_whl_repos(
             whl = whl,
             whl_modifications = whl_modifications,
         )
-        for src in whl.srcs:
+        srcs = _merge_extras(whl.srcs)
+        for src in srcs:
             repo = _whl_repo(
                 src = src,
                 index_url = whl.index_url,
@@ -616,16 +621,96 @@ def _create_whl_repos(
                 use_downloader = src.url and _use_downloader(self, python_version, whl.name),
                 auth_patterns = self._config.auth_patterns or pip_attr.auth_patterns,
                 python_version = _major_minor_version(python_version),
-                is_multiple_versions = whl.is_multiple_versions,
+                # Different extras for the same distribution are not different versions.
+                is_multiple_versions = whl.is_multiple_versions and len({
+                    s.requirement_line: None
+                    for s in srcs
+                }) > 1,
                 interpreter = interpreter,
                 enable_pipstar_extract = enable_pipstar_extract,
             )
-            _add_whl_library(
-                self,
-                python_version = python_version,
-                whl = whl,
-                repo = repo,
-            )
+            for config_setting in repo.config_settings if repo else []:
+                _add_whl_library(
+                    self,
+                    python_version = python_version,
+                    whl = whl,
+                    repo = struct(
+                        repo_name = repo.repo_name,
+                        args = repo.args,
+                        config_setting = config_setting,
+                    ),
+                )
+
+def _merge_extras(srcs):
+    """Merge the sources that differ only in the requested extras.
+
+    The whl repositories create targets for all of the extras that a package
+    provides, so the extras are not passed to them and the same distribution
+    requested with different extras on different platforms uses a single whl
+    repository. The extras of each platform are recorded so that the hub can
+    expose only the requested extras for each platform.
+
+    Args:
+        srcs: {type}`list[struct]` the sources returned by `parse_requirements`.
+
+    Returns:
+        The list of sources without the extras in the requirement line and
+        with an extra `extras_by_platform` attribute.
+    """
+    merged = {}
+    for src in srcs:
+        line = strip_extras(src.requirement_line)
+        entry = merged.setdefault(
+            (src.filename, src.url, line, tuple(src.extra_pip_args)),
+            struct(
+                src = src,
+                line = line,
+                extras_by_platform = {},
+                target_platforms = [],
+            ),
+        )
+        extras = sorted(requirement(src.requirement_line).extras)
+        for p in src.target_platforms:
+            if p not in entry.target_platforms:
+                entry.target_platforms.append(p)
+            entry.extras_by_platform[p] = extras
+
+    return [
+        struct(
+            distribution = entry.src.distribution,
+            extra_pip_args = entry.src.extra_pip_args,
+            requirement_line = entry.line,
+            target_platforms = entry.target_platforms,
+            extras_by_platform = entry.extras_by_platform,
+            filename = entry.src.filename,
+            digest = entry.src.digest,
+            url = entry.src.url,
+            yanked = entry.src.yanked,
+        )
+        for entry in merged.values()
+    ]
+
+def _config_settings(*, src, version, target_platforms):
+    """Return the config settings for each set of extras requested by the platforms."""
+    plats_by_extras = {}
+    for p in src.target_platforms:
+        plats_by_extras.setdefault(tuple(src.extras_by_platform.get(p, [])), []).append(p)
+
+    if len(plats_by_extras) == 1:
+        return [whl_config_setting(
+            version = version,
+            target_platforms = target_platforms or None,
+            extras = plats_by_extras.keys()[0],
+        )]
+
+    return [
+        whl_config_setting(
+            version = version,
+            target_platforms = plats,
+            extras = extras,
+        )
+        for extras, plats in plats_by_extras.items()
+    ]
 
 def _common_args(self, module_ctx, *, pip_attr):
     # Construct args separately so that the lock file can be smaller and does not include unused
@@ -695,8 +780,11 @@ def _whl_repo(
         interpreter,
         enable_pipstar_extract = False):
     args = dict(whl_library_args)
-    args["requirement"] = src.requirement_line
     is_whl = src.filename.endswith(".whl")
+    if not (src.url and is_whl):
+        # The requirement line is only needed for `pip` to download or build
+        # the wheel.
+        args["requirement"] = src.requirement_line
 
     if src.extra_pip_args and not is_whl:
         # pip is not used to download wheels and the python
@@ -725,9 +813,10 @@ def _whl_repo(
                     *target_platforms
                 ),
                 args = args,
-                config_setting = whl_config_setting(
+                config_settings = _config_settings(
+                    src = src,
                     version = python_version,
-                    target_platforms = target_platforms or None,
+                    target_platforms = target_platforms,
                 ),
             )
 
@@ -758,7 +847,8 @@ def _whl_repo(
     return struct(
         repo_name = whl_repo_name(src.filename, src.digest, *target_platforms),
         args = args,
-        config_setting = whl_config_setting(
+        config_settings = _config_settings(
+            src = src,
             version = python_version,
             target_platforms = src.target_platforms,
         ),

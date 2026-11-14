@@ -56,3 +56,22 @@ def requirement(spec):
         extras = extras,
         version = version,
     )
+
+def strip_extras(requirement_line):
+    """Remove the extras from the requirement line.
+
+    Args:
+        requirement_line: {type}`str` the requirement line, e.g.
+            `foo[bar]==1.0 --hash=sha256:...`.
+
+    Returns:
+        The requirement line without the extras, e.g. `foo==1.0 --hash=sha256:...`.
+    """
+    for i, c in enumerate(requirement_line.elems()):
+        if c in "=<>!~;@( ":
+            break
+        if c == "[":
+            _, _, tail = requirement_line[i:].partition("]")
+            return requirement_line[:i] + tail
+
+    return requirement_line

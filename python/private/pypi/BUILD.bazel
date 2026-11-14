@@ -182,9 +182,11 @@ bzl_library(
     deps = [
         ":attrs",
         ":hash",
+        ":labels",
         ":parse_requirements",
         ":pep508_env",
         ":pep508_evaluate",
+        ":pep508_requirement",
         ":python_tag",
         ":requirements_files_by_platform",
         ":whl_config_setting",
@@ -325,8 +327,10 @@ bzl_library(
     deps = [
         ":default_platforms",
         ":hash",
+        ":labels",
         ":parse_requirements",
         ":pep508_env",
+        ":pep508_requirement",
         ":pip_repository_attrs",
         ":pypi_repo_utils",
         ":render_pkg_aliases",
@@ -352,6 +356,7 @@ bzl_library(
     deps = [
         ":labels",
         ":whl_library_deps_targets",
+        "//python:py_library",
         "//python/private:common_labels",
         "//python/private:text_util",
         "@bazel_skylib//lib:selects",
@@ -384,6 +389,7 @@ bzl_library(
     srcs = ["render_pkg_aliases.bzl"],
     deps = [
         ":generate_group_library_build_bazel",
+        ":labels",
         "//python/private:normalize_name",
         "//python/private:text_util",
     ],
@@ -583,7 +589,6 @@ bzl_library(
     srcs = ["whl_deps_repo.bzl"],
     deps = [
         ":generate_whl_library_build_bazel",
-        ":pep508_requirement",
         "//python/private:repo_utils",
     ],
 )
@@ -594,7 +599,6 @@ bzl_library(
     deps = [
         ":generate_whl_library_build_bazel",
         ":patch_whl",
-        ":pep508_requirement",
         ":pypi_repo_utils",
         ":whl_extract",
         ":whl_metadata",
@@ -609,6 +613,7 @@ bzl_library(
     deps = [
         ":env_marker_setting",
         ":labels",
+        ":missing_package",
         ":pep508_deps",
         "//python:py_library",
         "//python/private:normalize_name",
@@ -627,6 +632,12 @@ bzl_library(
         "//python:py_library",
         "@bazel_skylib//rules:copy_file",
     ],
+)
+
+bzl_library(
+    name = "labels",
+    srcs = ["labels.bzl"],
+    deps = ["//python/private:normalize_name"],
 )
 
 bzl_library(
@@ -652,11 +663,6 @@ bzl_library(
 bzl_library(
     name = "hash",
     srcs = ["hash.bzl"],
-)
-
-bzl_library(
-    name = "labels",
-    srcs = ["labels.bzl"],
 )
 
 bzl_library(

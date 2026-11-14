@@ -65,6 +65,32 @@ be a part of the `airflow` cycle. For instance:
 )
 ```
 
+Each extra of a package has its own target, so a cycle that goes through an
+extra back to the package without extras, e.g. `foo[bar]` depending on `baz`
+which depends on `foo`, is not a cycle in Bazel and does not need a group. If
+the cycle includes the extra itself, e.g. `baz` depends on `foo[bar]`, then
+only the extra needs to be a member of the group:
+
+```starlark
+    ...
+    experimental_requirement_cycles = {
+        "foo": [
+            "foo[bar]",
+            "baz",
+        ]
+    }
+)
+```
+
+Only the targets of the members, `@pypi//foo:[bar]` and `@pypi//baz`, are
+then part of the group and the other targets of `foo`, e.g. `@pypi//foo:[]`,
+can be used without the group. The `whl` targets do not use the extras, so
+only the packages without extras are part of the group for the `whl` targets.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+Support for the extras as members of the groups.
+:::
+
 Alternatively, one could resolve the cycle by removing one leg of it.
 
 For example, while `apache-airflow-providers-sqlite` is "baked into" the Airflow

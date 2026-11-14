@@ -22,6 +22,8 @@ load(
     "PY_LIBRARY_PUBLIC_LABEL",
     "WHEEL_FILE_IMPL_LABEL",
     "WHEEL_FILE_PUBLIC_LABEL",
+    "extra_label",
+    "group_member",
 )
 
 _PRELUDE = """\
@@ -60,32 +62,36 @@ def _generate_group_libraries(repo_prefix, group_name, group_members):
         repo_prefix: str; the pip_parse repo prefix.
         group_name: str; the name which the user provided for the dep group.
         group_members: list[str]; the names of the _packages_ (not repositories)
-          which make up the group.
+          which make up the group, optionally with a single extra, e.g. `foo[bar]`.
     """
 
-    group_members = sorted(group_members)
+    # The whl targets do not use the extras, so only the packages without
+    # extras are members for the whl targets.
+    group_members = sorted([group_member(d) for d in group_members])
+    whl_members = [d for d in group_members if "[" not in d]
+    packages = sorted({_package(d): None for d in group_members})
 
     if repo_prefix:
         lib_dependencies = [
-            "@%s%s//:%s" % (repo_prefix, normalize_name(d), PY_LIBRARY_IMPL_LABEL)
+            "@%s%s//:%s" % (repo_prefix, _package(d), _lib_impl_label(d))
             for d in group_members
         ]
         whl_file_deps = [
             "@%s%s//:%s" % (repo_prefix, normalize_name(d), WHEEL_FILE_IMPL_LABEL)
-            for d in group_members
+            for d in whl_members
         ]
         visibility = [
             "@%s%s//:__pkg__" % (repo_prefix, normalize_name(d))
-            for d in group_members
+            for d in packages
         ]
     else:
         lib_dependencies = [
-            "//%s:%s" % (normalize_name(d), PY_LIBRARY_IMPL_LABEL)
+            "//%s:%s" % (_package(d), _lib_impl_label(d))
             for d in group_members
         ]
         whl_file_deps = [
             "//%s:%s" % (normalize_name(d), WHEEL_FILE_IMPL_LABEL)
-            for d in group_members
+            for d in whl_members
         ]
         visibility = ["//:__subpackages__"]
 
@@ -97,6 +103,13 @@ def _generate_group_libraries(repo_prefix, group_name, group_members):
         lib_deps = render.indent(render.list(lib_dependencies)).lstrip(),
         visibility = render.indent(render.list(visibility)).lstrip(),
     )
+
+def _package(member):
+    return member.partition("[")[0]
+
+def _lib_impl_label(member):
+    _, _, extra = member.partition("[")
+    return "_" + extra_label(extra.rstrip("]")) if extra else PY_LIBRARY_IMPL_LABEL
 
 def generate_group_library_build_bazel(
         repo_prefix,

@@ -41,7 +41,8 @@ def _test_legacy_aliases(env):
     # buildifier: disable=unsorted-dict-items
     want = {
         "foo": ":pkg",
-        "pkg": "@repo//:pkg",
+        "pkg": ":[]",
+        "[]": "@repo//:pkg",
         "srcs": "@repo//:srcs",
         "whl_file": "@repo//:whl_file",
         "whl": "@repo//:whl",
@@ -79,7 +80,8 @@ def _test_config_setting_aliases(env):
 
     # buildifier: disable=unsorted-dict-items
     want = {
-        "pkg": {
+        "pkg": ":[]",
+        "[]": {
             "//:my_config_setting": "@bar_baz_repo//:pkg",
             "//conditions:default": "_no_matching_repository",
         },
@@ -180,7 +182,8 @@ def _test_multiplatform_whl_aliases(env):
 
     # buildifier: disable=unsorted-dict-items
     want = {
-        "pkg": {
+        "pkg": ":[]",
+        "[]": {
             "//:my_config_setting": "@bzlmod_repo//:pkg",
             "//_config:is_cp39": "@version_repo//:pkg",
             "//_config:is_cp39_linux_x86_64": "@version_platform_repo//:pkg",
@@ -239,6 +242,10 @@ def _test_group_aliases(env):
         {
             "name": "extracted_whl_files",
             "actual": "@repo//:extracted_whl_files",
+        },
+        {
+            "name": "[]",
+            "actual": "//_groups:my_group_pkg",
         },
         {
             "name": "pkg",
@@ -308,7 +315,6 @@ def _test_deps_and_aliases(env):
     want_deps_targets = {
         "aliases": {},
         "dep_template": "//{name}:{target}",
-        "extras": [],
         "group_deps": ["bar", "foo"],
         "group_name": "my_group",
         "include": [],
@@ -520,6 +526,189 @@ def _test_config_settings_exist_legacy(env):
     env.expect.that_collection(available_config_settings).contains_at_least(got)
 
 _tests.append(_test_config_settings_exist_legacy)
+
+_LINUX = "//_config:is_cp312_linux_x86_64"
+_OSX = "//_config:is_cp312_osx_aarch64"
+_WINDOWS = "//_config:is_cp312_windows_x86_64"
+
+def _extras_actual(extras_by_platform):
+    return {
+        whl_config_setting(
+            version = "3.12",
+            target_platforms = ["cp312_" + platform],
+            extras = extras,
+        ): repo
+        for platform, (repo, extras) in extras_by_platform.items()
+    }
+
+def _test_extras_aliases(env):
+    got = {}
+    py_library_calls = []
+    pkg_aliases(
+        name = "foo",
+        actual = _extras_actual({
+            "linux_x86_64": ("repo", ["bar"]),
+            "osx_aarch64": ("repo", ["baz"]),
+            "windows_x86_64": ("other_repo", []),
+        }),
+        native = struct(
+            alias = lambda *, name, actual, visibility = None, tags = None: got.update({name: actual}),
+        ),
+        rules = struct(
+            py_library = lambda **kwargs: py_library_calls.append(kwargs),
+        ),
+        select = lambda value, no_match_error = None: value,
+    )
+
+    # buildifier: disable=unsorted-dict-items
+    want = {
+        "foo": ":pkg",
+        "pkg": {
+            _LINUX: ":[bar]",
+            _OSX: ":[baz]",
+            _WINDOWS: ":[]",
+            # The `[]` target has the no match error.
+            "//conditions:default": ":[]",
+        },
+        "whl": {
+            _LINUX: "@repo//:whl",
+            _OSX: "@repo//:whl",
+            _WINDOWS: "@other_repo//:whl",
+            "//conditions:default": "_no_matching_repository",
+        },
+        "[]": {
+            _LINUX: "@repo//:pkg",
+            _OSX: "@repo//:pkg",
+            _WINDOWS: "@other_repo//:pkg",
+            "//conditions:default": "_no_matching_repository",
+        },
+        "[bar]": {
+            _LINUX: "@repo//:[bar]",
+            _OSX: "@repo//:pkg",
+            _WINDOWS: "@other_repo//:pkg",
+            "//conditions:default": "_no_matching_repository",
+        },
+        "[baz]": {
+            _LINUX: "@repo//:pkg",
+            _OSX: "@repo//:[baz]",
+            _WINDOWS: "@other_repo//:pkg",
+            "//conditions:default": "_no_matching_repository",
+        },
+    }
+    env.expect.that_dict(got).contains_at_least(want)
+    env.expect.that_collection(py_library_calls).contains_exactly([])
+
+_tests.append(_test_extras_aliases)
+
+def _test_extras_aliases_union(env):
+    got = {}
+    py_library_calls = []
+    pkg_aliases(
+        name = "foo",
+        actual = _extras_actual({
+            "linux_x86_64": ("repo", ["a", "b"]),
+            "osx_aarch64": ("repo", ["c"]),
+            "windows_x86_64": ("repo", []),
+        }),
+        native = struct(
+            alias = lambda *, name, actual, visibility = None, tags = None: got.update({name: actual}),
+        ),
+        rules = struct(
+            py_library = lambda **kwargs: py_library_calls.append(kwargs),
+        ),
+        select = lambda value, no_match_error = None: value,
+    )
+
+    # buildifier: disable=unsorted-dict-items
+    env.expect.that_collection(py_library_calls).contains_exactly([{
+        "name": "pkg",
+        "deps": {
+            _LINUX: [":[a]", ":[b]"],
+            _OSX: [":[c]"],
+            _WINDOWS: [":[]"],
+            "//conditions:default": [":[]"],
+        },
+    }])
+    env.expect.that_collection(got.keys()).not_contains("pkg")
+
+_tests.append(_test_extras_aliases_union)
+
+def _test_extras_aliases_group(env):
+    got = {}
+    got_visibility = {}
+
+    def _alias(*, name, actual, visibility = None, **_):
+        got[name] = actual
+        if visibility:
+            got_visibility[name] = visibility
+
+    pkg_aliases(
+        name = "foo",
+        actual = _extras_actual({
+            "linux_x86_64": ("repo", ["bar"]),
+            "osx_aarch64": ("repo", []),
+        }),
+        group_name = "group",
+        native = struct(alias = _alias),
+        select = lambda value, no_match_error = None: value,
+    )
+
+    # The package without extras is the member of the group by default, the
+    # `[bar]` extra is not a member of the group.
+    # buildifier: disable=unsorted-dict-items
+    env.expect.that_dict(got).contains_at_least({
+        "pkg": {
+            _LINUX: ":[bar]",
+            _OSX: "//_groups:group_pkg",
+            "//conditions:default": "//_groups:group_pkg",
+        },
+        "[]": "//_groups:group_pkg",
+        "_pkg": {
+            _LINUX: "@repo//:pkg",
+            _OSX: "@repo//:pkg",
+            "//conditions:default": "_no_matching_repository",
+        },
+        "[bar]": {
+            _LINUX: "@repo//:[bar]",
+            _OSX: "@repo//:pkg",
+            "//conditions:default": "_no_matching_repository",
+        },
+    })
+    env.expect.that_dict(got_visibility).contains_at_least({
+        "_pkg": ["//_groups:__subpackages__"],
+    })
+
+_tests.append(_test_extras_aliases_group)
+
+def _test_extras_aliases_group_with_extras(env):
+    got = {}
+
+    # This is how `WORKSPACE` uses a single repo for each package.
+    pkg_aliases(
+        name = "foo",
+        actual = "repo",
+        extras = ["bar"],
+        group_name = "group",
+        # Only the `bar` extra is the member of the group.
+        group_extras = ["bar"],
+        native = struct(
+            alias = lambda *, name, actual, visibility = None, tags = None: got.update({name: actual}),
+        ),
+        select = lambda value, no_match_error = None: value,
+    )
+
+    # buildifier: disable=unsorted-dict-items
+    env.expect.that_dict(got).contains_at_least({
+        "pkg": "//_groups:group_pkg",
+        "[]": "@repo//:pkg",
+        "[bar]": "//_groups:group_pkg",
+        "_[bar]": "@repo//:[bar]",
+        "whl": "@repo//:whl",
+    })
+    env.expect.that_collection(got.keys()).not_contains("_pkg")
+    env.expect.that_collection(got.keys()).not_contains("_whl")
+
+_tests.append(_test_extras_aliases_group_with_extras)
 
 def pkg_aliases_test_suite(name):
     """Create the test suite.

@@ -17,6 +17,7 @@
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load(
     "//python/private/pypi:render_pkg_aliases.bzl",
+    "available_extras",
     "get_whl_flag_versions",
     "render_multiplatform_pkg_aliases",
     "render_pkg_aliases",
@@ -246,6 +247,85 @@ def _test_get_flag_versions_from_alias_target_platforms(env):
     env.expect.that_dict(got).contains_exactly(want)
 
 _tests.append(_test_get_flag_versions_from_alias_target_platforms)
+
+def _test_aliases_with_extras(env):
+    actual = render_pkg_aliases(
+        aliases = {
+            "foo": {
+                whl_config_setting(version = "3.2", extras = ["b", "a"]): "pypi_32_foo",
+            },
+        },
+    )
+
+    env.expect.that_str(actual["foo/BUILD.bazel"]).contains("""\
+pkg_aliases(
+    name = "foo",
+    actual = {
+        whl_config_setting(
+            extras = ("a", "b"),
+            version = "3.2",
+        ): "pypi_32_foo",
+    },
+)""")
+
+_tests.append(_test_aliases_with_extras)
+
+def _test_available_extras(env):
+    got = available_extras({
+        "bar": {
+            whl_config_setting(version = "3.2"): "pypi_32_bar",
+        },
+        "foo": {
+            whl_config_setting(version = "3.2", target_platforms = ["cp32_linux_x86_64"], extras = ["b"]): "pypi_32_foo",
+            whl_config_setting(version = "3.2", target_platforms = ["cp32_osx_aarch64"], extras = ["a", "b"]): "pypi_32_foo",
+        },
+    })
+
+    env.expect.that_dict(got).contains_exactly({
+        "bar": [],
+        "foo": ["a", "b"],
+    })
+
+_tests.append(_test_available_extras)
+
+def _test_aliases_with_extras_for_repo_names(env):
+    actual = render_pkg_aliases(
+        aliases = {
+            "foo": "pypi_foo",
+        },
+        extras = {"foo": ["a"]},
+    )
+
+    env.expect.that_str(actual["foo/BUILD.bazel"]).contains("""\
+pkg_aliases(
+    name = "foo",
+    actual = "pypi_foo",
+    extras = ["a"],
+)""")
+
+_tests.append(_test_aliases_with_extras_for_repo_names)
+
+def _test_groups_with_extras(env):
+    actual = render_pkg_aliases(
+        aliases = {
+            "bar": {whl_config_setting(version = "3.1"): "pypi_31_bar"},
+            "foo": {whl_config_setting(version = "3.1"): "pypi_31_foo"},
+        },
+        requirement_cycles = {
+            "group": ["Bar", "foo[Extra]"],
+        },
+    )
+
+    env.expect.that_str(actual["foo/BUILD.bazel"]).contains("""\
+    group_name = "group",
+    group_extras = ["extra"],
+""")
+    env.expect.that_str(actual["bar/BUILD.bazel"]).contains("""\
+    group_name = "group",
+""")
+    env.expect.that_bool("group_extras" in actual["bar/BUILD.bazel"]).equals(False)
+
+_tests.append(_test_groups_with_extras)
 
 def render_pkg_aliases_test_suite(name):
     """Create the test suite.

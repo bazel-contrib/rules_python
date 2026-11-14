@@ -176,6 +176,50 @@ def _test_uv_lock_only(env):
 
 _tests.append(_test_uv_lock_only)
 
+def _test_uv_lock_extras(env):
+    builder = hub_builder(env)
+    builder.pip_parse(
+        _mock_mctx(
+            os_name = "osx",
+            arch_name = "aarch64",
+            mock_files = {
+                "uv.lock": """{"package":[{"name":"simple","provides-extras":["async-rest","grpc"],"source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/simple-0.0.1-py3-none-any.whl"}]}]}""",
+            },
+        ),
+        _parse(
+            hub_name = "pypi",
+            python_version = "3.15",
+            requirements_lock = None,
+            uv_lock = "uv.lock",
+            target_platforms = ["osx_aarch64", "linux_x86_64"],
+        ),
+    )
+    pypi = builder.build()
+
+    pypi.whl_map().contains_exactly({
+        "simple": {
+            "pypi_315_simple_py3_none_any_deadbeef": [
+                whl_config_setting(
+                    version = "3.15",
+                    target_platforms = ["cp315_linux_x86_64", "cp315_osx_aarch64"],
+                    extras = ["async_rest", "grpc"],
+                ),
+            ],
+        },
+    })
+    pypi.whl_libraries().contains_at_least({
+        "pypi_315_simple_py3_none_any_deadbeef": {
+            "config_load": "@pypi//:config.bzl",
+            "dep_template": "@pypi//{name}:{target}",
+            "filename": "simple-0.0.1-py3-none-any.whl",
+            "index_url": "https://pypi.org/simple/simple",
+            "integrity": "sha256-3q2+7w==",
+            "urls": ["https://files.pythonhosted.org/packages/simple-0.0.1-py3-none-any.whl"],
+        },
+    })
+
+_tests.append(_test_uv_lock_extras)
+
 def _test_simple_multiple_requirements(env):
     sub_tests = {
         ("osx", "aarch64"): "simple==0.0.2 --hash=sha256:deadb00f",
@@ -224,10 +268,10 @@ _tests.append(_test_simple_multiple_requirements)
 
 def _test_simple_extras_vs_no_extras(env):
     sub_tests = {
-        ("osx", "aarch64"): "simple[foo]==0.0.1 --hash=sha256:deadbeef",
-        ("windows", "aarch64"): "simple==0.0.1 --hash=sha256:deadbeef",
+        ("osx", "aarch64"): ("simple==0.0.1 --hash=sha256:deadbeef", ["foo"]),
+        ("windows", "aarch64"): ("simple==0.0.1 --hash=sha256:deadbeef", None),
     }
-    for (host_os, host_arch), want_requirement in sub_tests.items():
+    for (host_os, host_arch), (want_requirement, want_extras) in sub_tests.items():
         builder = hub_builder(env)
         builder.pip_parse(
             mocks.mctx(
@@ -252,7 +296,7 @@ def _test_simple_extras_vs_no_extras(env):
         pypi.whl_map().contains_exactly({
             "simple": {
                 "pypi_315_simple": [
-                    whl_config_setting(version = "3.15"),
+                    whl_config_setting(version = "3.15", extras = want_extras),
                 ],
             },
         })
@@ -314,43 +358,35 @@ def _test_simple_extras_vs_no_extras_simpleapi(env):
 
     pypi.exposed_packages().contains_exactly(["simple"])
     pypi.group_map().contains_exactly({})
+
+    # The same wheel is used on both platforms, so a single repository has the
+    # extras for all of the platforms and the hub selects the extras per platform.
     pypi.whl_map().contains_exactly({
         "simple": {
-            "pypi_315_simple_py3_none_any_deadbeef_osx_aarch64": [
-                whl_config_setting(
-                    target_platforms = [
-                        "cp315_osx_aarch64",
-                    ],
-                    version = "3.15",
-                ),
-            ],
-            "pypi_315_simple_py3_none_any_deadbeef_windows_aarch64": [
+            "pypi_315_simple_py3_none_any_deadbeef": [
                 whl_config_setting(
                     target_platforms = [
                         "cp315_windows_aarch64",
                     ],
                     version = "3.15",
                 ),
+                whl_config_setting(
+                    target_platforms = [
+                        "cp315_osx_aarch64",
+                    ],
+                    version = "3.15",
+                    extras = ["foo"],
+                ),
             ],
         },
     })
     pypi.whl_libraries().contains_exactly({
-        "pypi_315_simple_py3_none_any_deadbeef_osx_aarch64": {
+        "pypi_315_simple_py3_none_any_deadbeef": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "filename": "simple-0.0.1-py3-none-any.whl",
             "index_url": "https://example.com/simple/",
             "integrity": "sha256-3q2+7w==",
-            "requirement": "simple[foo]==0.0.1",
-            "urls": ["/simple-0.0.1-py3-none-any.whl"],
-        },
-        "pypi_315_simple_py3_none_any_deadbeef_windows_aarch64": {
-            "config_load": "@pypi//:config.bzl",
-            "dep_template": "@pypi//{name}:{target}",
-            "filename": "simple-0.0.1-py3-none-any.whl",
-            "index_url": "https://example.com/simple/",
-            "integrity": "sha256-3q2+7w==",
-            "requirement": "simple==0.0.1",
             "urls": ["/simple-0.0.1-py3-none-any.whl"],
         },
     })
@@ -422,7 +458,6 @@ def _test_simple_sha512_simpleapi(env):
             "filename": "simple-0.0.1-py3-none-any.whl",
             "index_url": "https://example.com/simple/",
             "integrity": "sha512-3q2+7w==",
-            "requirement": "simple==0.0.1",
             "urls": ["/simple-0.0.1-py3-none-any.whl"],
         },
     })
@@ -813,7 +848,6 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
             "filename": "torch-2.4.1+cpu-cp312-cp312-linux_x86_64.whl",
             "index_url": "https://torch.index/torch/",
             "integrity": "sha256-iADe7wAmAR1QLAwlbMS2fQAjR/Y8OjjNjkXx9EXGE2Q=",
-            "requirement": "torch==2.4.1+cpu",
             "urls": ["/whl/cpu/torch-2.4.1%2Bcpu-cp312-cp312-linux_x86_64.whl"],
         },
         "pypi_312_torch_cp312_cp312_manylinux_2_17_aarch64_36109432_linux_aarch64": {
@@ -822,7 +856,6 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
             "filename": "torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl",
             "index_url": "https://torch.index/torch/",
             "integrity": "sha256-NhCUMrEL1xY8mzDOiW88LMobhrl2X5VqFZTw/0MJHio=",
-            "requirement": "torch==2.4.1",
             "urls": ["/whl/cpu/torch-2.4.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl"],
         },
         "pypi_312_torch_cp312_cp312_win_amd64_3a570e5c_windows_x86_64": {
@@ -831,7 +864,6 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
             "filename": "torch-2.4.1+cpu-cp312-cp312-win_amd64.whl",
             "index_url": "https://torch.index/torch/",
             "integrity": "sha256-OlcOXFU0Fc293+Z5IHMns6OAayHGreoU+6d2hNFhnpc=",
-            "requirement": "torch==2.4.1+cpu",
             "urls": ["/whl/cpu/torch-2.4.1%2Bcpu-cp312-cp312-win_amd64.whl"],
         },
         "pypi_312_torch_cp312_none_macosx_11_0_arm64_72b484d5_osx_aarch64": {
@@ -840,7 +872,6 @@ torch==2.4.1+cpu ; platform_machine == 'x86_64' \
             "filename": "torch-2.4.1-cp312-none-macosx_11_0_arm64.whl",
             "index_url": "https://torch.index/torch/",
             "integrity": "sha256-crSE1bbOwac1vz+locSIPQF0hpjF6c/b60/6t8eYfg0=",
-            "requirement": "torch==2.4.1",
             "urls": ["/whl/cpu/torch-2.4.1-cp312-none-macosx_11_0_arm64.whl"],
         },
     })
@@ -983,7 +1014,6 @@ simple==0.0.1 --hash=sha256:deadb00f
             "filename": "simple-0.0.1-py3-none-any.whl",
             "index_url": test.expect_index_url,
             "integrity": "sha256-3q2wDw==",
-            "requirement": "simple==0.0.1",
             "urls": [test.expect_url],
         }
         if getattr(test, "envsubst", []):
@@ -1336,7 +1366,6 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "dep_template": "@pypi//{name}:{target}",
             "filename": "direct_without_sha-0.0.1-py3-none-any.whl",
             "integrity": "",
-            "requirement": "direct_without_sha==0.0.1",
             "urls": ["example-direct.org/direct_without_sha-0.0.1-py3-none-any.whl"],
             "whl_patches": {"my_patch": "1"},
         },
@@ -1360,7 +1389,6 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "filename": "plat-pkg-0.0.4-py3-none-linux_x86_64.whl",
             "index_url": "https://pypi.org/simple",
             "integrity": "sha256-3q20Tw==",
-            "requirement": "plat_pkg==0.0.4",
             "urls": ["example2.org/index/plat_pkg/"],
         },
         "pypi_315_simple_py3_none_any_deadb00f": {
@@ -1369,7 +1397,6 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "filename": "simple-0.0.1-py3-none-any.whl",
             "index_url": "https://pypi.org/simple",
             "integrity": "sha256-3q2wDw==",
-            "requirement": "simple==0.0.1",
             "urls": ["example2.org"],
         },
         "pypi_315_some_pkg_py3_none_any_deadbaaf": {
@@ -1377,7 +1404,6 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "dep_template": "@pypi//{name}:{target}",
             "filename": "some_pkg-0.0.1-py3-none-any.whl",
             "integrity": "sha256-3q26rw==",
-            "requirement": "some_pkg==0.0.1",
             "urls": ["example-direct.org/some_pkg-0.0.1-py3-none-any.whl"],
         },
         "pypi_315_some_py3_none_any_deadb33f": {
@@ -1386,7 +1412,6 @@ git_dep @ git+https://git.server/repo/project@deadbeefdeadbeef
             "filename": "some-other-pkg-0.0.1-py3-none-any.whl",
             "index_url": "https://with_index_url",
             "integrity": "sha256-3q2zPw==",
-            "requirement": "some_other_pkg==0.0.1",
             "urls": ["example2.org/index/some_other_pkg/"],
         },
     })
@@ -1416,10 +1441,10 @@ _tests.append(_test_simple_get_index)
 
 def _test_optimum_sys_platform_extra(env):
     sub_tests = {
-        ("osx", "aarch64"): "optimum[onnxruntime]==1.17.1",
-        ("linux", "aarch64"): "optimum[onnxruntime-gpu]==1.17.1",
+        ("osx", "aarch64"): ("optimum==1.17.1", ["onnxruntime"]),
+        ("linux", "aarch64"): ("optimum==1.17.1", ["onnxruntime_gpu"]),
     }
-    for (host_os, host_arch), want_requirement in sub_tests.items():
+    for (host_os, host_arch), (want_requirement, want_extras) in sub_tests.items():
         builder = hub_builder(
             env,
         )
@@ -1447,7 +1472,7 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
         pypi.whl_map().contains_exactly({
             "optimum": {
                 "pypi_315_optimum": [
-                    whl_config_setting(version = "3.15"),
+                    whl_config_setting(version = "3.15", extras = want_extras),
                 ],
             },
         })
@@ -1509,38 +1534,36 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
 
     pypi.exposed_packages().contains_exactly(["optimum"])
     pypi.group_map().contains_exactly({})
+
+    # The same distribution is requested with different extras on different
+    # platforms, so a single repository has all of the extras and the hub
+    # selects the extras per platform.
     pypi.whl_map().contains_exactly({
         "optimum": {
-            "pypi_315_optimum_mylinuxx86_64": [
+            "pypi_315_optimum": [
                 whl_config_setting(
                     version = "3.15",
                     target_platforms = [
                         "cp315_mylinuxx86_64",
                     ],
+                    extras = ["onnxruntime_gpu"],
                 ),
-            ],
-            "pypi_315_optimum_myosxaarch64": [
                 whl_config_setting(
                     version = "3.15",
                     target_platforms = [
                         "cp315_myosxaarch64",
                     ],
+                    extras = ["onnxruntime"],
                 ),
             ],
         },
     })
     pypi.whl_libraries().contains_exactly({
-        "pypi_315_optimum_mylinuxx86_64": {
+        "pypi_315_optimum": {
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
-            "requirement": "optimum[onnxruntime-gpu]==1.17.1",
-        },
-        "pypi_315_optimum_myosxaarch64": {
-            "config_load": "@pypi//:config.bzl",
-            "dep_template": "@pypi//{name}:{target}",
-            "python_interpreter_target": "unit_test_interpreter_target",
-            "requirement": "optimum[onnxruntime]==1.17.1",
+            "requirement": "optimum==1.17.1",
         },
     })
     pypi.extra_aliases().contains_exactly({})
@@ -1598,7 +1621,7 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
     pypi.whl_map().contains_exactly({
         "optimum": {
             "pypi_315_optimum": [
-                whl_config_setting(version = "3.15"),
+                whl_config_setting(version = "3.15", extras = ["onnxruntime_gpu"]),
             ],
         },
     })
@@ -1607,7 +1630,7 @@ optimum[onnxruntime-gpu]==1.17.1 ; sys_platform == 'linux'
             "config_load": "@pypi//:config.bzl",
             "dep_template": "@pypi//{name}:{target}",
             "python_interpreter_target": "unit_test_interpreter_target",
-            "requirement": "optimum[onnxruntime-gpu]==1.17.1",
+            "requirement": "optimum==1.17.1",
         },
     })
     pypi.extra_aliases().contains_exactly({})
@@ -1676,6 +1699,46 @@ Attempting to create a duplicate library pypi_315_foo for foo with different arg
     ]).in_order()
 
 _tests.append(_test_err_duplicate_repos)
+
+def _test_groups_with_extras(env):
+    builder = hub_builder(env)
+    builder.pip_parse(
+        _mock_mctx(
+            os_name = "osx",
+            arch_name = "aarch64",
+            mock_files = {
+                "requirements.txt": """\
+simple==0.0.1 --hash=sha256:deadbeef
+other==0.0.1 --hash=sha256:deadbaaf
+""",
+            },
+        ),
+        _parse(
+            hub_name = "pypi",
+            python_version = "3.15",
+            requirements_lock = "requirements.txt",
+            experimental_requirement_cycles = {
+                "group": ["Simple[Foo]", "other"],
+            },
+        ),
+    )
+    pypi = builder.build()
+
+    pypi.group_map().contains_exactly({
+        "group": ["simple[foo]", "other"],
+    })
+    pypi.whl_libraries().contains_at_least({
+        "pypi_315_simple": {
+            "config_load": "@pypi//:config.bzl",
+            "dep_template": "@pypi//{name}:{target}",
+            "group_deps": ["simple[foo]", "other"],
+            "group_name": "group",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "simple==0.0.1 --hash=sha256:deadbeef",
+        },
+    })
+
+_tests.append(_test_groups_with_extras)
 
 def hub_builder_test_suite(name):
     """Create the test suite.

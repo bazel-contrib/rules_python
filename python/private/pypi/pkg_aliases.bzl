@@ -32,6 +32,7 @@ setting maps to and their precedence, refer to documentation on that page.
 """
 
 load("@bazel_skylib//lib:selects.bzl", "selects")
+load("//python:py_library.bzl", "py_library")
 load("//python/private:common_labels.bzl", "labels")
 load("//python/private:text_util.bzl", "render")
 load(
@@ -39,12 +40,12 @@ load(
     "DATA_LABEL",
     "DIST_INFO_LABEL",
     "EXTRACTED_WHEEL_FILES",
-    "PY_LIBRARY_IMPL_LABEL",
     "PY_LIBRARY_PUBLIC_LABEL",
     "PY_SRCS_LABEL",
     "WHEEL_FILE",
     "WHEEL_FILE_IMPL_LABEL",
     "WHEEL_FILE_PUBLIC_LABEL",
+    "extra_label",
 )
 load(":whl_library_deps_targets.bzl", "whl_library_deps_targets")
 
@@ -75,12 +76,14 @@ _LABEL_NONE = labels.NONE
 _LABEL_CURRENT_CONFIG = Label("//python/config_settings:current_config")
 _LABEL_CURRENT_CONFIG_NO_MATCH = Label("//python/config_settings:is_not_matching_current_config")
 _INCOMPATIBLE = "_no_matching_repository"
+_DEFAULT = "//conditions:default"
 
 def pkg_aliases(
         *,
         name,
         actual,
         group_name = None,
+        group_extras = None,
         extra_aliases = None,
         requires_dist = [],
         extras = [],
@@ -98,19 +101,30 @@ def pkg_aliases(
             the aliases to point to mapping to repositories. The keys are passed
             to bazel skylib's `selects.with_or`, so they can be tuples as well.
         group_name: {type}`str` The group name that the pkg belongs to.
+        group_extras: {type}`list[str] | None` The members of the group in
+            this package, where an empty string is the package without extras
+            and the other values are the extras, e.g. `["", "bar"]`. Defaults
+            to the package without extras if `group_name` is set.
         group_deps: {type}`list[str]` The packages that are in the given group. Comes
             as an arg through the hub repository.
         extra_aliases: {type}`list[str]` The extra aliases to be created.
         requires_dist: {type}`list[str]` The list of dependencies. Comes from METADATA or a lock
             file.
-        extras: {type}`list[str]` The extras for which we should add extra
-            dependencies when parsing the requires_dist. Comes from METADATA or a lock file.
+        extras: {type}`list[str]` The requested extras of the package when
+            `actual` is the name of a single repo. When `actual` is a dict, the
+            requested extras come from the {obj}`whl_config_setting` keys.
         include: {type}`list[str]` The subset of packages to include.
             Comes from `//:config.bzl#packages`
         **kwargs: extra kwargs to pass to {bzl:obj}`get_config_settings`.
     """
+    if not group_name:
+        group_extras = []
+    elif group_extras == None:
+        group_extras = [""]
+
     _native = kwargs.pop("native", native)
     rules = kwargs.pop("rules", struct(
+        py_library = py_library,
         whl_library_deps_targets = whl_library_deps_targets,
     ))
     select = kwargs.pop("select", selects.with_or)
@@ -129,7 +143,6 @@ def pkg_aliases(
             aliases = {},  # not none
             metadata_name = name,
             requires_dist = requires_dist,
-            extras = extras,
             include = include,
             group_deps = group_deps,
             group_name = group_name,
@@ -140,16 +153,11 @@ def pkg_aliases(
         )
         target_names = {}
     else:
-        if group_name:
-            py_library_target = PY_LIBRARY_IMPL_LABEL
-            whl_target = WHEEL_FILE_IMPL_LABEL
-        else:
-            py_library_target = PY_LIBRARY_PUBLIC_LABEL
-            whl_target = WHEEL_FILE_PUBLIC_LABEL
-
+        # The `pkg` targets are created by `_pkg_targets` below. The whl
+        # targets do not use the extras, so only the package without extras
+        # can be a member of the group.
         target_names = {
-            PY_LIBRARY_PUBLIC_LABEL: py_library_target,
-            WHEEL_FILE_PUBLIC_LABEL: whl_target,
+            WHEEL_FILE_PUBLIC_LABEL: WHEEL_FILE_IMPL_LABEL if "" in group_extras else WHEEL_FILE_PUBLIC_LABEL,
         }
 
     target_names = target_names | {
@@ -163,6 +171,7 @@ def pkg_aliases(
         for x in extra_aliases or []
     }
 
+    extras_by_setting = _extras_by_setting(actual, extras)
     actual = multiplatform_whl_aliases(aliases = actual, **kwargs)
     if type(actual) == type({}) and "//conditions:default" not in actual:
         _native.alias(
@@ -216,15 +225,128 @@ def pkg_aliases(
             **kwargs
         )
 
-    if group_name:
-        _native.alias(
-            name = PY_LIBRARY_PUBLIC_LABEL,
-            actual = "//_groups:{}_pkg".format(group_name),
-        )
+    if "" in group_extras:
         _native.alias(
             name = WHEEL_FILE_PUBLIC_LABEL,
             actual = "//_groups:{}_whl".format(group_name),
         )
+
+    if requires_dist:
+        if group_name:
+            _native.alias(
+                name = PY_LIBRARY_PUBLIC_LABEL,
+                actual = "//_groups:{}_pkg".format(group_name),
+            )
+    else:
+        _pkg_targets(
+            actual = actual,
+            extras_by_setting = extras_by_setting,
+            group_name = group_name,
+            group_extras = group_extras,
+            native = _native,
+            rules = rules,
+            select = select,
+        )
+
+def _extras_by_setting(aliases, extras):
+    """Return the requested extras for each config setting label."""
+    if type(aliases) == type(""):
+        # A single repo is used for all of the platforms, e.g. in `WORKSPACE`.
+        return {_DEFAULT: tuple(sorted(extras))}
+
+    return {
+        "//_config" + setting: alias.extras
+        for alias in aliases
+        if type(alias) == "struct" and alias.extras
+        for setting in get_config_settings(
+            target_platforms = alias.target_platforms,
+            python_version = alias.version,
+        )
+    }
+
+def _pkg_targets(*, actual, extras_by_setting, group_name, group_extras, native, rules, select):
+    """Create the `pkg`, `[]` and `[<extra>]` targets.
+
+    The whl repositories have an `[<extra>]` target for every extra that the
+    package provides and the hub exposes only the extras requested on each
+    platform. The `pkg` target includes the extras requested on each platform.
+
+    Args:
+        actual: {type}`str | dict[str, str]` the repo name or the config
+            setting labels to repo names.
+        extras_by_setting: {type}`dict[str, tuple[str]]` the config setting
+            labels to the extras requested on that platform.
+        group_name: {type}`str | None` the group name that the pkg belongs to.
+        group_extras: {type}`list[str]` the members of the group in this
+            package, where an empty string is the package without extras.
+        native: the native struct.
+        rules: the rules struct.
+        select: the select function.
+    """
+    if type(actual) == type(""):
+        actual = {_DEFAULT: actual}
+
+    def _select(values):
+        return values[_DEFAULT] if values.keys() == [_DEFAULT] else select(values)
+
+    def _target(repo, name):
+        return repo if repo == _INCOMPATIBLE else "@{}//:{}".format(repo, name)
+
+    group_label = "//_groups:{}_{}".format(group_name, PY_LIBRARY_PUBLIC_LABEL)
+
+    def _hub_label(extra):
+        return group_label if extra in group_extras else ":" + extra_label(extra)
+
+    all_extras = sorted({
+        extra: None
+        for extras in list(extras_by_setting.values()) + [group_extras]
+        for extra in extras
+        if extra
+    })
+    for extra in [""] + all_extras:
+        # The platforms that do not request the extra get the package without
+        # extras.
+        targets = _select({
+            setting: _target(
+                repo,
+                extra_label(extra) if extra in extras_by_setting.get(setting, ()) else PY_LIBRARY_PUBLIC_LABEL,
+            )
+            for setting, repo in actual.items()
+        })
+
+        if extra not in group_extras:
+            native.alias(name = extra_label(extra), actual = targets)
+            continue
+
+        # The group library uses the implementation targets of the members.
+        native.alias(
+            name = "_" + (extra_label(extra) if extra else PY_LIBRARY_PUBLIC_LABEL),
+            actual = targets,
+            visibility = ["//_groups:__subpackages__"],
+        )
+        native.alias(name = extra_label(extra), actual = group_label)
+
+    # The `[]` and `[<extra>]` targets have the no match error, so we do not
+    # need to handle the incompatible platforms here.
+    targets = {
+        setting: sorted({
+            _hub_label(e): None
+            for e in extras_by_setting.get(setting, ()) or [""]
+        })
+        for setting in actual
+    }
+    unique = {label: None for t in targets.values() for label in t}
+    if len(unique) == 1:
+        native.alias(name = PY_LIBRARY_PUBLIC_LABEL, actual = unique.keys()[0])
+    elif all([len(t) == 1 for t in targets.values()]):
+        native.alias(
+            name = PY_LIBRARY_PUBLIC_LABEL,
+            actual = _select({setting: t[0] for setting, t in targets.items()}),
+        )
+    else:
+        # Some platforms request more than one extra, so we need to combine
+        # the targets.
+        rules.py_library(name = PY_LIBRARY_PUBLIC_LABEL, deps = _select(targets))
 
 def multiplatform_whl_aliases(
         *,

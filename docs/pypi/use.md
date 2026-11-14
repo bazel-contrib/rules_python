@@ -57,11 +57,85 @@ which can help you create a `py_binary` target for a particular console script e
 
 [whl_ep]: https://packaging.python.org/specifications/entry-points/
 
+{#extras}
 ## 'Extras' dependencies
 
-Any "extras" specified in the requirements lock file will be automatically added
-as transitive dependencies of the package. In the example above, you'd just put
-`requirement("useful_dep")` or `@pypi//useful_dep`.
+Any "extras" specified in the requirements lock file or the `uv.lock` file will
+be automatically added as transitive dependencies of the package. In the
+example above, you'd just put `requirement("useful_dep")` or
+`@pypi//useful_dep`.
+
+If you need only some of the extras, the hub repo also has a target for the
+package without any extras and a target for each extra used in the lock file.
+For example, if the lock file has `google-api-core[async_rest,grpc]`, then the
+hub has:
+
+```
+@pypi//google_api_core               # The package with all of the extras
+@pypi//google_api_core:[]            # The package without any extras
+@pypi//google_api_core:[async_rest]  # The package with the async_rest extra
+@pypi//google_api_core:[grpc]        # The package with the grpc extra
+```
+
+Extra names are normalized in the same way as the package names, so
+`async-rest` becomes `async_rest`.
+
+The `requirement` helper supports the same syntax:
+
+```starlark
+load("@pypi//:requirements.bzl", "requirement")
+
+py_library(
+    name = "my_lib",
+    deps = [
+        requirement("google-api-core[grpc]"),
+    ],
+)
+```
+
+There are no targets for combinations of extras, because each `[extra]` target
+already includes the package. The `requirement` helper accepts at most one
+extra. To request more than one extra, use the `requirements` helper, which
+accepts any number of packages and returns a list with a label for each
+package and each extra:
+
+```starlark
+load("@pypi//:requirements.bzl", "requirements")
+
+py_library(
+    name = "my_lib",
+    deps = [
+        ":other_lib",
+    ] + requirements(
+        "google-api-core[async_rest,grpc]",
+        "numpy",
+    ),
+)
+```
+
+If the lock file requests different extras for a package on different
+platforms, for example `foo[bar]` on Linux and `foo[baz]` on macOS, then
+`@pypi//foo` includes only the extras requested for the target platform and
+`@pypi//foo:[bar]` on macOS is the same as `@pypi//foo:[]`.
+
+The dependencies of the packages use the extras written in the wheel
+`METADATA`, so if `foo` depends on `bar[socks]`, then `@pypi//foo` depends on
+`@pypi//bar:[socks]`. If the extra is not in the lock file, then building
+`@pypi//foo` fails with a message asking you to add `bar[socks]` to the
+requirements or the lock file. For example, when compiling the requirements
+with `uv pip compile`, pass `--no-strip-extras` to keep the extras in the
+output.
+
+The `whl` targets, e.g. `@pypi//foo:whl`, do not use the extras and include
+only the wheels of the package and its dependencies without extras.
+
+The packages in a dependency group can also have only some of their extras in
+the group, see the [circular dependencies](./circular-dependencies) docs.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+The `[]` and `[extra]` targets, the support for extras in the `requirement`
+helper and the `requirements` helper were added.
+:::
 
 ## Consuming Wheel Dists Directly
 
