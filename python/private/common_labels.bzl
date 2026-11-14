@@ -6,6 +6,7 @@
 labels = struct(
     # keep sorted
     ADD_SRCS_TO_RUNFILES = str(Label("//python/config_settings:add_srcs_to_runfiles")),
+    BOOTSTRAP_COVERAGE_TOOL = str(Label("//python/private:bootstrap_coverage_tool")),
     BOOTSTRAP_IMPL = str(Label("//python/config_settings:bootstrap_impl")),
     BUILD_PYTHON_ZIP = str(Label("//python/config_settings:build_python_zip")),
     # NOTE: Special target; see definition for details.

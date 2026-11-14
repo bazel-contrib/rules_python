@@ -69,6 +69,35 @@ filegroup(
 Using `filegroup` isn't required, nor are including client libraries. The
 important behaviors of the target are:
 
-*   It provides a single output file OR it provides an executable output; this
-    output is treated as the coverage entry point.
+*   It provides {obj}`PyInfo` (e.g. it is a `py_library`), in which case its
+    import paths are used to import the `coverage` package. See
+    {ref}`coverage-from-pypi`.
+*   Otherwise, it provides a single output file OR it provides an executable
+    output; this output is treated as the coverage entry point.
 *   If it provides runfiles, then `runfiles.files` are included into `py_test`.
+
+(coverage-from-pypi)=
+### Using `coverage` from PyPI
+
+To use the version of `coverage` that is locked in your requirements instead of
+the one bundled with `rules_python`, point the toolchain to the `coverage`
+package in your {obj}`pip.parse` hub:
+
+```starlark
+python.single_version_platform_override(
+    coverage_tool = "@pypi//coverage",
+    platform = "x86_64-unknown-linux-gnu",
+    python_version = "3.13.2",
+)
+```
+
+Or set {attr}`py_runtime.coverage_tool` to `@pypi//coverage` when defining
+your own runtime.
+
+:::{note}
+The `py_library` itself depends on the Python toolchain. To avoid a dependency
+cycle, the coverage tool is built in a configuration where the toolchain has
+no coverage tool, which is similar to how `rules_go` builds `nogo`. This only
+works when the runtime is defined with the {obj}`py_runtime` macro, which the
+toolchains of `rules_python` use.
+:::

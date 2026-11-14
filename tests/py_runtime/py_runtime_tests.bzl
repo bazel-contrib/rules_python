@@ -17,6 +17,7 @@ load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "matching")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
+load("//python:py_library.bzl", "py_library")
 load("//python:py_runtime.bzl", "py_runtime")
 load("//python:py_runtime_info.bzl", "PyRuntimeInfo")
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
@@ -231,6 +232,71 @@ def _test_coverage_tool_plain_files_impl(env, target):
     ])
 
 _tests.append(_test_coverage_tool_plain_files)
+
+def _test_coverage_tool_py_library(name):
+    rt_util.helper_target(
+        py_runtime,
+        name = name + "_subject",
+        python_version = "PY3",
+        interpreter_path = "/bogus",
+        coverage_tool = name + "_coverage",
+    )
+
+    # Like `@pypi//coverage`, which depends on the Python toolchain.
+    rt_util.helper_target(
+        py_library,
+        name = name + "_coverage",
+        srcs = [
+            "site-packages/coverage/__init__.py",
+            "site-packages/coverage/__main__.py",
+        ],
+        imports = ["site-packages"],
+    )
+    analysis_test(
+        name = name,
+        target = name + "_subject",
+        impl = _test_coverage_tool_py_library_impl,
+    )
+
+def _test_coverage_tool_py_library_impl(env, target):
+    info = env.expect.that_target(target).provider(PyRuntimeInfo, factory = py_runtime_info_subject)
+    env.expect.that_bool(info.actual.coverage_tool == None).equals(True)
+    info.coverage_imports().contains_exactly_predicates([
+        matching.str_endswith("tests/py_runtime/site-packages"),
+    ])
+    info.coverage_files().contains_at_least([
+        "{package}/site-packages/coverage/__init__.py",
+        "{package}/site-packages/coverage/__main__.py",
+    ])
+
+_tests.append(_test_coverage_tool_py_library)
+
+def _test_coverage_tool_multiple_files(name):
+    rt_util.helper_target(
+        py_runtime,
+        name = name + "_subject",
+        python_version = "PY3",
+        interpreter_path = "/bogus",
+        coverage_tool = name + "_files",
+    )
+    rt_util.helper_target(
+        native.filegroup,
+        name = name + "_files",
+        srcs = ["coverage_file1.txt", "coverage_file2.txt"],
+    )
+    analysis_test(
+        name = name,
+        target = name + "_subject",
+        impl = _test_coverage_tool_multiple_files_impl,
+        expect_failure = True,
+    )
+
+def _test_coverage_tool_multiple_files_impl(env, target):
+    env.expect.that_target(target).failures().contains_predicate(
+        matching.str_matches("coverage_tool must provide PyInfo*produce exactly one file"),
+    )
+
+_tests.append(_test_coverage_tool_multiple_files)
 
 def _test_in_build_interpreter(name):
     rt_util.helper_target(
