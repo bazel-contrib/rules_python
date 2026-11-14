@@ -13,7 +13,12 @@
 # limitations under the License.
 """Macro to wrap the py_runtime rule."""
 
-load(":py_runtime_rule.bzl", py_runtime_rule = "py_runtime")
+load(":common_labels.bzl", "labels")
+load(
+    ":py_runtime_rule.bzl",
+    "coverage_tool_target",
+    py_runtime_rule = "py_runtime",
+)
 
 # NOTE: The function name is purposefully selected to match the underlying
 # rule name so that e.g. 'generator_function' shows as the same name so
@@ -30,13 +35,21 @@ def py_runtime(*, name, coverage_tool = None, **kwargs):
         coverage_tool: {type}`Label | select | None` the coverage tool.
         **kwargs: forwarded to the rule.
     """
-
-    # NOTE: A select can't be nested, so it is passed as is. The hermetic
-    # toolchains select on `collect_code_coverage`, which the `coverage_tool`
-    # transition disables, so that also breaks the cycle.
-    if coverage_tool != None and type(coverage_tool) != "select":
+    if coverage_tool != None:
+        # Compose caller `select()` expressions with the bootstrap guard via a
+        # helper target. `native.alias` cannot be used because `alias.actual` is
+        # mandatory (rejecting `select()` branches resolving to `None`) and
+        # would evaluate caller `select()` conditions after the coverage_tool
+        # transition disables `collect_code_coverage`.
+        coverage_tool_alias = "_{}_coverage_tool".format(name)
+        coverage_tool_target(
+            name = coverage_tool_alias,
+            actual = coverage_tool,
+            tags = ["manual"],
+            visibility = ["//visibility:private"],
+        )
         coverage_tool = select({
-            Label("//python/private:coverage_tool_active"): coverage_tool,
+            labels.IS_BOOTSTRAP_COVERAGE_TOOL_FALSE: ":" + coverage_tool_alias,
             "//conditions:default": None,
         })
 

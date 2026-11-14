@@ -396,10 +396,12 @@ dev_python.toolchain(
         python_version = "3.13.13",
     )
     for platform in [
+        # keep-sorted start
         "aarch64-apple-darwin",
         "aarch64-unknown-linux-gnu",
         "x86_64-apple-darwin",
         "x86_64-unknown-linux-gnu",
+        # keep-sorted end
     ]
 ]
 

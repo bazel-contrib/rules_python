@@ -32,7 +32,7 @@ def _test_coverage_warning_when_enabled_and_no_tool(env):
     # runtime that was selected cannot produce any.
     msg = coverage_tool_missing_message(
         coverage_enabled = True,
-        coverage_tool = None,
+        has_coverage_tool = False,
         label = Label("//fake:runtime"),
     )
     env.expect.that_bool(msg == None).equals(False)
@@ -46,7 +46,7 @@ def _test_no_coverage_warning_when_coverage_disabled(env):
     # saying anything would be noise on every ordinary build.
     msg = coverage_tool_missing_message(
         coverage_enabled = False,
-        coverage_tool = None,
+        has_coverage_tool = False,
         label = Label("//fake:runtime"),
     )
     env.expect.that_bool(msg == None).equals(True)
@@ -58,7 +58,7 @@ def _test_no_coverage_warning_when_tool_present(env):
     # bundled wheel set or from py_runtime.coverage_tool directly.
     msg = coverage_tool_missing_message(
         coverage_enabled = True,
-        coverage_tool = "some-coverage-tool-file",
+        has_coverage_tool = True,
         label = Label("//fake:runtime"),
     )
     env.expect.that_bool(msg == None).equals(True)
@@ -259,7 +259,10 @@ def _test_coverage_tool_py_library(name):
     )
 
 def _test_coverage_tool_py_library_impl(env, target):
-    info = env.expect.that_target(target).provider(PyRuntimeInfo, factory = py_runtime_info_subject)
+    info = env.expect.that_target(target).provider(
+        PyRuntimeInfo,
+        factory = py_runtime_info_subject,
+    )
     env.expect.that_bool(info.actual.coverage_tool == None).equals(True)
     info.coverage_imports().contains_exactly_predicates([
         matching.str_endswith("tests/py_runtime/site-packages"),
@@ -270,6 +273,96 @@ def _test_coverage_tool_py_library_impl(env, target):
     ])
 
 _tests.append(_test_coverage_tool_py_library)
+
+def _test_coverage_tool_select(name):
+    # Intentionally use a single-branch `select()` to verify `py_runtime` macro
+    # composition of caller `select()` expressions with the bootstrap guard.
+    rt_util.helper_target(
+        py_runtime,
+        name = name + "_subject",
+        python_version = "PY3",
+        interpreter_path = "/bogus",
+        coverage_tool = select({
+            "//conditions:default": name + "_coverage",
+        }),
+    )
+    rt_util.helper_target(
+        py_library,
+        name = name + "_coverage",
+        srcs = [
+            "site-packages/coverage/__init__.py",
+            "site-packages/coverage/__main__.py",
+        ],
+        imports = ["site-packages"],
+    )
+    analysis_test(
+        name = name,
+        target = name + "_subject",
+        impl = _test_coverage_tool_py_library_impl,
+    )
+
+_tests.append(_test_coverage_tool_select)
+
+def _test_coverage_tool_select_dropped_during_bootstrap(name):
+    # Intentionally use a single-branch `select()` to verify the bootstrap
+    # transition still drops `coverage_tool` when the caller passed a `select()`.
+    rt_util.helper_target(
+        py_runtime,
+        name = name + "_subject",
+        python_version = "PY3",
+        interpreter_path = "/bogus",
+        coverage_tool = select({
+            "//conditions:default": name + "_coverage",
+        }),
+    )
+    rt_util.helper_target(
+        py_library,
+        name = name + "_coverage",
+        srcs = [
+            "site-packages/coverage/__init__.py",
+            "site-packages/coverage/__main__.py",
+        ],
+        imports = ["site-packages"],
+    )
+    analysis_test(
+        name = name,
+        target = name + "_subject",
+        config_settings = {
+            labels.BOOTSTRAP_COVERAGE_TOOL: True,
+        },
+        impl = _test_coverage_tool_select_none_impl,
+    )
+
+_tests.append(_test_coverage_tool_select_dropped_during_bootstrap)
+
+def _test_coverage_tool_select_none(name):
+    # Intentionally use `select({"//conditions:default": None})` to verify
+    # `select()` branches resolving to `None` are accepted.
+    rt_util.helper_target(
+        py_runtime,
+        name = name + "_subject",
+        python_version = "PY3",
+        interpreter_path = "/bogus",
+        coverage_tool = select({
+            "//conditions:default": None,
+        }),
+    )
+    analysis_test(
+        name = name,
+        target = name + "_subject",
+        impl = _test_coverage_tool_select_none_impl,
+    )
+
+def _test_coverage_tool_select_none_impl(env, target):
+    info = env.expect.that_target(target).provider(
+        PyRuntimeInfo,
+        factory = py_runtime_info_subject,
+    )
+    env.expect.that_bool(info.actual.coverage_tool == None).equals(True)
+    env.expect.that_bool(info.actual.coverage_imports == None).equals(True)
+    info.coverage_files().contains_exactly([])
+
+_tests.append(_test_coverage_tool_select_none)
 
 def _test_coverage_tool_multiple_files(name):
     rt_util.helper_target(
@@ -293,7 +386,9 @@ def _test_coverage_tool_multiple_files(name):
 
 def _test_coverage_tool_multiple_files_impl(env, target):
     env.expect.that_target(target).failures().contains_predicate(
-        matching.str_matches("coverage_tool must provide PyInfo*produce exactly one file"),
+        matching.str_matches(
+            "coverage_tool must provide PyInfo*produce exactly one file",
+        ),
     )
 
 _tests.append(_test_coverage_tool_multiple_files)

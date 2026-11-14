@@ -1,6 +1,6 @@
 load("//python:py_library.bzl", "py_library")
 load("//python:pytest_test.bzl", "pytest_test")
-load("//tests/support:py_reconfig.bzl", "py_reconfig_test")
+load("//tests/support:py_reconfig.bzl", "py_reconfig_binary")
 load("//tests/support:support.bzl", "NOT_WINDOWS", "SUPPORTS_BZLMOD")
 
 py_library(
@@ -11,7 +11,7 @@ py_library(
 # The program that is built with coverage enabled. It is run by the
 # `coverage_collection_test` below, which sets the same environment variables
 # that `bazel coverage` would set.
-py_reconfig_test(
+py_reconfig_binary(
     name = "instrumented",
     srcs = ["instrumented.py"],
     collect_code_coverage = True,
@@ -37,9 +37,9 @@ pytest_test(
     deps = ["//python/runfiles"],
 )
 
-# The same program, but the coverage tool is the `coverage` py_library from the
-# `@dev_pip` hub, see the `MODULE.bazel` file.
-py_reconfig_test(
+# Helper program invoked by `coverage_from_pypi_test` below, using the
+# `coverage` py_library from `@dev_pip` (see `MODULE.bazel`).
+py_reconfig_binary(
     name = "instrumented_pypi",
     srcs = ["instrumented.py"],
     collect_code_coverage = True,

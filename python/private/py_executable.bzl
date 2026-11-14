@@ -2108,13 +2108,17 @@ def _add_provider_py_runtime_info(providers, runtime_details):
     # the type of the provider object, but the rules_python PyRuntimeInfo
     # object has an extra attribute that the builtin one doesn't.
     if hasattr(py_runtime_info, "interpreter_version_info") and BuiltinPyRuntimeInfo != None:
+        # The builtin provider only knows about coverage_tool.
+        if py_runtime_info.coverage_tool:
+            builtin_coverage_files = py_runtime_info.coverage_files
+        else:
+            builtin_coverage_files = None
         providers.append(BuiltinPyRuntimeInfo(
             interpreter_path = py_runtime_info.interpreter_path,
             interpreter = py_runtime_info.interpreter,
             files = py_runtime_info.files,
             coverage_tool = py_runtime_info.coverage_tool,
-            # The builtin provider only knows about coverage_tool.
-            coverage_files = py_runtime_info.coverage_files if py_runtime_info.coverage_tool else None,
+            coverage_files = builtin_coverage_files,
             python_version = py_runtime_info.python_version,
             stub_shebang = py_runtime_info.stub_shebang,
             bootstrap_template = py_runtime_info.bootstrap_template,

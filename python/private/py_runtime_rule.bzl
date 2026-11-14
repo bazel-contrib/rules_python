@@ -26,7 +26,7 @@ load(":version.bzl", "version")
 
 _py_builtins = py_internal
 
-def coverage_tool_missing_message(*, coverage_enabled, coverage_tool, label):
+def coverage_tool_missing_message(*, coverage_enabled, has_coverage_tool, label):
     """Build the warning for a selected runtime that cannot produce coverage.
 
     Kept separate from the rule implementation so the decision is unit testable
@@ -34,14 +34,14 @@ def coverage_tool_missing_message(*, coverage_enabled, coverage_tool, label):
 
     Args:
         coverage_enabled: {type}`bool` whether the build is collecting coverage.
-        coverage_tool: {type}`File | None` the runtime's coverage entry point.
+        has_coverage_tool: {type}`bool` whether the runtime has a coverage tool.
         label: {type}`Label` the `py_runtime` being analyzed.
 
     Returns:
         {type}`str | None` the message to print, or `None` when no warning is
         warranted.
     """
-    if not coverage_enabled or coverage_tool:
+    if not coverage_enabled or has_coverage_tool:
         return None
 
     return """
@@ -64,11 +64,12 @@ WARNING: Python runtime {label} has no coverage_tool.
 def _coverage_tool_transition_impl(_settings, _attr):
     """Build the coverage tool without itself being a toolchain coverage tool.
 
-    The coverage tool can be a target that resolves the Python toolchain itself,
-    e.g. a `py_library` from a pip hub. Setting the bootstrap flag makes the
-    {obj}`py_runtime` macro drop the `coverage_tool` dependency in that
-    configuration, which would otherwise be a dependency cycle. The coverage tool
-    itself is not instrumented, so coverage collection is disabled.
+    The coverage tool can be a target that resolves the Python toolchain
+    itself, e.g. a `py_library` from a pip hub. Setting the bootstrap flag
+    makes the {obj}`py_runtime` macro drop the `coverage_tool` dependency in
+    that configuration, which would otherwise be a dependency cycle. The
+    coverage tool itself is not instrumented, so coverage collection is
+    disabled.
 
     This mirrors how `rules_go` builds `nogo`.
     """
@@ -84,6 +85,36 @@ _coverage_tool_transition = transition(
         labels.BOOTSTRAP_COVERAGE_TOOL,
         "//command_line_option:collect_code_coverage",
     ],
+)
+
+_CoverageToolInfo = provider(
+    doc = "Forwards an optional coverage_tool target across nested select()s.",
+    fields = ["target"],
+)
+
+def _coverage_tool_target_impl(ctx):
+    return [
+        _CoverageToolInfo(
+            target = ctx.attr.actual[0] if ctx.attr.actual else None,
+        ),
+    ]
+
+coverage_tool_target = rule(
+    doc = """Internal helper rule to compose nested `select()`s on `coverage_tool`.
+
+`native.alias` cannot be used because its `actual` attribute is mandatory
+(rejecting `select()` branches that resolve to `None`) and would evaluate
+caller `select()` conditions after `_coverage_tool_transition` clears
+`collect_code_coverage`.
+""",
+    implementation = _coverage_tool_target_impl,
+    attrs = {
+        "actual": attr.label(
+            allow_files = False,
+            cfg = _coverage_tool_transition,
+            doc = "The underlying `coverage_tool` target.",
+        ),
+    },
 )
 
 def _py_runtime_impl(ctx):
@@ -151,12 +182,14 @@ def _py_runtime_impl(ctx):
         else:
             fail("interpreter must be an executable target or must produce exactly one file.")
 
+    coverage_target = ctx.attr.coverage_tool
+    if coverage_target and _CoverageToolInfo in coverage_target:
+        coverage_target = coverage_target[_CoverageToolInfo].target
+
     coverage_tool = None
     coverage_imports = None
     coverage_files = None
-    if ctx.attr.coverage_tool:
-        # A list because of the Starlark transition on the attribute.
-        coverage_target = ctx.attr.coverage_tool[0]
+    if coverage_target:
         coverage_di = coverage_target[DefaultInfo]
 
         if PyInfo in coverage_target:
@@ -168,7 +201,10 @@ def _py_runtime_impl(ctx):
         elif coverage_di.files_to_run and coverage_di.files_to_run.executable:
             coverage_tool = coverage_di.files_to_run.executable
         else:
-            fail("coverage_tool must provide PyInfo, be an executable target or produce exactly one file.")
+            fail(
+                "coverage_tool must provide PyInfo, be an executable target " +
+                "or produce exactly one file.",
+            )
 
         coverage_files = depset(transitive = [
             coverage_di.files,
@@ -181,7 +217,7 @@ def _py_runtime_impl(ctx):
     # hypothetical. See https://github.com/bazel-contrib/rules_python/issues/3950.
     coverage_warning = coverage_tool_missing_message(
         coverage_enabled = ctx.configuration.coverage_enabled,
-        coverage_tool = coverage_tool or coverage_imports,
+        has_coverage_tool = bool(coverage_target),
         label = ctx.label,
     )
     if coverage_warning:
@@ -333,7 +369,6 @@ See @bazel_tools//tools/python:python_bootstrap_template.txt for more variables.
             ),
             "coverage_tool": attr.label(
                 allow_files = False,
-                cfg = _coverage_tool_transition,
                 doc = """
 This is a target to use for collecting code coverage information from
 {rule}`py_binary` and {rule}`py_test` targets.

@@ -92,12 +92,7 @@ python.single_version_platform_override(
 ```
 
 Or set {attr}`py_runtime.coverage_tool` to `@pypi//coverage` when defining
-your own runtime.
+your own runtime with {obj}`py_runtime`.
 
-:::{note}
-The `py_library` itself depends on the Python toolchain. To avoid a dependency
-cycle, the coverage tool is built in a configuration where the toolchain has
-no coverage tool, which is similar to how `rules_go` builds `nogo`. This only
-works when the runtime is defined with the {obj}`py_runtime` macro, which the
-toolchains of `rules_python` use.
+:::{versionadded} VERSION_NEXT_FEATURE
 :::

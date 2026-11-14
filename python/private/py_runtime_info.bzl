@@ -92,8 +92,10 @@ def _PyRuntimeInfo_init(
     if has_coverage != bool(coverage_files):
         fail(
             "coverage_files must be set if and only if coverage_tool or " +
-            "coverage_imports is set, got coverage_tool={}, coverage_imports={}, coverage_files={}".format(
+            "coverage_imports is set, got coverage_tool={}, ".format(
                 coverage_tool,
+            ) +
+            "coverage_imports={}, coverage_files={}".format(
                 coverage_imports,
                 coverage_files,
             ),
