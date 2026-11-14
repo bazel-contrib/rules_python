@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
-
 # Resolve rules_cc Starlark libraries to their correct targets
 # gazelle:resolve starlark @rules_cc//cc/common:cc_info.bzl @rules_cc//cc/common:common
 # gazelle:resolve starlark @rules_cc//cc/common:cc_common.bzl @rules_cc//cc/common:common
@@ -56,7 +54,6 @@ licenses(["notice"])
 exports_files([
     ".clippy.toml",
     "LICENSE",
-    "version.bzl",
 ])
 
 exports_files(
@@ -108,7 +105,6 @@ filegroup(
         "WORKSPACE.bzlmod",
         "internal_dev_deps.bzl",
         "internal_dev_setup.bzl",
-        "version.bzl",
         ":downloader_configs",
         "//command_line_option:distribution",
         "//crates:distribution",
@@ -129,13 +125,6 @@ filegroup(
         "//python/pip_install:bzl",
     ],
     visibility = ["//visibility:public"],
-)
-
-# keep
-bzl_library(
-    name = "version",
-    srcs = ["version.bzl"],
-    visibility = ["//:__subpackages__"],
 )
 
 # No-op change to verify PR metadata checks

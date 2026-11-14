@@ -21,7 +21,6 @@ load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 load("@rules_bazel_integration_test//bazel_integration_test:deps.bzl", "bazel_integration_test_rules_dependencies")
 load("@rules_bazel_integration_test//bazel_integration_test:repo_defs.bzl", "bazel_binaries")
 load("@rules_shell//shell:repositories.bzl", "rules_shell_dependencies", "rules_shell_toolchains")
-load("//:version.bzl", "SUPPORTED_BAZEL_VERSIONS")
 load("//python:versions.bzl", "MINOR_MAPPING", "TOOL_VERSIONS")
 load("//python/private:pythons_hub.bzl", "hub_repo")  # buildifier: disable=bzl-visibility
 load("//python/private:runtime_env_repo.bzl", "runtime_env_repo")  # buildifier: disable=bzl-visibility
@@ -57,7 +56,14 @@ def rules_python_internal_setup():
 
     bazel_integration_test_rules_dependencies()
     bazel_starlib_dependencies()
-    bazel_binaries(versions = SUPPORTED_BAZEL_VERSIONS)
+
+    # The integration tests are not run in the WORKSPACE builds of this repo,
+    # this is only needed for loading their BUILD files. Bazel 9 and later
+    # ignore the WORKSPACE files.
+    # LINT.IfChange(workspace_bazel_binaries)
+    bazel_binaries(versions = ["7.7.0", "8.5.1"])
+
+    # LINT.ThenChange(//MODULE.bazel:bazel_binaries)
     bazel_features_deps()
     rules_shell_dependencies()
     rules_shell_toolchains()

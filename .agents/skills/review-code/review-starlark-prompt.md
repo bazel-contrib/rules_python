@@ -26,7 +26,8 @@ in `git diff` against the project's Starlark coding rules and conventions:
 10. Verify non-obvious workarounds have comments stating the intent, why the
     direct approach fails, and why the workaround works.
 11. Verify no compatibility logic or feature guards target Bazel versions
-    older than `MINIMUM_BAZEL_VERSION` in `//:version.bzl`.
+    older than the minimum supported Bazel version in
+    `.bazelci/presubmit.yml`.
 12. Inspect the full `BUILD` file (not just the diff hunk) to flag overlapping
     or redundant `filegroup`, `exports_files`, or `glob(...)` definitions, and
     flag top-level target-instantiation ternaries (`rule_a(...) if cond else
