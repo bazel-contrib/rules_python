@@ -15,6 +15,7 @@
 load("@rules_bazel_integration_test//bazel_integration_test:defs.bzl", "default_test_runner")
 load("//python:py_binary.bzl", "py_binary")
 load("//python:py_library.bzl", "py_library")
+load("//python:pytest_test.bzl", "pytest_test")
 load("//tests/support:support.bzl", "NOT_WINDOWS", "SUPPORTS_BZLMOD")
 load(":integration_test.bzl", "rules_python_integration_test")
 
@@ -167,6 +168,19 @@ rules_python_integration_test(
 rules_python_integration_test(
     name = "whl_library_test",
     py_main = "whl_library_test.py",
+)
+
+py_library(
+    name = "bzlmod_lockfile_test_lib",
+    srcs = ["bzlmod_lockfile_test.py"],
+    deps = [":runner_lib"],
+)
+
+pytest_test(
+    name = "bzlmod_lockfile_runner_test",
+    size = "small",
+    srcs = ["bzlmod_lockfile_runner_test.py"],
+    deps = [":bzlmod_lockfile_test_lib"],
 )
 
 py_library(
