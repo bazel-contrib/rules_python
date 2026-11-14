@@ -337,14 +337,20 @@ Values:
 * `install_only_stripped`: Use the runtime without debug symbols, which is
   substantially smaller.
 * `full`: Use the runtime that also includes build artifacts.
+* `debug`: Use the debug (`Py_DEBUG`) build of the runtime.
 
 If a Python version or platform has no archive of the selected kind, the
-`install_only` archive is used instead.
+`install_only` archive is used instead. The exception is `debug`, which has no
+fallback.
 
 See {ref}`Selecting the runtime archive <selecting-the-runtime-archive>` for
 details.
 
 :::{versionadded} 2.5.0
+:::
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+Added the `debug` value.
 :::
 ::::
 

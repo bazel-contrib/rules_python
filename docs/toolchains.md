@@ -241,6 +241,12 @@ flag selects which one the hermetic toolchains use:
   substantially smaller. This reduces the size of runtimes and
   {obj}`py_zipapp_binary` outputs.
 * `full`: the runtime plus build artifacts.
+* `debug`: the debug (`Py_DEBUG`) build of the runtime, for example to find
+  memory errors in C extensions. This is a different build of the interpreter,
+  not an archive with debug symbols. The built-in runtimes include no debug
+  builds; add them from a release manifest with
+  {attr}`python.override.add_runtime_manifest_urls`. Not supported on Windows
+  yet.
 
 Because this is a build flag, a single workspace can build with different
 archives, for example keeping debug symbols in development builds and using
@@ -255,7 +261,8 @@ A toolchain is registered for each archive kind, and only the archive a build
 selects is downloaded. If a Python version or platform has no archive of the
 selected kind, the `install_only` archive is used instead. For example,
 stripped archives are only available for runtimes released from `20240726`
-onward.
+onward. The exception is `debug`, which has no fallback: only the versions and
+platforms that have a debug build get a debug toolchain.
 
 ### Overriding toolchain defaults and adding more versions
 

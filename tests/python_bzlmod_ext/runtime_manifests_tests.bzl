@@ -167,7 +167,7 @@ def _test_dynamic_manifest_files_impl(env, target):
 
 _tests.append(_test_dynamic_manifest_files)
 
-def _test_dynamic_manifest_skips_debug_builds(name):
+def _test_dynamic_manifest_debug_builds(name):
     rt_util.helper_target(
         native.filegroup,
         name = name + "_subject",
@@ -175,10 +175,10 @@ def _test_dynamic_manifest_skips_debug_builds(name):
     analysis_test(
         name = name,
         target = name + "_subject",
-        impl = _test_dynamic_manifest_skips_debug_builds_impl,
+        impl = _test_dynamic_manifest_debug_builds_impl,
     )
 
-def _test_dynamic_manifest_skips_debug_builds_impl(env, target):
+def _test_dynamic_manifest_debug_builds_impl(env, target):
     _ = target  # @unused
 
     root_module = python_ext.module(
@@ -223,17 +223,21 @@ def _test_dynamic_manifest_skips_debug_builds_impl(env, target):
     version_info = tool_versions["3.14.99"]
 
     # Debug builds sort last, so the optimized full archives are used for
-    # both the plain and the full keys.
+    # both the plain and the full keys. The debug builds get the debug keys.
     env.expect.that_dict(version_info).contains_exactly({
         "sha256": {
             "x86_64-unknown-linux-gnu": "4444444444444444444444444444444444444444444444444444444444444444",
+            "x86_64-unknown-linux-gnu-debug": "1111111111111111111111111111111111111111111111111111111111111111",
             "x86_64-unknown-linux-gnu-freethreaded": "3333333333333333333333333333333333333333333333333333333333333333",
+            "x86_64-unknown-linux-gnu-freethreaded-debug": "2222222222222222222222222222222222222222222222222222222222222222",
             "x86_64-unknown-linux-gnu-freethreaded-full": "3333333333333333333333333333333333333333333333333333333333333333",
             "x86_64-unknown-linux-gnu-full": "4444444444444444444444444444444444444444444444444444444444444444",
         },
         "strip_prefix": {
             "x86_64-unknown-linux-gnu": "python/install",
+            "x86_64-unknown-linux-gnu-debug": "python/install",
             "x86_64-unknown-linux-gnu-freethreaded": "python/install",
+            "x86_64-unknown-linux-gnu-freethreaded-debug": "python/install",
             "x86_64-unknown-linux-gnu-freethreaded-full": "python/install",
             "x86_64-unknown-linux-gnu-full": "python/install",
         },
@@ -241,8 +245,14 @@ def _test_dynamic_manifest_skips_debug_builds_impl(env, target):
             "x86_64-unknown-linux-gnu": [
                 "https://example.com/dl/cpython-3.14.99+20261026-x86_64-unknown-linux-gnu-pgo+lto-full.tar.zst",
             ],
+            "x86_64-unknown-linux-gnu-debug": [
+                "https://example.com/dl/cpython-3.14.99+20261026-x86_64-unknown-linux-gnu-debug-full.tar.zst",
+            ],
             "x86_64-unknown-linux-gnu-freethreaded": [
                 "https://example.com/dl/cpython-3.14.99+20261026-x86_64-unknown-linux-gnu-freethreaded+pgo+lto-full.tar.zst",
+            ],
+            "x86_64-unknown-linux-gnu-freethreaded-debug": [
+                "https://example.com/dl/cpython-3.14.99+20261026-x86_64-unknown-linux-gnu-freethreaded+debug-full.tar.zst",
             ],
             "x86_64-unknown-linux-gnu-freethreaded-full": [
                 "https://example.com/dl/cpython-3.14.99+20261026-x86_64-unknown-linux-gnu-freethreaded+pgo+lto-full.tar.zst",
@@ -253,7 +263,7 @@ def _test_dynamic_manifest_skips_debug_builds_impl(env, target):
         },
     })
 
-_tests.append(_test_dynamic_manifest_skips_debug_builds)
+_tests.append(_test_dynamic_manifest_debug_builds)
 
 def _test_dynamic_manifest_files_default_base_urls(name):
     rt_util.helper_target(
