@@ -304,6 +304,8 @@ PbsDistributionFlag = FlagEnum(
     INSTALL_ONLY_STRIPPED = "install_only_stripped",
     # The full archive, which includes build artifacts.
     FULL = "full",
+    # The full archive of the debug (`Py_DEBUG`) build.
+    DEBUG = "debug",
 )
 
 def _pbs_distribution_flag_impl(ctx):

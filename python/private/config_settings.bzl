@@ -190,7 +190,12 @@ def construct_config_settings(
 
     # NOTE: The py_pbs_distribution flag reports `auto` as `install_only`, so
     # the install_only setting also matches the default.
-    for distribution in ["install_only", "install_only_stripped", "full"]:
+    for distribution in [
+        "install_only",
+        "install_only_stripped",
+        "full",
+        "debug",
+    ]:
         native.config_setting(
             name = "_is_py_pbs_distribution_" + distribution,
             flag_values = {labels.PY_PBS_DISTRIBUTION: distribution},
