@@ -703,8 +703,11 @@ fn test_stamping_semantics_and_empty_requires_and_no_compress() {
     .expect("metadata.txt should be writable");
 
     let desc_file = tmp.path().join("desc.txt");
-    fs::write(&desc_file, "Body mentions {BUILD_TIMESTAMP} literally.")
-        .expect("desc.txt should be writable");
+    fs::write(
+        &desc_file,
+        "Line one.\r\nBody mentions {BUILD_TIMESTAMP} literally.",
+    )
+    .expect("desc.txt should be writable");
 
     let out_whl = tmp.path().join("stamped.whl");
     let name_file = tmp.path().join("stamped.name");
@@ -769,6 +772,7 @@ fn test_stamping_semantics_and_empty_requires_and_no_compress() {
             "Name: my_pkgalice\n",
             "Summary: Literal {BUILD_USER} placeholder\n",
             "Version: 0.1.123456\n\n",
+            "Line one.\n",
             "Body mentions {BUILD_TIMESTAMP} literally.\n",
         )
     );

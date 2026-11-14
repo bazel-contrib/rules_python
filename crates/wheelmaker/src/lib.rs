@@ -201,19 +201,6 @@ pub fn serialize_digest(sha256_bytes: &[u8]) -> String {
     )
 }
 
-/// Collects `(package_path, real_path)` pairs into a map keyed by `package_path` (later entries
-/// win on duplicate archive destinations, matching `tools/wheelmaker.py`).
-///
-/// Keys (`package_path`) are relative to the wheel root before prefix rewriting; values
-/// (`real_path`) are filesystem paths relative to CWD or absolute.
-pub fn get_files_to_package(input_files: &[(String, PathBuf)]) -> HashMap<String, PathBuf> {
-    let mut files = HashMap::with_capacity(input_files.len());
-    for (package_path, real_path) in input_files {
-        files.insert(package_path.clone(), real_path.clone());
-    }
-    files
-}
-
 fn format_requirement(req: &pep508_rs::Requirement<pep508_rs::VerbatimUrl>) -> String {
     let mut out = format!("Requires-Dist: {}", req.name);
     if !req.extras.is_empty() {
@@ -367,12 +354,13 @@ fn create_parent_dir(path: &Path) -> Result<()> {
 }
 
 /// Collects `--input_file` and `--input_file_list` entries into archive-path-sorted
-/// `(package_path, real_path)` pairs.
+/// `(package_path, real_path)` pairs (later entries win on duplicate `package_path` keys,
+/// matching `tools/wheelmaker.py`).
 ///
 /// Each `package_path` is relative to the wheel root before prefix rewriting; each `real_path` is
 /// relative to CWD or absolute.
 fn collect_sorted_inputs(options: &Options) -> Result<Vec<(String, PathBuf)>> {
-    let mut input_files = options.input_file.clone();
+    let mut files: HashMap<String, PathBuf> = options.input_file.iter().cloned().collect();
     for list_path in &options.input_file_list {
         let content = read_text(list_path)?;
         for line in content.lines() {
@@ -386,11 +374,10 @@ fn collect_sorted_inputs(options: &Options) -> Result<Vec<(String, PathBuf)>> {
                     list_path.display()
                 );
             };
-            input_files.push((pkg.to_string(), PathBuf::from(real)));
+            files.insert(pkg.to_string(), PathBuf::from(real));
         }
     }
-    let mut sorted_files: Vec<(String, PathBuf)> =
-        get_files_to_package(&input_files).into_iter().collect();
+    let mut sorted_files: Vec<(String, PathBuf)> = files.into_iter().collect();
     // Sort the files for reproducible order in the archive.
     sorted_files.sort_unstable_by(|a, b| a.0.cmp(&b.0));
     Ok(sorted_files)
@@ -439,17 +426,11 @@ pub fn build_wheel(options: &Options) -> Result<()> {
     let wheel_contents = maker.wheelfile_contents();
     whl.add_string(&maker.distinfo_path("WHEEL"), wheel_contents.as_bytes())?;
 
-    let description = match &options.description_file {
-        Some(desc_path) => {
-            let mut desc = read_text(desc_path)?;
-            // Normalize CRLF on Windows so `<dist-info>/METADATA` stays LF-only across platforms.
-            if desc.contains("\r\n") {
-                desc = desc.replace("\r\n", "\n");
-            }
-            Some(desc)
-        }
-        None => None,
-    };
+    let description = options
+        .description_file
+        .as_deref()
+        .map(read_text)
+        .transpose()?;
 
     let raw_metadata = read_text(&options.metadata_file)?;
     let expanded_metadata = expand_metadata_requires(&raw_metadata)?;
@@ -946,7 +927,15 @@ impl WheelMaker {
         out.push_str(&format!("Version: {}\n\n", self.version));
         // setuptools inserts `UNKNOWN` as the description when none is provided.
         match description {
-            Some(desc) if !desc.is_empty() => out.push_str(desc),
+            Some(desc) if !desc.is_empty() => {
+                // Normalize CRLF on Windows while appending directly into `out`.
+                for (i, chunk) in desc.split("\r\n").enumerate() {
+                    if i > 0 {
+                        out.push('\n');
+                    }
+                    out.push_str(chunk);
+                }
+            }
             _ => out.push_str("UNKNOWN"),
         }
         out.push('\n');
