@@ -17,6 +17,7 @@
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "subjects")
 load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "REPO_VERBOSITY_ENV_VAR", "repo_utils")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:default_platforms.bzl", "default_platforms")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:hub_builder.bzl", _hub_builder = "hub_builder")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:parse_simpleapi_html.bzl", "parse_simpleapi_html")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:platform.bzl", _plat = "platform")  # buildifier: disable=bzl-visibility
@@ -39,6 +40,10 @@ simple==0.0.1 \
     --hash=sha256:deadbaaf""",
         },
     )
+
+def _default_whl_abi_tags(os, cpu, freethreaded):
+    platform = "{}_{}{}".format(os, cpu, freethreaded)
+    return default_platforms()[platform]["whl_abi_tags"]
 
 def hub_builder(
         env,
@@ -66,7 +71,7 @@ def hub_builder(
                         "@platforms//os:{}".format(os),
                         "@platforms//cpu:{}".format(cpu),
                     ],
-                    whl_abi_tags = ["abi3t", "cp{major}{minor}t"] if freethreaded else ["abi3", "cp{major}{minor}"],
+                    whl_abi_tags = _default_whl_abi_tags(os, cpu, freethreaded),
                     whl_platform_tags = whl_platform_tags,
                 )
                 for (os, cpu, freethreaded), whl_platform_tags in {

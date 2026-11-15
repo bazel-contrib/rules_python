@@ -62,6 +62,17 @@ WHL_LIST = [
     "pkg-0.0.1-pp310-pypy310_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
 ]
 
+# See https://peps.python.org/pep-0803/
+ABI3T_WHL_LIST = [
+    "pkg-0.0.1-py3-none-any.whl",
+    "pkg-0.0.1-cp315-abi3-manylinux_2_17_x86_64.whl",
+    "pkg-0.0.1-cp315-abi3t-manylinux_2_17_x86_64.whl",
+    "pkg-0.0.1-cp316-abi3t-manylinux_2_17_x86_64.whl",
+    "pkg-0.0.1-cp315-cp315-manylinux_2_17_x86_64.whl",
+    "pkg-0.0.1-cp315-cp315t-manylinux_2_17_x86_64.whl",
+    "pkg-0.0.1-cp316-cp316t-manylinux_2_17_x86_64.whl",
+]
+
 def _match(env, got, *want_filenames):
     if not want_filenames:
         env.expect.that_collection(got).has_size(len(want_filenames))
@@ -92,6 +103,13 @@ def _select_whl(whls, debug = False, **kwargs):
         ), "unit-test"),
         **kwargs
     )
+
+def _default_abi_tags(platform, python_version):
+    major, _, minor = python_version.partition(".")
+    return ["none"] + [
+        tag.format(major = major, minor = minor)
+        for tag in default_platforms()[platform]["whl_abi_tags"]
+    ]
 
 _tests = []
 
@@ -548,24 +566,6 @@ def _test_android(env):
 
 _tests.append(_test_android)
 
-def _default_abi_tags(platform, python_version):
-    major, _, minor = python_version.partition(".")
-    return ["none"] + [
-        tag.format(major = major, minor = minor)
-        for tag in default_platforms()[platform]["whl_abi_tags"]
-    ]
-
-# See https://peps.python.org/pep-0803/
-ABI3T_WHL_LIST = [
-    "pkg-0.0.1-py3-none-any.whl",
-    "pkg-0.0.1-cp315-abi3-manylinux_2_17_x86_64.whl",
-    "pkg-0.0.1-cp315-abi3t-manylinux_2_17_x86_64.whl",
-    "pkg-0.0.1-cp316-abi3t-manylinux_2_17_x86_64.whl",
-    "pkg-0.0.1-cp315-cp315-manylinux_2_17_x86_64.whl",
-    "pkg-0.0.1-cp315-cp315t-manylinux_2_17_x86_64.whl",
-    "pkg-0.0.1-cp316-cp316t-manylinux_2_17_x86_64.whl",
-]
-
 def _test_abi3t_freethreaded(env):
     got = _select_whl(
         whls = [
@@ -637,7 +637,10 @@ def _test_abi3t_python_tag_is_minimum_version(env):
                 "pkg-0.0.1-cp316-abi3t-manylinux_2_17_x86_64.whl",
             ],
             whl_platform_tags = ["any", "manylinux_*_x86_64"],
-            whl_abi_tags = _default_abi_tags("linux_x86_64_freethreaded", python_version),
+            whl_abi_tags = _default_abi_tags(
+                "linux_x86_64_freethreaded",
+                python_version,
+            ),
             python_version = python_version,
             limit = 3,
         )
@@ -700,7 +703,11 @@ def _test_abi3_abi3t_compressed_tag(env):
         )
 
         # The wheels compatible with both ABIs can be used on both builds.
-        _match(env, [got], "pkg-0.0.1-cp315-abi3.abi3t-manylinux_2_17_x86_64.whl")
+        _match(
+            env,
+            [got],
+            "pkg-0.0.1-cp315-abi3.abi3t-manylinux_2_17_x86_64.whl",
+        )
 
 _tests.append(_test_abi3_abi3t_compressed_tag)
 
