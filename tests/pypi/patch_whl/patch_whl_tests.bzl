@@ -15,7 +15,12 @@
 ""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-load("//python/private/pypi:patch_whl.bzl", "fix_record_content", "patched_whl_name")  # buildifier: disable=bzl-visibility
+load(
+    "//python/private/pypi:patch_whl.bzl",
+    "fix_record_content",
+    "patched_whl_name",
+    "zipper_params_content",
+)  # buildifier: disable=bzl-visibility
 
 _tests = []
 
@@ -128,6 +133,28 @@ foo-1.0.dist-info/RECORD,,
     env.expect.that_bool(result == None).equals(True)
 
 _tests.append(_test_fix_record_skips_whl_files)
+
+def _test_zipper_params_sorted(env):
+    got = zipper_params_content([
+        "foo/b.py",
+        "foo-1.0.dist-info/RECORD",
+        "foo/__init__.py",
+    ])
+    env.expect.that_str(got).equals("""\
+foo-1.0.dist-info/RECORD=foo-1.0.dist-info/RECORD
+foo/__init__.py=foo/__init__.py
+foo/b.py=foo/b.py
+""")
+
+_tests.append(_test_zipper_params_sorted)
+
+def _test_zipper_params_unsupported_names(env):
+    got_eq = zipper_params_content(["foo/a=b.py"])
+    env.expect.that_bool(got_eq == None).equals(True)
+    got_nl = zipper_params_content(["foo/a\nb.py"])
+    env.expect.that_bool(got_nl == None).equals(True)
+
+_tests.append(_test_zipper_params_unsupported_names)
 
 def patch_whl_test_suite(name):
     """Create the test suite.

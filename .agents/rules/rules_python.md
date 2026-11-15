@@ -24,13 +24,24 @@ description: rules_python-specific Bzlmod, PyPI, and rule usage invariants
 
 ## Internal Labels & Helpers
 * **Toolchain Type Labels**: Define toolchain type constants in
-  `//python/private/toolchain_types:toolchain_types.bzl` and targets in
+  `//python/private:toolchain_types.bzl` and internal toolchain type targets in
   `//python/private/toolchain_types:BUILD.bazel`.
+* **`@rules_python_internal` Cycle Avoidance**: Never load
+  `@rules_python_internal//...` in `.bzl` files transitively loaded by
+  `//python/extensions:config.bzl` (such as
+  `//python/private:toolchain_types.bzl` or
+  `//python/private/toolchains:repo.bzl`), because `config.bzl` generates
+  `@rules_python_internal` and will trigger a Bzlmod Skyframe cycle.
 * **`render` Helpers (`//python/private:text_util.bzl`)**: Use `render.*`
   (`render.string`, `render.toolchain`, `render.call`, `render.list`) instead of
   `repr()` for Starlark calls; use `json.encode_indent()` for data constants.
 * **`@bazel_tools` `bzl_library` Deps**: Use `"//python/private:bazel_tools"` in
   `bzl_library` `deps` for files loading `@bazel_tools//...`.
+* **`# buildifier: disable=bzl-visibility` on Internal `/private/` Loads**:
+  Add trailing `# buildifier: disable=bzl-visibility` comments when `tests/` or
+  internal non-`python/` packages (such as `crates/**` and `tools/**`) load
+  repo-internal `/private/` helpers like
+  `//python/private:distribution_filegroup.bzl`.
 
 ## WORKSPACE & Bzlmod Parity
 * **Extend Existing Rules Over Adding Parallel Rules**: When bringing a Bzlmod

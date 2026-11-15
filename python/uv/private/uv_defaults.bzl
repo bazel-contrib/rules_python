@@ -4,11 +4,11 @@ Under bzlmod, the equivalent defaults are the `uv.default()` calls in
 `MODULE.bazel`. Keep the values here in sync with them.
 """
 
-# Keep in sync with `uv.default(version = ...)` in MODULE.bazel.
+# LINT.IfChange(uv_defaults)
 DEFAULT_VERSION = "0.13.5"
 
-# Keep in sync with `uv.default(base_url = ...)` in MODULE.bazel.
 DEFAULT_BASE_URL = "https://github.com/astral-sh/uv/releases/download"
+# LINT.ThenChange(//MODULE.bazel:uv_defaults)
 
 def _platform(platform, *, os, cpu):
     # Same shape as the platform structs `set_config` creates.
@@ -21,7 +21,7 @@ def _platform(platform, *, os, cpu):
         target_settings = [],
     )
 
-# Keep in sync with the `uv.default(platform = ...)` calls in MODULE.bazel.
+# LINT.IfChange(uv_platforms)
 DEFAULT_PLATFORMS = {
     platform: _platform(platform, os = os, cpu = cpu)
     for platform, os, cpu in [
@@ -35,3 +35,4 @@ DEFAULT_PLATFORMS = {
         ("x86_64-unknown-linux-gnu", "linux", "x86_64"),
     ]
 }
+# LINT.ThenChange(//MODULE.bazel:uv_platforms)

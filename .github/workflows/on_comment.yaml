@@ -57,12 +57,16 @@ jobs:
           BRANCH: ${{ needs.parse_comment.outputs.release_branch }}
           ISSUE: ${{ needs.parse_comment.outputs.issue_number }}
           COMMENT_ID: "${{ github.event.comment.id }}"
+          AUTHOR_NAME: ${{ github.actor }}
+          AUTHOR_EMAIL: "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
         run: |
           gh workflow run release_create_rc.yaml \
             --repo "$REPO" \
             --ref "$BRANCH" \
             --raw-field "issue=$ISSUE" \
-            --raw-field "comment_id=$COMMENT_ID"
+            --raw-field "comment_id=$COMMENT_ID" \
+            --raw-field "author_name=$AUTHOR_NAME" \
+            --raw-field "author_email=$AUTHOR_EMAIL"
 
   call_prepare_complete:
     needs: parse_comment
@@ -174,11 +178,15 @@ jobs:
           REPO: ${{ github.repository }}
           BRANCH: ${{ needs.parse_comment.outputs.release_branch }}
           ISSUE: ${{ needs.parse_comment.outputs.issue_number }}
+          AUTHOR_NAME: ${{ github.actor }}
+          AUTHOR_EMAIL: "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
         run: |
           gh workflow run release_promote.yaml \
             --repo "$REPO" \
             --ref "$BRANCH" \
-            --raw-field "issue=$ISSUE"
+            --raw-field "issue=$ISSUE" \
+            --raw-field "author_name=$AUTHOR_NAME" \
+            --raw-field "author_email=$AUTHOR_EMAIL"
 
   call_backport_prepare:
     needs: parse_comment

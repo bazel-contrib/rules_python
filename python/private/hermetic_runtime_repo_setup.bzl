@@ -30,6 +30,7 @@ def define_hermetic_runtime_toolchain_impl(
         extra_files_glob_include,
         extra_files_glob_exclude,
         interpreter_has_static_libpython = False,
+        debug = False,
         python_version,
         python_bin,
         coverage_tool):
@@ -48,6 +49,9 @@ def define_hermetic_runtime_toolchain_impl(
             patterns for the target runtime files.
         interpreter_has_static_libpython: {type}`bool` whether the interpreter
             includes libpython statically.
+        debug: {type}`bool` whether the runtime is a debug (`Py_DEBUG`)
+            build. On Linux and macOS, its include dir and libpython names
+            have a `d` ABI flag.
         python_version: {type}`str` The Python version, in `major.minor.micro`
             format.
         python_bin: {type}`str` The path to the Python binary within the
@@ -58,6 +62,7 @@ def define_hermetic_runtime_toolchain_impl(
     _ = name  # @unused
     version_info = version.parse(python_version)
     version_dict = {
+        "d": "d" if debug else "",
         "major": version_info.release[0],
         "minor": version_info.release[1],
     }
@@ -126,10 +131,10 @@ def define_hermetic_runtime_toolchain_impl(
             "include",
         ] + select({
             _IS_FREETHREADED_YES: [
-                "include/python{major}.{minor}t".format(**version_dict),
+                "include/python{major}.{minor}t{d}".format(**version_dict),
             ],
             _IS_FREETHREADED_NO: [
-                "include/python{major}.{minor}".format(**version_dict),
+                "include/python{major}.{minor}{d}".format(**version_dict),
                 "include/python{major}.{minor}m".format(**version_dict),
             ],
         }),
@@ -178,11 +183,11 @@ def define_hermetic_runtime_toolchain_impl(
         hdrs = [":includes"],
         srcs = select({
             ":is_freethreaded_linux": [
-                "lib/libpython{major}.{minor}t.so".format(**version_dict),
-                "lib/libpython{major}.{minor}t.so.1.0".format(**version_dict),
+                "lib/libpython{major}.{minor}t{d}.so".format(**version_dict),
+                "lib/libpython{major}.{minor}t{d}.so.1.0".format(**version_dict),
             ],
             ":is_freethreaded_osx": [
-                "lib/libpython{major}.{minor}t.dylib".format(**version_dict),
+                "lib/libpython{major}.{minor}t{d}.dylib".format(**version_dict),
             ],
             ":is_freethreaded_windows": [
                 "python3t.dll",
@@ -190,7 +195,9 @@ def define_hermetic_runtime_toolchain_impl(
                 "libs/python{major}{minor}t.lib".format(**version_dict),
                 "libs/python3t.lib",
             ],
-            "@platforms//os:macos": ["lib/libpython{major}.{minor}.dylib".format(**version_dict)],
+            "@platforms//os:macos": [
+                "lib/libpython{major}.{minor}{d}.dylib".format(**version_dict),
+            ],
             "@platforms//os:windows": [
                 "python3.dll",
                 "python{major}{minor}.dll".format(**version_dict),
@@ -198,11 +205,19 @@ def define_hermetic_runtime_toolchain_impl(
                 "libs/python3.lib",
             ],
             "//conditions:default": [
-                "lib/libpython{major}.{minor}.so".format(**version_dict),
-                "lib/libpython{major}.{minor}.so.1.0".format(**version_dict),
+                "lib/libpython{major}.{minor}{d}.so".format(**version_dict),
+                "lib/libpython{major}.{minor}{d}.so.1.0".format(**version_dict),
             ],
         }),
     )
+
+    # `<AUTO>` derives only the free-threaded "t" flag.
+    abi_flags = None
+    if debug:
+        abi_flags = select({
+            _IS_FREETHREADED_YES: "td",
+            _IS_FREETHREADED_NO: "d",
+        })
 
     native.exports_files(["python", python_bin])
 
@@ -240,6 +255,7 @@ def define_hermetic_runtime_toolchain_impl(
         }),
         python_version = "PY3",
         implementation_name = "cpython",
+        abi_flags = abi_flags,
         # See https://peps.python.org/pep-3147/ for pyc tag infix format
         pyc_tag = select({
             _IS_FREETHREADED_YES: "cpython-{major}{minor}t".format(**version_dict),
@@ -267,6 +283,7 @@ def define_hermetic_runtime_toolchain_impl(
 
     py_cc_toolchain(
         name = "py_cc_toolchain",
+        abi_flags = abi_flags,
         headers = ":python_headers",
         headers_abi3 = ":python_headers_abi3",
         # TODO #3155: add libctl, libtk

@@ -44,13 +44,7 @@ multi_pip_parse(
         "3.13": "@python_3_13_host//:python",
         "3.14": "@python_3_14_host//:python",
     },
-    requirements_lock = {
-        "3.10": "//requirements:requirements_lock_3_10.txt",
-        "3.11": "//requirements:requirements_lock_3_11.txt",
-        "3.12": "//requirements:requirements_lock_3_12.txt",
-        "3.13": "//requirements:requirements_lock_3_13.txt",
-        "3.14": "//requirements:requirements_lock_3_14.txt",
-    },
+    uv_lock = "//requirements:uv.lock",
 )
 
 load("@pypi//:requirements.bzl", "install_deps")

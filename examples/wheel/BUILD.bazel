@@ -476,7 +476,7 @@ py_test(
 lock(
     name = "requirements_server",
     srcs = ["pyproject.toml"],
-    out = "requirements_server.txt",
+    out = "uv.lock",
 )
 
 py_test(

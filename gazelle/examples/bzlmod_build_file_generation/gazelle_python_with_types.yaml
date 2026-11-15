@@ -24,7 +24,6 @@ manifest:
     platformdirs: platformdirs
     pylint: pylint
     requests: requests
-    six: six
     sqlparse: sqlparse
     tabulate: tabulate
     tomlkit: tomlkit

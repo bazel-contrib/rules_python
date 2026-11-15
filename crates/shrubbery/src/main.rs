@@ -2,8 +2,8 @@
 #![deny(clippy::expect_used, clippy::unwrap_used)]
 
 use std::env;
-use std::process;
+use std::process::ExitCode;
 
-fn main() {
-    process::exit(shrubbery_lib::run_cli(env::args_os()));
+fn main() -> ExitCode {
+    shrubbery_lib::run_cli(env::args_os())
 }
