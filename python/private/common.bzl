@@ -381,8 +381,7 @@ def create_py_info(
         implicit_pyc_files,
         implicit_pyc_source_files,
         imports,
-        venv_symlinks = [],
-        packages = []):
+        venv_symlinks = []):
     """Create PyInfo provider.
 
     Args:
@@ -402,8 +401,6 @@ def create_py_info(
         imports: depset of strings; the import path values to propagate.
         venv_symlinks: {type}`list[VenvSymlinkEntry]` instances for
             symlinks to create in the consuming binary's venv.
-        packages: {type}`list[str]` the normalized names of the PyPI packages
-            this target provides. See {obj}`PyInfo.packages`.
 
     Returns:
         A tuple of the PyInfo instance and a depset of the
@@ -412,7 +409,6 @@ def create_py_info(
     """
     py_info = PyInfoBuilder.new()
     py_info.venv_symlinks.add(venv_symlinks)
-    py_info.packages.add(packages)
     py_info.direct_original_sources.add(original_sources)
     py_info.direct_pyc_files.add(required_pyc_files)
     py_info.direct_pyi_files.add(ctx.files.pyi_srcs)

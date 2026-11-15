@@ -179,12 +179,10 @@ def py_library_impl(ctx):
     runfiles.add(collect_runfiles(ctx))
     runfiles = runfiles.build(ctx)
 
-    package, version_str = get_package_and_version(ctx.files.data)
-    imports, venv_symlinks = _get_imports_and_venv_symlinks(
-        ctx,
-        package = package,
-        version_str = version_str,
-    )
+    imports = []
+    venv_symlinks = []
+
+    imports, venv_symlinks = _get_imports_and_venv_symlinks(ctx)
 
     cc_info = collect_cc_info(ctx)
     py_info, builtins_py_info = create_py_info(
@@ -196,7 +194,6 @@ def py_library_impl(ctx):
         implicit_pyc_source_files = implicit_pyc_source_files,
         imports = imports,
         venv_symlinks = venv_symlinks,
-        packages = [package] if package else [],
     )
 
     providers = [
@@ -266,10 +263,12 @@ def get_package_and_version(data_files):
         version.normalize(version_str),  # will have no dashes either
     )
 
-def _get_imports_and_venv_symlinks(ctx, *, package, version_str):
+def _get_imports_and_venv_symlinks(ctx):
     imports = depset()
     venv_symlinks = []
     if VenvsSitePackages.is_enabled(ctx):
+        package, version_str = get_package_and_version(ctx.files.data)
+
         # NOTE: Already a list, but buildifier thinks its a depset and
         # adds to_list() calls later.
         imports = list(ctx.attr.imports)
