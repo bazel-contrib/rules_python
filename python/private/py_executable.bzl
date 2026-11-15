@@ -381,6 +381,7 @@ def _create_executable(
 
         stage2_bootstrap = _create_stage2_bootstrap(
             ctx,
+            coverage = coverage,
             output_prefix = base_executable_name,
             output_sibling = executable,
             main_py = main_py,
@@ -921,14 +922,21 @@ def _get_coverage_details(ctx):
           dependencies of the executable.
         * from_deps: {type}`bool` whether `coverage` is importable from the
           dependencies, so that the runtime `coverage_tool` is not needed.
+        * rcfiles: {type}`list[File]` the `.coveragerc` files to merge.
     """
     if not ctx.configuration.coverage_enabled or _is_tool_config(ctx):
-        return struct(dep = None, from_deps = False)
+        return struct(dep = None, from_deps = False, rcfiles = [])
 
     # The flag defaults to an empty `py_library`, which has no sources.
     target = ctx.attr._coverage_flag
     if target[PyInfo].transitive_sources:
-        return struct(dep = target, from_deps = True)
+        rcfiles = [
+            f
+            for f in target[DefaultInfo].default_runfiles.files.to_list()
+            # Skip any `.coveragerc` shipped inside of a wheel.
+            if f.basename == ".coveragerc" and "/site-packages/" not in f.short_path
+        ]
+        return struct(dep = target, from_deps = True, rcfiles = rcfiles)
 
     packages = depset(transitive = [
         dep[PyInfo].packages
@@ -938,6 +946,7 @@ def _get_coverage_details(ctx):
     return struct(
         dep = None,
         from_deps = "coverage" in packages.to_list(),
+        rcfiles = [],
     )
 
 def _get_coverage_tool_runfiles_path(ctx, runtime):
@@ -951,6 +960,7 @@ def _get_coverage_tool_runfiles_path(ctx, runtime):
 def _create_stage2_bootstrap(
         ctx,
         *,
+        coverage,
         output_prefix,
         output_sibling,
         main_py,
@@ -979,6 +989,10 @@ def _create_stage2_bootstrap(
         substitutions = {
             "%build_data_file%": runfiles_root_path(ctx, build_data_file.short_path),
             "%coverage_instrumented%": str(int(ctx.configuration.coverage_enabled and ctx.coverage_instrumented())),
+            "%coverage_rcfiles%": ":".join([
+                runfiles_root_path(ctx, f.short_path)
+                for f in coverage.rcfiles
+            ]),
             "%coverage_tool%": _get_coverage_tool_runfiles_path(ctx, runtime),
             "%import_all%": "True" if read_possibly_native_flag(ctx, "python_import_all_repositories") else "False",
             "%imports%": ":".join(imports.to_list()),

@@ -152,6 +152,17 @@ class CoverageCollectionTest(unittest.TestCase):
     def test_uncalled_method_is_not_covered(self):
         self.assertEqual(self._line_hits('return "unused method"'), 0)
 
+    def test_coveragerc_exclusions(self):
+        content = 'return "excluded by coveragerc"'
+        lineno = self._lineno(content)
+        self.assertIn(_LIB, self.lcov, f"lcov: {self.lcov}")
+        lines = self.lcov[_LIB]["lines"]
+        if os.environ.get("EXPECT_COVERAGERC") == "1":
+            # The `.coveragerc` of the coverage target excludes it.
+            self.assertNotIn(lineno, lines, f"'{content}' in lcov: {lines}")
+        else:
+            self.assertEqual(lines.get(lineno), 0, f"lcov: {lines}")
+
     def test_partial_branch_coverage(self):
         lineno = self._lineno("if value:")
         branches = self.lcov[_LIB]["branches"]

@@ -53,12 +53,14 @@ A target that provides the `coverage` package used by `bazel coverage`, e.g.
 
 This flag is roughly equivalent to putting a target in `deps` when coverage is
 collected. It allows using the version of `coverage` locked in the requirements,
-together with plugins, without having to modify the deps of the executables
-(`py_binary`, `py_test`) or the Python toolchains.
+together with plugins and a `.coveragerc`, without having to modify the deps of
+the executables (`py_binary`, `py_test`) or the Python toolchains.
 
 * Must provide {obj}`PyInfo`.
 * It is only added when coverage is collected, and only for the target config,
   i.e. build tools don't have it added. It isn't fetched for regular builds.
+* The `.coveragerc` files in its runfiles, e.g. from the `data` of a
+  `py_library`, are merged. See {ref}`coverage-from-pypi`.
 * It can be set for a single target with the `config_settings` attribute.
 
 If this flag isn't set, then a `coverage` package the executable already

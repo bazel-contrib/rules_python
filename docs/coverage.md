@@ -90,6 +90,32 @@ collected, and it isn't fetched for regular builds.
 If a test already depends on the `coverage` package, e.g. via `pytest-cov`, then
 that `coverage` is used even if the flag isn't set.
 
+### Using a `.coveragerc` and plugins
+
+To configure `coverage`, wrap it in a `py_library` together with any plugins and
+the `.coveragerc` file, and set the {flag}`--coverage` flag to it:
+
+```starlark
+py_library(
+    name = "coverage",
+    data = [".coveragerc"],
+    deps = [
+        "@pypi//coverage",
+        "@pypi//coverage_conditional_plugin",
+    ],
+)
+```
+
+```
+# .bazelrc
+coverage --@rules_python//python/config_settings:coverage=//:coverage
+```
+
+The `.coveragerc` files in the runfiles of the target are merged in order:
+options that are lists (e.g. `omit`, `exclude_also` or `plugins`) are combined
+and the other options are overridden. The options that Bazel needs, such as
+`relative_files`, `source` and `branch`, are always set by `rules_python`.
+
 ### Using a different `coverage` for some tests
 
 The {flag}`--coverage` flag can be set for a single target with the

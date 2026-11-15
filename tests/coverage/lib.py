@@ -14,6 +14,10 @@ def not_covered():
     return "never called"
 
 
+def excluded_by_coveragerc():
+    return "excluded by coveragerc"
+
+
 class Greeter:
     def greet(self, name):
         return "hello " + name

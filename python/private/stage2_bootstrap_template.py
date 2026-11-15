@@ -52,6 +52,10 @@ VENV_SITE_PACKAGES = "%venv_rel_site_packages%"
 # string, 1 or 0
 COVERAGE_INSTRUMENTED = "%coverage_instrumented%" == "1"
 
+# Colon-delimited runfiles-root-relative paths to the `.coveragerc` files to
+# merge, in order.
+COVERAGE_RCFILES = "%coverage_rcfiles%"
+
 # runfiles-root-relative path to a file with binary-specific build information
 # It uses forward slashes, so must be converted for proper usage on Windows.
 BUILD_DATA_FILE = "%build_data_file%"
@@ -347,8 +351,100 @@ def _run_py_module(module_name):
     runpy.run_module(module_name, alter_sys=True, run_name="__main__")
 
 
+# The options that are lists, which are combined when merging the `.coveragerc`
+# files instead of being overridden.
+_COVERAGE_LIST_OPTIONS = {
+    "concurrency",
+    "debug",
+    "disable_warnings",
+    "exclude_also",
+    "exclude_lines",
+    "include",
+    "omit",
+    "partial_also",
+    "partial_branches",
+    "plugins",
+    "source",
+    "source_pkgs",
+}
+
+
+def _write_coverage_rc(rcfile_name, *, runfiles_root, source):
+    """Write the `.coveragerc` file to use for the coverage collection.
+
+    The user `.coveragerc` files are merged in order: options that are lists
+    (e.g. `omit` or `exclude_also`) are combined and the other options are
+    overridden. Then the options that are required for Bazel are set.
+
+    Args:
+        rcfile_name: the path of the file to write.
+        runfiles_root: the absolute path to the runfiles root.
+        source: the directories of the instrumented files.
+    """
+    import configparser
+
+    def new_parser():
+        parser = configparser.ConfigParser(interpolation=None)
+        # Keep the case of e.g. the `[paths]` keys.
+        parser.optionxform = str
+        return parser
+
+    config = new_parser()
+    for rel_path in COVERAGE_RCFILES.split(":") if COVERAGE_RCFILES else []:
+        path = os.path.join(runfiles_root, rel_path)
+        print_verbose_coverage("merging coveragerc:", path)
+        user_config = new_parser()
+        user_config.read(path)
+        for user_section in user_config.sections():
+            # Also accept the `setup.cfg` and `tox.ini` style section names.
+            section = user_section
+            if section.startswith("coverage:"):
+                section = section[len("coverage:") :]
+            if not config.has_section(section):
+                config.add_section(section)
+            for key, value in user_config.items(user_section, raw=True):
+                if key in _COVERAGE_LIST_OPTIONS and config.has_option(section, key):
+                    value = config.get(section, key, raw=True) + "\n" + value
+                config.set(section, key, value)
+
+    if not config.has_section("run"):
+        config.add_section("run")
+
+    def add_to_list(key, values):
+        current = config.get("run", key, raw=True, fallback="")
+        config.set("run", key, "\n".join([current] + values))
+
+    # The options that are required for Bazel.
+    # We need for coveragepy to use relative paths.  This can only be configured
+    # using an rc file.
+    config.set("run", "relative_files", "True")
+    config.set("run", "source", "\n" + "\n".join(sorted(source)))
+    add_to_list(
+        "omit",
+        [
+            # Pipes can't be read back later, which can cause coverage to
+            # throw an error when trying to get its source code.
+            "/dev/fd/*",
+            # The mechanism for finding third-party packages in coverage-py
+            # only works for installed packages, not for runfiles. e.g:
+            #'$HOME/.local/lib/python3.10/site-packages',
+            # '/usr/lib/python',
+            # '/usr/lib/python3.10/site-packages',
+            # '/usr/local/lib/python3.10/dist-packages'
+            # see https://github.com/nedbat/coveragepy/blob/bfb0c708fdd8182b2a9f0fc403596693ef65e475/coverage/inorout.py#L153-L164
+            "*/external/*",
+        ],
+    )
+    if COVERAGE_INSTRUMENTED:
+        add_to_list("disable_warnings", ["module-not-imported", "no-data-collected"])
+
+    print_verbose_coverage("coveragerc file:", rcfile_name)
+    with open(rcfile_name, "w") as rcfile:
+        config.write(rcfile)
+
+
 @contextlib.contextmanager
-def _maybe_collect_coverage(enable):
+def _maybe_collect_coverage(enable, runfiles_root):
     print_verbose_coverage("enabled:", enable)
     if not enable:
         yield
@@ -356,7 +452,6 @@ def _maybe_collect_coverage(enable):
 
     instrumented_files = [abs_path for abs_path, _ in instrumented_file_paths()]
     unique_dirs = {os.path.dirname(file) for file in instrumented_files}
-    source = "\n\t".join(unique_dirs)
 
     print_verbose_coverage("Instrumented Files:\n" + "\n".join(instrumented_files))
     print_verbose_coverage("Sources:\n" + "\n".join(unique_dirs))
@@ -367,24 +462,8 @@ def _maybe_collect_coverage(enable):
     coverage_dir = os.environ["COVERAGE_DIR"]
     unique_id = uuid.uuid4()
 
-    # We need for coveragepy to use relative paths.  This can only be configured
-    # using an rc file.
     rcfile_name = os.path.join(coverage_dir, ".coveragerc_{}".format(unique_id))
-    disable_warnings = (
-        "disable_warnings = module-not-imported, no-data-collected"
-        if COVERAGE_INSTRUMENTED
-        else ""
-    )
-    print_verbose_coverage("coveragerc file:", rcfile_name)
-    with open(rcfile_name, "w") as rcfile:
-        rcfile.write(
-            f"""[run]
-relative_files = True
-{disable_warnings}
-source =
-\t{source}
-"""
-        )
+    _write_coverage_rc(rcfile_name, runfiles_root=runfiles_root, source=unique_dirs)
     try:
         cov = coverage.Coverage(
             config_file=rcfile_name,
@@ -393,19 +472,6 @@ source =
             # which can interfere with the Bazel coverage command. Enabling message
             # output is only useful for debugging coverage support.
             messages=is_verbose_coverage(),
-            omit=[
-                # Pipes can't be read back later, which can cause coverage to
-                # throw an error when trying to get its source code.
-                "/dev/fd/*",
-                # The mechanism for finding third-party packages in coverage-py
-                # only works for installed packages, not for runfiles. e.g:
-                #'$HOME/.local/lib/python3.10/site-packages',
-                # '/usr/lib/python',
-                # '/usr/lib/python3.10/site-packages',
-                # '/usr/local/lib/python3.10/dist-packages'
-                # see https://github.com/nedbat/coveragepy/blob/bfb0c708fdd8182b2a9f0fc403596693ef65e475/coverage/inorout.py#L153-L164
-                "*/external/*",
-            ],
         )
         cov.start()
         try:
@@ -576,7 +642,7 @@ def main():
     else:
         coverage_enabled = False
 
-    with _maybe_collect_coverage(enable=coverage_enabled):
+    with _maybe_collect_coverage(enable=coverage_enabled, runfiles_root=runfiles_root):
         if MAIN_PATH:
             # The first arg is this bootstrap, so drop that for the re-invocation.
             _run_py_path(main_filename, args=sys.argv[1:])

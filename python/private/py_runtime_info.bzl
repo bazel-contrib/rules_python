@@ -331,6 +331,8 @@ The following substitutions are made during template expansion:
   can be a `.py` or `.pyc` file, depending on precompile settings.
 * `%coverage_tool%`: Runfiles-relative path to the coverage library's entry point.
   If coverage is not enabled or available, an empty string.
+* `%coverage_rcfiles%`: A colon-delimited string of runfiles-relative paths to
+  the `.coveragerc` files to merge. See {flag}`--coverage`.
 * `%import_all%`: The string `True` if all repositories in the runfiles should
   be added to sys.path. The string `False` otherwise.
 * `%imports%`: A colon-delimited string of runfiles-relative paths to add to
@@ -339,6 +341,10 @@ The following substitutions are made during template expansion:
 * `%workspace_name%`: The name of the workspace the target belongs to.
 
 :::{versionadded} 0.33.0
+:::
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+Added the `%coverage_rcfiles%` substitution.
 :::
 """,
         "stub_shebang": """
