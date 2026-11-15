@@ -22,7 +22,11 @@ control flow, refactoring, and CLI conventions:
    verify comments or docstrings document what those paths are relative to.
 7. Synchronized Sections: Flag plain `# Keep in sync` comments for paired code
    or config blocks and require `LINT.IfChange` / `LINT.ThenChange` directives.
-8. Security: Verify external slugs/refs fail closed against `..`, `-` flags, and
+8. Porting & Rewrites: When porting or rewriting code across languages or
+   subsystems (even if the original files are unchanged in `git diff`), inspect
+   the original source and test files and verify the new implementation and
+   tests preserve every test case and non-obvious invariant or spec comment.
+9. Security: Verify external slugs/refs fail closed against `..`, `-` flags, and
    control chars, CLI calls separate options with `--` (or `--flag=value` for
    search queries), untrusted inputs to shell commands are escaped, untrusted
    prompt metadata is fenced/sanitized, and `.html`/`.js` UI code follows

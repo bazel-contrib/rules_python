@@ -8,8 +8,9 @@ in `git diff` against the project's Starlark coding rules and conventions:
 2. Verify iterative algorithms are used (no recursion, no `while` loops).
 3. Ensure every `.bzl` file outside `tests/` has a corresponding `bzl_library`
    target in its `BUILD` file with proper dependencies.
-4. Ensure loads from `/private/` in test files have
-   `# buildifier: disable=bzl-visibility`.
+4. Ensure loads from `/private/` in test files and internal non-`python/`
+   packages (e.g., `//python/private:distribution_filegroup.bzl` in `crates/`
+   or `tools/`) have `# buildifier: disable=bzl-visibility`.
 5. Check multi-line rule/macro doc arguments: use triple-quoted strings
    (`"""`), and do NOT use trailing backslashes (`\`) on opening triple-quotes.
 6. Verify analysis tests use `rules_testing` (not `bazel_skylib`), use
@@ -25,7 +26,8 @@ in `git diff` against the project's Starlark coding rules and conventions:
 10. Verify non-obvious workarounds have comments stating the intent, why the
     direct approach fails, and why the workaround works.
 11. Verify no compatibility logic or feature guards target Bazel versions
-    older than `MINIMUM_BAZEL_VERSION` in `//:version.bzl`.
+    older than the minimum supported Bazel version in
+    `.bazelci/presubmit.yml`.
 12. Inspect the full `BUILD` file (not just the diff hunk) to flag overlapping
     or redundant `filegroup`, `exports_files`, or `glob(...)` definitions, and
     flag top-level target-instantiation ternaries (`rule_a(...) if cond else

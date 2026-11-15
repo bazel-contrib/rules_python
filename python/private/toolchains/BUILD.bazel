@@ -33,16 +33,17 @@ string_flag(
     visibility = NOT_ACTUALLY_PUBLIC,
 )
 
+# Leaf config_settings inherit package default_visibility (//:__subpackages__)
+# because config_setting_group expands to alias(select(...)), whose resolved
+# target visibility is checked at in-repo select() sites like //examples/wheel.
 config_setting(
     name = "is_need_shrubbery_auto",
     flag_values = {":need_shrubbery": "auto"},
-    visibility = ["//visibility:private"],
 )
 
 config_setting(
     name = "is_need_shrubbery_yes",
     flag_values = {":need_shrubbery": "yes"},
-    visibility = ["//visibility:private"],
 )
 
 selects.config_setting_group(

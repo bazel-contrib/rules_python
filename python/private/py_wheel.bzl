@@ -14,12 +14,20 @@
 
 "Implementation of py_wheel rule"
 
+load(
+    "//python/private/toolchains:shrubbery_toolchain.bzl",
+    "get_shrubbery_tool",
+)
 load(":attributes.bzl", "CONFIG_SETTINGS_ATTR", "apply_config_settings_attr")
 load(":py_info.bzl", "PyInfo")
 load(":py_package.bzl", "py_package_lib")
 load(":rule_builders.bzl", "ruleb")
 load(":stamp_impl.bzl", "is_stamping_enabled")
-load(":toolchain_types.bzl", "TARGET_TOOLCHAIN_TYPE")
+load(
+    ":toolchain_types.bzl",
+    "SHRUBBERY_TOOLCHAIN_TYPE",
+    "TARGET_TOOLCHAIN_TYPE",
+)
 load(":transition_labels.bzl", "TRANSITION_LABELS")
 load(":version.bzl", "version")
 
@@ -611,12 +619,16 @@ def _py_wheel_impl(ctx):
                 final_filename + ";" + file.path,
             )
 
+    tool = get_shrubbery_tool(ctx, "wheelmaker", ctx.attr._wheelmaker)
+    prefix_args = ctx.actions.args()
+    prefix_args.add_all(tool.prefix_args)
     ctx.actions.run(
         mnemonic = "PyWheel",
         inputs = depset(direct = other_inputs, transitive = [inputs_to_package]),
         outputs = [outfile, name_file],
-        arguments = [args],
-        executable = ctx.executable._wheelmaker,
+        arguments = [prefix_args, args],
+        executable = tool.executable[DefaultInfo].files_to_run,
+        toolchain = tool.toolchain,
         # The default shell env is used to better support toolchains that look
         # up python at runtime using PATH.
         use_default_shell_env = True,
@@ -691,5 +703,6 @@ in the way they expect.
     ),
     toolchains = [
         ruleb.ToolchainType(TARGET_TOOLCHAIN_TYPE, mandatory = False),
+        ruleb.ToolchainType(SHRUBBERY_TOOLCHAIN_TYPE, mandatory = False),
     ],
 ).build()
