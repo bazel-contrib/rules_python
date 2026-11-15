@@ -47,10 +47,13 @@ in Markdown (`code-review-results.md`) and GitHub pull request comments.
    - Include `Where:` only when more than just the commented location is
      affected; omit `Where:` for single-location issues.
 
-4. No "AI Slop" Walls of Text (1–2 Direct Sentences):
-   - Keep `Draft Comment` and `Draft Reply` prose to 1–2 short, direct
-     sentences (~40 words max of prose) stating the core problem and what to
-     change.
+4. No "AI Slop" Walls of Text (`arXiv:2610.29162v1`):
+   - Keep `Draft Comment` prose to 1–2 short, direct sentences (~40 words max)
+     and `Draft Reply` prose to 1–3 short sentences (~15–60 words) leading with
+     the commit hash or direct answer.
+   - Pair direct subjects with concrete verbs; avoid inanimate subjects with
+     agentive verbs (`"This commit facilitates..."`), denominal verbs, 3+
+     stacked nouns, and center-embedded relative clauses.
    - Cut parenthetical `e.g.` scenario lists, semicolon-chained
      `"conversely..."` contrasts, and restated context that is already obvious
      from the anchored file and line.
