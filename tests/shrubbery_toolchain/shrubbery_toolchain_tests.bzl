@@ -28,6 +28,7 @@ _tests = []
 _COMPATIBLE_WITH = SUPPORTS_BZLMOD + NOT_WINDOWS
 _SHRUBBERY_SUFFIX = "crates/shrubbery/shrubbery"
 _PYTHON_EXE_ZIP_MAKER_SUFFIX = "tools/zipapp/exe_zip_maker_.py"
+_PYTHON_ZIP_MAIN_MAKER_SUFFIX = "tools/zipapp/zip_main_maker_.py"
 _PYTHON_ZIPPER_SUFFIX = "tools/zipapp/zipper_.py"
 _NEED_SHRUBBERY_FLAG = str(Label("//python/private/toolchains:need_shrubbery"))
 
@@ -69,8 +70,11 @@ def _test_py_zipapp_uses_toolchain_shrubbery(name):
 
 def _test_py_zipapp_uses_toolchain_shrubbery_impl(env, target):
     for mnemonic, subcommand in [
+        # keep-sorted start
         ("PyZipAppCreateExecutableZip", "exe_zip_maker"),
+        ("PyZipAppCreateMainPy", "zip_main_maker"),
         ("PyZipAppCreateZip", "zipper"),
+        # keep-sorted end
     ]:
         action = env.expect.that_target(target).action_named(mnemonic)
         action.argv().contains_predicate(
@@ -94,8 +98,11 @@ def _test_py_zipapp_flag_disabled_uses_python_fallbacks(name):
 
 def _test_py_zipapp_flag_disabled_uses_python_fallbacks_impl(env, target):
     for mnemonic, py_suffix in [
+        # keep-sorted start
         ("PyZipAppCreateExecutableZip", _PYTHON_EXE_ZIP_MAKER_SUFFIX),
+        ("PyZipAppCreateMainPy", _PYTHON_ZIP_MAIN_MAKER_SUFFIX),
         ("PyZipAppCreateZip", _PYTHON_ZIPPER_SUFFIX),
+        # keep-sorted end
     ]:
         action = env.expect.that_target(target).action_named(mnemonic)
         action.argv().contains_predicate(

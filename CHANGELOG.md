@@ -29,6 +29,18 @@ Unreleased changes are tracked as individual files in the [news/](./news)
 directory, or view the [latest generated
 changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 
+{#v2-5-1}
+## [2.5.1] - 2026-11-13
+
+[2.5.1]: https://github.com/bazel-contrib/rules_python/releases/tag/2.5.1
+
+{#v2-5-1-fixed}
+### Fixed
+* (binaries/tests) The {obj}`stamp` attribute no longer transitions the
+  {flag}`--stamp` flag for the whole target, so dependencies of executables with
+  `stamp = 0` or `stamp = 1` are no longer built in a separate configuration.
+
+
 {#v2-5-0}
 ## [2.5.0] - 2026-10-31
 
