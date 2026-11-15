@@ -68,7 +68,7 @@ file from `.agents/skills/review-code/`:
    - Prompt file:
      `.agents/skills/review-code/review-rules-python-prompt.md`
    - Focus: Audits changes against `.agents/rules/rules_python.md` (e.g.,
-     `pip.dep()` declarations in `MODULE.bazel` and `MINIMUM_BAZEL_VERSION`
+     `pip.dep()` declarations in `MODULE.bazel` and minimum Bazel version
      bounds).
 
 9. **News Entry Sub-Agent** (`Role: "News Entry Auditor"`):

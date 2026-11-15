@@ -494,7 +494,7 @@ use_repo(
     # "build_bazel_bazel_rolling",
     "build_bazel_bazel_self",
 )
-# LINT.ThenChange(//version.bzl:supported_bazel_versions)
+# LINT.ThenChange(//internal_dev_setup.bzl:workspace_bazel_binaries)
 
 # TODO @aignas 2025-01-27: should this be moved to `//python/extensions:uv.bzl` or should
 # it stay as it is? I think I may prefer to move it.
