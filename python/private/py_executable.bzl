@@ -2246,10 +2246,39 @@ def _add_provider_output_group_info(providers, py_info, output_groups):
     """
     providers.append(create_output_group_info(py_info.transitive_sources, output_groups))
 
+# The settings whose values are labels.
+_LABEL_SETTINGS = [
+    labels.COVERAGE,
+    labels.DEBUGGER,
+]
+
+def _resolve_label_setting_values(config_settings):
+    """Resolves the label values of `config_settings` relative to the caller.
+
+    Like for label attributes, e.g. `":my_coverage"` refers to a target in the
+    package of the caller. Otherwise, the transition would resolve it relative
+    to `rules_python`.
+
+    Args:
+        config_settings: {type}`dict[Label | str, str]` the settings.
+
+    Returns:
+        {type}`dict[Label | str, str]` the settings with the label values
+        converted to canonical label strings.
+    """
+    resolved = {}
+    for key, value in config_settings.items():
+        if value and str(native.package_relative_label(key)) in _LABEL_SETTINGS:
+            value = str(native.package_relative_label(value))
+        resolved[key] = value
+    return resolved
+
 def _add_config_setting_defaults(kwargs):
     config_settings = kwargs.get("config_settings", None)
     if config_settings == None:
         config_settings = {}
+    elif type(config_settings) == "dict":
+        config_settings = _resolve_label_setting_values(config_settings)
 
     # NOTE: This code runs in loading phase within the context of the caller.
     # Label() must be used to resolve repo names within rules_python's
@@ -2265,6 +2294,7 @@ def _add_config_setting_defaults(kwargs):
     config_settings = default | config_settings
     kwargs["config_settings"] = config_settings
 
+# buildifier: disable=unnamed-macro
 def common_executable_macro_kwargs_setup(kwargs):
     convert_legacy_create_init_to_int(kwargs)
     _add_config_setting_defaults(kwargs)

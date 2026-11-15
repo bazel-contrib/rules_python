@@ -48,7 +48,7 @@ py_reconfig_binary(
     srcs = ["instrumented.py"],
     collect_code_coverage = True,
     config_settings = {
-        "//python/config_settings:coverage": "@dev_pip//coverage",
+        "@rules_python//python/config_settings:coverage": "@dev_pip//coverage",
     },
     main = "instrumented.py",
     python_version = _PYPI_PYTHON_VERSION,
@@ -75,7 +75,7 @@ py_reconfig_binary(
     srcs = ["instrumented.py"],
     collect_code_coverage = True,
     config_settings = {
-        "//python/config_settings:coverage": "@dev_pip//coverage",
+        "@rules_python//python/config_settings:coverage": "@dev_pip//coverage",
     },
     main = "instrumented.py",
     python_version = _PYPI_PYTHON_VERSION,
@@ -134,7 +134,7 @@ py_reconfig_binary(
     srcs = ["instrumented.py"],
     collect_code_coverage = True,
     config_settings = {
-        "//python/config_settings:coverage": "//tests/coverage:coverage_with_coveragerc",
+        "@rules_python//python/config_settings:coverage": ":coverage_with_coveragerc",
     },
     main = "instrumented.py",
     python_version = _PYPI_PYTHON_VERSION,

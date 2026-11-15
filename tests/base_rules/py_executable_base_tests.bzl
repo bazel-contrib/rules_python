@@ -132,6 +132,35 @@ def _test_config_settings_extra_toolchains_impl(env, target):
 
 _tests.append(_test_config_settings_extra_toolchains)
 
+def _test_config_settings_label_value_relative_to_caller(name, config):
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject",
+        srcs = ["main.py"],
+        main = "main.py",
+        config_settings = {
+            # The value is relative to the package of the caller.
+            "@rules_python//python/config_settings:debugger": ":" + name + "_debugger",
+        },
+    )
+    rt_util.helper_target(
+        py_library,
+        name = name + "_debugger",
+        srcs = [name + "_debugger.py"],
+    )
+    analysis_test(
+        name = name,
+        impl = _test_config_settings_label_value_relative_to_caller_impl,
+        target = name + "_subject",
+    )
+
+def _test_config_settings_label_value_relative_to_caller_impl(env, target):
+    env.expect.that_target(target).runfiles().contains_predicate(
+        matching.str_endswith(target.label.name.removesuffix("_subject") + "_debugger.py"),
+    )
+
+_tests.append(_test_config_settings_label_value_relative_to_caller)
+
 def _test_cross_compile_to_unix(name, config):
     rt_util.helper_target(
         config.rule,
