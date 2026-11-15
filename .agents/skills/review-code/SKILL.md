@@ -83,8 +83,10 @@ file from `.agents/skills/review-code/`:
     (`Role: "Code Style & Architecture Auditor"`):
     - Prompt file:
       `.agents/skills/review-code/review-code-style-prompt.md`
-    - Focus: Audits cross-language code style across all code files (`*.py`,
-      `*.rs`, `*.sh`, `*.cc`, `*.h`, `*.go`, `*.bzl`, `*.bazel`): file
+    - Focus: Audits cross-language code style across code and config files
+      (`*.py`, `*.rs`, `*.sh`, `*.cc`, `*.h`, `*.go`, `*.bzl`, `*.bazel`,
+      `*.html`, `*.js`, `*.ts`, `*.css`, `*.yaml`, `*.yml`) against
+      `.agents/rules/code-style.md` and `.agents/rules/web-ui.md`: file
       definition order, guard clauses, fail-closed `else`, single input form,
       no unrequested knobs/aliases, no speculative validation or defensive
       `None` checks, no nested comprehensions, naming precision,
