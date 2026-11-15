@@ -624,9 +624,10 @@ _SYMLINKS_SUPPORTED = not (
     IS_WINDOWS and os.environ.get("RULES_PYTHON_TESTING_DISABLE_SYMLINKS")
 )
 
-# Windows only: (link, original) pairs of the hard links that were created,
-# so that they can be removed without changing their originals.
-_HARD_LINKS = []
+# The build of Windows 10 1809 and Windows Server 2019, which added
+# FILE_DISPOSITION_FLAG_IGNORE_READONLY_ATTRIBUTE that the fallback for when
+# symlinks can't be created needs to clean up.
+_WINDOWS_FALLBACK_MIN_BUILD = 17763
 
 def _symlink_exist_ok(*, from_, to):
   """Creates a symlink, or on Windows, a hard link, junction or copy if that's not possible."""
@@ -644,6 +645,11 @@ def _symlink_exist_ok(*, from_, to):
     except OSError as e:
       if not IS_WINDOWS:
         raise
+      if sys.getwindowsversion().build < _WINDOWS_FALLBACK_MIN_BUILD:
+        raise OSError(
+            "Creating symlinks failed, which is required before Windows 10 "
+            "1809 and Windows Server 2019: {}".format(e)
+        ) from e
       print_verbose("symlink failed, falling back to links or copies:", e)
       _SYMLINKS_SUPPORTED = False
 
@@ -659,7 +665,6 @@ def _link_file_windows(from_, to):
   # volume, so fall back to copying the file.
   try:
     os.link(to, from_)
-    _HARD_LINKS.append((from_, to))
   except OSError as e:
     print_verbose("hard link failed, copying:", to, "error:", e)
     shutil.copy2(to, from_)
@@ -673,53 +678,68 @@ def _link_dir_windows(from_, to):
     print_verbose("junction failed, copying:", to, "error:", e)
     shutil.copytree(to, from_)
 
-def _remove_hard_links_windows():
-  """Removes the hard links, keeping the read-only attribute of their originals.
+def _remove_read_only_file_windows(path):
+  """Removes a read-only file without changing its read-only attribute.
 
-  Windows refuses to delete a read-only file, such as a Bazel output, and the
-  attribute is shared by all the hard links of a file, so it is cleared to
-  remove the link and then restored on the original.
-
-  An alternative is to delete the link with
-  FILE_DISPOSITION_FLAG_IGNORE_READONLY_ATTRIBUTE via ctypes, which doesn't
-  change the original at all, but needs Windows 10 1809 or later and more
-  Windows specific code.
+  Windows refuses to delete a read-only file, such as a hard link to or a
+  copy of a Bazel output. Clearing the attribute would also clear it for the
+  other hard links of the file, i.e. the Bazel output, so the file is deleted
+  with FILE_DISPOSITION_FLAG_IGNORE_READONLY_ATTRIBUTE instead.
   """
-  import stat
-  for link, original in _HARD_LINKS:
-    try:
-      os.remove(link)
-      continue
-    except FileNotFoundError:
-      continue
-    except PermissionError:
-      pass
-    try:
-      mode = os.stat(original).st_mode
-      os.chmod(link, mode | stat.S_IWRITE)
-      try:
-        os.remove(link)
-      finally:
-        os.chmod(original, mode)
-    except OSError as e:
-      print_verbose("cleanup: failed to remove hard link:", link, "error:", e)
-  del _HARD_LINKS[:]
+  import ctypes
+  from ctypes import wintypes
+
+  kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+  kernel32.CreateFileW.restype = wintypes.HANDLE
+  kernel32.CreateFileW.argtypes = [
+      wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID,
+      wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE,
+  ]
+  kernel32.SetFileInformationByHandle.restype = wintypes.BOOL
+  kernel32.SetFileInformationByHandle.argtypes = [
+      wintypes.HANDLE, ctypes.c_int, wintypes.LPVOID, wintypes.DWORD,
+  ]
+  kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+
+  DELETE = 0x00010000
+  FILE_SHARE_READ_WRITE_DELETE = 0x7
+  OPEN_EXISTING = 3
+  FILE_FLAG_OPEN_REPARSE_POINT = 0x00200000
+  FILE_DISPOSITION_INFO_EX = 21
+  FILE_DISPOSITION_FLAG_DELETE = 0x1
+  FILE_DISPOSITION_FLAG_IGNORE_READONLY_ATTRIBUTE = 0x10
+  INVALID_HANDLE_VALUE = wintypes.HANDLE(-1).value
+
+  handle = kernel32.CreateFileW(
+      path, DELETE, FILE_SHARE_READ_WRITE_DELETE, None, OPEN_EXISTING,
+      FILE_FLAG_OPEN_REPARSE_POINT, None,
+  )
+  if handle == INVALID_HANDLE_VALUE:
+    raise ctypes.WinError(ctypes.get_last_error())
+  try:
+    flags = wintypes.DWORD(
+        FILE_DISPOSITION_FLAG_DELETE | FILE_DISPOSITION_FLAG_IGNORE_READONLY_ATTRIBUTE
+    )
+    if not kernel32.SetFileInformationByHandle(
+        handle, FILE_DISPOSITION_INFO_EX, ctypes.byref(flags), ctypes.sizeof(flags)
+    ):
+      raise ctypes.WinError(ctypes.get_last_error())
+  finally:
+    # The file is deleted when the handle is closed.
+    kernel32.CloseHandle(handle)
 
 def _rmtree(path):
   if not IS_WINDOWS:
     shutil.rmtree(path, True)
     return
 
-  _remove_hard_links_windows()
-
   def _on_error(func, error_path, _):
-    # The remaining files are copies, which are read-only if their originals
-    # are, and Windows refuses to delete read-only files.
+    if func not in (os.unlink, os.remove):
+      return
     try:
-      os.chmod(error_path, 0o777)
-      func(error_path)
-    except OSError:
-      pass
+      _remove_read_only_file_windows(error_path)
+    except OSError as e:
+      print_verbose("cleanup: failed to remove:", error_path, "error:", e)
 
   if sys.version_info >= (3, 12):
     shutil.rmtree(path, onexc=_on_error)
