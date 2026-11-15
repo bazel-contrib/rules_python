@@ -11,6 +11,7 @@ use std::process::ExitCode;
 pub mod subcommands {
     // keep-sorted start case=no
     pub const EXE_ZIP_MAKER: &str = "exe_zip_maker";
+    pub const WHEELMAKER: &str = "wheelmaker";
     pub const ZIP_MAIN_MAKER: &str = "zip_main_maker";
     pub const ZIPPER: &str = "zipper";
     // keep-sorted end
@@ -20,6 +21,7 @@ pub mod subcommands {
 pub const SUBCOMMANDS: &[&str] = &[
     // keep-sorted start case=no
     subcommands::EXE_ZIP_MAKER,
+    subcommands::WHEELMAKER,
     subcommands::ZIP_MAIN_MAKER,
     subcommands::ZIPPER,
     // keep-sorted end
@@ -64,6 +66,7 @@ where
     match sub_raw.as_ref() {
         // keep-sorted start case=no
         subcommands::EXE_ZIP_MAKER => exe_zip_maker_lib::run_cli(iter),
+        subcommands::WHEELMAKER => wheelmaker_lib::run_cli(iter),
         subcommands::ZIP_MAIN_MAKER => zip_main_maker_lib::run_cli(iter),
         subcommands::ZIPPER => zipper_lib::run_cli(iter),
         // keep-sorted end

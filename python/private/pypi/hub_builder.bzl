@@ -488,6 +488,10 @@ def _platforms(module_ctx, *, python_version, config, target_platforms):
         strict = True,
     )
 
+    if "*" in target_platforms:
+        # All of the configured platforms.
+        target_platforms = []
+
     target_platforms = sorted({
         p.format(
             os = repo_utils.get_platforms_os_name(module_ctx),
