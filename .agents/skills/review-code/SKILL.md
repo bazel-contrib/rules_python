@@ -89,7 +89,7 @@ file from `.agents/skills/review-code/`:
       no unrequested knobs/aliases, no speculative validation or defensive
       `None` checks, no nested comprehensions, naming precision,
       simplification, `keep-sorted` markers, `LINT.IfChange` /
-      `LINT.ThenChange` directives, and CLI safety annotations.
+      `LINT.ThenChange` directives, porting parity, and CLI safety annotations.
 
 11. Shell Script Sub-Agent (`Role: "Shell Script Auditor"`):
     - Prompt file:
@@ -117,8 +117,9 @@ file from `.agents/skills/review-code/`:
     - Focus: Audits Rust code (`*.rs`, `crates/**`) and crate dependencies in
       `MODULE.bazel` / `Cargo.*` against `.agents/rules/rust.md` (standard
       ecosystem crates over custom subsystems such as regex or ZIP handling,
-      crate legitimacy and latest `crates.io` versions, feature pruning for
-      cross-compilation, library crate structure, and `rustfmt`).
+      crate legitimacy and latest `crates.io` versions, feature pruning and
+      `zlib-rs` DEFLATE selection, idiomatic `str::lines()`/`create_dir_all`,
+      `# Errors` rustdocs, library crate structure, and `rustfmt`).
 
 14. Comment Readability Sub-Agent (`Role: "Comment Readability Editor"`):
     - Prompt file:
@@ -223,7 +224,7 @@ file from `.agents/skills/review-code/`:
   6. Also push fixes to PR
 - When fixing and pushing open issues that also had non-draft review comments
   posted, reply to each fixed review thread with the commit SHA (and disclosure
-  line) and resolve the thread.
+  line) without resolving the thread unless explicitly instructed.
 - If reviewing or re-reviewing a PR belonging to another user and the verdict is
   `PASS` (0 open issues and 0 net-new candidate comments) while the PR is not
   yet approved by the user, prompt the user via `ask_question` (including a

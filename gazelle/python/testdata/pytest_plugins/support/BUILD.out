@@ -1,0 +1,18 @@
+load("@rules_python//python:defs.bzl", "py_library")
+
+py_library(
+    name = "admin",
+    srcs = ["admin.py"],
+    visibility = ["//:__subpackages__"],
+    deps = ["@gazelle_python_test//pytest"],
+)
+
+py_library(
+    name = "database",
+    srcs = ["database.py"],
+    visibility = ["//:__subpackages__"],
+    deps = [
+        ":admin",
+        "@gazelle_python_test//pytest",
+    ],
+)
