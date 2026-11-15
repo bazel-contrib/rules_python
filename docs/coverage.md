@@ -31,10 +31,8 @@ python_register_toolchains(
 :::{note}
 This will implicitly add the version of `coverage` bundled with
 `rules_python` to the dependencies of `py_test` rules when `bazel coverage` is
-run. If a target already transitively depends on a different version of
-`coverage`, then the behavior is undefined -- it is undefined which version comes
-first in the import path. If you find yourself in this situation, then you'll
-need to manually configure coverage (see below).
+run. If a target already transitively depends on the `coverage` package from
+PyPI, then that version is used instead. See {ref}`coverage-from-pypi`.
 :::
 
 :::{note}
@@ -69,30 +67,49 @@ filegroup(
 Using `filegroup` isn't required, nor are including client libraries. The
 important behaviors of the target are:
 
-*   It provides {obj}`PyInfo` (e.g. it is a `py_library`), in which case it is
-    added to the dependencies of the tests to import the `coverage` package.
-    See {ref}`coverage-from-pypi`.
-*   Otherwise, it provides a single output file OR it provides an executable
-    output; this output is treated as the coverage entry point.
+*   It provides a single output file OR it provides an executable output; this
+    output is treated as the coverage entry point.
 *   If it provides runfiles, then `runfiles.files` are included into `py_test`.
 
 (coverage-from-pypi)=
-### Using `coverage` from PyPI
+## Using `coverage` from PyPI
 
 To use the version of `coverage` that is locked in your requirements instead of
-the one bundled with `rules_python`, point the toolchain to the `coverage`
-package in your {obj}`pip.parse` hub:
+the one bundled with `rules_python`, add it to your requirements and set the
+{flag}`--coverage` flag to the `coverage` package in your {obj}`pip.parse` hub:
+
+```
+# .bazelrc
+coverage --@rules_python//python/config_settings:coverage=@pypi//coverage
+```
+
+The Python toolchains don't need to be configured. The target is added to the
+dependencies of the `py_test` and `py_binary` targets when coverage is
+collected, and it isn't fetched for regular builds.
+
+If a test already depends on the `coverage` package, e.g. via `pytest-cov`, then
+that `coverage` is used even if the flag isn't set.
+
+### Using a different `coverage` for some tests
+
+The {flag}`--coverage` flag can be set for a single target with the
+`config_settings` attribute:
 
 ```starlark
-python.single_version_platform_override(
-    coverage_tool = "@pypi//coverage",
-    platform = "x86_64-unknown-linux-gnu",
-    python_version = "3.13.2",
+py_test(
+    name = "strict_test",
+    srcs = ["strict_test.py"],
+    config_settings = {
+        "@rules_python//python/config_settings:coverage": str(Label("//tools:coverage_strict")),
+    },
 )
 ```
 
-Or set {attr}`py_runtime.coverage_tool` to `@pypi//coverage` when defining
-your own runtime with {obj}`py_runtime`.
+:::{note}
+Use `str(Label(...))` for the value, so that the label is resolved relative to
+your repository. This builds the test and its dependencies in a separate
+configuration.
+:::
 
 :::{versionadded} VERSION_NEXT_FEATURE
 :::

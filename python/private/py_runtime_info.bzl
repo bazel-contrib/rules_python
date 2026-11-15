@@ -58,7 +58,6 @@ def _PyRuntimeInfo_init(
         interpreter_files_to_run = None,
         coverage_tool = None,
         coverage_files = None,
-        coverage_dep = None,
         pyc_tag = None,
         python_version,
         stub_shebang = None,
@@ -85,23 +84,11 @@ def _PyRuntimeInfo_init(
         if interpreter_files_to_run.executable != interpreter:
             fail("'interpreter_files_to_run.executable' must match 'interpreter'")
 
-    if coverage_dep != None and type(coverage_dep) != "Target":
-        fail("invalid coverage_dep: got value of type {}, want Target".format(
-            type(coverage_dep),
-        ))
-
-    if coverage_tool and coverage_dep:
-        fail("cannot specify both 'coverage_tool' and 'coverage_dep'")
-
-    has_coverage = coverage_tool != None or coverage_dep != None
-    if has_coverage != (coverage_files != None):
+    if (coverage_tool and not coverage_files) or (not coverage_tool and coverage_files):
         fail(
-            "coverage_files must be set if and only if coverage_tool or " +
-            "coverage_dep is set, got coverage_tool={}, ".format(
+            "coverage_tool and coverage_files must both be set or neither must be set, " +
+            "got coverage_tool={}, coverage_files={}".format(
                 coverage_tool,
-            ) +
-            "coverage_dep={}, coverage_files={}".format(
-                coverage_dep,
                 coverage_files,
             ),
         )
@@ -130,7 +117,6 @@ def _PyRuntimeInfo_init(
     return {
         "abi_flags": abi_flags,
         "bootstrap_template": bootstrap_template,
-        "coverage_dep": coverage_dep,
         "coverage_files": coverage_files,
         "coverage_tool": coverage_tool,
         "files": files,
@@ -232,26 +218,11 @@ docs.
 The set of substitutions depends on {obj}`--bootstrap_impl`
 :::
 """,
-        "coverage_dep": """
-:type: Target | None
-
-A target providing {obj}`PyInfo` that makes the `coverage` package importable,
-e.g. `@pypi//coverage`. When coverage is enabled, executables add it to their
-dependencies like a regular entry in `deps`. Mutually exclusive with
-`coverage_tool`.
-
-:::{versionadded} VERSION_NEXT_FEATURE
-:::
-""",
         "coverage_files": """
 :type: depset[File] | None
 
-The files required at runtime for using `coverage_tool` or `coverage_dep`.
-Will be `None` if neither was provided.
-
-:::{versionchanged} VERSION_NEXT_FEATURE
-Also set when `coverage_dep` is set.
-:::
+The files required at runtime for using `coverage_tool`. Will be `None` if no
+`coverage_tool` was provided.
 """,
         "coverage_tool": """
 :type: File | None
@@ -337,7 +308,7 @@ interpreter at startup.
 The following substitutions are made during template expansion:
 * `%coverage_from_deps%`: The string `1` if coverage is enabled and the
   `coverage` package is importable from the dependencies (see
-  {obj}`coverage_dep`). The string `0` otherwise.
+  {flag}`--coverage`). The string `0` otherwise.
 
 :::{versionadded} 1.0.0
 :::

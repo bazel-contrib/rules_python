@@ -37,14 +37,21 @@ pytest_test(
     deps = ["//python/runfiles"],
 )
 
-# Helper program invoked by `coverage_from_pypi_test` below, using the
-# `coverage` py_library from `@dev_pip` (see `MODULE.bazel`).
+# The programs below use `coverage` from the `@dev_pip` hub (see
+# `MODULE.bazel`) and a Python version for which the toolchain has no coverage
+# tool, so the coverage collection only works if `coverage` comes from the deps.
+_PYPI_PYTHON_VERSION = "3.14"
+
+# Uses `@dev_pip//coverage` via the `coverage` flag.
 py_reconfig_binary(
     name = "instrumented_pypi",
     srcs = ["instrumented.py"],
     collect_code_coverage = True,
+    config_settings = {
+        "//python/config_settings:coverage": "@dev_pip//coverage",
+    },
     main = "instrumented.py",
-    python_version = "3.13.13",
+    python_version = _PYPI_PYTHON_VERSION,
     tags = ["manual"],
     target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
     deps = [":lib"],
@@ -67,8 +74,11 @@ py_reconfig_binary(
     name = "instrumented_pypi_venv",
     srcs = ["instrumented.py"],
     collect_code_coverage = True,
+    config_settings = {
+        "//python/config_settings:coverage": "@dev_pip//coverage",
+    },
     main = "instrumented.py",
-    python_version = "3.13.13",
+    python_version = _PYPI_PYTHON_VERSION,
     tags = ["manual"],
     target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
     venvs_site_packages = "yes",
@@ -81,6 +91,32 @@ pytest_test(
     data = [":instrumented_pypi_venv"],
     env = {
         "INSTRUMENTED": "$(rlocationpath :instrumented_pypi_venv)",
+    },
+    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    deps = ["//python/runfiles"],
+)
+
+# Uses the `@dev_pip//coverage` that it depends on, without the `coverage` flag.
+py_reconfig_binary(
+    name = "instrumented_pypi_dep",
+    srcs = ["instrumented.py"],
+    collect_code_coverage = True,
+    main = "instrumented.py",
+    python_version = _PYPI_PYTHON_VERSION,
+    tags = ["manual"],
+    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    deps = [
+        ":lib",
+        "@dev_pip//coverage",
+    ],
+)
+
+pytest_test(
+    name = "coverage_from_pypi_dep_test",
+    srcs = ["coverage_collection_test.py"],
+    data = [":instrumented_pypi_dep"],
+    env = {
+        "INSTRUMENTED": "$(rlocationpath :instrumented_pypi_dep)",
     },
     target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
     deps = ["//python/runfiles"],

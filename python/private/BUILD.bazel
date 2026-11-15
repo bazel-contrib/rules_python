@@ -13,7 +13,7 @@
 # limitations under the License.
 
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
-load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "bool_setting")
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
 load("//python:py_binary.bzl", "py_binary")
 load("//python:py_library.bzl", "py_library")
 load(":bazel_config_mode.bzl", "bazel_config_mode")
@@ -162,28 +162,35 @@ alias(
     visibility = ["//visibility:public"],
 )
 
-bazel_config_mode(name = "bazel_config_mode")
+# The `coverage` flag is only resolved when collecting coverage for the target
+# config, so that e.g. `@pypi//coverage` is not fetched for regular builds.
+alias(
+    name = "coverage_if_target_config",
+    actual = select({
+        ":is_bazel_config_mode_target": ":coverage_if_enabled",
+        "//conditions:default": "//python/private:empty",
+    }),
+    # Not actually public. Only public because it's an implicit dependency of
+    # rules built via py_binary_rule_builder() / py_test_rule_builder().
+    visibility = ["//visibility:public"],
+)
 
-# Usually False. Set to True when building a dependency of the `py_runtime`
-# itself, so that it and its dependencies resolve to a toolchain without that
-# dependency, which would otherwise be a dependency cycle. E.g. the
-# `py_runtime.coverage_tool` transition sets it, so that a `py_library` from a
-# pip hub can be used as the coverage tool.
-bool_setting(
-    name = "bootstrap_runtime",
-    build_setting_default = False,
+alias(
+    name = "coverage_if_enabled",
+    actual = select({
+        ":is_coverage_enabled": "//python/config_settings:coverage",
+        "//conditions:default": "//python/private:empty",
+    }),
     visibility = ["//visibility:private"],
 )
 
 config_setting(
-    name = "is_bootstrap_runtime_false",
-    flag_values = {
-        ":bootstrap_runtime": "False",
-    },
-    # Not actually public. Only public because it's an implicit dependency of
-    # the py_runtime macro.
-    visibility = NOT_ACTUALLY_PUBLIC,
+    name = "is_coverage_enabled",
+    values = {"collect_code_coverage": "true"},
+    visibility = ["//visibility:private"],
 )
+
+bazel_config_mode(name = "bazel_config_mode")
 
 # This should only be set by analysis tests to expose additional metadata to
 # aid testing, so a setting instead of a flag.
@@ -683,10 +690,7 @@ bzl_library(
 bzl_library(
     name = "py_runtime_macro",
     srcs = ["py_runtime_macro.bzl"],
-    deps = [
-        ":common_labels",
-        ":py_runtime_rule",
-    ],
+    deps = [":py_runtime_rule"],
 )
 
 bzl_library(
@@ -713,7 +717,6 @@ bzl_library(
     deps = [
         ":common_labels",
         ":flags",
-        ":py_info",
         ":py_internal",
         ":py_runtime_info",
         ":reexports",

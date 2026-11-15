@@ -33,7 +33,6 @@ def py_runtime_info_subject(info, *, meta):
         # go/keep-sorted start block=yes
         actual = info,
         bootstrap_template = lambda *a, **k: _py_runtime_info_subject_bootstrap_template(self, *a, **k),
-        coverage_dep = lambda *a, **k: _py_runtime_info_subject_coverage_dep(self, *a, **k),
         coverage_files = lambda *a, **k: _py_runtime_info_subject_coverage_files(self, *a, **k),
         coverage_tool = lambda *a, **k: _py_runtime_info_subject_coverage_tool(self, *a, **k),
         files = lambda *a, **k: _py_runtime_info_subject_files(self, *a, **k),
@@ -68,18 +67,6 @@ def _py_runtime_info_subject_coverage_files(self):
     return subjects.depset_file(
         self.actual.coverage_files,
         meta = self.meta.derive("coverage_files()"),
-    )
-
-def _py_runtime_info_subject_coverage_dep(self):
-    """Returns a `LabelSubject` for the label of the `coverage_dep` attribute.
-
-    Args:
-        self: implicitly added.
-    """
-    coverage_dep = self.actual.coverage_dep
-    return subjects.label(
-        coverage_dep.label if coverage_dep != None else None,
-        meta = self.meta.derive("coverage_dep()"),
     )
 
 def _py_runtime_info_subject_coverage_tool(self):

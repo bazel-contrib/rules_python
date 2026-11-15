@@ -28,7 +28,7 @@ _SELF_RUNFILES_RELATIVE_PATH = "%site_init_runfiles_path%"
 # Runfiles-relative path to the coverage tool entry point, if any.
 _COVERAGE_TOOL = "%coverage_tool%"
 # True if the coverage package is importable from the dependencies, e.g. when
-# the toolchain coverage_tool is a py_library such as @pypi//coverage.
+# --@rules_python//python/config_settings:coverage is set.
 _COVERAGE_FROM_DEPS = "%coverage_from_deps%" == "1"
 # True if the runfiles root should be added to sys.path
 _ADD_RUNFILES_ROOT_TO_SYS_PATH = "%add_runfiles_root_to_sys_path%" == "1"
@@ -216,7 +216,7 @@ def _setup_sys_path():
     if os.environ.get("COVERAGE_DIR"):
         if _COVERAGE_FROM_DEPS:
             # The import paths were already added along with the other deps.
-            _print_verbose_coverage("Using toolchain coverage_tool from deps")
+            _print_verbose_coverage("Using coverage from deps")
             return True
         cov_tool = _COVERAGE_TOOL
         if cov_tool:

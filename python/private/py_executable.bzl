@@ -240,6 +240,10 @@ accepting arbitrary Python versions.
             allow_files = True,
             cfg = "exec",
         ),
+        "_coverage_flag": lambda: attrb.Label(
+            default = "//python/private:coverage_if_target_config",
+            providers = [PyInfo],
+        ),
         "_debugger_flag": lambda: attrb.Label(
             default = "//python/private:debugger_if_target_config",
             providers = [PyInfo],
@@ -329,6 +333,7 @@ def _should_create_init_files(ctx):
 def _create_executable(
         ctx,
         *,
+        coverage,
         executable,
         main_py,
         imports,
@@ -371,6 +376,7 @@ def _create_executable(
                 "1" if BootstrapImplFlag.get_value(ctx) == BootstrapImplFlag.SYSTEM_PYTHON else "0"
             ),
             extra_deps = extra_deps,
+            coverage = coverage,
         )
 
         stage2_bootstrap = _create_stage2_bootstrap(
@@ -575,7 +581,7 @@ def _create_zip_main(ctx, *, stage2_bootstrap, runtime_details, venv):
 # * https://snarky.ca/how-virtual-environments-work/
 # * https://github.com/python/cpython/blob/main/Modules/getpath.py
 # * https://github.com/python/cpython/blob/main/Lib/site.py
-def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root_to_sys_path, extra_deps):
+def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root_to_sys_path, extra_deps, coverage):
     venv_ctx_rel_root = "_{}.venv".format(output_prefix.lstrip("_"))
     runtime = runtime_details.effective_runtime
     if runtime.interpreter:
@@ -612,7 +618,7 @@ def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root
         output = site_init,
         substitutions = {
             "%add_runfiles_root_to_sys_path%": add_runfiles_root_to_sys_path,
-            "%coverage_from_deps%": "1" if _get_coverage_dep(ctx, runtime) else "0",
+            "%coverage_from_deps%": "1" if coverage.from_deps else "0",
             "%coverage_tool%": _get_coverage_tool_runfiles_path(ctx, runtime),
             "%import_all%": "True" if read_possibly_native_flag(ctx, "python_import_all_repositories") else "False",
             "%interpreter_actual_path%": interpreter_actual_path,
@@ -896,25 +902,43 @@ def _venv_details(
 def _map_each_identity(v):
     return v
 
-def _get_coverage_dep(ctx, runtime):
-    """Returns the runtime's coverage dependency, if coverage is enabled.
+def _get_coverage_details(ctx):
+    """Returns how the `coverage` package is provided to the executable.
+
+    In order of precedence, `coverage` comes from:
+    1. The {obj}`--coverage` flag, which can also be set per target via
+       `config_settings`.
+    2. A `coverage` package that the executable already depends on.
+    3. The `coverage_tool` of the Python runtime, which is handled by the
+       bootstrap.
 
     Args:
         ctx: {type}`ctx` the rule ctx.
-        runtime: {type}`PyRuntimeInfo | BuiltinPyRuntimeInfo` the runtime.
 
     Returns:
-        {type}`Target | None` a target providing {obj}`PyInfo` that should be
-        added to the dependencies of the executable.
+        {type}`struct` with attributes:
+        * dep: {type}`Target | None` the `coverage` flag target to add to the
+          dependencies of the executable.
+        * from_deps: {type}`bool` whether `coverage` is importable from the
+          dependencies, so that the runtime `coverage_tool` is not needed.
     """
-    if not ctx.configuration.coverage_enabled:
-        return None
+    if not ctx.configuration.coverage_enabled or _is_tool_config(ctx):
+        return struct(dep = None, from_deps = False)
 
-    # BuiltinPyRuntimeInfo (Bazel 7 native py_runtime) lacks this field. Use
-    # plain attribute access once MINIMUM_BAZEL_VERSION is 8.
-    if not hasattr(runtime, "coverage_dep"):
-        return None
-    return runtime.coverage_dep
+    # The flag defaults to an empty `py_library`, which has no sources.
+    target = ctx.attr._coverage_flag
+    if target[PyInfo].transitive_sources:
+        return struct(dep = target, from_deps = True)
+
+    packages = depset(transitive = [
+        dep[PyInfo].packages
+        for dep in ctx.attr.deps
+        if PyInfo in dep
+    ])
+    return struct(
+        dep = None,
+        from_deps = "coverage" in packages.to_list(),
+    )
 
 def _get_coverage_tool_runfiles_path(ctx, runtime):
     if (ctx.configuration.coverage_enabled and
@@ -1291,12 +1315,12 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
     if not _is_tool_config(ctx):
         extra_deps.append(ctx.attr._debugger_flag)
 
-    runtime_details = _get_runtime_details(ctx)
-    coverage_dep = _get_coverage_dep(ctx, runtime_details.effective_runtime)
-    if coverage_dep:
-        extra_deps.append(coverage_dep)
+    coverage = _get_coverage_details(ctx)
+    if coverage.dep:
+        extra_deps.append(coverage.dep)
 
     imports = collect_imports(ctx, extra_deps = extra_deps)
+    runtime_details = _get_runtime_details(ctx)
     cc_details = _get_cc_details_for_binary(ctx, extra_deps = extra_deps)
     native_deps_details = _get_native_deps_details(
         ctx,
@@ -1320,6 +1344,7 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
     )
     exec_result = _create_executable(
         ctx,
+        coverage = coverage,
         executable = executable,
         main_py = main_py,
         imports = imports,
@@ -2124,17 +2149,12 @@ def _add_provider_py_runtime_info(providers, runtime_details):
     # the type of the provider object, but the rules_python PyRuntimeInfo
     # object has an extra attribute that the builtin one doesn't.
     if hasattr(py_runtime_info, "interpreter_version_info") and BuiltinPyRuntimeInfo != None:
-        # The builtin provider only knows about coverage_tool.
-        if py_runtime_info.coverage_tool:
-            builtin_coverage_files = py_runtime_info.coverage_files
-        else:
-            builtin_coverage_files = None
         providers.append(BuiltinPyRuntimeInfo(
             interpreter_path = py_runtime_info.interpreter_path,
             interpreter = py_runtime_info.interpreter,
             files = py_runtime_info.files,
             coverage_tool = py_runtime_info.coverage_tool,
-            coverage_files = builtin_coverage_files,
+            coverage_files = py_runtime_info.coverage_files,
             python_version = py_runtime_info.python_version,
             stub_shebang = py_runtime_info.stub_shebang,
             bootstrap_template = py_runtime_info.bootstrap_template,
