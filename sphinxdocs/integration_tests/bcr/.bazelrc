@@ -1,0 +1,2 @@
+import %workspace%/../../downloader_cfg.bazelrc
+common --experimental_downloader_config=../../downloader_config.cfg

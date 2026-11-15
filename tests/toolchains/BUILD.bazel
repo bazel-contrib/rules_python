@@ -14,6 +14,7 @@
 
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 load("//python:pytest_test.bzl", "pytest_test")
+load("//python/cc:py_extension.bzl", "py_extension")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 load("//tests/support:py_reconfig.bzl", "py_reconfig_test")
 load(":defs.bzl", "define_toolchain_tests")
@@ -31,6 +32,25 @@ py_reconfig_test(
         "@platforms//os:linux",
         "@platforms//cpu:x86_64",
     ] if BZLMOD_ENABLED else ["@platforms//:incompatible"],
+)
+
+# Manual: it only compiles with the headers of the debug runtime.
+py_extension(
+    name = "debug_ext",
+    srcs = ["debug_ext.c"],
+    tags = ["manual"],
+)
+
+py_reconfig_test(
+    name = "debug_runtime_test",
+    srcs = ["debug_runtime_test.py"],
+    config_settings = {"//tests/support:custom_runtime": "linux-x86-debug"},
+    python_version = "3.14.4",
+    target_compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ] if BZLMOD_ENABLED else ["@platforms//:incompatible"],
+    deps = [":debug_ext"],
 )
 
 build_test(

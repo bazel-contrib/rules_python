@@ -147,7 +147,7 @@ def _build(self):
         whl_libraries = self._whl_libraries,
     )
 
-def _pip_parse(self, module_ctx, pip_attr, python_version = None):
+def _pip_parse(self, module_ctx, pip_attr, default_envsubst = [], python_version = None):
     python_version = python_version or pip_attr.python_version
     if python_version in self._platforms:
         fail((
@@ -204,7 +204,7 @@ def _pip_parse(self, module_ctx, pip_attr, python_version = None):
         ))
         return
 
-    _set_get_index_urls(self, module_ctx, pip_attr, python_version)
+    _set_get_index_urls(self, module_ctx, pip_attr, default_envsubst, python_version)
     self._platforms[python_version] = _platforms(
         module_ctx,
         python_version = full_python_version,
@@ -377,7 +377,10 @@ def _add_whl_library(self, *, python_version, whl, repo):
 
 ### end of setters, below we have various functions to implement the public methods
 
-def _set_get_index_urls(self, mctx, pip_attr, python_version):
+def _set_get_index_urls(self, mctx, pip_attr, default_envsubst, python_version):
+    # Combine default_envsubst and pip_attr.envsubst without duplications.
+    combined_envsubst = {k: True for k in default_envsubst + pip_attr.envsubst}.keys()
+
     # Resolve the index URL through envsubst so the ``$VAR`` / ``${VAR:-default}``
     # form is honored when deciding whether the experimental index-url mode is
     # active. Without this, an unsubstituted template like ``$RULES_PYTHON_PIP_INDEX_URL``
@@ -390,12 +393,16 @@ def _set_get_index_urls(self, mctx, pip_attr, python_version):
     default_index_url = pip_attr.experimental_index_url
     resolved_index_url = envsubst(
         default_index_url,
-        pip_attr.envsubst,
+        combined_envsubst,
         mctx.getenv,
     )
     if not resolved_index_url:
         default_index_url = self._config.index_url
-        resolved_index_url = self._config.index_url
+        resolved_index_url = envsubst(
+            default_index_url,
+            combined_envsubst,
+            mctx.getenv,
+        )
     default_extra_index_urls = pip_attr.experimental_extra_index_urls or []
 
     if not default_index_url:
@@ -425,7 +432,7 @@ def _set_get_index_urls(self, mctx, pip_attr, python_version):
                 for d, versions in distributions.items()
                 if _use_downloader(self, python_version, d)
             },
-            envsubst = pip_attr.envsubst,
+            envsubst = combined_envsubst,
             # Auth related info
             netrc = self._config.netrc or pip_attr.netrc,
             auth_patterns = self._config.auth_patterns or pip_attr.auth_patterns,
@@ -494,6 +501,10 @@ def _platforms(module_ctx, *, python_version, config, target_platforms):
         python_version,
         strict = True,
     )
+
+    if "*" in target_platforms:
+        # All of the configured platforms.
+        target_platforms = []
 
     target_platforms = sorted({
         p.format(

@@ -257,10 +257,25 @@ My docs
 
 :::::
 
-:::{rst:directive} .. bzl:flag:: target
+:::::{rst:directive} .. bzl:flag:: target
 
-Documents a flag. It has the same format as `{bzl:target}`
+Documents a flag. It has the same target format as `{bzl:target}`.
+
+Directive options:
+* `:scope:` specifies the scope of the flag (e.g., `universal` or `target`)
+
+````
+:::{bzl:flag} //foo:my_flag
+:scope: universal
+
+My docs
 :::
+````
+
+:::{versionadded} VERSION_NEXT_FEATURE
+The `:scope:` directive option was added.
+:::
+:::::
 
 ::::::{rst:directive} .. bzl:typedef:: typename
 
