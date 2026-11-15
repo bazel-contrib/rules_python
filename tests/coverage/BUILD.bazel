@@ -2,6 +2,7 @@ load("//python:py_library.bzl", "py_library")
 load("//python:pytest_test.bzl", "pytest_test")
 load("//tests/support:py_reconfig.bzl", "py_reconfig_test")
 load("//tests/support:support.bzl", "NOT_WINDOWS", "SUPPORTS_BZLMOD")
+load(":coverage_workspace_tests.bzl", "coverage_workspace_test_suite")
 
 py_library(
     name = "lib",
@@ -16,13 +17,12 @@ py_reconfig_test(
     srcs = ["instrumented.py"],
     collect_code_coverage = True,
     main = "instrumented.py",
-    # The bundled coverage tool is configured only for this version, see the
-    # `MODULE.bazel` file.
+    # The default coverage tool is configured for this version, see the
+    # `MODULE.bazel` and `WORKSPACE` files.
     python_version = "3.12.16",
     tags = ["manual"],
-    # The bundled coverage tool is not supported on Windows and it is only
-    # configured with bzlmod.
-    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    # The default coverage tool is not supported on Windows.
+    target_compatible_with = NOT_WINDOWS,
     deps = [":lib"],
 )
 
@@ -33,6 +33,32 @@ pytest_test(
     env = {
         "INSTRUMENTED": "$(rlocationpath :instrumented)",
     },
+    target_compatible_with = NOT_WINDOWS,
+    deps = ["//python/runfiles"],
+)
+
+# The same program, but the coverage tool is the `coverage` py_library from the
+# `@dev_pip` hub, see the `MODULE.bazel` file.
+py_reconfig_test(
+    name = "instrumented_pypi",
+    srcs = ["instrumented.py"],
+    collect_code_coverage = True,
+    main = "instrumented.py",
+    python_version = "3.13.13",
+    tags = ["manual"],
+    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    deps = [":lib"],
+)
+
+pytest_test(
+    name = "coverage_from_pypi_test",
+    srcs = ["coverage_collection_test.py"],
+    data = [":instrumented_pypi"],
+    env = {
+        "INSTRUMENTED": "$(rlocationpath :instrumented_pypi)",
+    },
     target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
     deps = ["//python/runfiles"],
 )
+
+coverage_workspace_test_suite(name = "coverage_workspace_tests")

@@ -75,6 +75,8 @@ python_register_multi_toolchains(
     default_version = "3.14",
     # Integration tests verify each version, so register all of them.
     python_versions = PYTHON_VERSIONS,
+    # See //tests/coverage:coverage_collection_test
+    register_coverage_tool = True,
 )
 
 load("//python/uv:repositories.bzl", "uv_toolchains_manifest")

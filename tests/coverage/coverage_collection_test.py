@@ -52,7 +52,11 @@ class CoverageCollectionTest(unittest.TestCase):
         root = rf.root()
         program = root / os.environ["INSTRUMENTED"]
         assert program.exists(), program
-        cls.lib_lines = (root / "_main" / _LIB).read_text().splitlines()
+        # The main repository is `_main` with bzlmod and the workspace name
+        # with WORKSPACE.
+        cls.lib_lines = (
+            (root / os.environ["TEST_WORKSPACE"] / _LIB).read_text().splitlines()
+        )
 
         tmp = pathlib.Path(os.environ["TEST_TMPDIR"])
         coverage_dir = tmp / "coverage"

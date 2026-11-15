@@ -163,6 +163,7 @@ sphinx_stardocs(
         "//python/uv:repositories",
         "//python/uv:uv_toolchain",
         "//python/uv:uv_toolchain_info",
+        "//python/uv:vendor_uv_lock",
         "//python/zipapp:py_zipapp_binary",
         "//python/zipapp:py_zipapp_test",
     ] + ([

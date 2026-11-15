@@ -18,5 +18,30 @@ load(":py_runtime_rule.bzl", py_runtime_rule = "py_runtime")
 # NOTE: The function name is purposefully selected to match the underlying
 # rule name so that e.g. 'generator_function' shows as the same name so
 # that it is less confusing to users.
-def py_runtime(**kwargs):
-    py_runtime_rule(**kwargs)
+def py_runtime(*, name, coverage_tool = None, **kwargs):
+    """Wraps the py_runtime rule.
+
+    The `coverage_tool` is dropped when building the coverage tool itself, so
+    that it can depend on the Python toolchain, e.g. a `py_library` from a pip
+    hub. Otherwise, it would be a dependency cycle.
+
+    Args:
+        name: {type}`str` the name of the target.
+        coverage_tool: {type}`Label | select | None` the coverage tool.
+        **kwargs: forwarded to the rule.
+    """
+
+    # NOTE: A select can't be nested, so it is passed as is. The hermetic
+    # toolchains select on `collect_code_coverage`, which the `coverage_tool`
+    # transition disables, so that also breaks the cycle.
+    if coverage_tool != None and type(coverage_tool) != "select":
+        coverage_tool = select({
+            Label("//python/private:coverage_tool_active"): coverage_tool,
+            "//conditions:default": None,
+        })
+
+    py_runtime_rule(
+        name = name,
+        coverage_tool = coverage_tool,
+        **kwargs
+    )
