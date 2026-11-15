@@ -49,7 +49,7 @@ def py_runtime(*, name, coverage_tool = None, **kwargs):
             visibility = ["//visibility:private"],
         )
         coverage_tool = select({
-            labels.IS_BOOTSTRAP_COVERAGE_TOOL_FALSE: ":" + coverage_tool_alias,
+            labels.IS_BOOTSTRAP_RUNTIME_FALSE: ":" + coverage_tool_alias,
             "//conditions:default": None,
         })
 

@@ -74,7 +74,7 @@ def _coverage_tool_transition_impl(_settings, _attr):
     This mirrors how `rules_go` builds `nogo`.
     """
     return {
-        labels.BOOTSTRAP_COVERAGE_TOOL: True,
+        labels.BOOTSTRAP_RUNTIME: True,
         "//command_line_option:collect_code_coverage": False,
     }
 
@@ -82,7 +82,7 @@ _coverage_tool_transition = transition(
     implementation = _coverage_tool_transition_impl,
     inputs = [],
     outputs = [
-        labels.BOOTSTRAP_COVERAGE_TOOL,
+        labels.BOOTSTRAP_RUNTIME,
         "//command_line_option:collect_code_coverage",
     ],
 )

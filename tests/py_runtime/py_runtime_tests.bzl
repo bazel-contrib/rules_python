@@ -328,7 +328,7 @@ def _test_coverage_tool_select_dropped_during_bootstrap(name):
         name = name,
         target = name + "_subject",
         config_settings = {
-            labels.BOOTSTRAP_COVERAGE_TOOL: True,
+            labels.BOOTSTRAP_RUNTIME: True,
         },
         impl = _test_coverage_tool_select_none_impl,
     )

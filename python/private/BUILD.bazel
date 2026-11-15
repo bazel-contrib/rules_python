@@ -164,20 +164,21 @@ alias(
 
 bazel_config_mode(name = "bazel_config_mode")
 
-# Usually False. The `py_runtime.coverage_tool` transition sets it to True so
-# that the coverage tool and its dependencies (e.g. a `py_library` from a pip
-# hub) resolve to a toolchain without a coverage tool, which would otherwise be
-# a dependency cycle.
+# Usually False. Set to True when building a dependency of the `py_runtime`
+# itself, so that it and its dependencies resolve to a toolchain without that
+# dependency, which would otherwise be a dependency cycle. E.g. the
+# `py_runtime.coverage_tool` transition sets it, so that a `py_library` from a
+# pip hub can be used as the coverage tool.
 bool_setting(
-    name = "bootstrap_coverage_tool",
+    name = "bootstrap_runtime",
     build_setting_default = False,
     visibility = ["//visibility:private"],
 )
 
 config_setting(
-    name = "is_bootstrap_coverage_tool_false",
+    name = "is_bootstrap_runtime_false",
     flag_values = {
-        ":bootstrap_coverage_tool": "False",
+        ":bootstrap_runtime": "False",
     },
     # Not actually public. Only public because it's an implicit dependency of
     # the py_runtime macro.

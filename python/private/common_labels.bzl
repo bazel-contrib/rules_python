@@ -6,8 +6,8 @@
 labels = struct(
     # keep sorted
     ADD_SRCS_TO_RUNFILES = str(Label("//python/config_settings:add_srcs_to_runfiles")),
-    BOOTSTRAP_COVERAGE_TOOL = str(Label("//python/private:bootstrap_coverage_tool")),
     BOOTSTRAP_IMPL = str(Label("//python/config_settings:bootstrap_impl")),
+    BOOTSTRAP_RUNTIME = str(Label("//python/private:bootstrap_runtime")),
     BUILD_PYTHON_ZIP = str(Label("//python/config_settings:build_python_zip")),
     # NOTE: Special target; see definition for details.
     BUILD_RUNFILE_LINKS = str(Label("//command_line_option:build_runfile_links")),
@@ -16,7 +16,7 @@ labels = struct(
     ENABLE_RUNFILES = str(Label("//command_line_option:enable_runfiles")),
     EXEC_TOOLS_TOOLCHAIN = str(Label("//python/config_settings:exec_tools_toolchain")),
     EXTRA_TOOLCHAINS = str(Label("//command_line_option:extra_toolchains")),
-    IS_BOOTSTRAP_COVERAGE_TOOL_FALSE = str(Label("//python/private:is_bootstrap_coverage_tool_false")),
+    IS_BOOTSTRAP_RUNTIME_FALSE = str(Label("//python/private:is_bootstrap_runtime_false")),
     NONE = str(Label("//python:none")),
     PIP_ENV_MARKER_CONFIG = str(Label("//python/config_settings:pip_env_marker_config")),
     PIP_WHL_OSX_VERSION = str(Label("//python/config_settings:pip_whl_osx_version")),
