@@ -30,27 +30,32 @@ function expect_match() {
   fi
 }
 
+# Converts a Windows path to a Unix one under MSYS, so that bash can use it.
+function to_unix() {
+  if command -v cygpath >/dev/null; then
+    cygpath -u "$1"
+  else
+    echo "$1"
+  fi
+}
+
 # Use hard links, junctions or copies instead of symlinks for the venv that
 # is created at runtime, like on Windows without the privilege to create
 # symlinks.
 venvs_root=$(mktemp -d)
 actual=$(RULES_PYTHON_TESTING_DISABLE_SYMLINKS=1 RULES_PYTHON_EXTRACT_ROOT=$venvs_root $bin)
 expect_match "Hello" "$actual"
-expect_match "sys.executable:.*$venvs_root" "$actual"
-
-venv_python=$(echo "$actual" | grep "^sys.executable:" | cut -d' ' -f2-)
-if [[ -L "$venv_python" ]]; then
-  echo "expected the venv interpreter not to be a symlink: $venv_python"
-  touch EXPECTATION_FAILED
-fi
+# Match the name only, because the path is a Windows path on Windows.
+expect_match "sys.executable:.*$(basename "$venvs_root")" "$actual"
+expect_match "sys.executable is symlink: False" "$actual"
 
 # Without RULES_PYTHON_EXTRACT_ROOT, the venv is removed after the run, which
 # must work for read-only copies of Bazel outputs too.
 actual=$(RULES_PYTHON_TESTING_DISABLE_SYMLINKS=1 $bin)
 expect_match "Hello" "$actual"
-venv_python=$(echo "$actual" | grep "^sys.executable:" | cut -d' ' -f2-)
-venv=$(dirname "$(dirname "$venv_python")")
-if [[ -e "$venv" ]]; then
+expect_match "sys.executable is symlink: False" "$actual"
+venv=$(to_unix "$(echo "$actual" | grep "^sys.prefix:" | cut -d' ' -f2-)")
+if [[ -z "$venv" || -e "$venv" ]]; then
   echo "expected the venv to be removed: $venv"
   touch EXPECTATION_FAILED
 fi
