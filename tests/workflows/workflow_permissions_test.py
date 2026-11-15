@@ -260,3 +260,78 @@ def test_bcr_author_forwarded_across_release_workflows():
             with_cfg["author_email"]
             == "${{ inputs.author_email || format('{0}+{1}@users.noreply.github.com', github.actor_id, github.actor) }}"
         ), f"publish.yml {job_name} missing author_email fallback"
+
+
+def _is_pr_check_trigger(triggers: object) -> bool:
+    """Checks whether a workflow `on:` block defines a presubmit PR check.
+
+    Args:
+        triggers: Parsed `on:` value from a workflow YAML file.
+
+    Returns:
+        True if the workflow triggers on `pull_request` events other than solely
+        `closed`.
+    """
+    if triggers == "pull_request":
+        return True
+    if isinstance(triggers, list):
+        return "pull_request" in triggers
+    if isinstance(triggers, dict) and "pull_request" in triggers:
+        pr_cfg = triggers["pull_request"]
+        if not isinstance(pr_cfg, dict):
+            return True
+        return pr_cfg.get("types") != ["closed"]
+    return False
+
+
+def _assert_no_cancel_in_progress(concurrency: object, scope: str) -> None:
+    """Asserts that a workflow or job concurrency block disables cancellation.
+
+    Args:
+        concurrency: Parsed `concurrency` value from a workflow or job mapping.
+        scope: Human-readable workflow or job identifier for assertion messages.
+    """
+    if isinstance(concurrency, dict):
+        assert not concurrency.get("cancel-in-progress"), (
+            f"{scope} must not set cancel-in-progress"
+        )
+
+
+def test_pr_check_workflows_cancel_superseded_runs():
+    """Validates concurrency settings on presubmit check vs mutating workflows."""
+    rf = runfiles.CreateOrRaise()
+    workflows_dir = rf.root() / "rules_python/.github/workflows"
+    workflow_files = sorted(
+        [*workflows_dir.glob("*.yaml"), *workflows_dir.glob("*.yml")]
+    )
+    assert workflow_files
+
+    expected_concurrency = {
+        "group": "${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}",
+        "cancel-in-progress": True,
+    }
+    expected_pr_check_workflows = {
+        # keep-sorted start
+        "ci.yaml",
+        "pr-metadata-checks.yaml",
+        # keep-sorted end
+    }
+
+    actual_pr_check_workflows = set()
+    for wf_file in workflow_files:
+        wf = yaml.safe_load(wf_file.read_text(encoding="utf-8"))
+        triggers = wf.get("on") or wf.get(True, {})
+        concurrency = wf.get("concurrency")
+        if _is_pr_check_trigger(triggers):
+            actual_pr_check_workflows.add(wf_file.name)
+            assert concurrency == expected_concurrency, (
+                f"{wf_file.name} must cancel superseded PR runs via concurrency"
+            )
+        else:
+            _assert_no_cancel_in_progress(concurrency, wf_file.name)
+            for job_name, job in wf.get("jobs", {}).items():
+                _assert_no_cancel_in_progress(
+                    job.get("concurrency"), f"{wf_file.name} job '{job_name}'"
+                )
+
+    assert actual_pr_check_workflows == expected_pr_check_workflows

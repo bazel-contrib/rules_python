@@ -16,10 +16,10 @@
 
 This replaces the previous approach that depended on running Python to
 repack patched wheels. Instead, after extracting and patching, we fix
-the RECORD file natively in Starlark and repack using system zip.
+the RECORD file natively in Starlark and repack using Bazel's zipper
+(falling back to system zip when paths cannot be passed to zipper).
 """
 
-load("//python:features.bzl", "bazel_features")
 load("//python/private:repo_utils.bzl", "repo_utils")
 load(":parse_whl_name.bzl", "parse_whl_name")
 
@@ -80,7 +80,8 @@ def patch_whl(rctx, *, whl_path, patches):
 
     The wheel is extracted, patched, missing RECORD entries are added
     with dummy sha256 and size values, and finally the wheel is
-    repacked using system zip.
+    repacked using Bazel's zipper (falling back to system zip when paths
+    cannot be passed to zipper).
 
     Args:
         rctx: repository_ctx
@@ -93,11 +94,19 @@ def patch_whl(rctx, *, whl_path, patches):
     """
     whl_input = rctx.path(whl_path)
 
+    # An empty version is a development build, which is treated as the latest.
+    bazel_version = (99999, 99999)
+    if native.bazel_version:
+        major, minor = native.bazel_version.split(".")[:2]
+        bazel_version = (int(major), int(minor))
+
     repo_utils.extract(
         rctx,
         archive = whl_input,
-        supports_whl_extraction = bazel_features(native.bazel_version).supports_whl_extraction,
-        extract_needs_chmod = bazel_features(native.bazel_version).extract_needs_chmod,
+        # Extracting `.whl` files requires Bazel 8.3.0 and the extracted files
+        # need their permissions fixed before Bazel 8.6.0.
+        supports_whl_extraction = bazel_version >= (8, 3),
+        extract_needs_chmod = bazel_version < (8, 6),
     )
 
     if not patches:
@@ -222,14 +231,45 @@ def _collect_files(rctx):
     return result
 
 def _repack_whl(rctx, *, output):
-    """Repack the current directory into a wheel file using system zip."""
+    """Repack the current directory into a wheel file."""
     os_name = repo_utils.get_platforms_os_name(rctx)
     if os_name == "windows":
         _repack_whl_windows(rctx, output = output)
     else:
         _repack_whl_unix(rctx, output = output)
 
+def zipper_params_content(files):
+    """Returns the params file content that makes Bazel's zipper pack `files`.
+
+    The zipper reads one `<name in the zip>=<path on disk>` entry per line and
+    has no way to quote a name, so a path with `=` or a newline can't be passed.
+
+    Args:
+        files: {type}`list[str]` file paths relative to the repo root.
+
+    Returns:
+        {type}`str | None` the content, with the entries sorted so the
+        result is stable, or `None` if a path can't be expressed.
+    """
+    for path in files:
+        if "=" in path or "\n" in path:
+            return None
+    return "".join(["{0}={0}\n".format(path) for path in sorted(files)])
+
 def _repack_whl_unix(rctx, *, output):
+    # Bazel's zipper doesn't need a `zip` binary on the host, and it writes a
+    # fixed timestamp so the repacked wheel is reproducible.
+    zipper = rctx.path(Label("@bazel_tools//tools/zip:zipper/zipper"))
+    params = zipper_params_content(_collect_files(rctx).keys())
+    if params != None:
+        _repack_whl_zipper(
+            rctx,
+            zipper = zipper,
+            params = params,
+            output = output,
+        )
+        return
+
     repo_utils.execute_checked(
         rctx,
         op = "PatchWhl",
@@ -242,6 +282,23 @@ def _repack_whl_unix(rctx, *, output):
             ".",
         ],
     )
+
+def _repack_whl_zipper(rctx, *, zipper, params, output):
+    # The paths go through a params file because a wheel can have more files
+    # than fit on one command line.
+    params_path = "zipper_params.txt"
+    rctx.file(params_path, params)
+    repo_utils.execute_checked(
+        rctx,
+        op = "PatchWhl",
+        arguments = [
+            str(zipper),
+            "c",  # Create uncompressed archive (omits C).
+            str(output),
+            "@" + params_path,
+        ],
+    )
+    rctx.delete(params_path)
 
 def _repack_whl_windows(rctx, *, output):
     powershell_exe = rctx.which("powershell.exe") or rctx.which("powershell")

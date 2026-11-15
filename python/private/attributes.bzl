@@ -512,9 +512,6 @@ See the [Accessing build information docs] for more information.
 :::{warning}
 Stamping can harm build performance by reducing cache hits and should
 be avoided if possible.
-
-In addition, this transitions the {flag}`--stamp <stamp>` flag, which can additional
-config state overhead.
 :::
 
 :::{note}

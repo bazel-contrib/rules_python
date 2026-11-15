@@ -1,4 +1,5 @@
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
+load("//python:pytest_test.bzl", "pytest_test")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")  # buildifier: disable=bzl-visibility
 
 # Builds the cross-compiled release files in test runs too, e.g. with
@@ -9,4 +10,20 @@ build_test(
     # //dev/release_artifacts:artifacts_for_release.
     tags = [] if BZLMOD_ENABLED else ["manual"],
     targets = ["//dev/release_artifacts:cross_compiled_artifacts"],
+)
+
+pytest_test(
+    name = "sync_downloader_configs_test",
+    srcs = ["sync_downloader_configs_test.py"],
+    # LINT.IfChange(subworkspace_dirs)
+    data = [
+        "//:downloader_configs",
+        "//:gazelle_downloader_configs",
+        "@sphinxdocs//:downloader_configs",
+    ],
+    # LINT.ThenChange(//tests/dev/sync_downloader_configs_test.py:subworkspace_dirs)
+    deps = [
+        "//dev:sync_downloader_configs",
+        "//python/runfiles",
+    ],
 )

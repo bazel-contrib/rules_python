@@ -1,6 +1,5 @@
 """A simple whl extractor."""
 
-load("//python:features.bzl", "bazel_features")
 load("//python/private:repo_utils.bzl", "repo_utils")
 load(":whl_metadata.bzl", "find_whl_metadata")
 
@@ -28,12 +27,21 @@ def whl_extract(rctx, *, whl_path, logger):
         logger: The logger to use
     """
     install_dir_path = rctx.path("site-packages")
+
+    # An empty version is a development build, which is treated as the latest.
+    bazel_version = (99999, 99999)
+    if native.bazel_version:
+        major, minor = native.bazel_version.split(".")[:2]
+        bazel_version = (int(major), int(minor))
+
     repo_utils.extract(
         rctx,
         archive = whl_path,
         output = install_dir_path,
-        supports_whl_extraction = bazel_features(native.bazel_version).supports_whl_extraction,
-        extract_needs_chmod = bazel_features(native.bazel_version).extract_needs_chmod,
+        # Extracting `.whl` files requires Bazel 8.3.0 and the extracted files
+        # need their permissions fixed before Bazel 8.6.0.
+        supports_whl_extraction = bazel_version >= (8, 3),
+        extract_needs_chmod = bazel_version < (8, 6),
     )
 
     metadata_file = find_whl_metadata(

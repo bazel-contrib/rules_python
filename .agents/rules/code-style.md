@@ -62,6 +62,15 @@ Order definitions within a file as:
 * Add `keep-sorted` `start` and `end` markers on list and dict config or
   registry tables, even when they have a single entry.
 
+## Synchronized Sections (`ifttt-lint`)
+* Use `LINT.IfChange(<name>)` and `LINT.ThenChange(<target>)` directives instead
+  of plain `# Keep in sync` comments for paired code or config sections.
+
 ## Bulk Logging
 * In bulk operations, log a single summary line on success; on failure, list
   each failing item sorted, one per line, with its location and reason.
+
+## Porting & Rewrites
+* When porting or rewriting code across languages or subsystems, cross-check
+  every original test case and non-obvious invariant or spec comment against the
+  new implementation and tests to preserve edge-case coverage and rationale.

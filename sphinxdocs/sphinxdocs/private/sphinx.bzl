@@ -283,8 +283,6 @@ def _run_sphinx(ctx, format, source_path, inputs, output_prefix, allow_persisten
     args.add(source_path)
     args.add(output_dir.path)
 
-    args.add("--show-traceback")  # Full tracebacks on error
-    run_args.append("--show-traceback")
     args.add(format, format = "--builder=%s")
     run_args.append("--builder={}".format(format))
 

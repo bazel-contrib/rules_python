@@ -199,8 +199,9 @@ html_context = {
     "current_version": os.environ.get("READTHEDOCS_VERSION", ""),
 }
 
-# Keep this in sync with the stardoc templates
+# LINT.IfChange(permalink_icon)
 html_permalinks_icon = "¶"
+# LINT.ThenChange(//sphinxdocs/sphinxdocs/private/proto_to_markdown.py:permalink_icon)
 
 # These folders are copied to the documentation's HTML output
 html_static_path = ["_static"]

@@ -27,6 +27,10 @@ globs: "*.py,*.sh"
   displays defaults automatically.
 * Include a `Usage:` example and input file format description in CLI module
   docstrings.
+* State what a module or function does in docstrings; omit execution adverbs
+  like `"Asynchronously"`.
+* Split simple comma- or newline-delimited CLI inputs with `splitlines()` and
+  `.split(",")` instead of `csv`.
 
 ## API Minimalism & Module State
 * Pass dependencies explicitly; avoid implicit optionals that auto-load state or
@@ -71,6 +75,7 @@ globs: "*.py,*.sh"
 * Demarcate captured stdout/stderr in exceptions with 20 `=` characters:
   `==================== STDOUT BEGIN ====================` /
   `==================== STDOUT END ====================` (same for STDERR).
+* Use `asyncio` for concurrent subprocesses and retried network I/O.
 
 ## Data Classes & TypedDict
 * In dataclasses (`@dataclasses.dataclass`), add a comment above each field
