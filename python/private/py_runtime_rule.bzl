@@ -187,15 +187,15 @@ def _py_runtime_impl(ctx):
         coverage_target = coverage_target[_CoverageToolInfo].target
 
     coverage_tool = None
-    coverage_imports = None
+    coverage_dep = None
     coverage_files = None
     if coverage_target:
         coverage_di = coverage_target[DefaultInfo]
 
         if PyInfo in coverage_target:
-            # E.g. `@pypi//coverage`: the `coverage` package is imported using
-            # the import paths of the target.
-            coverage_imports = coverage_target[PyInfo].imports
+            # E.g. `@pypi//coverage`: executables add the target to their
+            # dependencies, so it is handled like any other `deps` entry.
+            coverage_dep = coverage_target
         elif _is_singleton_depset(coverage_di.files):
             coverage_tool = coverage_di.files.to_list()[0]
         elif coverage_di.files_to_run and coverage_di.files_to_run.executable:
@@ -269,7 +269,7 @@ def _py_runtime_impl(ctx):
     # There are all args that BuiltinPyRuntimeInfo doesn't support
     py_runtime_info_kwargs.update(dict(
         coverage_files = coverage_files,
-        coverage_imports = coverage_imports,
+        coverage_dep = coverage_dep,
         implementation_name = ctx.attr.implementation_name,
         interpreter_version_info = interpreter_version_info,
         interpreter_files_to_run = interpreter_files_to_run,
@@ -375,11 +375,12 @@ This is a target to use for collecting code coverage information from
 
 If set, the target must either provide {obj}`PyInfo` (e.g. a `py_library`
 such as `@pypi//coverage`), produce a single file or be an executable target.
-If the target provides {obj}`PyInfo`, then its import paths are used to import
-the `coverage` package. Otherwise, the path to the single file, or the
-executable if the target is executable, determines the entry point for the
-python coverage tool.  The target and its runfiles will be added to the
-runfiles when coverage is enabled.
+If the target provides {obj}`PyInfo`, then it is added to the dependencies of
+executables when coverage is enabled, which makes the `coverage` package
+importable. Otherwise, the path to the single file, or the executable if the
+target is executable, determines the entry point for the python coverage tool.
+The target and its runfiles will be added to the runfiles when coverage is
+enabled.
 
 The entry point for the tool must be loadable by a Python interpreter (e.g. a
 `.py` or `.pyc` file).  It must accept the command line arguments

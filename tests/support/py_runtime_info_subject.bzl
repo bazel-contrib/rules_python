@@ -33,12 +33,8 @@ def py_runtime_info_subject(info, *, meta):
         # go/keep-sorted start block=yes
         actual = info,
         bootstrap_template = lambda *a, **k: _py_runtime_info_subject_bootstrap_template(self, *a, **k),
-        coverage_files = lambda *a, **k: (
-            _py_runtime_info_subject_coverage_files(self, *a, **k)
-        ),
-        coverage_imports = lambda *a, **k: (
-            _py_runtime_info_subject_coverage_imports(self, *a, **k)
-        ),
+        coverage_dep = lambda *a, **k: _py_runtime_info_subject_coverage_dep(self, *a, **k),
+        coverage_files = lambda *a, **k: _py_runtime_info_subject_coverage_files(self, *a, **k),
         coverage_tool = lambda *a, **k: _py_runtime_info_subject_coverage_tool(self, *a, **k),
         files = lambda *a, **k: _py_runtime_info_subject_files(self, *a, **k),
         interpreter = lambda *a, **k: _py_runtime_info_subject_interpreter(self, *a, **k),
@@ -74,15 +70,16 @@ def _py_runtime_info_subject_coverage_files(self):
         meta = self.meta.derive("coverage_files()"),
     )
 
-def _py_runtime_info_subject_coverage_imports(self):
-    """Returns a `CollectionSubject` for the `coverage_imports` attribute.
+def _py_runtime_info_subject_coverage_dep(self):
+    """Returns a `LabelSubject` for the label of the `coverage_dep` attribute.
 
     Args:
         self: implicitly added.
     """
-    return subjects.collection(
-        self.actual.coverage_imports.to_list(),
-        meta = self.meta.derive("coverage_imports()"),
+    coverage_dep = self.actual.coverage_dep
+    return subjects.label(
+        coverage_dep.label if coverage_dep != None else None,
+        meta = self.meta.derive("coverage_dep()"),
     )
 
 def _py_runtime_info_subject_coverage_tool(self):

@@ -263,16 +263,54 @@ def _test_coverage_tool_py_library_impl(env, target):
         PyRuntimeInfo,
         factory = py_runtime_info_subject,
     )
-    env.expect.that_bool(info.actual.coverage_tool == None).equals(True)
-    info.coverage_imports().contains_exactly_predicates([
-        matching.str_endswith("tests/py_runtime/site-packages"),
-    ])
+    info.coverage_tool().equals(None)
+    info.coverage_dep().equals(_coverage_label(target))
     info.coverage_files().contains_at_least([
         "{package}/site-packages/coverage/__init__.py",
         "{package}/site-packages/coverage/__main__.py",
     ])
 
 _tests.append(_test_coverage_tool_py_library)
+
+def _test_coverage_tool_py_library_without_imports(name):
+    # A `py_library` without `imports` has empty `PyInfo.imports`, which must
+    # still be treated as a coverage tool.
+    rt_util.helper_target(
+        py_runtime,
+        name = name + "_subject",
+        python_version = "PY3",
+        interpreter_path = "/bogus",
+        coverage_tool = name + "_coverage",
+    )
+    rt_util.helper_target(
+        py_library,
+        name = name + "_coverage",
+        srcs = ["coverage/__init__.py"],
+    )
+    analysis_test(
+        name = name,
+        target = name + "_subject",
+        impl = _test_coverage_tool_py_library_without_imports_impl,
+    )
+
+def _test_coverage_tool_py_library_without_imports_impl(env, target):
+    info = env.expect.that_target(target).provider(
+        PyRuntimeInfo,
+        factory = py_runtime_info_subject,
+    )
+    info.coverage_tool().equals(None)
+    info.coverage_dep().equals(_coverage_label(target))
+    info.coverage_files().contains_at_least([
+        "{package}/coverage/__init__.py",
+    ])
+
+_tests.append(_test_coverage_tool_py_library_without_imports)
+
+def _coverage_label(target):
+    """Returns the label of the `<name>_coverage` helper of a test subject."""
+    return target.label.same_package_label(
+        target.label.name.removesuffix("_subject") + "_coverage",
+    )
 
 def _test_coverage_tool_select(name):
     # Intentionally use a single-branch `select()` to verify `py_runtime` macro
@@ -358,8 +396,8 @@ def _test_coverage_tool_select_none_impl(env, target):
         PyRuntimeInfo,
         factory = py_runtime_info_subject,
     )
-    env.expect.that_bool(info.actual.coverage_tool == None).equals(True)
-    env.expect.that_bool(info.actual.coverage_imports == None).equals(True)
+    info.coverage_tool().equals(None)
+    info.coverage_dep().equals(None)
     info.coverage_files().contains_exactly([])
 
 _tests.append(_test_coverage_tool_select_none)

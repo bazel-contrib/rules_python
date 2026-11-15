@@ -60,3 +60,28 @@ pytest_test(
     target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
     deps = ["//python/runfiles"],
 )
+
+# Like `instrumented_pypi`, but `@dev_pip//coverage` is materialized in the
+# binary's venv site-packages instead of being added to `sys.path`.
+py_reconfig_binary(
+    name = "instrumented_pypi_venv",
+    srcs = ["instrumented.py"],
+    collect_code_coverage = True,
+    main = "instrumented.py",
+    python_version = "3.13.13",
+    tags = ["manual"],
+    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    venvs_site_packages = "yes",
+    deps = [":lib"],
+)
+
+pytest_test(
+    name = "coverage_from_pypi_venvs_site_packages_test",
+    srcs = ["coverage_collection_test.py"],
+    data = [":instrumented_pypi_venv"],
+    env = {
+        "INSTRUMENTED": "$(rlocationpath :instrumented_pypi_venv)",
+    },
+    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    deps = ["//python/runfiles"],
+)

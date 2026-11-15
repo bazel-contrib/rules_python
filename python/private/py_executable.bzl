@@ -612,7 +612,7 @@ def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root
         output = site_init,
         substitutions = {
             "%add_runfiles_root_to_sys_path%": add_runfiles_root_to_sys_path,
-            "%coverage_imports%": _get_coverage_imports(ctx, runtime),
+            "%coverage_from_deps%": "1" if _get_coverage_dep(ctx, runtime) else "0",
             "%coverage_tool%": _get_coverage_tool_runfiles_path(ctx, runtime),
             "%import_all%": "True" if read_possibly_native_flag(ctx, "python_import_all_repositories") else "False",
             "%interpreter_actual_path%": interpreter_actual_path,
@@ -896,13 +896,25 @@ def _venv_details(
 def _map_each_identity(v):
     return v
 
-def _get_coverage_imports(ctx, runtime):
-    if (ctx.configuration.coverage_enabled and
-        runtime and
-        getattr(runtime, "coverage_imports", None)):
-        return ":".join(runtime.coverage_imports.to_list())
-    else:
-        return ""
+def _get_coverage_dep(ctx, runtime):
+    """Returns the runtime's coverage dependency, if coverage is enabled.
+
+    Args:
+        ctx: {type}`ctx` the rule ctx.
+        runtime: {type}`PyRuntimeInfo | BuiltinPyRuntimeInfo` the runtime.
+
+    Returns:
+        {type}`Target | None` a target providing {obj}`PyInfo` that should be
+        added to the dependencies of the executable.
+    """
+    if not ctx.configuration.coverage_enabled:
+        return None
+
+    # BuiltinPyRuntimeInfo (Bazel 7 native py_runtime) lacks this field. Use
+    # plain attribute access once MINIMUM_BAZEL_VERSION is 8.
+    if not hasattr(runtime, "coverage_dep"):
+        return None
+    return runtime.coverage_dep
 
 def _get_coverage_tool_runfiles_path(ctx, runtime):
     if (ctx.configuration.coverage_enabled and
@@ -1279,8 +1291,12 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
     if not _is_tool_config(ctx):
         extra_deps.append(ctx.attr._debugger_flag)
 
-    imports = collect_imports(ctx, extra_deps = extra_deps)
     runtime_details = _get_runtime_details(ctx)
+    coverage_dep = _get_coverage_dep(ctx, runtime_details.effective_runtime)
+    if coverage_dep:
+        extra_deps.append(coverage_dep)
+
+    imports = collect_imports(ctx, extra_deps = extra_deps)
     cc_details = _get_cc_details_for_binary(ctx, extra_deps = extra_deps)
     native_deps_details = _get_native_deps_details(
         ctx,

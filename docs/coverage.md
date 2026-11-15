@@ -69,9 +69,9 @@ filegroup(
 Using `filegroup` isn't required, nor are including client libraries. The
 important behaviors of the target are:
 
-*   It provides {obj}`PyInfo` (e.g. it is a `py_library`), in which case its
-    import paths are used to import the `coverage` package. See
-    {ref}`coverage-from-pypi`.
+*   It provides {obj}`PyInfo` (e.g. it is a `py_library`), in which case it is
+    added to the dependencies of the tests to import the `coverage` package.
+    See {ref}`coverage-from-pypi`.
 *   Otherwise, it provides a single output file OR it provides an executable
     output; this output is treated as the coverage entry point.
 *   If it provides runfiles, then `runfiles.files` are included into `py_test`.
