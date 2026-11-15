@@ -129,13 +129,15 @@ py_test(
     name = "strict_test",
     srcs = ["strict_test.py"],
     config_settings = {
-        "@rules_python//python/config_settings:coverage": "//tools:coverage_strict",
+        "@rules_python//python/config_settings:coverage": str(Label("//tools:coverage_strict")),
     },
 )
 ```
 
 :::{note}
-This builds the test and its dependencies in a separate configuration.
+Use `str(Label(...))` for the value, so that the label is resolved relative to
+your repository. This builds the test and its dependencies in a separate
+configuration.
 :::
 
 :::{versionadded} VERSION_NEXT_FEATURE
