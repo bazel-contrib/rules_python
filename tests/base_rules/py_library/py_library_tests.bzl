@@ -335,6 +335,60 @@ def _test_pyi_srcs_propagated_via_deps_impl(env, target):
 
 _tests.append(_test_pyi_srcs_propagated_via_deps)
 
+def _test_packages_empty_without_dist_info(name, config):
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject",
+        srcs = ["lib.py"],
+        data = ["data.txt"],
+    )
+    analysis_test(
+        name = name,
+        target = name + "_subject",
+        impl = _test_packages_empty_without_dist_info_impl,
+    )
+
+def _test_packages_empty_without_dist_info_impl(env, target):
+    info = env.expect.that_target(target).provider(
+        PyInfo,
+        factory = py_info_subject,
+    )
+    info.packages().contains_exactly([])
+
+_tests.append(_test_packages_empty_without_dist_info)
+
+def _test_packages_from_dist_info(name, config):
+    # Like the targets that `pip.parse` creates from wheels.
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject",
+        srcs = ["site-packages/foo/__init__.py"],
+        data = ["site-packages/Foo.Bar-1.0.dist-info/METADATA"],
+        imports = ["site-packages"],
+        deps = [name + "_dep"],
+    )
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_dep",
+        srcs = ["dep/site-packages/dep/__init__.py"],
+        data = ["dep/site-packages/dep_pkg-2.0.dist-info/METADATA"],
+        imports = ["dep/site-packages"],
+    )
+    analysis_test(
+        name = name,
+        target = name + "_subject",
+        impl = _test_packages_from_dist_info_impl,
+    )
+
+def _test_packages_from_dist_info_impl(env, target):
+    info = env.expect.that_target(target).provider(
+        PyInfo,
+        factory = py_info_subject,
+    )
+    info.packages().contains_exactly(["foo_bar", "dep_pkg"])
+
+_tests.append(_test_packages_from_dist_info)
+
 def py_library_test_suite(name):
     config = struct(rule = py_library, base_test_rule = py_library)
     native.test_suite(

@@ -26,6 +26,7 @@ def _new_py_info_subject(info, *, meta):
         has_py2_only_sources = lambda *a, **k: _py_info_subject_has_py2_only_sources(self, *a, **k),
         has_py3_only_sources = lambda *a, **k: _py_info_subject_has_py3_only_sources(self, *a, **k),
         imports = lambda *a, **k: _py_info_subject_imports(self, *a, **k),
+        packages = lambda *a, **k: _py_info_subject_packages(self, *a, **k),
         transitive_original_sources = lambda *a, **k: _py_info_subject_transitive_original_sources(self, *a, **k),
         transitive_pyc_files = lambda *a, **k: _py_info_subject_transitive_pyc_files(self, *a, **k),
         transitive_pyi_files = lambda *a, **k: _py_info_subject_transitive_pyi_files(self, *a, **k),
@@ -118,6 +119,16 @@ def _py_info_subject_imports(self):
     return subjects.collection(
         self.actual.imports.to_list(),
         meta = self.meta.derive("imports()"),
+    )
+
+def _py_info_subject_packages(self):
+    """Returns a `CollectionSubject` for the `packages` attribute.
+
+    Method: PyInfoSubject.packages
+    """
+    return subjects.collection(
+        self.actual.packages.to_list(),
+        meta = self.meta.derive("packages()"),
     )
 
 def _py_info_subject_transitive_original_sources(self):
