@@ -137,7 +137,7 @@ rust_crates.from_cargo(
 # rules_rust has no @rules_rust//rust/platform config_setting for Linux ppc64le,
 # so don't mark the crates as incompatible with platforms that don't match one
 # of the triples above. Such platforms get only the unconditional dependencies,
-# which suffice for anyhow, flate2, lexopt, sha2, and zip.
+# which suffice for every crate in //crates:Cargo.toml.
 rust_crates.render_config(
     generate_target_compatible_with = False,
 )

@@ -22,6 +22,8 @@ import zipfile
 
 from python.runfiles import runfiles
 
+_WHEELMAKER_IMPL = os.environ["WHEELMAKER_IMPL"]
+
 
 class WheelTest(unittest.TestCase):
     maxDiff = None
@@ -46,7 +48,7 @@ class WheelTest(unittest.TestCase):
         else:
             return path
 
-    def assertFileSha256Equal(self, filename, want):
+    def assertFileSha256Equal(self, filename: str, want: dict[str, str]) -> None:
         # On Windows, Git checkouts use CRLF line endings for source text files
         # by default, altering the raw SHA-256 digest of built wheel archives.
         # Structure and reproducible metadata assertions below still validate
@@ -60,7 +62,7 @@ class WheelTest(unittest.TestCase):
                 if not buf:
                     break
                 hash.update(buf)
-        self.assertEqual(want, hash.hexdigest())
+        self.assertEqual(want[_WHEELMAKER_IMPL], hash.hexdigest())
 
     def assertAllEntriesHasReproducibleMetadata(self, zf):
         for zinfo in zf.infolist():
@@ -91,8 +93,16 @@ class WheelTest(unittest.TestCase):
                     "example_minimal_library-0.0.1.dist-info/RECORD",
                 ],
             )
+        # Rust wheelmaker (flate2) and Python wheelmaker.py (zlib) emit
+        # deterministic but distinct RFC 1951 DEFLATE streams.
         self.assertFileSha256Equal(
-            filename, "ef5afd9f6c3ff569ef7e5b2799d3a2ec9675d029414f341e0abd7254d6b9a25d"
+            filename,
+            {
+                # keep-sorted start
+                "python": "ef5afd9f6c3ff569ef7e5b2799d3a2ec9675d029414f341e0abd7254d6b9a25d",
+                "rust": "abb3ff8d5bb5142cdb476b46e91f586043e10a540170ed66050fbc5c1e19ae32",
+                # keep-sorted end
+            },
         )
 
     def test_py_package_wheel(self):
@@ -117,7 +127,13 @@ class WheelTest(unittest.TestCase):
                 ],
             )
         self.assertFileSha256Equal(
-            filename, "7322902ab63fd702afb9730843496637058b5d7449208c624875d06d191d386e"
+            filename,
+            {
+                # keep-sorted start
+                "python": "7322902ab63fd702afb9730843496637058b5d7449208c624875d06d191d386e",
+                "rust": "6281a39185200fb7028a376a915b5b7cd636f007f4151c1805ff0445a4b4d580",
+                # keep-sorted end
+            },
         )
 
     def test_customized_wheel(self):
@@ -213,7 +229,13 @@ first = first.main:f
 second = second.main:s""",
             )
         self.assertFileSha256Equal(
-            filename, "6d08fbb30864cee89396e7857c910c92bec56b6586d40a64b796b4812af15fbf"
+            filename,
+            {
+                # keep-sorted start
+                "python": "6d08fbb30864cee89396e7857c910c92bec56b6586d40a64b796b4812af15fbf",
+                "rust": "d13f280f8340e0faf6bd776f97ed8e0b2ced2cea338a33f32d6ab56aac068254",
+                # keep-sorted end
+            },
         )
 
     def test_filename_escaping(self):
@@ -285,7 +307,13 @@ UNKNOWN
             for line in record_contents.splitlines():
                 self.assertFalse(line.startswith("/"))
         self.assertFileSha256Equal(
-            filename, "0b5a35251ad35fd9e14f3f7e77993f59a7341268f24fb0a255b403cee60d429e"
+            filename,
+            {
+                # keep-sorted start
+                "python": "0b5a35251ad35fd9e14f3f7e77993f59a7341268f24fb0a255b403cee60d429e",
+                "rust": "9a40c04d9b04039286f738f6ad7386d2cab180072e560f826a0a322a6c342990",
+                # keep-sorted end
+            },
         )
 
     def test_custom_package_root_multi_prefix_wheel(self):
@@ -319,7 +347,13 @@ UNKNOWN
             for line in record_contents.splitlines():
                 self.assertFalse(line.startswith("/"))
         self.assertFileSha256Equal(
-            filename, "437127690584a035dc37542f64c38d1a6d6652655afc81f5a9472706343aae23"
+            filename,
+            {
+                # keep-sorted start
+                "python": "437127690584a035dc37542f64c38d1a6d6652655afc81f5a9472706343aae23",
+                "rust": "8763921f3936b556ae0a934f6318216fe3c4ab57c765041398369b54bfb24502",
+                # keep-sorted end
+            },
         )
 
     def test_custom_package_root_multi_prefix_reverse_order_wheel(self):
@@ -353,7 +387,13 @@ UNKNOWN
             for line in record_contents.splitlines():
                 self.assertFalse(line.startswith("/"))
         self.assertFileSha256Equal(
-            filename, "265cc2ba4c99d0b62f1922f357de961f15f416bcee93ff307e4d4f04e4c067a3"
+            filename,
+            {
+                # keep-sorted start
+                "python": "265cc2ba4c99d0b62f1922f357de961f15f416bcee93ff307e4d4f04e4c067a3",
+                "rust": "76e5d5a77b8a3c5305692b6596aacdfc01e5e4d40bfdfc21141741995b75ebd4",
+                # keep-sorted end
+            },
         )
 
     def test_python_requires_wheel(self):
@@ -378,7 +418,13 @@ UNKNOWN
 """,
             )
         self.assertFileSha256Equal(
-            filename, "cb1d0bf64df1cbf23b7d4473a1c113cedbbea0d23209cdb4d2e5fe2edc68ceec"
+            filename,
+            {
+                # keep-sorted start
+                "python": "cb1d0bf64df1cbf23b7d4473a1c113cedbbea0d23209cdb4d2e5fe2edc68ceec",
+                "rust": "80ef6fadc4402593d1b6ea8d00efe1ecb24678c294d61454708aab6ac584e930",
+                # keep-sorted end
+            },
         )
 
     def test_python_abi3_binary_wheel(self):
@@ -443,7 +489,13 @@ Tag: cp38-abi3-{os_string}_{arch}
                 ],
             )
         self.assertFileSha256Equal(
-            filename, "2358a8ee58dd7ed1a89862e368a0eb00e83ec5de28995ecf0f3c38c2524102dc"
+            filename,
+            {
+                # keep-sorted start
+                "python": "2358a8ee58dd7ed1a89862e368a0eb00e83ec5de28995ecf0f3c38c2524102dc",
+                "rust": "31287051700911cfd754df9e63f3849a744497b8c2159a196a88276d97ea9922",
+                # keep-sorted end
+            },
         )
 
     def test_rule_expands_workspace_status_keys_in_wheel_metadata(self):
@@ -491,16 +543,27 @@ Tag: cp38-abi3-{os_string}_{arch}
                     if line.startswith(b"Requires-Dist:"):
                         requires.append(line.decode("utf-8").strip())
 
-            self.assertEqual(
-                [
+            # Rust wheelmaker parses requirements with pep508_rs, which
+            # algebraically simplifies PEP 508 environment markers.
+            want_requires = {
+                # keep-sorted start block=yes
+                "python": [
                     "Requires-Dist: tomli>=2.0.0",
                     "Requires-Dist: starlark",
                     "Requires-Dist: pyyaml!=6.0.1,>=6.0.0; extra == 'example'",
                     'Requires-Dist: toml; ((python_version == "3.11" or python_version == "3.12") and python_version != "3.8") and extra == \'example\'',
                     'Requires-Dist: wheel; (python_version == "3.11" or python_version == "3.12") and extra == \'example\'',
                 ],
-                requires,
-            )
+                "rust": [
+                    "Requires-Dist: tomli>=2.0.0",
+                    "Requires-Dist: starlark",
+                    "Requires-Dist: pyyaml!=6.0.1,>=6.0.0; extra == 'example'",
+                    "Requires-Dist: toml; python_full_version >= '3.11' and python_full_version < '3.13' and extra == 'example'",
+                    "Requires-Dist: wheel; python_full_version >= '3.11' and python_full_version < '3.13' and extra == 'example'",
+                ],
+                # keep-sorted end
+            }
+            self.assertEqual(want_requires[_WHEELMAKER_IMPL], requires)
 
     def test_empty_requires_file(self):
         filename = self._get_path("empty_requires_files-0.0.1-py3-none-any.whl")
@@ -560,8 +623,11 @@ Tag: cp38-abi3-{os_string}_{arch}
                         requires.append(line.decode("utf-8").strip())
 
             print(requires)
-            self.assertEqual(
-                [
+            # Rust wheelmaker parses requirements with pep508_rs, which
+            # algebraically simplifies PEP 508 environment markers.
+            want_requires = {
+                # keep-sorted start block=yes
+                "python": [
                     "Requires-Dist: tomli>=2.0.0",
                     "Requires-Dist: starlark",
                     'Requires-Dist: pytest; python_version != "3.8"',
@@ -569,8 +635,17 @@ Tag: cp38-abi3-{os_string}_{arch}
                     'Requires-Dist: toml; ((python_version == "3.11" or python_version == "3.12") and python_version != "3.8") and extra == \'example\'',
                     'Requires-Dist: wheel; (python_version == "3.11" or python_version == "3.12") and extra == \'example\'',
                 ],
-                requires,
-            )
+                "rust": [
+                    "Requires-Dist: tomli>=2.0.0",
+                    "Requires-Dist: starlark",
+                    "Requires-Dist: pytest; python_full_version != '3.8.*'",
+                    "Requires-Dist: pyyaml!=6.0.1,>=6.0.0; extra == 'example'",
+                    "Requires-Dist: toml; python_full_version >= '3.11' and python_full_version < '3.13' and extra == 'example'",
+                    "Requires-Dist: wheel; python_full_version >= '3.11' and python_full_version < '3.13' and extra == 'example'",
+                ],
+                # keep-sorted end
+            }
+            self.assertEqual(want_requires[_WHEELMAKER_IMPL], requires)
 
     def test_requires_dist_depends_on_extras(self):
         filename = self._get_path(
@@ -619,12 +694,15 @@ Tag: cp38-abi3-{os_string}_{arch}
                         requires.append(line.decode("utf-8").strip())
 
             print(requires)
-            self.assertEqual(
-                [
-                    "Requires-Dist: extra_requires[example]==0.0.1",
-                ],
-                requires,
-            )
+            # Rust wheelmaker parses requirements files with pep508_rs, which
+            # normalizes distribution names per PEP 503 (`_` -> `-`).
+            want_requires = {
+                # keep-sorted start
+                "python": ["Requires-Dist: extra_requires[example]==0.0.1"],
+                "rust": ["Requires-Dist: extra-requires[example]==0.0.1"],
+                # keep-sorted end
+            }
+            self.assertEqual(want_requires[_WHEELMAKER_IMPL], requires)
 
     def test_data_files_installed_in_folder(self):
         filename = self._get_path(
