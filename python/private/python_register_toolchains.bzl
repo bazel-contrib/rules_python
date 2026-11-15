@@ -34,6 +34,10 @@ load(
     "toolchains_repo",
 )
 
+# The `coverage` package from the `rules_python_coverage` pip hub, which is
+# configured in the `MODULE.bazel` file of `rules_python`.
+_BZLMOD_COVERAGE_TOOL = Label("@rules_python_coverage//coverage")
+
 def _get_platform_setting(version_info, key, *, platform, default):
     value = version_info.get(key, {})
     if type(value) != "dict":
@@ -168,7 +172,12 @@ def python_register_toolchains(
                 default = None,
             ),
         )
-        if register_coverage_tool and coverage_tool == None:
+        if register_coverage_tool and coverage_tool == None and bzlmod_toolchain_call:
+            # NOTE: The coverage tool is not supported on Windows, see
+            # `coverage_dep`.
+            if "windows" not in base_platform:
+                coverage_tool = str(_BZLMOD_COVERAGE_TOOL)
+        elif register_coverage_tool and coverage_tool == None:
             coverage_tool = coverage_dep(
                 name = "{name}_{platform}_coverage".format(
                     name = name,
