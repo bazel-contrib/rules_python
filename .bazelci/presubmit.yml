@@ -151,7 +151,7 @@ tasks:
   # LINT.IfChange(bcr_test)
   bcr_test:
     name: "BCR: Bazel {bazel}"
-    platform: windows
+    platform: ${{ platform }}
     working_directory: examples/bzlmod
     bazel: ${{ bazel }}
     build_flags:
@@ -165,8 +165,116 @@ tasks:
   # LINT.ThenChange(//.bcr/presubmit.yml:tasks)
 
   # LINT.IfChange(gazelle_bcr)
+  gazelle_bcr_ubuntu:
+    <<: *gazelle_common_bcr
+    name: "Gazelle: BCR, Bazel {bazel}"
+    platform: ubuntu2204
+  gazelle_bcr_debian:
+    <<: *gazelle_common_bcr
+    name: "Gazelle: BCR, Bazel {bazel}"
+    platform: debian13
+  gazelle_bcr_macos_arm64:
+    <<: *gazelle_common_bcr
+    name: "Gazelle: BCR, Bazel {bazel}"
+    platform: macos_arm64
   # LINT.ThenChange(//.bcr/gazelle/presubmit.yml:matrix)
 
+  gazelle_extension_min:
+    <<: *common_workspace_flags_min_bazel
+    <<: *minimum_supported_version
+    name: "Gazelle: workspace, minimum supported Bazel version"
+    platform: ubuntu2204
+    build_targets: ["//..."]
+    test_targets: ["//..."]
+    working_directory: gazelle
+  gazelle_extension_workspace:
+    <<: *common_workspace_flags
+    name: "Gazelle: workspace"
+    platform: ubuntu2204
+    build_targets: ["//..."]
+    test_targets: ["//..."]
+    working_directory: gazelle
+  gazelle_extension:
+    name: "Gazelle: default settings"
+    platform: ubuntu2204
+    build_targets: ["//..."]
+    test_targets: ["//..."]
+    working_directory: gazelle
+
+  sphinxdocs_ubuntu:
+    name: "Sphinxdocs: Ubuntu"
+    working_directory: "sphinxdocs"
+    platform: ubuntu2204
+    shell_commands:
+      - "../.bazelci/isolate.sh sphinxdocs"
+    build_targets:
+      - "//..."
+    test_targets:
+      - "//..."
+  sphinxdocs_mac:
+    name: "Sphinxdocs: Mac"
+    working_directory: "sphinxdocs"
+    platform: macos_arm64
+    shell_commands:
+      - "../.bazelci/isolate.sh sphinxdocs"
+    build_targets:
+      - "//..."
+    test_targets:
+      - "//..."
+
+  ubuntu_min_workspace:
+    <<: *minimum_supported_version
+    <<: *reusable_config
+    <<: *common_workspace_flags_min_bazel
+    name: "Default: Ubuntu, workspace, minimum Bazel"
+    platform: ubuntu2204
+
+  ubuntu_min_bzlmod:
+    <<: *minimum_supported_version
+    <<: *reusable_config
+    name: "Default: Ubuntu, bzlmod, minimum Bazel"
+    platform: ubuntu2204
+    bazel: 7.x
+  ubuntu:
+    <<: *reusable_config
+    <<: *coverage_targets_bootstrap
+    name: "Default: Ubuntu, Bazel {bazel}"
+    platform: ubuntu2204
+    bazel: ${{ bazel }}
+  ubuntu_upcoming:
+    <<: *reusable_config
+    name: "Default: Ubuntu, upcoming Bazel"
+    platform: ubuntu2204
+    bazel: last_rc
+    # This is an advisory job; doesn't block merges
+    # RCs may have regressions, so don't fail our CI on them
+    soft_fail:
+      - exit_status: 1
+      - exit_status: 3
+  ubuntu_rolling:
+    name: "Default: Ubuntu, rolling Bazel"
+    platform: ubuntu2204
+    bazel: rolling
+    # This is an advisory job; doesn't block merges
+    soft_fail:
+      - exit_status: 1
+      - exit_status: 3
+    test_targets:
+      - "--"
+      - "//tests/..."
+    test_flags:
+      <<: *reusable_config_test_flags
+      ? "--keep_going"
+  ubuntu_workspace:
+    <<: *reusable_config
+    <<: *common_workspace_flags
+    name: "Default: Ubuntu, workspace"
+    platform: ubuntu2204
+  mac_workspace:
+    <<: *reusable_config
+    <<: *common_workspace_flags
+    name: "Default: Mac, workspace"
+    platform: macos_arm64
   windows_workspace:
     <<: *reusable_config
     <<: *common_workspace_flags
@@ -192,6 +300,17 @@ tasks:
       ? "--noenable_bzlmod"
       ? "--enable_workspace"
       ? "--test_tag_filters=-integration-test"
+
+  debian:
+    <<: *reusable_config
+    name: "Default: Debian, Bazel {bazel}"
+    platform: debian13
+    bazel: ${{ bazel }}
+  macos_arm64:
+    <<: *reusable_config
+    name: "Default: MacOS, Bazel {bazel}"
+    platform: macos_arm64
+    bazel: ${{ bazel }}
   windows:
     <<: *reusable_config
     name: "Default: Windows, Bazel {bazel}"
@@ -200,12 +319,80 @@ tasks:
     test_flags:
       <<: *reusable_config_test_flags
       ? "--test_tag_filters=-integration-test,-fix-windows"
+  rbe_min:
+    <<: *minimum_supported_version
+    <<: *reusable_config
+    name: "RBE: Ubuntu, minimum Bazel"
+    platform: rbe_ubuntu2404
+    build_flags:
+      <<: *reusable_config_build_flags
+      # BazelCI sets --action_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1,
+      # which prevents cc toolchain autodetection from working correctly
+      # on Bazel 5.4 and earlier. To workaround this, manually specify the
+      # build kite cc toolchain.
+      ? "--extra_toolchains=@buildkite_config//config:cc-toolchain"
+      ? "--build_tag_filters=-docs"
+    test_flags:
+      <<: *reusable_config_test_flags
+      ? "--test_tag_filters=-integration-test,-acceptance-test,-docs"
+      # BazelCI sets --action_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1,
+      # which prevents cc toolchain autodetection from working correctly
+      # on Bazel 5.4 and earlier. To workaround this, manually specify the
+      # build kite cc toolchain.
+      ? "--extra_toolchains=@buildkite_config//config:cc-toolchain"
+  rbe:
+    <<: *reusable_config
+    name: "RBE: Ubuntu"
+    platform: rbe_ubuntu2404
+    # TODO @aignas 2024-12-11: get the RBE working in CI for bazel 8.0
+    # See https://github.com/bazelbuild/rules_python/issues/2499
+    bazel: 8.x
+    test_flags:
+      <<: *reusable_config_test_flags
+      ? "--test_tag_filters=-integration-test,-acceptance-test"
+      ? "--extra_toolchains=@buildkite_config//config:cc-toolchain"
+
+  integration_test_build_file_generation_ubuntu_minimum_supported_workspace:
+    <<: *minimum_supported_version
+    <<: *reusable_build_test_all
+    <<: *common_workspace_flags_min_bazel
+    name: "examples/build_file_generation: Ubuntu, workspace, minimum Bazel"
+    working_directory: examples/build_file_generation
+    platform: ubuntu2204
+  integration_test_build_file_generation_ubuntu_workspace:
+    <<: *reusable_build_test_all
+    <<: *common_workspace_flags
+    name: "examples/build_file_generation: Ubuntu, workspace"
+    working_directory: examples/build_file_generation
+    platform: ubuntu2204
+  integration_test_build_file_generation_debian_workspace:
+    <<: *reusable_build_test_all
+    <<: *common_workspace_flags
+    name: "examples/build_file_generation: Debian, workspace"
+    working_directory: examples/build_file_generation
+    platform: debian13
+  integration_test_build_file_generation_macos_workspace:
+    <<: *reusable_build_test_all
+    <<: *common_workspace_flags
+    name: "examples/build_file_generation: macOS, workspace"
+    working_directory: examples/build_file_generation
+    platform: macos_arm64
   integration_test_build_file_generation_windows_workspace:
     <<: *reusable_build_test_all
     <<: *common_workspace_flags
     name: "examples/build_file_generation: Windows, workspace"
     working_directory: examples/build_file_generation
     platform: windows
+
+  integration_test_bzlmod_ubuntu_vendor:
+    <<: *reusable_build_test_all
+    name: "examples/bzlmod: bazel vendor"
+    working_directory: examples/bzlmod
+    platform: ubuntu2204
+    shell_commands:
+      - "bazel vendor --vendor_dir=./vendor //..."
+      - "bazel build --vendor_dir=./vendor //..."
+      - "rm -rf ./vendor"
 
   integration_test_bzlmod_windows_no_symlinks:
     <<: *reusable_build_test_all
@@ -225,6 +412,28 @@ tasks:
       - "--keep_going"
       - "--action_env=RULES_PYTHON_TESTING_DISABLE_SYMLINKS=1"
       - "--test_env=RULES_PYTHON_TESTING_DISABLE_SYMLINKS=1"
+
+  integration_test_multi_python_versions_ubuntu_workspace:
+    <<: *reusable_build_test_all
+    <<: *common_workspace_flags
+    <<: *coverage_targets_example_multi_python
+    name: "examples/multi_python_versions: Ubuntu, workspace"
+    working_directory: examples/multi_python_versions
+    platform: ubuntu2204
+  integration_test_multi_python_versions_debian_workspace:
+    <<: *reusable_build_test_all
+    <<: *common_workspace_flags
+    <<: *coverage_targets_example_multi_python
+    name: "examples/multi_python_versions: Debian, workspace"
+    working_directory: examples/multi_python_versions
+    platform: debian13
+  integration_test_multi_python_versions_macos_workspace:
+    <<: *reusable_build_test_all
+    <<: *common_workspace_flags
+    <<: *coverage_targets_example_multi_python
+    name: "examples/multi_python_versions: MacOS, workspace"
+    working_directory: examples/multi_python_versions
+    platform: macos_arm64
   integration_test_multi_python_versions_windows_workspace:
     <<: *reusable_build_test_all
     <<: *common_workspace_flags
@@ -232,11 +441,87 @@ tasks:
     name: "examples/multi_python_versions: Windows, workspace"
     working_directory: examples/multi_python_versions
     platform: windows
+
+  integration_test_pip_parse_ubuntu_min_workspace:
+    <<: *minimum_supported_version
+    <<: *common_workspace_flags_min_bazel
+    <<: *reusable_build_test_all
+    name: "examples/pip_parse: Ubuntu, workspace, minimum supported Bazel version"
+    working_directory: examples/pip_parse
+    platform: ubuntu2204
+  integration_test_pip_parse_ubuntu_min_bzlmod:
+    <<: *minimum_supported_version
+    <<: *reusable_build_test_all
+    name: "examples/pip_parse: Ubuntu, bzlmod, minimum supported Bazel version"
+    working_directory: examples/pip_parse
+    platform: ubuntu2204
+    bazel: 7.x
+  integration_test_pip_parse_ubuntu:
+    <<: *reusable_build_test_all
+    name: "examples/pip_parse: Ubuntu"
+    working_directory: examples/pip_parse
+    platform: ubuntu2204
+  integration_test_pip_parse_debian:
+    <<: *reusable_build_test_all
+    name: "examples/pip_parse: Debian"
+    working_directory: examples/pip_parse
+    platform: debian13
+  integration_test_pip_parse_macos:
+    <<: *reusable_build_test_all
+    name: "examples/pip_parse: MacOS"
+    working_directory: examples/pip_parse
+    platform: macos_arm64
   integration_test_pip_parse_windows:
     <<: *reusable_build_test_all
     name: "examples/pip_parse: Windows"
     working_directory: examples/pip_parse
     platform: windows
+
+  integration_test_pip_parse_vendored_ubuntu_min_workspace:
+    <<: *minimum_supported_version
+    <<: *common_workspace_flags_min_bazel
+    <<: *reusable_build_test_all
+    name: "examples/pip_parse_vendored: Ubuntu, workspace, minimum Bazel"
+    working_directory: examples/pip_parse_vendored
+    platform: ubuntu2204
+  integration_test_pip_parse_vendored_ubuntu:
+    <<: *reusable_build_test_all
+    <<: *common_workspace_flags
+    name: "examples/pip_parse_vendored: Ubuntu"
+    working_directory: examples/pip_parse_vendored
+    platform: ubuntu2204
+  integration_test_pip_parse_vendored_debian:
+    <<: *reusable_build_test_all
+    <<: *common_workspace_flags
+    name: "examples/pip_parse_vendored: Debian"
+    working_directory: examples/pip_parse_vendored
+    platform: debian13
+  integration_test_pip_parse_vendored_macos:
+    <<: *reusable_build_test_all
+    <<: *common_workspace_flags
+    name: "examples/pip_parse_vendored: MacOS"
+    working_directory: examples/pip_parse_vendored
+    platform: macos_arm64
+  # We don't run pip_parse_vendored under Windows as the file checked in is
+  # generated from a repository rule containing OS-specific rendered paths.
+
+  integration_test_bazelinbazel_ubuntu:
+    <<: *common_bazelinbazel_config
+    name: "tests/integration bazel-in-bazel: Ubuntu"
+    platform: ubuntu2204
+  integration_test_bazelinbazel_debian:
+    <<: *common_bazelinbazel_config
+    name: "tests/integration bazel-in-bazel: Debian"
+    platform: debian13
+  # The bazelinbazel tests were disabled on Mac to save CI jobs slots, and
+  # have bitrotted a bit. For now, just run a subset of what we're most
+  # interested in.
+  integration_test_bazelinbazel_macos:
+    <<: *common_bazelinbazel_config
+    name: "tests/integration bazel-in-bazel: macOS (subset)"
+    platform: macos_arm64
+    build_targets: ["//tests/integration:subset"]
+    test_targets: ["//tests/integration:subset"]
   # The bazelinbazel tests were disabled on Windows to save CI jobs slots, and
   # have bitrotted a bit. For now, just run a subset of what we're most
   # interested in.
@@ -246,6 +531,61 @@ tasks:
     platform: windows
     build_targets: ["//tests/integration:subset"]
     test_targets: ["//tests/integration:subset"]
+
+  integration_test_compile_pip_requirements_ubuntu:
+    <<: *reusable_build_test_all
+    name: "compile_pip_requirements: Ubuntu"
+    working_directory: tests/integration/compile_pip_requirements
+    platform: ubuntu2204
+    shell_commands:
+    # Make a change to the locked requirements and then assert that //:requirements.update does the
+    # right thing.
+    - "echo '' > requirements_lock.txt"
+    - "! git diff --exit-code"
+    - "bazel run //:requirements.update"
+    - "git diff --exit-code"
+    # Make a change to the locked requirements and then assert that //:os_specific_requirements.update does the
+    # right thing.
+    - "echo '' > requirements_lock_linux.txt"
+    - "! git diff --exit-code"
+    - "bazel run //:os_specific_requirements.update"
+    - "git diff --exit-code"
+  integration_test_compile_pip_requirements_debian:
+    <<: *reusable_build_test_all
+    name: "compile_pip_requirements: Debian"
+    working_directory: tests/integration/compile_pip_requirements
+    platform: debian13
+    shell_commands:
+    # Make a change to the locked requirements and then assert that //:requirements.update does the
+    # right thing.
+    - "echo '' > requirements_lock.txt"
+    - "! git diff --exit-code"
+    - "bazel run //:requirements.update"
+    - "git diff --exit-code"
+    # Make a change to the locked requirements and then assert that //:os_specific_requirements.update does the
+    # right thing.
+    - "echo '' > requirements_lock_linux.txt"
+    - "! git diff --exit-code"
+    - "bazel run //:os_specific_requirements.update"
+    - "git diff --exit-code"
+  integration_test_compile_pip_requirements_macos:
+    <<: *reusable_build_test_all
+    name: "compile_pip_requirements: MacOS"
+    working_directory: tests/integration/compile_pip_requirements
+    platform: macos_arm64
+    shell_commands:
+    # Make a change to the locked requirements and then assert that //:requirements.update does the
+    # right thing.
+    - "echo '' > requirements_lock.txt"
+    - "! git diff --exit-code"
+    - "bazel run //:requirements.update"
+    - "git diff --exit-code"
+    # Make a change to the locked requirements and then assert that //:os_specific_requirements.update does the
+    # right thing.
+    - "echo '' > requirements_lock_darwin.txt"
+    - "! git diff --exit-code"
+    - "bazel run //:os_specific_requirements.update"
+    - "git diff --exit-code"
   integration_test_compile_pip_requirements_windows:
     <<: *reusable_build_test_all
     name: "compile_pip_requirements: Windows"
@@ -264,6 +604,46 @@ tasks:
     - "! git diff --exit-code"
     - "bazel run //:os_specific_requirements.update"
     - "git diff --exit-code"
+
+  integration_compile_pip_requirements_test_from_external_repo_ubuntu_min_workspace:
+    <<: *minimum_supported_version
+    <<: *common_workspace_flags_min_bazel
+    name: "compile_pip_requirements_test_from_external_repo: Ubuntu, workspace, minimum Bazel"
+    working_directory: tests/integration/compile_pip_requirements_test_from_external_repo
+    platform: ubuntu2204
+    shell_commands:
+    # Assert that @compile_pip_requirements//:requirements_test does the right thing.
+    - "bazel test @compile_pip_requirements//..."
+  integration_compile_pip_requirements_test_from_external_repo_ubuntu_min_bzlmod:
+    <<: *minimum_supported_version
+    name: "compile_pip_requirements_test_from_external_repo: Ubuntu, bzlmod, minimum Bazel"
+    working_directory: tests/integration/compile_pip_requirements_test_from_external_repo
+    platform: ubuntu2204
+    bazel: 7.x
+    shell_commands:
+    # Assert that @compile_pip_requirements//:requirements_test does the right thing.
+    - "bazel test @compile_pip_requirements//..."
+  integration_compile_pip_requirements_test_from_external_repo_ubuntu:
+    name: "compile_pip_requirements_test_from_external_repo: Ubuntu"
+    working_directory: tests/integration/compile_pip_requirements_test_from_external_repo
+    platform: ubuntu2204
+    shell_commands:
+    # Assert that @compile_pip_requirements//:requirements_test does the right thing.
+    - "bazel test @compile_pip_requirements//..."
+  integration_compile_pip_requirements_test_from_external_repo_debian:
+    name: "compile_pip_requirements_test_from_external_repo: Debian"
+    working_directory: tests/integration/compile_pip_requirements_test_from_external_repo
+    platform: debian13
+    shell_commands:
+    # Assert that @compile_pip_requirements//:requirements_test does the right thing.
+    - "bazel test @compile_pip_requirements//..."
+  integration_compile_pip_requirements_test_from_external_repo_macos:
+    name: "compile_pip_requirements_test_from_external_repo: macOS"
+    working_directory: tests/integration/compile_pip_requirements_test_from_external_repo
+    platform: macos_arm64
+    shell_commands:
+    # Assert that @compile_pip_requirements//:requirements_test does the right thing.
+    - "bazel test @compile_pip_requirements//..."
   integration_compile_pip_requirements_test_from_external_repo_windows:
     name: "compile_pip_requirements_test_from_external_repo: Windows"
     working_directory: tests/integration/compile_pip_requirements_test_from_external_repo
