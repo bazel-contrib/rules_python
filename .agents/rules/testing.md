@@ -48,7 +48,10 @@ description: Bazel test execution, integration test flags, and lockfiles
 ## Test Organization
 * **Domain Placement**: Place tests by the feature tested (e.g.,
   `tests/bootstrap_impls/`), not by the fixture helper used (e.g.,
-  `py_extension`).
+  `py_extension`). Keep tests and `BUILD.bazel` targets for `.agents/` scripts
+  co-located with the agent code (not under `tests/`), and run them via
+  `bazel test --config=fast-tests //.agents/...` since `//tests/...` does not
+  cover `.agents/`.
 * **Platform Constraints**: Restrict OS-specific targets with
   `target_compatible_with` (e.g., `["@platforms//os:windows"]`) to skip on
   incompatible platforms.

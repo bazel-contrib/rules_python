@@ -1,0 +1,9 @@
+load("@rules_python//python:defs.bzl", "py_test")
+
+# gazelle:python_resolve_pytest_plugins true
+
+py_test(
+    name = "reenabled_test",
+    srcs = ["reenabled_test.py"],
+    deps = ["//:plugins"],
+)
