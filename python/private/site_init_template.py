@@ -27,7 +27,7 @@ _WORKSPACE_NAME = "%workspace_name%"
 _SELF_RUNFILES_RELATIVE_PATH = "%site_init_runfiles_path%"
 # Runfiles-relative path to the coverage tool entry point, if any.
 _COVERAGE_TOOL = "%coverage_tool%"
-# True if the coverage package is importable from the dependencies, e.g. when
+# True if the coverage package is importable from the dependencies, i.e. when
 # --@rules_python//python/config_settings:coverage is set.
 _COVERAGE_FROM_DEPS = "%coverage_from_deps%" == "1"
 # True if the runfiles root should be added to sys.path

@@ -63,9 +63,7 @@ the executables (`py_binary`, `py_test`) or the Python toolchains.
   `py_library`, are merged. See {ref}`coverage-from-pypi`.
 * It can be set for a single target with the `config_settings` attribute.
 
-If this flag isn't set, then a `coverage` package the executable already
-depends on is used. Otherwise, the `coverage_tool` of the Python runtime is
-used.
+If this flag isn't set, then the `coverage_tool` of the Python runtime is used.
 
 :::{versionadded} VERSION_NEXT_FEATURE
 :::

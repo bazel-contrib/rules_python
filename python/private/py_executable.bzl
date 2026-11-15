@@ -906,12 +906,9 @@ def _map_each_identity(v):
 def _get_coverage_details(ctx):
     """Returns how the `coverage` package is provided to the executable.
 
-    In order of precedence, `coverage` comes from:
-    1. The {obj}`--coverage` flag, which can also be set per target via
-       `config_settings`.
-    2. A `coverage` package that the executable already depends on.
-    3. The `coverage_tool` of the Python runtime, which is handled by the
-       bootstrap.
+    The {obj}`--coverage` flag, which can also be set per target via
+    `config_settings`, takes precedence over the `coverage_tool` of the Python
+    runtime, which is handled by the bootstrap.
 
     Args:
         ctx: {type}`ctx` the rule ctx.
@@ -921,7 +918,7 @@ def _get_coverage_details(ctx):
         * dep: {type}`Target | None` the `coverage` flag target to add to the
           dependencies of the executable.
         * from_deps: {type}`bool` whether `coverage` is importable from the
-          dependencies, so that the runtime `coverage_tool` is not needed.
+          flag target, so that the runtime `coverage_tool` is not needed.
         * rcfiles: {type}`list[File]` the `.coveragerc` files to merge.
     """
     if not ctx.configuration.coverage_enabled or _is_tool_config(ctx):
@@ -938,16 +935,7 @@ def _get_coverage_details(ctx):
         ]
         return struct(dep = target, from_deps = True, rcfiles = rcfiles)
 
-    packages = depset(transitive = [
-        dep[PyInfo].packages
-        for dep in ctx.attr.deps
-        if PyInfo in dep
-    ])
-    return struct(
-        dep = None,
-        from_deps = "coverage" in packages.to_list(),
-        rcfiles = [],
-    )
+    return struct(dep = None, from_deps = False, rcfiles = [])
 
 def _get_coverage_tool_runfiles_path(ctx, runtime):
     if (ctx.configuration.coverage_enabled and

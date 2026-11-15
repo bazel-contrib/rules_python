@@ -34,8 +34,11 @@ python_register_toolchains(
 :::{note}
 This will implicitly add the version of `coverage` bundled with
 `rules_python` to the dependencies of `py_test` rules when `bazel coverage` is
-run. If a target already transitively depends on the `coverage` package from
-PyPI, then that version is used instead. See {ref}`coverage-from-pypi`.
+run. If a target already transitively depends on a different version of
+`coverage`, then the behavior is undefined -- it is undefined which version comes
+first in the import path. If you find yourself in this situation, then set the
+{flag}`--coverage` flag to the same `coverage` (see
+{ref}`coverage-from-pypi`).
 :::
 
 :::{note}
@@ -89,9 +92,6 @@ coverage --@rules_python//python/config_settings:coverage=@pypi//coverage
 The Python toolchains don't need to be configured. The target is added to the
 dependencies of the `py_test` and `py_binary` targets when coverage is
 collected, and it isn't fetched for regular builds.
-
-If a test already depends on the `coverage` package, e.g. via `pytest-cov`, then
-that `coverage` is used even if the flag isn't set.
 
 ### Using a `.coveragerc` and plugins
 

@@ -96,32 +96,6 @@ pytest_test(
     deps = ["//python/runfiles"],
 )
 
-# Uses the `@dev_pip//coverage` that it depends on, without the `coverage` flag.
-py_reconfig_binary(
-    name = "instrumented_pypi_dep",
-    srcs = ["instrumented.py"],
-    collect_code_coverage = True,
-    main = "instrumented.py",
-    python_version = _PYPI_PYTHON_VERSION,
-    tags = ["manual"],
-    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
-    deps = [
-        ":lib",
-        "@dev_pip//coverage",
-    ],
-)
-
-pytest_test(
-    name = "coverage_from_pypi_dep_test",
-    srcs = ["coverage_collection_test.py"],
-    data = [":instrumented_pypi_dep"],
-    env = {
-        "INSTRUMENTED": "$(rlocationpath :instrumented_pypi_dep)",
-    },
-    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
-    deps = ["//python/runfiles"],
-)
-
 # A `coverage` target with a `.coveragerc`, used via the `coverage` flag.
 py_library(
     name = "coverage_with_coveragerc",
