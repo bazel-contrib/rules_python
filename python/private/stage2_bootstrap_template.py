@@ -596,12 +596,18 @@ original_cwd = os.getcwd()
 
 
 def relpath_formatwarning(message, category, filename, lineno, line=None):
-    relative_filename = (
-        os.path.relpath(filename, original_cwd) if os.path.isabs(filename) else filename
-    )
-    return original_formatwarning(
-        message, category, relative_filename, lineno, line=line
-    )
+    # Only paths within the directory are made relative, because the
+    # number of `..` in the path to e.g. the stdlib would depend on the
+    # depth of the directory.
+    try:
+        if os.path.isabs(filename) and os.path.normcase(
+            os.path.commonpath([filename, original_cwd])
+        ) == os.path.normcase(original_cwd):
+            filename = os.path.relpath(filename, original_cwd)
+    except ValueError:
+        # On Windows, paths on different drives don't have a common path.
+        pass
+    return original_formatwarning(message, category, filename, lineno, line=line)
 
 
 warnings.formatwarning = relpath_formatwarning
