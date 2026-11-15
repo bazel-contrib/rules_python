@@ -1,3 +1,6 @@
+:::{default-domain} bzl
+:::
+
 # Setting up coverage
 
 As of Bazel 6, the Python toolchains and bootstrap logic supports providing
