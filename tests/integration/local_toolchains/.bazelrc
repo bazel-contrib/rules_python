@@ -8,3 +8,4 @@ build --enable_runfiles
 common:bazel7.x --incompatible_python_disallow_native_rules
 build --//:py=local
 common --announce_rc
+import %workspace%/../downloader_cfg.bazelrc

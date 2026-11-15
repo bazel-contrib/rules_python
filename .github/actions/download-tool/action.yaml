@@ -11,6 +11,12 @@ inputs:
   sha256:
     description: "Expected hex SHA-256 digest of the tool binary"
     required: true
+  archive-member:
+    description: >-
+      Optional archive member path to extract when the downloaded payload is a
+      tar or zip archive
+    required: false
+    default: ""
 
 outputs:
   path:
@@ -46,6 +52,7 @@ runs:
       if: steps.cache.outputs.cache-hit != 'true'
       shell: bash
       env:
+        TOOL_ARCHIVE_MEMBER: ${{ inputs.archive-member }}
         TOOL_PATH: ${{ steps.tool_path.outputs.path }}
         TOOL_SHA256: ${{ inputs.sha256 }}
         TOOL_URLS: ${{ inputs.urls }}
@@ -53,5 +60,6 @@ runs:
         "${GITHUB_ACTION_PATH}/../../../dev/verified_download.py"
         --urls "${TOOL_URLS}"
         --sha256 "${TOOL_SHA256}"
+        --archive-member "${TOOL_ARCHIVE_MEMBER}"
         --executable
         --output "${TOOL_PATH}"

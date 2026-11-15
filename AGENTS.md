@@ -176,7 +176,9 @@ bzl_library(
 
 ## Building and testing
 
-Tests are under the `tests/` directory.
+Tests are under the `tests/` directory, except tests for agent scripts under
+`.agents/`, which stay co-located with the agent code (run with
+`bazel test --config=fast-tests //.agents/...`).
 
 When testing, add `--config=fast-tests`.
 
@@ -258,9 +260,11 @@ Dependabot alerts):
 When building `//docs:docs`, ignore an error about exit code 2; this is a flake,
 so try building again.
 
-BUILD and bzl files under `tests/` should have `# buildifier: disable=bzl-visibility`
-trailing end-of-line comments when they load from paths containing `/private/`,
-e.g.
+BUILD and bzl files under `tests/` (and internal non-`python/` packages such as
+`crates/` and `tools/` loading repo-internal helpers like
+`//python/private:distribution_filegroup.bzl`) should have
+`# buildifier: disable=bzl-visibility` trailing end-of-line comments when they
+load from paths containing `/private/`, e.g.
 
 ```
 load("//python/private:foo.bzl", "foo")  # buildifier: disable=bzl-visibility

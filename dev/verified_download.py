@@ -53,6 +53,14 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         help="Expected lowercase or uppercase hex SHA-256 digest.",
     )
     parser.add_argument(
+        "--archive-member",
+        default="",
+        help=(
+            "Optional archive member path to extract when the downloaded "
+            "payload is a zip or tar archive."
+        ),
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         required=True,
@@ -275,7 +283,7 @@ async def _async_main(argv: list[str]) -> int:
     """Async CLI entry point."""
     args = _parse_args(argv)
     urls = parse_url_list(args.urls)
-    sources = [(url, args.sha256, "") for url in urls]
+    sources = [(url, args.sha256, args.archive_member) for url in urls]
     await download_verified_file(
         args.output,
         sources,

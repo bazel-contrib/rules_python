@@ -183,7 +183,21 @@ def _test_target_platforms_all(env):
             os_name = "osx",
             arch_name = "aarch64",
             mock_files = {
-                "uv.lock": """{"package":[{"name":"simple","source":{"registry":"https://pypi.org/simple"},"version":"0.0.1","wheels":[{"hash":"sha256:deadbeef","url":"https://files.pythonhosted.org/packages/simple-0.0.1-py3-none-any.whl"}]}]}""",
+                "uv.lock": json.encode({
+                    "package": [
+                        {
+                            "name": "simple",
+                            "source": {"registry": "https://pypi.org/simple"},
+                            "version": "0.0.1",
+                            "wheels": [
+                                {
+                                    "hash": "sha256:deadbeef",
+                                    "url": "https://files.pythonhosted.org/packages/simple-0.0.1-py3-none-any.whl",
+                                },
+                            ],
+                        },
+                    ],
+                }),
             },
         ),
         _parse(
@@ -223,21 +237,41 @@ def _test_target_platforms_all_platform_wheels(env):
             os_name = "osx",
             arch_name = "aarch64",
             mock_files = {
-                "uv.lock": json.encode({"package": [
-                    {
-                        "name": "plat",
-                        "source": {"registry": "https://pypi.org/simple"},
-                        "version": "0.0.1",
-                        "wheels": [
-                            {"hash": "sha256:deadb001", "url": "https://files.pythonhosted.org/packages/plat-0.0.1-cp315-cp315-manylinux_2_17_x86_64.whl"},
-                            {"hash": "sha256:deadb002", "url": "https://files.pythonhosted.org/packages/plat-0.0.1-cp315-cp315t-manylinux_2_17_x86_64.whl"},
-                            {"hash": "sha256:deadb003", "url": "https://files.pythonhosted.org/packages/plat-0.0.1-cp315-cp315-manylinux_2_17_aarch64.whl"},
-                            {"hash": "sha256:deadb004", "url": "https://files.pythonhosted.org/packages/plat-0.0.1-cp315-cp315-macosx_11_0_arm64.whl"},
-                            {"hash": "sha256:deadb005", "url": "https://files.pythonhosted.org/packages/plat-0.0.1-cp315-cp315-win_arm64.whl"},
-                            {"hash": "sha256:deadb006", "url": "https://files.pythonhosted.org/packages/plat-0.0.1-py3-none-any.whl"},
-                        ],
-                    },
-                ]}),
+                "uv.lock": json.encode({
+                    "package": [
+                        {
+                            "name": "plat",
+                            "source": {"registry": "https://pypi.org/simple"},
+                            "version": "0.0.1",
+                            "wheels": [
+                                {
+                                    "hash": "sha256:deadb001",
+                                    "url": "https://files.pythonhosted.org/packages/plat-0.0.1-cp315-cp315-manylinux_2_17_x86_64.whl",
+                                },
+                                {
+                                    "hash": "sha256:deadb002",
+                                    "url": "https://files.pythonhosted.org/packages/plat-0.0.1-cp315-cp315t-manylinux_2_17_x86_64.whl",
+                                },
+                                {
+                                    "hash": "sha256:deadb003",
+                                    "url": "https://files.pythonhosted.org/packages/plat-0.0.1-cp315-cp315-manylinux_2_17_aarch64.whl",
+                                },
+                                {
+                                    "hash": "sha256:deadb004",
+                                    "url": "https://files.pythonhosted.org/packages/plat-0.0.1-cp315-cp315-macosx_11_0_arm64.whl",
+                                },
+                                {
+                                    "hash": "sha256:deadb005",
+                                    "url": "https://files.pythonhosted.org/packages/plat-0.0.1-cp315-cp315-win_arm64.whl",
+                                },
+                                {
+                                    "hash": "sha256:deadb006",
+                                    "url": "https://files.pythonhosted.org/packages/plat-0.0.1-py3-none-any.whl",
+                                },
+                            ],
+                        },
+                    ],
+                }),
             },
         ),
         _parse(
