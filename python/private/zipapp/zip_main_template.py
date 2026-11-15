@@ -228,11 +228,13 @@ def create_runfiles_root():
     else:
         extract_root = tempfile.mkdtemp("", "Bazel.runfiles_")
 
+    # LINT.IfChange(runfiles_root_structure)
     extract_zip(dirname(__file__), extract_root)
     print_verbose("extracted to:", extract_root)
     # IMPORTANT: Later code does `rm -fr` on dirname(runfiles_root) -- it's
     # important that deletion code be in sync with this directory structure
     return join(extract_root, "runfiles")
+    # LINT.ThenChange(:runfiles_root_cleanup)
 
 
 def run_subprocess(subprocess_argv, env, cwd):
@@ -330,6 +332,7 @@ def execute_file(
         sys.exit(ret_code)
     finally:
         if not EXTRACT_ROOT:
+            # LINT.IfChange(runfiles_root_cleanup)
             # NOTE: dirname() is called because create_runfiles_root() creates a
             # sub-directory within a temporary directory, and we want to remove the
             # whole temporary directory.
@@ -340,6 +343,7 @@ def execute_file(
                 shutil.rmtree(extract_root, onerror=remove_readonly)
             else:
                 shutil.rmtree(extract_root, True)
+            # LINT.ThenChange(:runfiles_root_structure)
 
 
 def finish_venv_setup(runfiles_root):

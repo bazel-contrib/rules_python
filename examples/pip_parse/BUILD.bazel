@@ -50,26 +50,11 @@ py_console_script_binary(
     pkg = "@pypi//yamllint",
 )
 
-# This rule adds a convenient way to update the requirements file.
+# This rule adds a convenient way to update the lockfile.
 lock(
     name = "requirements",
     srcs = ["pyproject.toml"],
-    out = "requirements_lock.txt",
-    constraints = [
-        "constraints_certifi.txt",
-        "constraints_urllib3.txt",
-    ],
-)
-
-lock(
-    name = "requirements_windows",
-    srcs = ["pyproject.toml"],
-    out = "requirements_windows.txt",
-    args = ["--python-platform=windows"],
-    constraints = [
-        "constraints_certifi.txt",
-        "constraints_urllib3.txt",
-    ],
+    out = "uv.lock",
 )
 
 # Test the use of all pip_parse utilities in a single py_test

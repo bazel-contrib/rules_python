@@ -18,13 +18,18 @@ conversation directory (`~/.gemini/jetski/brain/`) are created:
 1. **Bazel Output Base(s)**: Intermediate build artifacts, execroot trees,
    and running Bazel server and persistent worker processes (consuming tens of
    gigabytes of disk and substantial RAM).
-2. **Git Worktree**: The checked-out directory on disk.
-3. **Local Git Branch**: The feature branch associated with the worktree.
-4. **Remote Git Branch**: The feature branch pushed to the user's fork
+2. **Remote Git Branch**: The feature branch pushed to the user's fork
    (e.g., `origin`).
+3. **Local Git Branch**: The feature branch associated with the worktree.
+4. **Git Worktree**: The checked-out directory on disk (removed last, and only
+   if all other cleanup steps succeed).
+5. **Conversation Name**: Once cleanup completes without errors, the active
+   conversation title is prefixed with `"done "` (without duplicating an
+   existing `"done "` prefix, capped at 70 characters).
 
-This skill safely shuts down active build processes and reclaims these
-resources without removing the conversation transcript or chat history.
+This skill safely shuts down active build processes, reclaims these external
+resources, and marks the conversation title as `"done "` without removing the
+conversation transcript or chat history.
 
 ## Script Location
 
@@ -93,6 +98,8 @@ Fine-tune what gets cleaned up using selective leave flags:
 * **Upstream Remote Protection**: Never deletes branches on `upstream`.
 * **No Expunge Rule**: Never runs `bazel clean --expunge`; shuts down servers
   gracefully and deletes the specific output base directory directly.
+* **Worktree Deleted Last**: Removes the Git worktree only after all other
+  cleanup steps succeed, keeping the working directory intact on failure.
 
 ## Reporting Results
 
@@ -100,9 +107,11 @@ After running the cleanup script, always report to the user what resources were
 deleted (or would be deleted in `--dry-run` mode), including:
 
 * **Bazel Output Base(s)**: Paths and reclaimed disk space sizes.
-* **Git Worktree**: Removed worktree directory path.
-* **Local Git Branch**: Deleted local branch name.
 * **Remote Git Branch**: Deleted remote branch (`<remote>/<branch>`).
+* **Local Git Branch**: Deleted local branch name.
+* **Git Worktree**: Removed worktree directory path.
+* **Conversation Name**: Updated conversation title (prefixed with `"done "`
+  after successful cleanup).
 
 If any resources were skipped, left intact via `--leave-*` flags, or not found,
 note that briefly in the summary.

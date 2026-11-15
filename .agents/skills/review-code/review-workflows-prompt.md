@@ -11,8 +11,9 @@ project's workflow rules and conventions:
 3. Verify action and tool versions and Dependabot coverage: ensure
    `.github/workflows/**` and `.github/actions/**` use the latest release of
    referenced actions and downloaded tools (check via
-   `gh release view --repo <owner>/<repo>`), and verify every
-   `.github/actions/<name>` directory is in `.github/dependabot.yml`.
+   `gh release view --repo <owner>/<repo>`), and verify
+   `.github/dependabot.yml` keeps `directories: ["/", "/.github/actions/*"]`
+   without listing individual action directories or brace globs.
 4. Verify fallback jobs: ensure `suppress-no-jobs-ran-error` / `noop` fallback
    jobs exist in conditional workflows.
 5. Check event payload handling: for steps that are a single Python script,
@@ -20,8 +21,9 @@ project's workflow rules and conventions:
    suggestion otherwise), rather than passing payload fields via CLI args or
    environment variables.
 6. Verify workflow tests: check that tests are located in `tests/workflows/`,
-   use `imports = ["../../.github/workflows"]` in `BUILD.bazel`, and do not
-   modify `sys.path`.
+   co-locate shared helpers in `dev/` or set `PYTHONPATH` in step `env:`,
+   define `py_library` targets with `imports` in `tests/workflows/BUILD.bazel`,
+   and do not modify `sys.path`.
 7. Verify console messaging: ensure scripts use GHA workflow command syntax
    (e.g. `::error::`, `::warning::`, `::notice::`, `::group::`) and include
    identifying context (such as issue/PR numbers) in error messages.
@@ -37,12 +39,12 @@ project's workflow rules and conventions:
    invocations via heredocs (`<< 'EOF'`) or `-c` flags (`bash -c`,
    `python3 -c`).
 10. Verify local composite actions: ensure workflows use local composite action
-    wrappers (specifically `uses: ./.github/actions/setup-bazel`) rather than
-    invoking `bazel-contrib/setup-bazel` directly. If a workflow calls
-    `bazel-contrib/setup-bazel` directly, replace it with
-    `uses: ./.github/actions/setup-bazel` (updating
-    `.github/actions/setup-bazel/action.yaml` if new defaults or inputs are
-    needed).
+    wrappers (`uses: ./.github/actions/setup-bazel` rather than invoking
+    `bazel-contrib/setup-bazel` directly, and
+    `uses: ./.github/actions/download-tool` or `dev/verified_download.py` to
+    fetch, SHA-256-verify, and cache tool binaries keyed by `<name>-<sha256>`
+    without OS or version prefixes, listing verified mirrors in `urls` when
+    available).
 11. Audit for injection and security vulnerabilities:
     - Require explicit top-level `permissions:` (`{}` or minimal scopes) in all
       workflows, and explicit job-level permissions for reusable workflow calls
@@ -62,8 +64,9 @@ project's workflow rules and conventions:
     - Verify comment and event handlers check actor authorization before writing
       to `$GITHUB_OUTPUT` or `$GITHUB_ENV`, reacting to comments, or triggering
       failure-reporting jobs.
-    - Verify helpers writing `key=value` to `$GITHUB_OUTPUT` or `$GITHUB_ENV`
-      reject `\n` and `\r`, and ensure untrusted PR/comment text is never
-      echoed to stdout where `::...::` workflow commands could execute.
+    - Verify writes of untrusted `key=value` entries to `$GITHUB_OUTPUT` or
+      `$GITHUB_ENV` reject `\n` and `\r` (omitting guards on trusted workflow
+      constants), and ensure untrusted PR/comment text is never echoed to
+      stdout where `::...::` workflow commands could execute.
 
 @.agents/skills/review-code/review-report-format.md

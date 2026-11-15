@@ -1,0 +1,16 @@
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+
+# gazelle:python_generation_mode file
+
+py_library(
+    name = "plugins",
+    srcs = ["plugins.py"],
+    visibility = ["//:__subpackages__"],
+    deps = ["@gazelle_python_test//pytest"],
+)
+
+py_test(
+    name = "enabled_test",
+    srcs = ["enabled_test.py"],
+    deps = [":plugins"],
+)

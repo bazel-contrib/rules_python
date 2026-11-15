@@ -654,6 +654,66 @@ def _test_pyi_deps_not_in_runfiles_when_flag_disabled(name, config):
 
 _tests.append(_test_pyi_deps_not_in_runfiles_when_flag_disabled)
 
+def _stamp_test_subject(name, config, *, stamp):
+    native.config_setting(
+        name = name + "_stamp_enabled",
+        values = {"stamp": "1"},
+    )
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject",
+        srcs = [rt_util.empty_file(name + "_subject.py")],
+        data = select({
+            ":" + name + "_stamp_enabled": [rt_util.empty_file(name + "_stamp_on.txt")],
+            "//conditions:default": [rt_util.empty_file(name + "_stamp_off.txt")],
+        }),
+        stamp = stamp,
+    )
+
+def _test_stamp_disabled_keeps_deps_config(name, config):
+    _stamp_test_subject(name, config, stamp = 0)
+    analysis_test(
+        name = name,
+        impl = _test_stamp_disabled_keeps_deps_config_impl,
+        target = name + "_subject",
+        config_settings = {
+            "//command_line_option:stamp": True,
+        },
+    )
+
+def _test_stamp_disabled_keeps_deps_config_impl(env, target):
+    env.expect.that_collection(
+        [action.mnemonic for action in target.actions],
+    ).not_contains("PyWriteBuildData")
+    target = env.expect.that_target(target)
+    target.runfiles().contains_predicate(
+        matching.str_endswith(target.meta.format_str("/{test_name}_stamp_on.txt")),
+    )
+
+_tests.append(_test_stamp_disabled_keeps_deps_config)
+
+def _test_stamp_enabled_keeps_deps_config(name, config):
+    _stamp_test_subject(name, config, stamp = 1)
+    analysis_test(
+        name = name,
+        impl = _test_stamp_enabled_keeps_deps_config_impl,
+        target = name + "_subject",
+        config_settings = {
+            "//command_line_option:stamp": False,
+        },
+    )
+
+def _test_stamp_enabled_keeps_deps_config_impl(env, target):
+    target = env.expect.that_target(target)
+    target.runfiles().contains_predicate(
+        matching.str_endswith(target.meta.format_str("/{test_name}_stamp_off.txt")),
+    )
+    target.action_named("PyWriteBuildData").inputs().contains_predicate(
+        matching.file_basename_equals("uncachable_version_file.txt"),
+    )
+
+_tests.append(_test_stamp_enabled_keeps_deps_config)
+
 def _test_venv_output_prefix_with_path_separators(name, config):
     rt_util.helper_target(
         config.rule,

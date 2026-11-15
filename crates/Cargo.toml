@@ -1,0 +1,31 @@
+[package]
+name = "rules_python_crates"
+version = "0.0.1"
+edition = "2024"
+publish = false
+
+# Cargo and Dependabot require at least one target in the manifest. Point [lib]
+# at shrubbery/src/lib.rs to satisfy that check; this package only exists to
+# declare third-party crates for rules_rust's crate_universe (see
+# MODULE.bazel), so direct `cargo check`/`cargo build` is unsupported and actual
+# Rust targets are built with Bazel under //crates/...
+[lib]
+path = "shrubbery/src/lib.rs"
+
+[dependencies]
+# keep-sorted start
+anyhow = "1.0.104"
+argfile = "1.0.0"
+# Transitive dep of zip: zip's `deflate-flate2` leaves the backend unset, so a
+# top-level pin keeps flate2 on its default pure-Rust backend.
+flate2 = "1.1.11"
+lexopt = "0.3.2"
+sha2 = "0.11.1"
+# Disable default features (C zstd-sys bindings plus unused compression,
+# encryption, and time subsystems) and enable only `deflate-flate2`.
+# NOTE: Keep below 9.1.0; zip >= 9.1.0 adds mandatory target-conditional OS deps
+# (getrandom, windows-sys, libc) that fail on powerpc64le-unknown-linux-musl
+# until rules_rust defines a powerpc64le @rules_rust//rust/platform
+# config_setting.
+zip = { version = "~9.0.5", default-features = false, features = ["deflate-flate2"] }
+# keep-sorted end
