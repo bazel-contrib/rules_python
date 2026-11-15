@@ -1,6 +1,7 @@
 use std::env;
 use std::fs;
 use std::path::PathBuf;
+use std::process::ExitCode;
 
 use exe_zip_maker_lib::{
     Options, PLACEHOLDER, compute_file_sha256_hex, create_exe_zip, parse_args, replace_bytes,
@@ -180,14 +181,14 @@ fn test_parse_args_and_run_cli() {
         .expect("preamble_path should be writable");
     fs::write(&zip_path, b"PK\x03\x04dummy").expect("zip_path should be writable");
 
-    assert_eq!(run_cli(["missing_args"]), 1);
+    assert_eq!(run_cli(["missing_args"]), ExitCode::FAILURE);
     assert_eq!(
         run_cli([
             preamble_path.as_os_str(),
             zip_path.as_os_str(),
             output_path.as_os_str(),
         ]),
-        0
+        ExitCode::SUCCESS
     );
     assert!(output_path.exists());
 

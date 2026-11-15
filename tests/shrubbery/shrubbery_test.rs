@@ -1,7 +1,7 @@
 use std::env;
 use std::fs;
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{Command, ExitCode};
 
 use shrubbery_lib::{SUBCOMMANDS, run_cli};
 
@@ -17,7 +17,7 @@ fn temp_test_dir(prefix: &str) -> PathBuf {
 
 #[test]
 fn test_subcommands_registry_sorted_and_complete() {
-    assert_eq!(SUBCOMMANDS.len(), 2);
+    assert_eq!(SUBCOMMANDS.len(), 3);
     let mut sorted = SUBCOMMANDS.to_vec();
     sorted.sort_unstable();
     assert_eq!(SUBCOMMANDS, sorted.as_slice());
@@ -25,15 +25,15 @@ fn test_subcommands_registry_sorted_and_complete() {
 
 #[test]
 fn test_help_flags_exit_zero() {
-    assert_eq!(run_cli(["shrubbery", "--help"]), 0);
-    assert_eq!(run_cli(["shrubbery", "-h"]), 0);
-    assert_eq!(run_cli(["shrubbery", "help"]), 0);
+    assert_eq!(run_cli(["shrubbery", "--help"]), ExitCode::SUCCESS);
+    assert_eq!(run_cli(["shrubbery", "-h"]), ExitCode::SUCCESS);
+    assert_eq!(run_cli(["shrubbery", "help"]), ExitCode::SUCCESS);
 }
 
 #[test]
 fn test_missing_or_unknown_subcommand_exits_one() {
-    assert_eq!(run_cli(["shrubbery"]), 1);
-    assert_eq!(run_cli(["shrubbery", "does_not_exist"]), 1);
+    assert_eq!(run_cli(["shrubbery"]), ExitCode::FAILURE);
+    assert_eq!(run_cli(["shrubbery", "does_not_exist"]), ExitCode::FAILURE);
 }
 
 #[test]
@@ -58,9 +58,30 @@ fn test_subcommand_forwarding() {
             zip_in.to_str().expect("zip_in path should be UTF-8"),
             out_pyz.to_str().expect("out_pyz path should be UTF-8"),
         ]),
-        0
+        ExitCode::SUCCESS
     );
     assert!(out_pyz.exists());
+
+    let tpl = dir.join("tpl.py");
+    let manifest = dir.join("manifest.txt");
+    let out_main = dir.join("__main__.py");
+    fs::write(&tpl, "HASH=%APP_HASH%\n").expect("tpl should be writable");
+    fs::write(&manifest, "rf-empty|__init__.py\n").expect("manifest should be writable");
+
+    assert_eq!(
+        run_cli([
+            "shrubbery",
+            "zip_main_maker",
+            "--template",
+            tpl.to_str().expect("tpl path should be UTF-8"),
+            "--output",
+            out_main.to_str().expect("out_main path should be UTF-8"),
+            "--hash_files_manifest",
+            manifest.to_str().expect("manifest path should be UTF-8"),
+        ]),
+        ExitCode::SUCCESS
+    );
+    assert!(out_main.exists());
 }
 
 #[test]
@@ -77,6 +98,15 @@ fn test_cli_binary_subprocess() {
     let stdout = String::from_utf8_lossy(&help_out.stdout);
     for sub in SUBCOMMANDS {
         assert!(stdout.contains(sub), "missing {} in help: {}", sub, stdout);
+        let sub_help = Command::new(&resolved)
+            .args([*sub, "--help"])
+            .output()
+            .expect("registered subcommand should run");
+        let sub_stderr = String::from_utf8_lossy(&sub_help.stderr);
+        assert!(
+            !sub_stderr.contains("unknown subcommand"),
+            "registered subcommand {sub} was rejected by run_cli: {sub_stderr}"
+        );
     }
 
     let bad_out = Command::new(&resolved)

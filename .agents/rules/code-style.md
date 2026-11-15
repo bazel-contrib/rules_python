@@ -69,3 +69,8 @@ Order definitions within a file as:
 ## Bulk Logging
 * In bulk operations, log a single summary line on success; on failure, list
   each failing item sorted, one per line, with its location and reason.
+
+## Porting & Rewrites
+* When porting or rewriting code across languages or subsystems, cross-check
+  every original test case and non-obvious invariant or spec comment against the
+  new implementation and tests to preserve edge-case coverage and rationale.
