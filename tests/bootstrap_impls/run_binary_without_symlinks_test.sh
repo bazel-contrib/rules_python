@@ -40,8 +40,7 @@ function to_unix() {
 }
 
 # Use hard links, junctions or copies instead of symlinks for the venv that
-# is created at runtime, like on Windows without the privilege to create
-# symlinks.
+# is created at runtime, like without the privilege to create symlinks.
 venvs_root=$(mktemp -d)
 actual=$(RULES_PYTHON_TESTING_DISABLE_SYMLINKS=1 RULES_PYTHON_EXTRACT_ROOT=$venvs_root $bin)
 expect_match "Hello" "$actual"
@@ -50,13 +49,22 @@ expect_match "sys.executable:.*$(basename "$venvs_root")" "$actual"
 expect_match "sys.executable is symlink: False" "$actual"
 
 # Without RULES_PYTHON_EXTRACT_ROOT, the venv is removed after the run, which
-# must work for read-only copies of Bazel outputs too.
+# must work for read-only Bazel outputs that are hard linked or copied, and must
+# not make the hard linked outputs writable.
+runfiles=$(to_unix "${RUNFILES_DIR:-$TEST_SRCDIR}")
+read_only_before=$(find "$runfiles" -type f ! -writable | sort)
 actual=$(RULES_PYTHON_TESTING_DISABLE_SYMLINKS=1 $bin)
 expect_match "Hello" "$actual"
 expect_match "sys.executable is symlink: False" "$actual"
 venv=$(to_unix "$(echo "$actual" | grep "^sys.prefix:" | cut -d' ' -f2-)")
 if [[ -z "$venv" || -e "$venv" ]]; then
   echo "expected the venv to be removed: $venv"
+  touch EXPECTATION_FAILED
+fi
+read_only_after=$(find "$runfiles" -type f ! -writable | sort)
+if [[ "$read_only_before" != "$read_only_after" ]]; then
+  echo "expected the read-only runfiles to be unchanged"
+  diff <(echo "$read_only_before") <(echo "$read_only_after")
   touch EXPECTATION_FAILED
 fi
 

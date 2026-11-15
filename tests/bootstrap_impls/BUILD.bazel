@@ -17,7 +17,7 @@ load("//python:py_test.bzl", "py_test")
 load("//python:pytest_test.bzl", "pytest_test")
 load("//tests/support:py_reconfig.bzl", "py_reconfig_binary", "py_reconfig_test")
 load("//tests/support:sh_py_run_test.bzl", "sh_py_run_test")
-load("//tests/support:support.bzl", "BAZEL_8_OR_LATER", "SUPPORTS_BOOTSTRAP_SCRIPT")
+load("//tests/support:support.bzl", "SUPPORTS_BOOTSTRAP_SCRIPT")
 load(":venv_relative_path_tests.bzl", "relative_path_test_suite")
 
 py_reconfig_binary(
@@ -78,9 +78,11 @@ sh_py_run_test(
     bootstrap_impl = "system_python",
     py_src = "bin.py",
     sh_src = "run_binary_without_symlinks_test.sh",
-    # Bazel 7 doesn't create a full venv for bootstrap_impl=system_python.
-    target_compatible_with = BAZEL_8_OR_LATER,
-    venvs_use_declare_symlink = "no",
+    # The fallback for when symlinks can't be created is Windows only.
+    target_compatible_with = select({
+        "@platforms//os:windows": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
 )
 
 sh_py_run_test(
