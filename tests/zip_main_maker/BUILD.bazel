@@ -1,0 +1,16 @@
+load("@rules_rust//rust:defs.bzl", "rust_test")
+
+package(default_visibility = ["//:__subpackages__"])
+
+licenses(["notice"])
+
+rust_test(
+    name = "zip_main_maker_test",
+    size = "small",
+    srcs = ["zip_main_maker_test.rs"],
+    edition = "2024",
+    deps = [
+        "//crates/zip_main_maker:zip_main_maker_lib",
+        "@crates//:sha2",
+    ],
+)
