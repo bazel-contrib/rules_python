@@ -27,13 +27,14 @@ requests with buttons to launch manual code reviews in isolated Git worktrees.
 - `rules/AGENTS.md`: Rule surfacing `[📋 PR Queue](sidecar://pr-queue/pr_queue/)`
   when `/pr-queue` is requested.
 - `skills/pr-queue/SKILL.md`: `/pr-queue` skill instructions.
-- `sidecars/pr_queue/BUILD.bazel`: Bazel targets for the sidecar and unit tests.
+- `sidecars/pr_queue/BUILD.bazel`: Bazel library targets for the sidecar.
 - `sidecars/pr_queue/sidecar.json`: Sidecar registration and UI view config.
 - `sidecars/pr_queue/fetch_pr_queue.py`: `gh`-based PR queue fetcher and
   filter CLI.
-- `sidecars/pr_queue/fetch_pr_queue_test.py`: Unit tests for
-  `fetch_pr_queue.py`.
+- `sidecars/pr_queue/state_store.py`: Validated config and JSON state storage.
+- `sidecars/pr_queue/git_worktree.py`: Git repo detection and PR worktree setup.
+- `sidecars/pr_queue/ls_client.py`: Loopback Language Server RPC client.
 - `sidecars/pr_queue/server.py`: HTTP backend serving the UI, cached PR queue,
   review conversation lookup, and worktree/chat launcher.
-- `sidecars/pr_queue/server_test.py`: Unit tests for `server.py`.
 - `sidecars/pr_queue/index.html`: Adaptive dark/light side panel frontend.
+- `tests/agents/pr_queue/`: Unit tests for `fetch_pr_queue` and `server`.

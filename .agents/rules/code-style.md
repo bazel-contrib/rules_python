@@ -58,6 +58,23 @@ Order definitions within a file as:
 * Include `(AGENTS: requires user confirmation to use)` in `--help` text and
   error messages for CLI flags that bypass safety checks.
 
+## Timeouts, Retries & Resource Caps
+* Commented operational timeouts, retry budgets, and size/UI caps do not
+  require human sign-off when they fail closed and stay within conservative
+  bounds:
+  * Finite loopback RPC timeouts `<= 15s` and CLI/network subprocess timeouts
+    `<= 60s`.
+  * Bounded retries (`<= 3` attempts) restricted to transient/idempotent errors
+    with exponential backoff/jitter (`<= 5s` per delay).
+  * Request/header/UI limits that prevent unbounded memory or UI bloat (such as
+    `<= 1 MiB` local POST bodies, `<= 100` HTTP headers, documented upstream API
+    page limits like `100` GraphQL items, and UI snippet/badge caps), with any
+    outer caller timeout exceeding the sum of inner retry budgets.
+* Flag for human sign-off when bounds are unusually large (e.g., timeouts
+  `> 60s`, retries `> 3`, payloads `> 10 MiB`), unbounded, applied to
+  non-idempotent mutations, or shorter than inner retry budgets
+  (`caller < sum`).
+
 ## Sorting
 * Add `keep-sorted` `start` and `end` markers on list and dict config or
   registry tables, even when they have a single entry.

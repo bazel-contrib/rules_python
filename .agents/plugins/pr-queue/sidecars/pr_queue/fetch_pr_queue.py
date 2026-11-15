@@ -23,7 +23,7 @@ import random
 import re
 import sys
 from collections.abc import Awaitable, Callable, Mapping, Sequence
-from typing import Any, TypeVar
+from typing import TypeVar
 
 # =============================================================================
 # 1. Global Constants
@@ -56,7 +56,9 @@ _DEFAULT_ACTION_PRIORITY = 99
 
 _LOGGER = logging.getLogger("pr_queue.fetch")
 _T = TypeVar("_T")
-_SAFE_REPO_SEGMENT_RE = re.compile(r"^[A-Za-z0-9._][A-Za-z0-9._-]*$")
+_SAFE_REPO_SEGMENT_RE = re.compile(r"\A[A-Za-z0-9._][A-Za-z0-9._-]*\Z")
+_ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)")
+_CONTROL_CHARS_RE = re.compile(r"[\x00-\x1f\x7f-\x9f]+")
 
 # LINT.IfChange(action_needed_buckets)
 _ACTION_SORT_PRIORITY = {
@@ -236,6 +238,8 @@ def validate_repo_slug(repo: str, *, error_cls: type[Exception]) -> str:
     Returns:
       Normalized `owner/name` repository slug.
     """
+    if any(ord(ch) < 32 or 127 <= ord(ch) <= 159 for ch in repo):
+        raise error_cls("Repository slug must not contain control characters.")
     clean = repo.strip()
     owner, sep, name = clean.partition("/")
     if not sep or "/" in name:
@@ -249,6 +253,58 @@ def validate_repo_slug(repo: str, *, error_cls: type[Exception]) -> str:
             raise error_cls(
                 f"Invalid repository format `{clean}`; expected `owner/name`."
             )
+    return clean
+
+
+def sanitize_log_text(value: object) -> str:
+    """Strips ANSI escape sequences and C0/C1/DEL control chars from log text.
+
+    Args:
+      value: Untrusted value or exception to render safely on one log line.
+
+    Returns:
+      Cleaned single-line string safe for plain-text logs.
+    """
+    cleaned = _ANSI_ESCAPE_RE.sub("", str(value))
+    return _CONTROL_CHARS_RE.sub(" ", cleaned).strip()
+
+
+def validate_search_query(query: str, *, error_cls: type[Exception]) -> str:
+    """Validates a GitHub search filter string against control chars and syntax breaks.
+
+    Args:
+      query: Candidate user search filter passed to `gh pr list` / GraphQL.
+      error_cls: Exception class raised when validation fails.
+
+    Returns:
+      Stripped safe search query string.
+    """
+    if any(ord(ch) < 32 or 127 <= ord(ch) <= 159 for ch in query):
+        raise error_cls("`custom_query` must not contain control characters.")
+    clean = query.strip()
+    in_quote = False
+    escaped = False
+    paren_depth = 0
+    for ch in clean:
+        if escaped:
+            escaped = False
+            continue
+        if ch == "\\" and in_quote:
+            escaped = True
+            continue
+        if ch == '"':
+            in_quote = not in_quote
+        elif not in_quote:
+            if ch == "(":
+                paren_depth += 1
+            elif ch == ")":
+                paren_depth -= 1
+                if paren_depth < 0:
+                    raise error_cls("`custom_query` has unbalanced parentheses.")
+    if in_quote:
+        raise error_cls("`custom_query` has an unclosed quote.")
+    if paren_depth != 0:
+        raise error_cls("`custom_query` has unbalanced parentheses.")
     return clean
 
 
@@ -359,10 +415,10 @@ async def retry_async(
             delay = _retry_delay_seconds(attempt)
             _LOGGER.warning(
                 "%s attempt %d/%d failed (%s); retrying in %.2fs",
-                label,
+                sanitize_log_text(label),
                 attempt + 1,
                 _RETRY_MAX_ATTEMPTS,
-                exc,
+                sanitize_log_text(exc),
                 delay,
             )
             await asyncio.sleep(delay)
@@ -439,21 +495,31 @@ def _parse_gh_login(output: str) -> str:
     return login
 
 
+async def _default_gh_runner(args: Sequence[str], timeout_seconds: int) -> str:
+    return await run_gh_command_async(args, timeout_seconds)
+
+
 async def get_current_gh_user_async(
-    runner: Callable[[Sequence[str], int], Awaitable[str]] | None = None,
+    runner: Callable[[Sequence[str], int], Awaitable[str]] = _default_gh_runner,
 ) -> str:
-    """Fetches the authenticated GitHub login from `gh api user`."""
-    cmd_runner = runner if runner is not None else run_gh_command_async
-    output = await cmd_runner(
-        ["api", "user", "--jq", ".login"], _GH_USER_TIMEOUT_SECONDS
-    )
+    """Fetches the authenticated GitHub login from `gh api user`.
+
+    Args:
+      runner: Async `gh` command runner callable.
+
+    Returns:
+      Authenticated GitHub username.
+    """
+    output = await runner(["api", "user", "--jq", ".login"], _GH_USER_TIMEOUT_SECONDS)
     return _parse_gh_login(output)
 
 
-def _extract_reviewer_name(item: dict[str, Any]) -> str:
+def _extract_reviewer_name(item: Mapping[str, object]) -> str:
     # `gh` returns either direct fields or a nested `requestedReviewer` object.
     nested = item.get("requestedReviewer")
-    containers = (item, nested) if isinstance(nested, dict) else (item,)
+    containers: tuple[Mapping[str, object], ...] = (
+        (item, nested) if isinstance(nested, dict) else (item,)
+    )
     for container in containers:
         for key in ("login", "slug", "name"):
             candidate = container.get(key)
@@ -462,7 +528,7 @@ def _extract_reviewer_name(item: dict[str, Any]) -> str:
     return ""
 
 
-def _extract_reviewer_names(raw_requests: Any) -> list[str]:
+def _extract_reviewer_names(raw_requests: object) -> list[str]:
     names: list[str] = []
     if not isinstance(raw_requests, list):
         return names
@@ -475,7 +541,7 @@ def _extract_reviewer_names(raw_requests: Any) -> list[str]:
     return names
 
 
-def _extract_review_states(raw_pr: dict[str, Any]) -> dict[str, str]:
+def _extract_review_states(raw_pr: Mapping[str, object]) -> dict[str, str]:
     """Maps reviewer login (preserving case from data) to latest review state."""
     latest = raw_pr.get("latestReviews")
     entries = latest if isinstance(latest, list) and latest else raw_pr.get("reviews")
@@ -495,8 +561,15 @@ def _extract_review_states(raw_pr: dict[str, Any]) -> dict[str, str]:
     return states
 
 
-def _summarize_checks(raw_rollup: Any) -> tuple[str, int, int, int, int]:
-    """Summarizes statusCheckRollup as (state, passed, failed, pending, total)."""
+def _summarize_checks(raw_rollup: object) -> tuple[str, int, int, int, int]:
+    """Summarizes statusCheckRollup entries into aggregate CI counts.
+
+    Args:
+      raw_rollup: Raw `statusCheckRollup` value decoded from `gh pr list` JSON.
+
+    Returns:
+      Tuple `(state, passed, failed, pending, total)`.
+    """
     if not isinstance(raw_rollup, list) or not raw_rollup:
         return ("none", 0, 0, 0, 0)
 
@@ -580,8 +653,49 @@ def _determine_action_needed(
     return "needs_review"
 
 
+def _extract_author_info(raw_pr: Mapping[str, object]) -> tuple[str, bool]:
+    author_obj = raw_pr.get("author")
+    author_dict = author_obj if isinstance(author_obj, dict) else {}
+    author_login = str(author_dict.get("login") or "ghost")
+    is_bot = (
+        bool(author_dict.get("is_bot"))
+        or author_login.endswith("[bot]")
+        or author_login.startswith("app/")
+    )
+    return (author_login, is_bot)
+
+
+def _extract_labels(raw_pr: Mapping[str, object]) -> tuple[str, ...]:
+    labels_raw = raw_pr.get("labels")
+    if not isinstance(labels_raw, list):
+        return ()
+    return tuple(
+        str(label["name"])
+        for label in labels_raw
+        if isinstance(label, dict) and label.get("name")
+    )
+
+
+def _find_viewer_review_state(
+    viewer_lower: str, review_states: Mapping[str, str]
+) -> str:
+    if not viewer_lower:
+        return ""
+    for login, state in review_states.items():
+        if login.lower() == viewer_lower:
+            return state
+    return ""
+
+
+def _int_field(raw_pr: Mapping[str, object], key: str) -> int:
+    val = raw_pr.get(key)
+    if isinstance(val, int) and not isinstance(val, bool):
+        return val
+    return 0
+
+
 def normalize_pr(
-    raw_pr: dict[str, Any],
+    raw_pr: Mapping[str, object],
     *,
     repo: str,
     viewer: str,
@@ -602,14 +716,7 @@ def normalize_pr(
     Returns:
       Normalized immutable PrSummary instance.
     """
-    author_obj = raw_pr.get("author")
-    author_dict = author_obj if isinstance(author_obj, dict) else {}
-    author_login = str(author_dict.get("login") or "ghost")
-    is_bot = (
-        bool(author_dict.get("is_bot"))
-        or author_login.endswith("[bot]")
-        or author_login.startswith("app/")
-    )
+    author_login, is_bot = _extract_author_info(raw_pr)
     clean_assoc = (
         (author_association or str(raw_pr.get("authorAssociation") or ""))
         .strip()
@@ -640,20 +747,8 @@ def normalize_pr(
             if state == "CHANGES_REQUESTED"
         )
     )
-    my_review_state = ""
-    if viewer_lower:
-        for login, state in review_states.items():
-            if login.lower() == viewer_lower:
-                my_review_state = state
-                break
-
-    labels_raw = raw_pr.get("labels")
-    labels_list = labels_raw if isinstance(labels_raw, list) else []
-    labels = tuple(
-        str(label["name"])
-        for label in labels_list
-        if isinstance(label, dict) and label.get("name")
-    )
+    my_review_state = _find_viewer_review_state(viewer_lower, review_states)
+    labels = _extract_labels(raw_pr)
 
     checks_state, checks_passed, checks_failed, checks_pending, checks_total = (
         _summarize_checks(raw_pr.get("statusCheckRollup"))
@@ -674,7 +769,7 @@ def normalize_pr(
 
     return PrSummary(
         repo=repo,
-        number=int(raw_pr["number"]),
+        number=_int_field(raw_pr, "number"),
         title=str(raw_pr.get("title") or ""),
         url=str(raw_pr.get("url") or ""),
         author=author_login,
@@ -695,9 +790,9 @@ def normalize_pr(
         my_review_state=my_review_state,
         approved_by=approved_by,
         changes_requested_by=changes_requested_by,
-        additions=int(raw_pr.get("additions") or 0),
-        deletions=int(raw_pr.get("deletions") or 0),
-        changed_files=int(raw_pr.get("changedFiles") or 0),
+        additions=_int_field(raw_pr, "additions"),
+        deletions=_int_field(raw_pr, "deletions"),
+        changed_files=_int_field(raw_pr, "changedFiles"),
         labels=labels,
         checks_state=checks_state,
         checks_passed=checks_passed,
@@ -730,12 +825,11 @@ def sort_prs(prs: Sequence[PrSummary]) -> list[PrSummary]:
     )
 
 
-def _build_pr_list_args(repo: str, custom_query: str, limit: int) -> list[str]:
+def _build_pr_list_args(repo: str, clean_query: str, limit: int) -> list[str]:
     args = [
         "pr",
         "list",
-        "--repo",
-        repo,
+        f"--repo={repo}",
         "--state",
         "open",
         "--limit",
@@ -743,21 +837,21 @@ def _build_pr_list_args(repo: str, custom_query: str, limit: int) -> list[str]:
         "--json",
         PR_JSON_FIELDS,
     ]
-    if custom_query.strip():
-        args.extend(["--search", custom_query.strip()])
+    if clean_query:
+        args.append(f"--search={clean_query}")
     return args
 
 
 def _build_author_association_args(
-    repo: str, custom_query: str, limit: int
+    repo: str, clean_query: str, limit: int
 ) -> list[str] | None:
     owner, sep, name = repo.partition("/")
     if not sep or not owner or not name:
         return None
     # GitHub GraphQL connections cap `first` at 100 items per page.
     gql_limit = min(100, max(1, limit))
-    if custom_query.strip():
-        search_expr = f"repo:{repo} is:pr is:open {custom_query.strip()}"
+    if clean_query:
+        search_expr = f"repo:{repo} is:pr is:open {clean_query}"
         return [
             "api",
             "graphql",
@@ -782,7 +876,7 @@ def _build_author_association_args(
     ]
 
 
-def _extract_association_nodes(data: dict[str, Any]) -> Any:
+def _extract_association_nodes(data: Mapping[str, object]) -> object:
     repo_obj = data.get("repository")
     if isinstance(repo_obj, dict):
         prs_obj = repo_obj.get("pullRequests")
@@ -926,7 +1020,7 @@ async def fetch_pr_queue_async(
     exclude_drafts: bool = True,
     custom_query: str = "",
     limit: int = _DEFAULT_PR_LIMIT,
-    runner: Callable[[Sequence[str], int], Awaitable[str]] | None = None,
+    runner: Callable[[Sequence[str], int], Awaitable[str]] = _default_gh_runner,
     now: datetime.datetime | None = None,
 ) -> PrQueueResult:
     """Queries GitHub open PRs with asyncio and applies queue filters.
@@ -941,31 +1035,27 @@ async def fetch_pr_queue_async(
       exclude_drafts: Omit draft PRs.
       custom_query: Optional GitHub search filter string.
       limit: Maximum number of open PRs to fetch.
-      runner: Optional coroutine runner replacement for testing.
+      runner: Async `gh` command runner callable.
       now: Reference UTC timestamp for deterministic age calculation.
 
     Returns:
       Filtered and sorted PrQueueResult.
     """
-    cmd_runner = runner if runner is not None else run_gh_command_async
     clean_repo = validate_repo_slug(repo, error_cls=FetchError)
-    if any(ord(ch) < 32 or ord(ch) == 127 for ch in custom_query):
-        raise FetchError("Custom query must not contain control characters.")
+    clean_query = validate_search_query(custom_query, error_cls=FetchError)
     viewer = user.strip()
 
-    args = _build_pr_list_args(clean_repo, custom_query, limit)
-    assoc_args = _build_author_association_args(clean_repo, custom_query, limit)
+    args = _build_pr_list_args(clean_repo, clean_query, limit)
+    assoc_args = _build_author_association_args(clean_repo, clean_query, limit)
 
-    list_coro = cmd_runner(args, _GH_LIST_TIMEOUT_SECONDS)
+    list_coro = runner(args, _GH_LIST_TIMEOUT_SECONDS)
     assoc_coro = (
-        cmd_runner(assoc_args, _GH_LIST_TIMEOUT_SECONDS)
+        runner(assoc_args, _GH_LIST_TIMEOUT_SECONDS)
         if assoc_args is not None
         else _ready_value("{}")
     )
     user_coro = (
-        get_current_gh_user_async(runner=cmd_runner)
-        if not viewer
-        else _ready_value(viewer)
+        get_current_gh_user_async(runner=runner) if not viewer else _ready_value(viewer)
     )
 
     raw_output, assoc_res, viewer_res = await asyncio.gather(
@@ -977,7 +1067,10 @@ async def fetch_pr_queue_async(
         raise raw_output
     if isinstance(assoc_res, FetchError):
         # GraphQL membership metadata is advisory; degrade safely if secondary lookup fails.
-        _LOGGER.warning("GraphQL authorAssociation lookup failed: %s", assoc_res)
+        _LOGGER.warning(
+            "GraphQL authorAssociation lookup failed: %s",
+            sanitize_log_text(assoc_res),
+        )
         associations: dict[int, str] = {}
     elif isinstance(assoc_res, BaseException):
         raise assoc_res
@@ -1112,9 +1205,9 @@ class PrSummary:
     # Whether the PR exceeds max_age_days since updated_at.
     is_stale: bool
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> dict[str, object]:
         """Serializes this summary into a JSON-compatible dict."""
-        data = dataclasses.asdict(self)
+        data: dict[str, object] = dataclasses.asdict(self)
         tuple_fields = (
             "requested_reviewers",
             "approved_by",
@@ -1122,7 +1215,9 @@ class PrSummary:
             "labels",
         )
         for key in tuple_fields:
-            data[key] = list(data[key])
+            raw_val = data[key]
+            if isinstance(raw_val, (list, tuple)):
+                data[key] = list(raw_val)
         return data
 
 
@@ -1147,7 +1242,7 @@ class PrQueueResult:
     # Effective max_age_days cutoff applied during partitioning.
     max_age_days: int
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> dict[str, object]:
         """Serializes the queue result into a JSON-compatible dict."""
         return {
             "repo": self.repo,

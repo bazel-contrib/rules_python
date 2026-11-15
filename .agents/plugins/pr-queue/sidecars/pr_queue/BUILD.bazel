@@ -1,42 +1,61 @@
 load("//python:py_library.bzl", "py_library")
-load("//python:py_test.bzl", "py_test")
 load("//tests/support:support.bzl", "NOT_WINDOWS")
 
-package(default_visibility = ["//visibility:private"])
+package(default_visibility = ["//tests/agents/pr_queue:__pkg__"])
+
+exports_files(["index.html"])
+
+# Sidecar targets POSIX IDE daemon/worktree conventions; exclude Windows builds.
+_SIDECAR_COMPAT = NOT_WINDOWS
 
 py_library(
     name = "fetch_pr_queue",
-    testonly = True,
     srcs = ["fetch_pr_queue.py"],
     imports = ["."],
-    target_compatible_with = NOT_WINDOWS,
+    target_compatible_with = _SIDECAR_COMPAT,
+)
+
+py_library(
+    name = "state_store",
+    srcs = ["state_store.py"],
+    imports = ["."],
+    target_compatible_with = _SIDECAR_COMPAT,
+    deps = [":fetch_pr_queue"],
+)
+
+py_library(
+    name = "ls_client",
+    srcs = ["ls_client.py"],
+    imports = ["."],
+    target_compatible_with = _SIDECAR_COMPAT,
+    deps = [
+        ":fetch_pr_queue",
+        ":state_store",
+    ],
+)
+
+py_library(
+    name = "git_worktree",
+    srcs = ["git_worktree.py"],
+    imports = ["."],
+    target_compatible_with = _SIDECAR_COMPAT,
+    deps = [
+        ":fetch_pr_queue",
+        ":ls_client",
+        ":state_store",
+    ],
 )
 
 py_library(
     name = "server",
-    testonly = True,
     srcs = ["server.py"],
     data = ["index.html"],
     imports = ["."],
-    target_compatible_with = NOT_WINDOWS,
-    deps = [":fetch_pr_queue"],
-)
-
-py_test(
-    name = "fetch_pr_queue_test",
-    size = "small",
-    srcs = ["fetch_pr_queue_test.py"],
-    target_compatible_with = NOT_WINDOWS,
-    deps = [":fetch_pr_queue"],
-)
-
-py_test(
-    name = "server_test",
-    size = "small",
-    srcs = ["server_test.py"],
-    target_compatible_with = NOT_WINDOWS,
+    target_compatible_with = _SIDECAR_COMPAT,
     deps = [
         ":fetch_pr_queue",
-        ":server",
+        ":git_worktree",
+        ":ls_client",
+        ":state_store",
     ],
 )

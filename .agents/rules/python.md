@@ -117,11 +117,14 @@ globs: "*.py,*.sh"
   servers that print mock tokens, avoid sensitive variable names (`password`,
   `secret`, `token`); use `mock_token` and annotate intentional log lines with
   `# codeql[py/clear-text-logging-sensitive-data]`.
-* **Repo Slugs, Git Refs, and `--` Separators**: Reject `.` / `..`, leading `-`,
-  and control characters in `owner/name` repository slugs and search queries
-  before building URLs, API paths, or search queries. Validate untrusted git
-  branch/remote names against strict ref rules, pass `--` before positional CLI
-  args when supported, and quote shell examples with `shlex.quote`.
+* **Repo Slugs, Git Refs, and `--` Separators**: Reject `.` / `..`, leading
+  `-`, and control characters in `owner/name` repository slugs before building
+  URLs, API paths, or search queries. Validate untrusted Git branch/remote
+  refs passed to `git` against strict ref rules, pass `--` before positional
+  CLI args when supported, and quote shell examples with `shlex.quote`.
+* **Search DSL Queries**: Reject control characters, unclosed quotes, and
+  unbalanced parentheses in user search queries before CLI or GraphQL use, and
+  pass them via `--flag=value`.
 * **Loopback Credentials & No Redirects**: Reject non-loopback hosts in local
   RPC clients for both `http` and `https` schemes before attaching CSRF or auth
   tokens, and disable HTTP redirects.

@@ -244,6 +244,10 @@
       gap: 4px;
     }
 
+    .field-wide {
+      grid-column: 1 / -1;
+    }
+
     .field label {
       font-size: 11px;
       font-weight: 600;
@@ -421,6 +425,10 @@
       margin-bottom: 8px;
     }
 
+    .lookup-rerun-btn {
+      margin-top: 8px;
+    }
+
     .lookup-result-list {
       display: flex;
       flex-direction: column;
@@ -484,10 +492,15 @@
             <input id="cfg-max-age" type="number" min="0" step="1" />
           </div>
           <div class="field">
-            <label for="cfg-base-repo">Local Base Repo Path (blank = auto)</label>
-            <input id="cfg-base-repo" type="text" placeholder="Auto-detect local checkout" />
+            <label for="cfg-base-repo">Local Base Repo Path (config.json only)</label>
+            <input
+              id="cfg-base-repo"
+              type="text"
+              readonly
+              placeholder="Auto-detect local checkout"
+            />
           </div>
-          <div class="field" style="grid-column: 1 / -1;">
+          <div class="field field-wide">
             <label for="cfg-query">GitHub Search Query (`gh pr list --search`)</label>
             <input
               id="cfg-query"
@@ -521,7 +534,7 @@
           </button>
         </div>
       </form>
-      <!-- LINT.ThenChange(//.agents/plugins/pr-queue/sidecars/pr_queue/server.py:pr_queue_config_fields) -->
+      <!-- LINT.ThenChange(//.agents/plugins/pr-queue/sidecars/pr_queue/state_store.py:pr_queue_config_fields) -->
     </section>
 
     <div id="error-banner" class="banner banner-error hidden" role="alert">
@@ -547,12 +560,15 @@
   <script>
     "use strict";
 
-    function escapeHtml(text) {
-      const div = document.createElement("div");
-      div.textContent = text == null ? "" : String(text);
-      return div.innerHTML
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
+    function asSafeInt(value) {
+      return Number.isInteger(value) ? value : 0;
+    }
+
+    function makePill(text, variantClass = "") {
+      const span = document.createElement("span");
+      span.className = variantClass ? `pill ${variantClass}` : "pill";
+      span.textContent = text;
+      return span;
     }
 
     function sanitizeExternalUrl(raw) {
@@ -582,7 +598,7 @@
         my_pr: ["Your PR", "pill"],
       };
       const pair = map[pr.action_needed] || [pr.action_needed || "Open", "pill"];
-      return `<span class="pill ${pair[1]}">${escapeHtml(pair[0])}</span>`;
+      return makePill(pair[0], pair[1]);
     }
   </script>
   <!-- LINT.ThenChange(//.agents/plugins/pr-queue/sidecars/pr_queue/fetch_pr_queue.py:action_needed_buckets) -->
@@ -591,16 +607,19 @@
     "use strict";
 
     function checksBadge(pr) {
-      if (!pr.checks_total) return "";
+      const total = asSafeInt(pr.checks_total);
+      if (total <= 0) return null;
+      const passed = asSafeInt(pr.checks_passed);
+      const failed = asSafeInt(pr.checks_failed);
+      const pending = asSafeInt(pr.checks_pending);
       const map = {
-        passing: [`CI ${pr.checks_passed}/${pr.checks_total} passing`, "pill-ok"],
-        failing: [`CI ${pr.checks_failed} failing`, "pill-err"],
-        pending: [`CI ${pr.checks_pending} pending`, "pill-warn"],
+        passing: [`CI ${passed}/${total} passing`, "pill-ok"],
+        failing: [`CI ${failed} failing`, "pill-err"],
+        pending: [`CI ${pending} pending`, "pill-warn"],
         cancelled: ["CI cancelled", "pill"],
       };
       const pair = map[pr.checks_state];
-      if (!pair) return "";
-      return `<span class="pill ${pair[1]}">${escapeHtml(pair[0])}</span>`;
+      return pair ? makePill(pair[0], pair[1]) : null;
     }
   </script>
   <!-- LINT.ThenChange(//.agents/plugins/pr-queue/sidecars/pr_queue/fetch_pr_queue.py:checks_state_values) -->
@@ -730,23 +749,42 @@
         }
       }
 
+      function resolveDaysSinceUpdate(pr) {
+        if (Number.isInteger(pr.days_since_update) && pr.days_since_update >= 0) {
+          return pr.days_since_update;
+        }
+        if (typeof pr.updated_at === "string" && pr.updated_at) {
+          const updatedMs = Date.parse(pr.updated_at);
+          if (!Number.isNaN(updatedMs)) {
+            return Math.max(0, Math.floor((Date.now() - updatedMs) / 86400000));
+          }
+        }
+        if (Number.isInteger(pr.stale_days) && pr.stale_days >= 0) {
+          return pr.stale_days;
+        }
+        return null;
+      }
+
       function formatAgeText(pr) {
-        if (pr.days_since_update === 0) return "updated today";
-        if (pr.days_since_update === 1) return "updated 1d ago";
-        return `updated ${pr.days_since_update}d ago`;
+        const days = resolveDaysSinceUpdate(pr);
+        if (days === null) return "";
+        if (days === 0) return "updated today";
+        if (days === 1) return "updated 1d ago";
+        return `updated ${days}d ago`;
       }
 
       function renderCardActions(pr, isStaleCard) {
         const actions = document.createElement("div");
         actions.className = "pr-actions";
-        const busy = state.launchingPr === pr.number;
+        const prNum = asSafeInt(pr.number);
+        const busy = state.launchingPr === prNum;
         const chat = pr.triggered_chat;
 
         if (!(chat && chat.conversation_id)) {
           const reviewBtn = document.createElement("button");
           reviewBtn.type = "button";
           reviewBtn.className = isStaleCard ? "" : "primary";
-          reviewBtn.disabled = busy;
+          reviewBtn.disabled = busy || prNum <= 0;
           let buttonText = "Review in Worktree ↗";
           if (busy) {
             buttonText = "Preparing Worktree...";
@@ -754,7 +792,7 @@
             buttonText = "Review anyway ↗";
           }
           reviewBtn.textContent = buttonText;
-          reviewBtn.addEventListener("click", () => launchReview(pr.number, false));
+          reviewBtn.addEventListener("click", () => launchReview(prNum, false));
           actions.appendChild(reviewBtn);
           return actions;
         }
@@ -768,9 +806,9 @@
 
         const rerunBtn = document.createElement("button");
         rerunBtn.type = "button";
-        rerunBtn.disabled = busy;
+        rerunBtn.disabled = busy || prNum <= 0;
         rerunBtn.textContent = busy ? "Launching..." : "Re-run";
-        rerunBtn.addEventListener("click", () => launchReview(pr.number, true));
+        rerunBtn.addEventListener("click", () => launchReview(prNum, true));
         actions.appendChild(rerunBtn);
 
         if (chat.stale_commit) {
@@ -793,7 +831,7 @@
       function renderPrCard(pr, isStaleCard) {
         const card = document.createElement("article");
         card.className = "pr-card";
-        const prNum = Number.parseInt(pr.number, 10) || 0;
+        const prNum = asSafeInt(pr.number);
         const safeUrl = sanitizeExternalUrl(pr.url);
 
         const cardTop = document.createElement("div");
@@ -814,12 +852,19 @@
           });
         }
         badges.appendChild(prAnchor);
-        badges.insertAdjacentHTML("beforeend", `${actionBadge(pr)}${checksBadge(pr)}`);
+        badges.appendChild(actionBadge(pr));
+        const checksPill = checksBadge(pr);
+        if (checksPill) {
+          badges.appendChild(checksPill);
+        }
 
         const stats = document.createElement("div");
         stats.className = "pr-stats";
-        const diffStats = `+${pr.additions} / -${pr.deletions} · ${pr.changed_files}f`;
-        stats.textContent = `${formatAgeText(pr)} · ${diffStats}`;
+        const diffStats =
+          `+${asSafeInt(pr.additions)} / -${asSafeInt(pr.deletions)} · ` +
+          `${asSafeInt(pr.changed_files)}f`;
+        const ageText = formatAgeText(pr);
+        stats.textContent = ageText ? `${ageText} · ${diffStats}` : diffStats;
 
         cardTop.appendChild(badges);
         cardTop.appendChild(stats);
@@ -918,14 +963,18 @@
         }
 
         const hiddenBits = [];
-        if (data.skipped_drafts) hiddenBits.push(`${data.skipped_drafts} drafts`);
-        if (data.skipped_authored) hiddenBits.push(`${data.skipped_authored} authored`);
-        if (data.skipped_approved) hiddenBits.push(`${data.skipped_approved} approved`);
+        const skippedDrafts = asSafeInt(data.skipped_drafts);
+        const skippedAuthored = asSafeInt(data.skipped_authored);
+        const skippedApproved = asSafeInt(data.skipped_approved);
+        const maxAgeDays = asSafeInt(data.max_age_days);
+        if (skippedDrafts > 0) hiddenBits.push(`${skippedDrafts} drafts`);
+        if (skippedAuthored > 0) hiddenBits.push(`${skippedAuthored} authored`);
+        if (skippedApproved > 0) hiddenBits.push(`${skippedApproved} approved`);
         const hiddenText = hiddenBits.length ? ` · Hidden: ${hiddenBits.join(", ")}` : "";
         const viewerText = data.viewer ? `Viewer: @${data.viewer}` : "";
         el.summaryStrip.textContent = `${viewerText}${hiddenText} · Manual refresh & review only`;
 
-        el.prList.innerHTML = "";
+        el.prList.replaceChildren();
         if (!prs.length) {
           const empty = document.createElement("div");
           empty.className = "empty-state";
@@ -939,10 +988,10 @@
           }
         }
 
-        el.staleList.innerHTML = "";
+        el.staleList.replaceChildren();
         if (stale.length) {
           el.staleSummary.textContent =
-            `Stale PRs (>${data.max_age_days}d since update): ${stale.length}`;
+            `Stale PRs (>${maxAgeDays}d since update): ${stale.length}`;
           for (const pr of stale) {
             el.staleList.appendChild(renderPrCard(pr, true));
           }
@@ -1000,6 +1049,7 @@
       }
 
       async function launchReview(prNumber, force) {
+        if (!Number.isInteger(prNumber) || prNumber <= 0) return;
         if (state.launchingPr !== null) return;
         state.launchingPr = prNumber;
         showError("");
@@ -1015,8 +1065,9 @@
               force: Boolean(force),
               source_conversation_id: sourceConversationId,
             }),
-            // Covers two 3x60s git fetch budgets, uncached gh pr view, and LS RPCs.
-            timeoutMs: 450000,
+            // Covers worst-case sequential retries: two 3x60s git fetches (~364s),
+            // uncached gh user+view lookups (~94s), local git (30s), and LS RPCs (~65s).
+            timeoutMs: 560000,
           });
           showStatus(
             res.reused
@@ -1108,7 +1159,7 @@
 
           const newBtn = document.createElement("button");
           newBtn.type = "button";
-          newBtn.style.marginTop = "8px";
+          newBtn.className = "lookup-rerun-btn";
           newBtn.textContent = convs.length
             ? `Re-run Review PR #${prNum} in Worktree ↗`
             : `Review PR #${prNum} in Worktree ↗`;
@@ -1134,11 +1185,12 @@
       el.filtersForm.addEventListener("submit", async (evt) => {
         evt.preventDefault();
         showError("");
+        const parsedMaxAge = Number.parseInt(el.cfgMaxAge.value || "30", 10);
         const payload = {
           repo: el.cfgRepo.value.trim(),
           user: el.cfgUser.value.trim(),
-          max_age_days: Number.parseInt(el.cfgMaxAge.value || "30", 10),
-          base_repo: el.cfgBaseRepo.value.trim(),
+          max_age_days:
+            Number.isInteger(parsedMaxAge) && parsedMaxAge >= 0 ? parsedMaxAge : 30,
           custom_query: el.cfgQuery.value.trim(),
           review_requested_only: el.cfgReqOnly.checked,
           exclude_approved_by_me: el.cfgExclApproved.checked,

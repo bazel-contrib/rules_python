@@ -141,8 +141,8 @@ class FetchPrQueueTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.prs[0].checks_state, "pending")
         self.assertEqual(result.prs[0].checks_passed, 1)
         self.assertEqual(result.prs[0].checks_pending, 1)
-        self.assertIn("--search", recorded_cmds[0])
-        self.assertIn("label:bug", recorded_cmds[0])
+        self.assertIn("--repo=bazel-contrib/rules_python", recorded_cmds[0])
+        self.assertIn("--search=label:bug", recorded_cmds[0])
 
     async def test_sorts_by_action_priority_then_updated_desc(self) -> None:
         raw_prs = [
@@ -244,7 +244,14 @@ class FetchPrQueueTest(unittest.IsolatedAsyncioTestCase):
                 return "{}"
             return "{not json"
 
-        for invalid_repo in ("   ", "../evil", "owner/..", "-bad/repo", "owner/a b"):
+        for invalid_repo in (
+            "   ",
+            "../evil",
+            "owner/..",
+            "-bad/repo",
+            "owner/a b",
+            "owner\n/name",
+        ):
             with self.assertRaises(fetch_pr_queue.FetchError):
                 await fetch_pr_queue.fetch_pr_queue_async(
                     repo=invalid_repo,
@@ -253,13 +260,28 @@ class FetchPrQueueTest(unittest.IsolatedAsyncioTestCase):
                     now=self.now,
                 )
 
-        with self.assertRaises(fetch_pr_queue.FetchError):
-            await fetch_pr_queue.fetch_pr_queue_async(
-                user="alice",
-                custom_query="label:bug\nauthor:evil",
-                runner=bad_json_runner,
-                now=self.now,
-            )
+        for bad_query in (
+            "label:bug\nauthor:evil",
+            "label:bug\x85evil",
+            'label:"unclosed',
+            "label:(bug",
+            "label:bug)",
+        ):
+            with self.assertRaises(fetch_pr_queue.FetchError):
+                await fetch_pr_queue.fetch_pr_queue_async(
+                    user="alice",
+                    custom_query=bad_query,
+                    runner=bad_json_runner,
+                    now=self.now,
+                )
+
+        self.assertEqual(
+            fetch_pr_queue.validate_search_query(
+                '-author:app/dependabot label:"bug" (foo OR bar)',
+                error_cls=fetch_pr_queue.FetchError,
+            ),
+            '-author:app/dependabot label:"bug" (foo OR bar)',
+        )
 
         with self.assertRaises(fetch_pr_queue.FetchError):
             await fetch_pr_queue.fetch_pr_queue_async(
@@ -416,6 +438,12 @@ class FetchPrQueueAsyncTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("==================== STDOUT END ====================", msg)
         self.assertIn("==================== STDERR BEGIN ====================", msg)
         self.assertIn("==================== STDERR END ====================", msg)
+
+    def test_sanitize_log_text_strips_ansi_and_control_chars(self) -> None:
+        self.assertEqual(
+            fetch_pr_queue.sanitize_log_text("\x1b[31merr\x1b[0m\r\nnext\x85line\x7f"),
+            "err next line",
+        )
 
 
 if __name__ == "__main__":

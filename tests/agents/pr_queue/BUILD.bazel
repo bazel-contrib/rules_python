@@ -1,0 +1,28 @@
+load("//python:py_test.bzl", "py_test")
+load("//tests/support:support.bzl", "NOT_WINDOWS")
+
+# Sidecar targets POSIX IDE daemon/worktree conventions; exclude Windows builds.
+_SIDECAR_COMPAT = NOT_WINDOWS
+
+py_test(
+    name = "fetch_pr_queue_test",
+    size = "small",
+    srcs = ["fetch_pr_queue_test.py"],
+    target_compatible_with = _SIDECAR_COMPAT,
+    deps = ["//.agents/plugins/pr-queue/sidecars/pr_queue:fetch_pr_queue"],
+)
+
+py_test(
+    name = "server_test",
+    size = "small",
+    srcs = ["server_test.py"],
+    data = ["//.agents/plugins/pr-queue/sidecars/pr_queue:index.html"],
+    target_compatible_with = _SIDECAR_COMPAT,
+    deps = [
+        "//.agents/plugins/pr-queue/sidecars/pr_queue:fetch_pr_queue",
+        "//.agents/plugins/pr-queue/sidecars/pr_queue:git_worktree",
+        "//.agents/plugins/pr-queue/sidecars/pr_queue:ls_client",
+        "//.agents/plugins/pr-queue/sidecars/pr_queue:server",
+        "//.agents/plugins/pr-queue/sidecars/pr_queue:state_store",
+    ],
+)

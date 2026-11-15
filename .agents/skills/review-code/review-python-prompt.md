@@ -40,16 +40,19 @@ project's Python conventions:
       names (`mock_token`) and explicit CodeQL annotations
       (`# codeql[py/clear-text-logging-sensitive-data]`) for intentional mock
       outputs.
-    - Check repository slugs, search queries, and git refs (`head_ref`,
-      `base_ref`) for path traversal (`..`), leading `-` option flags, control
-      characters, and missing `--` argument separators or `shlex.quote`.
+    - Check repository slugs (`owner/name`) and Git refs passed to `git`
+      (`base_ref`, `remote`) for path traversal (`..`), leading `-` option
+      flags, control characters, missing `--` separators, and unquoted shell
+      examples; check search queries for control characters, unclosed quotes,
+      unbalanced parentheses, and `--flag=value` passing.
     - Verify local RPC clients enforce loopback hosts on both `http` and `https`
       before attaching CSRF/auth tokens and disable HTTP redirects, and verify
       local HTTP servers validate `Host` / `Sec-Fetch-Site` / `Origin` and emit
       `Content-Security-Policy` + `X-Content-Type-Options: nosniff`.
-    - Check SQLite `file:` URIs use `Path.as_uri()`, parameterized `LIKE`
-      clauses escape `\`, `%`, `_` with `ESCAPE '\'`, and prompt templates
-      isolate sanitized untrusted metadata inside explicit data delimiters.
+    - Check SQLite `file:` URIs use `Path.resolve().as_uri()`, parameterized
+      `LIKE` clauses escape `\`, `%`, `_` with `ESCAPE '\'`, and prompt
+      templates isolate sanitized untrusted metadata inside explicit data
+      delimiters.
 11. Data Classes: Verify `@dataclasses.dataclass` definitions include comments
     above each field describing its value.
 

@@ -14,18 +14,24 @@ import unittest
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 from unittest import mock
+from urllib.request import Request
 
 import fetch_pr_queue
+import git_worktree
+import ls_client
 import server
+import state_store
 
-_SIDECAR_DIR = Path(__file__).resolve().parent
+_SIDECAR_DIR = Path(server.__file__).resolve().parent
 
 
 def _make_service(
     root: Path,
-    store: server.StateStore,
+    store: state_store.StateStore,
     *,
-    fetcher: Callable[..., Awaitable[fetch_pr_queue.PrQueueResult]] | None = None,
+    fetcher: Callable[..., Awaitable[fetch_pr_queue.PrQueueResult]] = (
+        fetch_pr_queue.fetch_pr_queue_async
+    ),
     conversations_db: Path | None = None,
 ) -> server.PrQueueService:
     return server.PrQueueService(
@@ -103,9 +109,15 @@ async def _send_raw_http(
     return (status_code, headers, body)
 
 
-async def _http_get(port: int, path: str) -> tuple[int, bytes]:
+async def _http_get(
+    port: int, path: str, *, header_token: str = ""
+) -> tuple[int, bytes]:
+    token_hdr = f"X-Sidecar-Token: {header_token}\r\n" if header_token else ""
     req = (
-        f"GET {path} HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\n\r\n"
+        f"GET {path} HTTP/1.1\r\n"
+        f"Host: 127.0.0.1:{port}\r\n"
+        f"{token_hdr}"
+        "Connection: close\r\n\r\n"
     ).encode("ascii")
     status, _headers, body = await _send_raw_http(port, req)
     return (status, body)
@@ -137,13 +149,13 @@ class ConfigAndStoreTest(unittest.TestCase):
 
     def test_config_validation_and_persistence(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            store = server.StateStore(Path(tmpdir))
+            store = state_store.StateStore(Path(tmpdir))
             default_cfg = store.get_config()
             self.assertEqual(default_cfg.repo, "bazel-contrib/rules_python")
             self.assertNotIn("auto_review", default_cfg.to_dict())
 
-            with self.assertRaises(server.PrQueueError):
-                server.PrQueueConfig.from_dict({"repo": "invalid_repo_no_slash"})
+            with self.assertRaises(state_store.PrQueueError):
+                state_store.PrQueueConfig.from_dict({"repo": "invalid_repo_no_slash"})
             for bad_repo in (
                 "",
                 "   ",
@@ -152,27 +164,28 @@ class ConfigAndStoreTest(unittest.TestCase):
                 "-bad/repo",
                 ".",
                 "a/b/c",
+                "owner\n/name",
             ):
-                with self.assertRaises(server.PrQueueError):
-                    server.PrQueueConfig.from_dict({"repo": bad_repo})
-            with self.assertRaises(server.PrQueueError):
-                server.PrQueueConfig.from_dict({"repo": 123})
-            with self.assertRaises(server.PrQueueError):
-                server.PrQueueConfig.from_dict({"user": 123})
-            with self.assertRaises(server.PrQueueError):
-                server.PrQueueConfig.from_dict({"custom_query": "label:bug\nevil"})
-            with self.assertRaises(server.PrQueueError):
-                server.PrQueueConfig.from_dict({"max_age_days": "not-an-int"})
-            with self.assertRaises(server.PrQueueError):
-                server.PrQueueConfig.from_dict({"max_age_days": True})
-            with self.assertRaises(server.PrQueueError):
-                server.PrQueueConfig.from_dict({"max_age_days": 1.5})
-            with self.assertRaises(server.PrQueueError):
-                server.PrQueueConfig.from_dict({"max_age_days": -1})
-            with self.assertRaises(server.PrQueueError):
-                server.PrQueueConfig.from_dict({"exclude_drafts": "false"})
+                with self.assertRaises(state_store.PrQueueError):
+                    state_store.PrQueueConfig.from_dict({"repo": bad_repo})
+            with self.assertRaises(state_store.PrQueueError):
+                state_store.PrQueueConfig.from_dict({"repo": 123})
+            with self.assertRaises(state_store.PrQueueError):
+                state_store.PrQueueConfig.from_dict({"user": 123})
+            with self.assertRaises(state_store.PrQueueError):
+                state_store.PrQueueConfig.from_dict({"custom_query": "label:bug\nevil"})
+            with self.assertRaises(state_store.PrQueueError):
+                state_store.PrQueueConfig.from_dict({"max_age_days": "not-an-int"})
+            with self.assertRaises(state_store.PrQueueError):
+                state_store.PrQueueConfig.from_dict({"max_age_days": True})
+            with self.assertRaises(state_store.PrQueueError):
+                state_store.PrQueueConfig.from_dict({"max_age_days": 1.5})
+            with self.assertRaises(state_store.PrQueueError):
+                state_store.PrQueueConfig.from_dict({"max_age_days": -1})
+            with self.assertRaises(state_store.PrQueueError):
+                state_store.PrQueueConfig.from_dict({"exclude_drafts": "false"})
 
-            updated = server.PrQueueConfig.from_dict(
+            updated = state_store.PrQueueConfig.from_dict(
                 {"repo": "org/project", "max_age_days": 7, "exclude_drafts": False}
             )
             store.save_config(updated)
@@ -191,11 +204,11 @@ class ConfigAndStoreTest(unittest.TestCase):
 
             with mock.patch.dict(os.environ, {}, clear=True):
                 self.assertEqual(
-                    server.resolve_app_data_dir(home),
+                    state_store.resolve_app_data_dir(home),
                     (home / ".gemini" / "antigravity").resolve(),
                 )
                 self.assertEqual(
-                    server.resolve_data_dir(home),
+                    state_store.resolve_data_dir(home),
                     (home / ".gemini" / "antigravity" / "pr_queue").resolve(),
                 )
 
@@ -203,10 +216,10 @@ class ConfigAndStoreTest(unittest.TestCase):
                 os.environ, {"ANTIGRAVITY_APP_DATA_DIR": str(custom_app)}, clear=True
             ):
                 self.assertEqual(
-                    server.resolve_app_data_dir(home), custom_app.resolve()
+                    state_store.resolve_app_data_dir(home), custom_app.resolve()
                 )
                 self.assertEqual(
-                    server.resolve_data_dir(home),
+                    state_store.resolve_data_dir(home),
                     (custom_app / "pr_queue").resolve(),
                 )
 
@@ -218,7 +231,9 @@ class ConfigAndStoreTest(unittest.TestCase):
                 },
                 clear=True,
             ):
-                self.assertEqual(server.resolve_data_dir(home), exec_data.resolve())
+                self.assertEqual(
+                    state_store.resolve_data_dir(home), exec_data.resolve()
+                )
 
             with mock.patch.dict(
                 os.environ,
@@ -228,7 +243,7 @@ class ConfigAndStoreTest(unittest.TestCase):
                 },
                 clear=True,
             ):
-                self.assertEqual(server.resolve_data_dir(home), pq_data.resolve())
+                self.assertEqual(state_store.resolve_data_dir(home), pq_data.resolve())
 
     def test_format_conversation_title_uses_caveman_scheme(self) -> None:
         cases = [
@@ -277,7 +292,7 @@ class PrQueueServiceTest(unittest.IsolatedAsyncioTestCase):
     async def test_queue_uses_cache_until_explicit_refresh(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            store = server.StateStore(root / "state")
+            store = state_store.StateStore(root / "state")
             fetch_calls = 0
 
             async def fake_fetcher(**_kwargs: object) -> fetch_pr_queue.PrQueueResult:
@@ -316,7 +331,7 @@ class PrQueueServiceTest(unittest.IsolatedAsyncioTestCase):
     async def test_falls_back_to_disk_cache_on_fetch_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            store = server.StateStore(root / "state")
+            store = state_store.StateStore(root / "state")
             should_fail = False
 
             async def fake_fetcher(**_kwargs: object) -> fetch_pr_queue.PrQueueResult:
@@ -336,18 +351,35 @@ class PrQueueServiceTest(unittest.IsolatedAsyncioTestCase):
             svc = _make_service(root, store, fetcher=fake_fetcher)
             await svc.get_queue(refresh=True)
 
+            # Simulate an older disk cache entry missing `days_since_update`.
+            disk_cache = store.get_disk_cache()
+            assert isinstance(disk_cache, dict)  # type assert
+            cached_prs = disk_cache["prs"]
+            assert isinstance(cached_prs, list) and isinstance(
+                cached_prs[0], dict
+            )  # type assert
+            cached_prs[0].pop("days_since_update", None)
+            cached_prs[0]["stale_days"] = 4
+            store.save_disk_cache(disk_cache)
+
             # New service instance simulates restart with empty memory cache.
             should_fail = True
             svc2 = _make_service(root, store, fetcher=fake_fetcher)
             resp = await svc2.get_queue(refresh=False)
             self.assertTrue(resp["stale_cache"])
-            self.assertIn("network down", resp["error"])
-            self.assertEqual(resp["prs"][0]["number"], 42)
+            self.assertIn("network down", str(resp["error"]))
+            prs = resp["prs"]
+            assert isinstance(prs, list)  # type assert
+            first_pr = prs[0]
+            assert isinstance(first_pr, dict)  # type assert
+            self.assertEqual(first_pr["number"], 42)
+            self.assertIsInstance(first_pr["days_since_update"], int)
+            self.assertGreater(int(str(first_pr["days_since_update"])), 0)
 
     async def test_returns_empty_error_payload_on_cold_cache_fetch_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            store = server.StateStore(root / "state")
+            store = state_store.StateStore(root / "state")
 
             async def failing_fetcher(
                 **_kwargs: object,
@@ -364,12 +396,12 @@ class PrQueueServiceTest(unittest.IsolatedAsyncioTestCase):
             self.assertFalse(resp["from_cache"])
             self.assertFalse(resp["stale_cache"])
             self.assertEqual(resp["fetched_at"], "")
-            self.assertIn("gh auth required", resp["error"])
+            self.assertIn("gh auth required", str(resp["error"]))
 
     async def test_lookup_pr_merges_tracked_and_sqlite_history(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            store = server.StateStore(root / "state")
+            store = state_store.StateStore(root / "state")
             db_path = root / "summary?v=1#main.db"
             conn = sqlite3.connect(db_path)
             conn.execute(
@@ -400,6 +432,15 @@ class PrQueueServiceTest(unittest.IsolatedAsyncioTestCase):
             conn.execute(
                 "INSERT INTO conversation_summaries VALUES (?, ?, ?, ?)",
                 (
+                    "cid-summary",
+                    "Follow-up investigation",
+                    "Notes covering PR #44 analysis",
+                    135,
+                ),
+            )
+            conn.execute(
+                "INSERT INTO conversation_summaries VALUES (?, ?, ?, ?)",
+                (
                     "cid-wildcard",
                     "https://github.com/bazel-contrib/rulesXpython/pull/44",
                     "",
@@ -422,7 +463,7 @@ class PrQueueServiceTest(unittest.IsolatedAsyncioTestCase):
             conn.close()
 
             store.record_triggered_pr(
-                server.TriggeredPrRecord(
+                state_store.TriggeredPrRecord(
                     pr_number=44,
                     repo="bazel-contrib/rules_python",
                     conversation_id="cid-tracked",
@@ -439,13 +480,18 @@ class PrQueueServiceTest(unittest.IsolatedAsyncioTestCase):
             )
             svc = _make_service(root, store, conversations_db=db_path)
             found = await svc.lookup_pr(44)
-            ids = [c["conversation_id"] for c in found["conversations"]]
-            self.assertEqual(ids, ["cid-tracked", "cid-caveman", "cid-old", "cid-url"])
+            conversations = found["conversations"]
+            assert isinstance(conversations, list)  # type assert
+            ids = [c["conversation_id"] for c in conversations if isinstance(c, dict)]
+            self.assertEqual(
+                ids,
+                ["cid-tracked", "cid-caveman", "cid-old", "cid-url", "cid-summary"],
+            )
 
     async def test_launch_review_reuses_and_forces_rerun(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            store = server.StateStore(root / "state")
+            store = state_store.StateStore(root / "state")
 
             async def fake_fetcher(**_kw: object) -> fetch_pr_queue.PrQueueResult:
                 return fetch_pr_queue.PrQueueResult(
@@ -468,46 +514,35 @@ class PrQueueServiceTest(unittest.IsolatedAsyncioTestCase):
                 calls.append(dict(kwargs))
                 return (f"chat-{len(calls)}", "proj-1", "env-1")
 
-            async def fake_repo(_cfg: str, _repo: str) -> Path:
+            async def fake_repo(_cfg: str, _repo: str, **_kw: object) -> Path:
                 return root / "main"
 
             async def fake_wt(
-                _repo: Path, num: int, _slug: str, _base: str
+                _repo: Path, num: int, _slug: str, _base: str, **_kw: object
             ) -> tuple[Path, str, str]:
                 return (root / f"wt-{num}", "oldsha", "upstream")
 
-            res1 = await svc.launch_review(
-                77,
-                force=False,
-                repo_resolver=fake_repo,
-                worktree_preparer=fake_wt,
-                conversation_starter=fake_convo,
-            )
-            self.assertFalse(res1["reused"])
-            self.assertEqual(res1["conversation_id"], "chat-1")
-            self.assertEqual(res1["title"], "pr-77: fix issue #77")
-            self.assertIn("/review-code", str(calls[0]["prompt"]))
-            self.assertIn("upstream/main", str(calls[0]["prompt"]))
+            with mock.patch.object(
+                server, "resolve_base_repo", side_effect=fake_repo
+            ), mock.patch.object(
+                server, "prepare_pr_worktree", side_effect=fake_wt
+            ), mock.patch.object(
+                server, "start_pr_review_conversation", side_effect=fake_convo
+            ):
+                res1 = await svc.launch_review(77, force=False)
+                self.assertFalse(res1["reused"])
+                self.assertEqual(res1["conversation_id"], "chat-1")
+                self.assertEqual(res1["title"], "pr-77: fix issue #77")
+                self.assertIn("/review-code", str(calls[0]["prompt"]))
+                self.assertIn("upstream/main", str(calls[0]["prompt"]))
 
-            res2 = await svc.launch_review(
-                77,
-                force=False,
-                repo_resolver=fake_repo,
-                worktree_preparer=fake_wt,
-                conversation_starter=fake_convo,
-            )
-            self.assertTrue(res2["reused"])
-            self.assertEqual(len(calls), 1)
+                res2 = await svc.launch_review(77, force=False)
+                self.assertTrue(res2["reused"])
+                self.assertEqual(len(calls), 1)
 
-            res3 = await svc.launch_review(
-                77,
-                force=True,
-                repo_resolver=fake_repo,
-                worktree_preparer=fake_wt,
-                conversation_starter=fake_convo,
-            )
-            self.assertFalse(res3["reused"])
-            self.assertEqual(res3["conversation_id"], "chat-2")
+                res3 = await svc.launch_review(77, force=True)
+                self.assertFalse(res3["reused"])
+                self.assertEqual(res3["conversation_id"], "chat-2")
 
 
 class LanguageServerRpcAndGitTest(unittest.IsolatedAsyncioTestCase):
@@ -517,11 +552,13 @@ class LanguageServerRpcAndGitTest(unittest.IsolatedAsyncioTestCase):
         calls: list[tuple[str, dict[str, object]]] = []
         main_repo = Path("/tmp/main-repo").resolve()
         wt_path = Path("/tmp/worktrees/review-pr-5").resolve()
+        creds = ls_client.LsCredentials("http", "127.0.0.1", 1, "t")
 
         async def fake_rpc(
             _ls: object,
             method: str,
             body: dict[str, object],
+            **_kw: object,
         ) -> dict[str, object]:
             calls.append((method, body))
             if method == "ListProjects":
@@ -534,7 +571,7 @@ class LanguageServerRpcAndGitTest(unittest.IsolatedAsyncioTestCase):
                             "archived": True,
                             "projectResources": {
                                 "resources": [
-                                    {"gitFolder": {"folderUri": f"file://{main_repo}"}}
+                                    {"gitFolder": {"folderUri": main_repo.as_uri()}}
                                 ]
                             },
                         },
@@ -543,7 +580,7 @@ class LanguageServerRpcAndGitTest(unittest.IsolatedAsyncioTestCase):
                             "name": "main-repo",
                             "projectResources": {
                                 "resources": [
-                                    {"gitFolder": {"folderUri": f"file://{main_repo}"}}
+                                    {"gitFolder": {"folderUri": main_repo.as_uri()}}
                                 ]
                             },
                             "environments": {"environments": []},
@@ -556,12 +593,12 @@ class LanguageServerRpcAndGitTest(unittest.IsolatedAsyncioTestCase):
                 return {"environment": {"id": env["id"]}}
             return {}
 
-        proj_id, env_id = await server.ensure_project_environment(
-            {"port": 1, "csrf_token": "t"},
-            main_repo,
-            wt_path,
-            ls_caller=fake_rpc,
-        )
+        with mock.patch.object(ls_client, "call_ls_rpc", side_effect=fake_rpc):
+            proj_id, env_id = await ls_client.ensure_project_environment(
+                creds,
+                main_repo,
+                wt_path,
+            )
         self.assertEqual(proj_id, "proj-42")
         self.assertTrue(env_id)
         self.assertEqual(
@@ -569,25 +606,35 @@ class LanguageServerRpcAndGitTest(unittest.IsolatedAsyncioTestCase):
             ["ListProjects", "ReadProjects", "AddEnvironmentToProject"],
         )
         self.assertEqual(calls[1][1], {"ids": ["proj-archived", "proj-42"]})
+        add_env = calls[2][1]["environment"]
+        assert isinstance(add_env, dict)  # type assert
+        self.assertEqual(
+            add_env["resources"],
+            {"resources": [{"folderUri": wt_path.as_uri()}]},
+        )
 
     async def test_ensure_project_environment_fails_without_matching_project(
         self,
     ) -> None:
+        creds = ls_client.LsCredentials("http", "127.0.0.1", 1, "t")
+
         async def empty_rpc(
             _ls: object,
             method: str,
             _body: dict[str, object],
+            **_kw: object,
         ) -> dict[str, object]:
             if method == "ListProjects":
                 return {"projectIds": []}
             return {}
 
-        with self.assertRaises(server.PrQueueError):
-            await server.ensure_project_environment(
-                {"port": 1, "csrf_token": "t"},
+        with mock.patch.object(
+            ls_client, "call_ls_rpc", side_effect=empty_rpc
+        ), self.assertRaises(state_store.PrQueueError):
+            await ls_client.ensure_project_environment(
+                creds,
                 Path("/tmp/unregistered-repo"),
                 Path("/tmp/wt"),
-                ls_caller=empty_rpc,
             )
 
     async def test_ensure_project_environment_uses_source_conversation_fallback(
@@ -595,11 +642,13 @@ class LanguageServerRpcAndGitTest(unittest.IsolatedAsyncioTestCase):
     ) -> None:
         calls: list[tuple[str, dict[str, object]]] = []
         wt_path = Path("/tmp/wt-pr-99").resolve()
+        creds = ls_client.LsCredentials("http", "127.0.0.1", 1, "t")
 
         async def fake_rpc(
             _ls: object,
             method: str,
             body: dict[str, object],
+            **_kw: object,
         ) -> dict[str, object]:
             calls.append((method, body))
             if method == "ListProjects":
@@ -627,34 +676,37 @@ class LanguageServerRpcAndGitTest(unittest.IsolatedAsyncioTestCase):
                 return {"environment": {"id": "env-new"}}
             return {}
 
-        proj_id, env_id = await server.ensure_project_environment(
-            {"port": 1, "csrf_token": "t"},
-            Path("/tmp/unmatched-repo").resolve(),
-            wt_path,
-            source_conversation_id="chat-in-pane",
-            ls_caller=fake_rpc,
-        )
-        self.assertEqual((proj_id, env_id), ("proj-pane", "env-new"))
-        self.assertEqual(
-            calls[2], ("GetConversationMetadata", {"conversationId": "chat-in-pane"})
-        )
-
-        with self.assertRaises(server.PrQueueError):
-            await server.ensure_project_environment(
-                {"port": 1, "csrf_token": "t"},
+        with mock.patch.object(ls_client, "call_ls_rpc", side_effect=fake_rpc):
+            proj_id, env_id = await ls_client.ensure_project_environment(
+                creds,
                 Path("/tmp/unmatched-repo").resolve(),
                 wt_path,
-                source_conversation_id="chat-outside",
-                ls_caller=fake_rpc,
+                source_conversation_id="chat-in-pane",
             )
+            self.assertEqual((proj_id, env_id), ("proj-pane", "env-new"))
+            self.assertEqual(
+                calls[2],
+                ("GetConversationMetadata", {"conversationId": "chat-in-pane"}),
+            )
+
+            with self.assertRaises(state_store.PrQueueError):
+                await ls_client.ensure_project_environment(
+                    creds,
+                    Path("/tmp/unmatched-repo").resolve(),
+                    wt_path,
+                    source_conversation_id="chat-outside",
+                )
 
     async def test_resolve_default_model_prefers_config_and_falls_back(
         self,
     ) -> None:
+        creds = ls_client.LsCredentials("http", "127.0.0.1", 1, "t")
+
         async def cascade_cfg_rpc(
             _ls: object,
             method: str,
             _body: dict[str, object],
+            **_kw: object,
         ) -> dict[str, object]:
             if method == "GetCascadeModelConfigData":
                 return {
@@ -664,17 +716,17 @@ class LanguageServerRpcAndGitTest(unittest.IsolatedAsyncioTestCase):
                 }
             raise AssertionError(f"Unexpected RPC {method}")
 
-        self.assertEqual(
-            await server.resolve_default_model(
-                {"port": 1, "csrf_token": "t"}, ls_caller=cascade_cfg_rpc
-            ),
-            "MODEL_OVERRIDE",
-        )
+        with mock.patch.object(ls_client, "call_ls_rpc", side_effect=cascade_cfg_rpc):
+            self.assertEqual(
+                await ls_client.resolve_default_model(creds),
+                "MODEL_OVERRIDE",
+            )
 
         async def client_cfg_rpc(
             _ls: object,
             method: str,
             _body: dict[str, object],
+            **_kw: object,
         ) -> dict[str, object]:
             if method == "GetCascadeModelConfigData":
                 return {
@@ -685,20 +737,20 @@ class LanguageServerRpcAndGitTest(unittest.IsolatedAsyncioTestCase):
                 }
             return {}
 
-        self.assertEqual(
-            await server.resolve_default_model(
-                {"port": 1, "csrf_token": "t"}, ls_caller=client_cfg_rpc
-            ),
-            "MODEL_CLIENT",
-        )
+        with mock.patch.object(ls_client, "call_ls_rpc", side_effect=client_cfg_rpc):
+            self.assertEqual(
+                await ls_client.resolve_default_model(creds),
+                "MODEL_CLIENT",
+            )
 
         async def avail_fallback_rpc(
             _ls: object,
             method: str,
             _body: dict[str, object],
+            **_kw: object,
         ) -> dict[str, object]:
             if method == "GetCascadeModelConfigData":
-                raise server.PrQueueError("unsupported")
+                raise state_store.PrQueueError("unsupported")
             if method == "GetAvailableModels":
                 return {
                     "response": {
@@ -709,24 +761,26 @@ class LanguageServerRpcAndGitTest(unittest.IsolatedAsyncioTestCase):
                 }
             return {}
 
-        self.assertEqual(
-            await server.resolve_default_model(
-                {"port": 1, "csrf_token": "t"}, ls_caller=avail_fallback_rpc
-            ),
-            "MODEL_AUTO",
-        )
+        with mock.patch.object(
+            ls_client, "call_ls_rpc", side_effect=avail_fallback_rpc
+        ):
+            self.assertEqual(
+                await ls_client.resolve_default_model(creds),
+                "MODEL_AUTO",
+            )
 
         async def empty_models_rpc(
             _ls: object,
             _method: str,
             _body: dict[str, object],
+            **_kw: object,
         ) -> dict[str, object]:
             return {}
 
-        with self.assertRaises(server.PrQueueError):
-            await server.resolve_default_model(
-                {"port": 1, "csrf_token": "t"}, ls_caller=empty_models_rpc
-            )
+        with mock.patch.object(
+            ls_client, "call_ls_rpc", side_effect=empty_models_rpc
+        ), self.assertRaises(state_store.PrQueueError):
+            await ls_client.resolve_default_model(creds)
 
     async def test_start_pr_review_conversation_sends_title_and_message(self) -> None:
         calls: list[tuple[str, dict[str, object]]] = []
@@ -737,6 +791,7 @@ class LanguageServerRpcAndGitTest(unittest.IsolatedAsyncioTestCase):
             _ls: object,
             method: str,
             body: dict[str, object],
+            **_kw: object,
         ) -> dict[str, object]:
             calls.append((method, body))
             if method == "ListProjects":
@@ -749,7 +804,7 @@ class LanguageServerRpcAndGitTest(unittest.IsolatedAsyncioTestCase):
                             "name": "repo",
                             "projectResources": {
                                 "resources": [
-                                    {"gitFolder": {"folderUri": f"file://{main_repo}"}}
+                                    {"gitFolder": {"folderUri": main_repo.as_uri()}}
                                 ]
                             },
                             "environments": {
@@ -759,7 +814,7 @@ class LanguageServerRpcAndGitTest(unittest.IsolatedAsyncioTestCase):
                                         "name": wt_path.name,
                                         "resources": {
                                             "resources": [
-                                                {"folderUri": f"file://{wt_path}"}
+                                                {"folderUri": wt_path.as_uri()}
                                             ]
                                         },
                                     }
@@ -778,14 +833,23 @@ class LanguageServerRpcAndGitTest(unittest.IsolatedAsyncioTestCase):
                 return {"cascadeId": "new-chat-uuid"}
             return {}
 
-        cid, pid, eid = await server.start_pr_review_conversation(
-            main_repo=main_repo,
-            worktree_path=wt_path,
-            prompt="Review PR #5",
-            title="pr-5: add test check",
-            ls_caller=fake_rpc,
-            ls_resolver=lambda: {"scheme": "http", "port": 1234, "csrf_token": "abc"},
-        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            daemon_dir = Path(tmpdir) / "daemon"
+            daemon_dir.mkdir()
+            (daemon_dir / "instance.json").write_text(
+                json.dumps({"httpPort": 1234, "csrfToken": "abc"}),
+                encoding="utf-8",
+            )
+            with mock.patch.dict(os.environ, {}, clear=True), mock.patch.object(
+                ls_client, "call_ls_rpc", side_effect=fake_rpc
+            ):
+                cid, pid, eid = await ls_client.start_pr_review_conversation(
+                    main_repo=main_repo,
+                    worktree_path=wt_path,
+                    prompt="Review PR #5",
+                    title="pr-5: add test check",
+                    daemon_dir=daemon_dir,
+                )
         self.assertEqual((cid, pid, eid), ("new-chat-uuid", "proj-9", "env-wt"))
         methods = [m for m, _ in calls]
         self.assertEqual(
@@ -863,7 +927,7 @@ class LanguageServerRpcAndGitTest(unittest.IsolatedAsyncioTestCase):
 
             pr_sha = await asyncio.to_thread(_setup_repo)
 
-            wt_path, checked_sha, remote_name = await server.prepare_pr_worktree(
+            wt_path, checked_sha, remote_name = await git_worktree.prepare_pr_worktree(
                 main_repo,
                 12,
                 "bazel-contrib/rules_python",
@@ -878,53 +942,74 @@ class LanguageServerRpcAndGitTest(unittest.IsolatedAsyncioTestCase):
     def test_remote_matches_repo_rejects_domain_spoofing(self) -> None:
         repo = "bazel-contrib/rules_python"
         self.assertTrue(
-            server._remote_matches_repo(
+            git_worktree.remote_matches_repo(
                 "https://github.com/bazel-contrib/rules_python.git", repo
             )
         )
         self.assertTrue(
-            server._remote_matches_repo(
+            git_worktree.remote_matches_repo(
                 "git@github.com:bazel-contrib/rules_python.git", repo
             )
         )
+        self.assertTrue(
+            git_worktree.remote_matches_repo(
+                "ssh://git@github.com/bazel-contrib/rules_python.git", repo
+            )
+        )
         self.assertFalse(
-            server._remote_matches_repo(
+            git_worktree.remote_matches_repo(
                 "https://evilgithub.com/bazel-contrib/rules_python.git", repo
             )
         )
         self.assertFalse(
-            server._remote_matches_repo(
+            git_worktree.remote_matches_repo(
                 "git@github.com.evil.com:bazel-contrib/rules_python.git", repo
             )
         )
         self.assertFalse(
-            server._remote_matches_repo(
+            git_worktree.remote_matches_repo(
                 "file:///tmp/github.com/bazel-contrib/rules_python.git", repo
             )
         )
+        self.assertFalse(
+            git_worktree.remote_matches_repo(
+                "ftp://github.com/bazel-contrib/rules_python.git", repo
+            )
+        )
 
-    def test_ls_address_normalization_and_loopback_tls_checks(self) -> None:
-        self.assertEqual(server._parse_ls_address("[::1]:1234"), ("http", "::1", 1234))
+    def test_ls_address_normalization_and_loopback_http_checks(self) -> None:
         self.assertEqual(
-            server._parse_ls_address("https://[::1]:8443/path"), ("https", "::1", 8443)
+            ls_client.parse_ls_address("[::1]:1234"), ("http", "::1", 1234)
         )
         self.assertEqual(
-            server._parse_ls_address("LOCALHOST:4567"), ("http", "localhost", 4567)
+            ls_client.parse_ls_address("http://[::1]:8443/path"),
+            ("http", "::1", 8443),
         )
-        self.assertIsNone(server._parse_ls_address("http://evil.example.com:8080"))
+        self.assertEqual(
+            ls_client.parse_ls_address("LOCALHOST:4567"), ("http", "localhost", 4567)
+        )
+        self.assertIsNone(ls_client.parse_ls_address("https://[::1]:8443/path"))
+        self.assertIsNone(ls_client.parse_ls_address("http://evil.example.com:8080"))
+        self.assertIsNone(ls_client.parse_ls_address("http://127.0.0.1:70000"))
 
-        for bad_scheme in ("http", "https"):
-            with self.assertRaises(server.PrQueueError):
-                server._call_ls_rpc_sync(
-                    {
-                        "scheme": bad_scheme,
-                        "host": "evil.example.com",
-                        "port": 443,
-                        "csrf_token": "tok",
-                    },
-                    "ReadProjects",
-                    {},
-                )
+        with self.assertRaises(state_store.PrQueueError):
+            ls_client.call_ls_rpc_sync(
+                ls_client.LsCredentials("http", "evil.example.com", 8080, "tok"),
+                "ReadProjects",
+                {},
+            )
+        with self.assertRaises(state_store.PrQueueError):
+            ls_client.call_ls_rpc_sync(
+                ls_client.LsCredentials("https", "127.0.0.1", 8443, "tok"),
+                "ReadProjects",
+                {},
+            )
+        with self.assertRaises(state_store.PrQueueError):
+            ls_client.call_ls_rpc_sync(
+                ls_client.LsCredentials("http", "127.0.0.1", 70000, "tok"),
+                "ReadProjects",
+                {},
+            )
 
         seen_urls: list[str] = []
 
@@ -938,23 +1023,18 @@ class LanguageServerRpcAndGitTest(unittest.IsolatedAsyncioTestCase):
             def read(self) -> bytes:
                 return b'{"ok": true}'
 
-        def _fake_open(req: object, **_kw: object) -> _FakeResp:
-            seen_urls.append(str(getattr(req, "full_url", "")))
+        def _fake_open(req: Request, **_kw: object) -> _FakeResp:
+            seen_urls.append(req.full_url)
             return _FakeResp()
 
-        with mock.patch.object(server, "_open_ls_request", side_effect=_fake_open):
-            res_v6 = server._call_ls_rpc_sync(
-                {"scheme": "https", "host": "[::1]", "port": 443, "csrf_token": "tok"},
+        with mock.patch.object(ls_client, "_open_ls_request", side_effect=_fake_open):
+            res_v6 = ls_client.call_ls_rpc_sync(
+                ls_client.LsCredentials("http", "[::1]", 8080, "tok"),
                 "ReadProjects",
                 {},
             )
-            res_host = server._call_ls_rpc_sync(
-                {
-                    "scheme": "https",
-                    "host": "LOCALHOST",
-                    "port": 443,
-                    "csrf_token": "tok",
-                },
+            res_host = ls_client.call_ls_rpc_sync(
+                ls_client.LsCredentials("http", "LOCALHOST", 8080, "tok"),
                 "ReadProjects",
                 {},
             )
@@ -962,11 +1042,11 @@ class LanguageServerRpcAndGitTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(res_host, {"ok": True})
         self.assertEqual(
             seen_urls[0],
-            "https://[::1]:443/exa.language_server_pb.LanguageServerService/ReadProjects",
+            "http://[::1]:8080/exa.language_server_pb.LanguageServerService/ReadProjects",
         )
         self.assertEqual(
             seen_urls[1],
-            "https://localhost:443/exa.language_server_pb.LanguageServerService/ReadProjects",
+            "http://localhost:8080/exa.language_server_pb.LanguageServerService/ReadProjects",
         )
 
     async def test_ls_rpc_rejects_http_redirects(self) -> None:
@@ -987,15 +1067,10 @@ class LanguageServerRpcAndGitTest(unittest.IsolatedAsyncioTestCase):
         srv = await asyncio.start_server(_redirect_handler, "127.0.0.1", 0)
         port = int(srv.sockets[0].getsockname()[1])
         try:
-            with self.assertRaises(server.PrQueueError):
+            with self.assertRaises(state_store.PrQueueError):
                 await asyncio.to_thread(
-                    server._call_ls_rpc_sync,
-                    {
-                        "scheme": "http",
-                        "host": "127.0.0.1",
-                        "port": port,
-                        "csrf_token": "tok",
-                    },
+                    ls_client.call_ls_rpc_sync,
+                    ls_client.LsCredentials("http", "127.0.0.1", port, "tok"),
                     "ReadProjects",
                     {},
                 )
@@ -1020,7 +1095,22 @@ class LanguageServerRpcAndGitTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(prompt.count("</untrusted_pr_metadata>"), 1)
         self.assertIn("git merge-base HEAD upstream/release/1.0+hotfix", prompt)
 
-        with self.assertRaises(server.PrQueueError):
+        for bad_ref in (
+            "main:refs/heads/x",
+            "-flag",
+            "a..b",
+            "main $(id)",
+            "@",
+            "./main",
+            "foo/./bar",
+            "foo/.hidden",
+            "foo.lock/bar",
+            "main\n",
+        ):
+            with self.assertRaises(state_store.PrQueueError):
+                git_worktree.validate_git_ref_name(bad_ref, label="ref")
+
+        with self.assertRaises(state_store.PrQueueError):
             server.build_review_prompt(
                 repo="bazel-contrib/rules_python",
                 pr_number=55,
@@ -1031,12 +1121,34 @@ class LanguageServerRpcAndGitTest(unittest.IsolatedAsyncioTestCase):
                 head_ref="feat",
                 author="alice",
             )
+        with self.assertRaises(state_store.PrQueueError):
+            server.build_review_prompt(
+                repo="owner\n/name",
+                pr_number=55,
+                title="Normal title",
+                url="https://github.com/bazel-contrib/rules_python/pull/55",
+                remote="upstream",
+                base_ref="main",
+                head_ref="feat",
+                author="alice",
+            )
+        with self.assertRaises(state_store.PrQueueError):
+            server.build_review_prompt(
+                repo="bazel-contrib/rules_python",
+                pr_number=0,
+                title="Normal title",
+                url="https://github.com/bazel-contrib/rules_python/pull/55",
+                remote="upstream",
+                base_ref="main",
+                head_ref="feat",
+                author="alice",
+            )
 
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            for bad_base in ("main:refs/heads/x", "-flag", "a..b", "main $(id)"):
-                with self.assertRaises(server.PrQueueError):
-                    await server.prepare_pr_worktree(
+            for bad_base in ("main:refs/heads/x", "-flag", "a..b", "main $(id)", "@"):
+                with self.assertRaises(state_store.PrQueueError):
+                    await git_worktree.prepare_pr_worktree(
                         root,
                         12,
                         "bazel-contrib/rules_python",
@@ -1044,8 +1156,8 @@ class LanguageServerRpcAndGitTest(unittest.IsolatedAsyncioTestCase):
                         worktrees_dir=root / "wt",
                         buildbuddy_rc=root / "bb.bazelrc",
                     )
-            with self.assertRaises(server.PrQueueError):
-                await server.prepare_pr_worktree(
+            with self.assertRaises(state_store.PrQueueError):
+                await git_worktree.prepare_pr_worktree(
                     root,
                     0,
                     "bazel-contrib/rules_python",
@@ -1054,14 +1166,35 @@ class LanguageServerRpcAndGitTest(unittest.IsolatedAsyncioTestCase):
                     buildbuddy_rc=root / "bb.bazelrc",
                 )
 
-    async def test_ls_credential_isolation_and_fail_closed_defaults(self) -> None:
+    async def test_ls_credential_discovery_and_port_bounds(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             daemon_dir = Path(tmpdir) / "daemon"
             daemon_dir.mkdir()
+            (daemon_dir / "bad_bool.json").write_text(
+                json.dumps({"httpPort": True, "csrfToken": "bad-tok"}),
+                encoding="utf-8",
+            )
+            (daemon_dir / "bad_range.json").write_text(
+                json.dumps({"httpPort": 70000, "csrfToken": "bad-tok"}),
+                encoding="utf-8",
+            )
+            (daemon_dir / "https_only.json").write_text(
+                json.dumps({"httpsPort": 8443, "csrfToken": "https-tok"}),
+                encoding="utf-8",
+            )
+            with mock.patch.dict(os.environ, {}, clear=True):
+                with self.assertRaises(state_store.PrQueueError):
+                    ls_client.resolve_ls_credentials(daemon_dir)
+
             (daemon_dir / "instance.json").write_text(
                 json.dumps({"httpPort": 2222, "csrfToken": "disk-tok"}),
                 encoding="utf-8",
             )
+            with mock.patch.dict(os.environ, {}, clear=True):
+                disk_info = ls_client.resolve_ls_credentials(daemon_dir)
+                self.assertEqual(disk_info.port, 2222)
+                self.assertEqual(disk_info.csrf_token, "disk-tok")
+
             with mock.patch.dict(
                 os.environ,
                 {
@@ -1070,21 +1203,20 @@ class LanguageServerRpcAndGitTest(unittest.IsolatedAsyncioTestCase):
                 },
                 clear=True,
             ):
-                disk_info = server.resolve_ls_credentials(daemon_dir)
-                self.assertEqual(disk_info["port"], 2222)
-                self.assertEqual(disk_info["csrf_token"], "disk-tok")
+                env_info = ls_client.resolve_ls_credentials(daemon_dir)
+                self.assertEqual(env_info.port, 9999)
+                self.assertEqual(env_info.csrf_token, "env-tok")
 
-                env_info = server.resolve_ls_credentials(daemon_dir, allow_env=True)
-                self.assertEqual(env_info["port"], 9999)
-                self.assertEqual(env_info["csrf_token"], "env-tok")
-
-        with self.assertRaises(server.PrQueueError):
-            await server.start_pr_review_conversation(
-                main_repo=Path("/tmp/repo"),
-                worktree_path=Path("/tmp/wt"),
-                prompt="Review PR #5",
-                title="pr-5: test",
-            )
+        with tempfile.TemporaryDirectory() as missing_dir:
+            with mock.patch.dict(os.environ, {}, clear=True):
+                with self.assertRaises(state_store.PrQueueError):
+                    await ls_client.start_pr_review_conversation(
+                        main_repo=Path("/tmp/repo"),
+                        worktree_path=Path("/tmp/wt"),
+                        prompt="Review PR #5",
+                        title="pr-5: test",
+                        daemon_dir=Path(missing_dir) / "daemon",
+                    )
 
     async def test_detect_remote_and_resolve_base_repo_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -1108,16 +1240,25 @@ class LanguageServerRpcAndGitTest(unittest.IsolatedAsyncioTestCase):
                 )
 
             await asyncio.to_thread(_init_other)
-            with self.assertRaises(server.PrQueueError):
-                await server.detect_remote_for_repo(
+            with self.assertRaises(state_store.PrQueueError):
+                await git_worktree.detect_remote_for_repo(
                     repo_dir, "bazel-contrib/rules_python"
                 )
-            with self.assertRaises(server.PrQueueError):
-                await server.resolve_base_repo(
+            with self.assertRaises(state_store.PrQueueError):
+                await git_worktree.resolve_base_repo(
+                    str(repo_dir),
+                    "bazel-contrib/rules_python",
+                    projects_file=tmp / "missing_projects.json",
+                    daemon_dir=tmp / "missing_daemon",
+                    sidecar_dir=tmp / "sidecar",
+                )
+            with self.assertRaises(state_store.PrQueueError):
+                await git_worktree.resolve_base_repo(
                     "",
                     "nonexistent/repo",
                     projects_file=tmp / "missing_projects.json",
                     daemon_dir=tmp / "missing_daemon",
+                    sidecar_dir=tmp / "sidecar",
                 )
 
 
@@ -1128,7 +1269,7 @@ class HttpServerTest(unittest.IsolatedAsyncioTestCase):
         mock_token = "mock-sidecar-check-value"
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            store = server.StateStore(root / "state")
+            store = state_store.StateStore(root / "state")
             calls = 0
 
             async def fake_fetcher(**_kwargs: object) -> fetch_pr_queue.PrQueueResult:
@@ -1146,7 +1287,7 @@ class HttpServerTest(unittest.IsolatedAsyncioTestCase):
                 )
 
             svc = _make_service(root, store, fetcher=fake_fetcher)
-            with self.assertRaises(server.PrQueueError):
+            with self.assertRaises(state_store.PrQueueError):
                 server.PrQueueHttpServer(
                     ("127.0.0.1", 0),
                     svc,
@@ -1175,21 +1316,27 @@ class HttpServerTest(unittest.IsolatedAsyncioTestCase):
                 csp = html_headers.get("content-security-policy", "")
                 self.assertIn("default-src 'none'", csp)
                 self.assertIn("script-src 'self' 'nonce-", csp)
+                self.assertIn("style-src 'self' 'nonce-", csp)
+                self.assertNotIn("'unsafe-inline'", csp)
                 html_body = html_bytes.decode("utf-8")
                 self.assertIn("/preload.js", html_body)
                 self.assertIn("Project member", html_body)
                 self.assertIn("sanitizeExternalUrl", html_body)
-                self.assertIn("&quot;", html_body)
+                self.assertIn("Number.isInteger", html_body)
+                self.assertIn("resolveDaysSinceUpdate", html_body)
+                self.assertIn("replaceChildren", html_body)
                 self.assertIn("<script nonce=", html_body)
-                self.assertNotIn("card.innerHTML =", html_body)
-                self.assertNotIn("· requested:", html_body)
+                self.assertIn("<style nonce=", html_body)
+                self.assertNotIn("insertAdjacentHTML", html_body)
+                self.assertNotIn(".innerHTML", html_body)
                 self.assertNotIn("setInterval", html_body)
 
-                # Reject missing/spoofed Host and cross-site API GET requests.
+                # Reject missing/spoofed Host, bad Host ports, and cross-site API requests.
                 for bad_hdr in (
                     "",
                     "Host: evil.example.com:1234\r\n",
                     f"Host: evil.example.com@127.0.0.1:{port}\r\n",
+                    "Host: 127.0.0.1:99999\r\n",
                 ):
                     bad_host_req = (
                         f"GET /api/config HTTP/1.1\r\n{bad_hdr}Connection: close\r\n\r\n"
@@ -1200,20 +1347,38 @@ class HttpServerTest(unittest.IsolatedAsyncioTestCase):
                 cross_site_api_req = (
                     f"GET /api/queue HTTP/1.1\r\n"
                     f"Host: 127.0.0.1:{port}\r\n"
+                    f"X-Sidecar-Token: {mock_token}\r\n"
                     "Sec-Fetch-Site: cross-site\r\n"
                     "Connection: close\r\n\r\n"
                 ).encode("ascii")
                 cs_api_status, _hdr, _b = await _send_raw_http(port, cross_site_api_req)
                 self.assertEqual(cs_api_status, 403)
 
-                foreign_origin_req = (
-                    f"GET /api/config HTTP/1.1\r\n"
-                    f"Host: 127.0.0.1:{port}\r\n"
-                    "Origin: https://evil.example.com\r\n"
-                    "Connection: close\r\n\r\n"
-                ).encode("ascii")
-                orig_status, _hdr, _b = await _send_raw_http(port, foreign_origin_req)
-                self.assertEqual(orig_status, 403)
+                for bad_origin in (
+                    "https://evil.example.com",
+                    "file://localhost",
+                    "ftp://localhost",
+                ):
+                    foreign_origin_req = (
+                        f"GET /api/config HTTP/1.1\r\n"
+                        f"Host: 127.0.0.1:{port}\r\n"
+                        f"X-Sidecar-Token: {mock_token}\r\n"
+                        f"Origin: {bad_origin}\r\n"
+                        "Connection: close\r\n\r\n"
+                    ).encode("ascii")
+                    orig_status, _hdr, _b = await _send_raw_http(
+                        port, foreign_origin_req
+                    )
+                    self.assertEqual(orig_status, 403)
+
+                # GET /api/* routes must enforce X-Sidecar-Token.
+                for unauth_path in (
+                    "/api/config",
+                    "/api/queue?refresh=0",
+                    "/api/lookup-pr?pr=1",
+                ):
+                    unauth_status, _ = await _http_get(port, unauth_path)
+                    self.assertEqual(unauth_status, 403)
 
                 # Allow cross-site iframe load on document root with valid Host.
                 cross_site_doc_req = (
@@ -1251,15 +1416,21 @@ class HttpServerTest(unittest.IsolatedAsyncioTestCase):
                 status_preload, _ = await _http_get(port, "/preload.js")
                 self.assertEqual(status_preload, 404)
 
-                status_bad_refresh, _ = await _http_get(port, "/api/queue?refresh=bad")
+                status_bad_refresh, _ = await _http_get(
+                    port, "/api/queue?refresh=bad", header_token=mock_token
+                )
                 self.assertEqual(status_bad_refresh, 400)
 
-                status_q1, body_q1 = await _http_get(port, "/api/queue?refresh=0")
+                status_q1, body_q1 = await _http_get(
+                    port, "/api/queue?refresh=0", header_token=mock_token
+                )
                 self.assertEqual(status_q1, 200)
                 q1 = json.loads(body_q1.decode("utf-8"))
                 self.assertEqual(q1["count"], 1)
 
-                status_q2, body_q2 = await _http_get(port, "/api/queue?refresh=0")
+                status_q2, body_q2 = await _http_get(
+                    port, "/api/queue?refresh=0", header_token=mock_token
+                )
                 self.assertEqual(status_q2, 200)
                 q2 = json.loads(body_q2.decode("utf-8"))
                 self.assertTrue(q2["from_cache"])
@@ -1268,6 +1439,29 @@ class HttpServerTest(unittest.IsolatedAsyncioTestCase):
                 # POST without token must return 403.
                 status_no_tok, _ = await _http_post(port, "/api/config", {})
                 self.assertEqual(status_no_tok, 403)
+
+                # POST without application/json Content-Type must return 415.
+                wrong_ctype_req = (
+                    f"POST /api/config HTTP/1.1\r\n"
+                    f"Host: 127.0.0.1:{port}\r\n"
+                    "Content-Type: text/plain\r\n"
+                    f"X-Sidecar-Token: {mock_token}\r\n"
+                    "Content-Length: 2\r\n"
+                    "Connection: close\r\n\r\n{}"
+                ).encode("ascii")
+                wrong_ctype_status, _hdr, _b = await _send_raw_http(
+                    port, wrong_ctype_req
+                )
+                self.assertEqual(wrong_ctype_status, 415)
+
+                # POST /api/config cannot mutate disk-only `base_repo`.
+                status_base_repo, _ = await _http_post(
+                    port,
+                    "/api/config",
+                    {"base_repo": "/tmp/arbitrary-repo"},
+                    header_token=mock_token,
+                )
+                self.assertEqual(status_base_repo, 400)
 
                 # POST with valid token succeeds.
                 status_tok, body_tok = await _http_post(
@@ -1308,7 +1502,7 @@ class HttpServerTest(unittest.IsolatedAsyncioTestCase):
     async def test_serves_healthz_concurrently_during_slow_fetch(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            store = server.StateStore(root / "state")
+            store = state_store.StateStore(root / "state")
             started = asyncio.Event()
             release = asyncio.Event()
 
@@ -1340,6 +1534,7 @@ class HttpServerTest(unittest.IsolatedAsyncioTestCase):
                 queue_task = asyncio.create_task(
                     _http_get(port, "/api/queue?refresh=1")
                 )
+                # Wait up to 2s for slow_fetcher to enter asyncio.Event wait.
                 await asyncio.wait_for(started.wait(), timeout=2.0)
 
                 # While slow_fetcher is suspended, /healthz completes immediately.
@@ -1350,19 +1545,25 @@ class HttpServerTest(unittest.IsolatedAsyncioTestCase):
                 self.assertTrue(json.loads(health_body.decode("utf-8"))["ok"])
 
                 release.set()
+                # Allow 2s for slow_fetcher coroutine to serialize and finish.
                 q_status, q_body = await asyncio.wait_for(queue_task, timeout=2.0)
                 self.assertEqual(q_status, 200)
                 self.assertEqual(
                     json.loads(q_body.decode("utf-8"))["prs"][0]["number"], 88
                 )
 
-                # Reject boolean pr_number, non-bool force, bad source_conversation_id,
-                # bad query params, unknown config keys, bad conversationId,
-                # and oversized payload.
+                # Reject boolean pr_number, string pr_number, non-bool force,
+                # bad source_conversation_id, bad query params, unknown config
+                # keys, bad conversationId, non-ASCII Content-Length, oversized
+                # trailers, and oversized payload.
                 status_bool, _ = await _http_post(
                     port, "/api/review", {"pr_number": True}
                 )
                 self.assertEqual(status_bool, 400)
+                status_str_pr, _ = await _http_post(
+                    port, "/api/review", {"pr_number": "12_3"}
+                )
+                self.assertEqual(status_str_pr, 400)
                 status_force, _ = await _http_post(
                     port, "/api/review", {"pr_number": 5, "force": "false"}
                 )
@@ -1400,6 +1601,34 @@ class HttpServerTest(unittest.IsolatedAsyncioTestCase):
                 )
                 self.assertEqual(status_underscore_pr, 400)
 
+                unicode_len_req = (
+                    f"POST /api/config HTTP/1.1\r\n"
+                    f"Host: 127.0.0.1:{port}\r\n"
+                    "Content-Type: application/json\r\n"
+                    "Content-Length: ²\r\n"
+                    "Connection: close\r\n\r\n"
+                ).encode("latin-1")
+                status_ulen, _hdr, _body = await _send_raw_http(port, unicode_len_req)
+                self.assertEqual(status_ulen, 400)
+
+                trailer_lines = "".join(
+                    f"X-Trailer-{i}: value\r\n"
+                    for i in range(server._MAX_HEADER_LINES + 1)
+                )
+                flood_trailer_req = (
+                    f"POST /api/config HTTP/1.1\r\n"
+                    f"Host: 127.0.0.1:{port}\r\n"
+                    "Content-Type: application/json\r\n"
+                    "Transfer-Encoding: chunked\r\n"
+                    "Connection: close\r\n\r\n"
+                    "0\r\n"
+                    f"{trailer_lines}\r\n"
+                ).encode("ascii")
+                status_trailers, _hdr, _body = await _send_raw_http(
+                    port, flood_trailer_req
+                )
+                self.assertEqual(status_trailers, 431)
+
                 oversized_req = (
                     f"POST /api/config HTTP/1.1\r\n"
                     f"Host: 127.0.0.1:{port}\r\n"
@@ -1421,7 +1650,7 @@ class HttpServerTest(unittest.IsolatedAsyncioTestCase):
     async def test_concurrent_launch_review_shares_per_pr_lock(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            store = server.StateStore(root / "state")
+            store = state_store.StateStore(root / "state")
 
             async def fake_fetcher(**_kw: object) -> fetch_pr_queue.PrQueueResult:
                 return fetch_pr_queue.PrQueueResult(
@@ -1449,33 +1678,28 @@ class HttpServerTest(unittest.IsolatedAsyncioTestCase):
                 await release.wait()
                 return ("chat-single", "proj-1", "env-1")
 
-            async def fake_repo(_cfg: str, _repo: str) -> Path:
+            async def fake_repo(_cfg: str, _repo: str, **_kw: object) -> Path:
                 return root / "main"
 
             async def fake_wt(
-                _repo: Path, num: int, _slug: str, _base: str
+                _repo: Path, num: int, _slug: str, _base: str, **_kw: object
             ) -> tuple[Path, str, str]:
                 return (root / f"wt-{num}", "sha1", "upstream")
 
-            t1 = asyncio.create_task(
-                svc.launch_review(
-                    91,
-                    repo_resolver=fake_repo,
-                    worktree_preparer=fake_wt,
-                    conversation_starter=slow_convo,
-                )
-            )
-            await asyncio.wait_for(entered.wait(), timeout=2.0)
-            t2 = asyncio.create_task(
-                svc.launch_review(
-                    91,
-                    repo_resolver=fake_repo,
-                    worktree_preparer=fake_wt,
-                    conversation_starter=slow_convo,
-                )
-            )
-            release.set()
-            res1, res2 = await asyncio.wait_for(asyncio.gather(t1, t2), timeout=2.0)
+            with mock.patch.object(
+                server, "resolve_base_repo", side_effect=fake_repo
+            ), mock.patch.object(
+                server, "prepare_pr_worktree", side_effect=fake_wt
+            ), mock.patch.object(
+                server, "start_pr_review_conversation", side_effect=slow_convo
+            ):
+                t1 = asyncio.create_task(svc.launch_review(91))
+                # Wait up to 2s for t1 to hold the per-PR launch lock.
+                await asyncio.wait_for(entered.wait(), timeout=2.0)
+                t2 = asyncio.create_task(svc.launch_review(91))
+                release.set()
+                # Allow 2s for both tasks to resolve under mocked fast calls.
+                res1, res2 = await asyncio.wait_for(asyncio.gather(t1, t2), timeout=2.0)
             self.assertEqual(launch_count, 1)
             self.assertEqual(res1["conversation_id"], "chat-single")
             self.assertEqual(res2["conversation_id"], "chat-single")
@@ -1484,38 +1708,35 @@ class HttpServerTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_retries_only_idempotent_ls_rpcs(self) -> None:
         attempts = 0
+        creds = ls_client.LsCredentials("http", "127.0.0.1", 1, "t")
 
         def flaky_sync(_ls: object, _method: str, _body: object) -> dict[str, object]:
             nonlocal attempts
             attempts += 1
             if attempts < 2:
-                raise server._TransientLsRpcError("503 Service Unavailable")
+                raise ls_client._TransientLsRpcError("503 Service Unavailable")
             return {"ok": True}
 
         with mock.patch.object(
-            server, "_call_ls_rpc_sync", side_effect=flaky_sync
+            ls_client, "call_ls_rpc_sync", side_effect=flaky_sync
         ), mock.patch.object(fetch_pr_queue.asyncio, "sleep", return_value=None):
-            res = await server.call_ls_rpc(
-                {"port": 1, "csrf_token": "t"}, "ReadProjects", {}, retryable=True
-            )
+            res = await ls_client.call_ls_rpc(creds, "ReadProjects", {}, retryable=True)
         self.assertEqual(res, {"ok": True})
         self.assertEqual(attempts, 2)
 
         attempts = 0
         with mock.patch.object(
-            server, "_call_ls_rpc_sync", side_effect=flaky_sync
+            ls_client, "call_ls_rpc_sync", side_effect=flaky_sync
         ), mock.patch.object(
             fetch_pr_queue.asyncio, "sleep", return_value=None
-        ), self.assertRaises(server._TransientLsRpcError):
-            await server.call_ls_rpc(
-                {"port": 1, "csrf_token": "t"}, "StartCascade", {}, retryable=False
-            )
+        ), self.assertRaises(ls_client._TransientLsRpcError):
+            await ls_client.call_ls_rpc(creds, "StartCascade", {}, retryable=False)
         self.assertEqual(attempts, 1)
 
     async def test_http_review_forwards_source_conversation_id(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            store = server.StateStore(root / "state")
+            store = state_store.StateStore(root / "state")
             seen_kwargs: dict[str, object] = {}
 
             async def fake_fetcher(**_kw: object) -> fetch_pr_queue.PrQueueResult:
