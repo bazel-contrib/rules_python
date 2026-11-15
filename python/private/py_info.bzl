@@ -377,7 +377,8 @@ def _PyInfo_init(
         direct_pyi_files = depset(),
         transitive_pyi_files = depset(),
         type_checking_info = None,
-        venv_symlinks = depset()):
+        venv_symlinks = depset(),
+        packages = depset()):
     _check_arg_type("transitive_sources", "depset", transitive_sources)
 
     # Verify it's postorder compatible, but retain is original ordering.
@@ -399,6 +400,7 @@ def _PyInfo_init(
 
     _check_arg_type("direct_pyi_files", "depset", direct_pyi_files)
     _check_arg_type("transitive_pyi_files", "depset", transitive_pyi_files)
+    _check_arg_type("packages", "depset", packages)
     if type_checking_info != None:
         _check_arg_type("type_checking_info", "struct", type_checking_info)
     return {
@@ -409,6 +411,7 @@ def _PyInfo_init(
         "has_py2_only_sources": has_py2_only_sources,
         "has_py3_only_sources": has_py3_only_sources,
         "imports": imports,
+        "packages": packages,
         "transitive_implicit_pyc_files": transitive_implicit_pyc_files,
         "transitive_implicit_pyc_source_files": transitive_implicit_pyc_source_files,
         "transitive_original_sources": transitive_original_sources,
@@ -494,6 +497,21 @@ A depset of import path strings to be added to the `PYTHONPATH` of executable
 Python targets. These are accumulated from the transitive `deps`.
 The order of the depset is not guaranteed and may be changed in the future. It
 is recommended to use `default` order (the default).
+""",
+        "packages": """
+:type: depset[str]
+
+The normalized names of the PyPI packages in the transitive closure of this
+target, e.g. `google_cloud_storage`. The names are lowercased with runs of
+`-`, `_` and `.` replaced by `_`, i.e. the same as the package name in the hub
+repository that it would come from.
+
+A {obj}`py_library` contributes its package name if its `data` contains a
+`.dist-info/METADATA` file, which is the case for the targets created from
+wheels by {obj}`pip.parse`.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
 """,
         "transitive_implicit_pyc_files": """
 :type: depset[File]
@@ -634,6 +652,13 @@ def _PyInfoBuilder_typedef():
     :type: DepsetBuilder[str]
     :::
 
+    :::{field} packages
+    :type: DepsetBuilder[str]
+
+    ::::{versionadded} VERSION_NEXT_FEATURE
+    ::::
+    :::
+
     :::{field} transitive_implicit_pyc_files
     :type: DepsetBuilder[File]
     :::
@@ -698,6 +723,7 @@ def _new_raw_py_info_builder(type_checking_info = None):
         merge_targets = lambda *a, **k: _PyInfoBuilder_merge_targets(self, *a, **k),
         merge_type_checking = lambda *a, **k: _PyInfoBuilder_merge_type_checking(self, *a, **k),
         merge_uses_shared_libraries = lambda *a, **k: _PyInfoBuilder_merge_uses_shared_libraries(self, *a, **k),
+        packages = builders.DepsetBuilder(),
         set_has_py2_only_sources = lambda *a, **k: _PyInfoBuilder_set_has_py2_only_sources(self, *a, **k),
         set_has_py3_only_sources = lambda *a, **k: _PyInfoBuilder_set_has_py3_only_sources(self, *a, **k),
         set_uses_shared_libraries = lambda *a, **k: _PyInfoBuilder_set_uses_shared_libraries(self, *a, **k),
@@ -890,6 +916,7 @@ def _merge_py_info_fields(self, transitive, *, direct = []):
             self.transitive_pyc_files.add(info.transitive_pyc_files)
             self.transitive_pyi_files.add(info.transitive_pyi_files)
             self.venv_symlinks.add(info.venv_symlinks)
+            self.packages.add(info.packages)
 
 def _PyInfoBuilder_merge_all(self, transitive, *, direct = []):
     """Merge other PyInfos into this PyInfo.
@@ -1009,6 +1036,7 @@ def _build_py_info_fields(self, type_checking_info = None):
         has_py2_only_sources = self._has_py2_only_sources[0],
         has_py3_only_sources = self._has_py3_only_sources[0],
         imports = self.imports.build(),
+        packages = self.packages.build(),
         transitive_sources = self.transitive_sources.build(),
         uses_shared_libraries = self._uses_shared_libraries[0],
         direct_implicit_pyc_files = self.direct_implicit_pyc_files.build(),
