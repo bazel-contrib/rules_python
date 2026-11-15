@@ -1,0 +1,28 @@
+load("@rules_rust//rust:defs.bzl", "rust_library")
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")  # buildifier: disable=bzl-visibility
+
+package(default_visibility = ["//:__subpackages__"])
+
+licenses(["notice"])
+
+rust_library(
+    name = "wheelmaker_lib",
+    srcs = ["src/lib.rs"],
+    edition = "2024",
+    deps = [
+        "@crates//:anyhow",
+        "@crates//:argfile",
+        "@crates//:base64",
+        "@crates//:csv",
+        "@crates//:lexopt",
+        "@crates//:pep440_rs",
+        "@crates//:pep508_rs",
+        "@crates//:regex",
+        "@crates//:sha2",
+        "@crates//:zip",
+    ],
+)
+
+distribution_filegroup(
+    name = "distribution",
+)

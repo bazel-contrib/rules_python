@@ -741,6 +741,7 @@ bzl_library(
         ":toolchain_types",
         ":transition_labels",
         ":version",
+        "//python/private/toolchains:shrubbery_toolchain",
     ],
 )
 
