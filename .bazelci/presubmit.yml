@@ -394,6 +394,25 @@ tasks:
       - "bazel build --vendor_dir=./vendor //..."
       - "rm -rf ./vendor"
 
+  integration_test_bzlmod_windows_no_symlinks:
+    <<: *reusable_build_test_all
+    name: "examples/bzlmod: Windows, without symlinks"
+    working_directory: examples/bzlmod
+    platform: windows
+    bazel: 8.x
+    batch_commands:
+      # The last value wins, so this overrides the setting in .bazelrc to
+      # check that binaries work without the privilege to create symlinks.
+      - "echo startup --nowindows_enable_symlinks >> .bazelrc"
+    build_flags:
+      - "--keep_going"
+      # The CI user may be able to create symlinks, so force the fallback.
+      - "--action_env=RULES_PYTHON_TESTING_DISABLE_SYMLINKS=1"
+    test_flags:
+      - "--keep_going"
+      - "--action_env=RULES_PYTHON_TESTING_DISABLE_SYMLINKS=1"
+      - "--test_env=RULES_PYTHON_TESTING_DISABLE_SYMLINKS=1"
+
   integration_test_multi_python_versions_ubuntu_workspace:
     <<: *reusable_build_test_all
     <<: *common_workspace_flags
