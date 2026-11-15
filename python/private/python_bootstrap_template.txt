@@ -453,7 +453,11 @@ print(site.getsitepackages(["{venv_src}"])[-1])
     if os.path.exists(runfiles_venv_lib):
         _symlink_tree(link_from=venv_lib, link_to=runfiles_venv_lib)
 
-    if IS_WINDOWS:
+    if IS_WINDOWS or not _SYMLINKS_SUPPORTED:
+        if python_home is None:
+            # Without a symlink, Python can't find home from the venv
+            # interpreter, so it has to be in pyvenv.cfg.
+            python_home = dirname(python_exe_actual)
         print_verbose("create_venv: pyvenv.cfg home: ", python_home)
         venv_pyvenv_cfg = join(venv, "pyvenv.cfg")
         with open(venv_pyvenv_cfg, "w") as fp:
@@ -599,7 +603,7 @@ def execute_file(python_program, main_filename, args, env, runfiles_root,
   if delete_dirs:
     for delete_dir in delete_dirs:
       print_verbose("cleanup: rmtree:", delete_dir)
-      shutil.rmtree(delete_dir, True)
+      _rmtree(delete_dir)
   sys.exit(ret_code)
 
 def _run_execv(python_program, argv, env):
@@ -616,14 +620,71 @@ def _run_execv(python_program, argv, env):
       print_verbose("pyprog head:" + str(f.read(50)))
     raise
 
+# Set to False once creating a symlink fails, e.g. on Windows without the
+# privilege to create symlinks, so that it isn't attempted for every file.
+# Tests set the environment variable to use the fallback even when symlinks
+# can be created.
+_SYMLINKS_SUPPORTED = not os.environ.get("RULES_PYTHON_TESTING_DISABLE_SYMLINKS")
+
 def _symlink_exist_ok(*, from_, to):
+  """Creates a symlink, or a hard link, junction or copy if that's not possible."""
+  global _SYMLINKS_SUPPORTED
+  # On Windows, symlinks have to be told whether they're
+  # pointing to a file or directory. Python is supposed to auto-detect
+  # this, but in practice, this doesn't reliably happen.
+  is_dir = os.path.isdir(to)
+  if _SYMLINKS_SUPPORTED:
+    try:
+      os.symlink(to, from_, target_is_directory=is_dir)
+      return
+    except FileExistsError:
+      return
+    except OSError as e:
+      print_verbose("symlink failed, falling back to links or copies:", e)
+      _SYMLINKS_SUPPORTED = False
+
+  if os.path.lexists(from_):
+    return
+  if is_dir:
+    _link_dir(from_, to)
+  else:
+    _link_file(from_, to)
+
+def _link_file(from_, to):
+  # Hard links don't need any privileges, but only work within the same
+  # volume, so fall back to copying the file.
   try:
-    # On Windows, symlinks have to be told whether they're
-    # pointing to a file or directory. Python is supposed to auto-detect
-    # this, but in practice, this doesn't reliably happen.
-    os.symlink(to, from_, target_is_directory=os.path.isdir(to))
-  except FileExistsError:
-    pass
+    os.link(to, from_)
+  except OSError as e:
+    print_verbose("hard link failed, copying:", to, "error:", e)
+    shutil.copy2(to, from_)
+
+def _link_dir(from_, to):
+  if IS_WINDOWS:
+    try:
+      # Junctions don't need any privileges, but need an absolute target.
+      import _winapi
+      _winapi.CreateJunction(abspath(to), from_)
+      return
+    except (ImportError, AttributeError, OSError) as e:
+      print_verbose("junction failed, copying:", to, "error:", e)
+  shutil.copytree(to, from_)
+
+def _rmtree(path):
+  """Removes a directory, including read-only files, e.g. copies of outputs."""
+  def _on_error(func, error_path, _):
+    # Files copied or hard linked from Bazel outputs are read-only and
+    # Windows refuses to delete them.
+    try:
+      os.chmod(error_path, 0o777)
+      func(error_path)
+    except OSError:
+      pass
+
+  if sys.version_info >= (3, 12):
+    shutil.rmtree(path, onexc=_on_error)
+  else:
+    shutil.rmtree(path, onerror=_on_error)
 
 
 def main():
