@@ -31,7 +31,9 @@ or when monitoring CI after PR updates:
 ### ✨ Autonomous Subagent Orchestration
 1. **Background Polling**: `monitor_remote_ci.py` continuously polls both
    GitHub PR checks and Buildkite workflow executions in the background across
-   new commits and CI re-runs.
+   new commits and CI re-runs. Because it sends messages only on failures or
+   blocked steps, set periodic `schedule` timers (`TimerCondition: "any"`) to
+   detect passing completion.
 2. **Blocked Jobs (`.bazelci/presubmit.yml` Approval)**: When a Buildkite build
    is blocked on a manual approval step (e.g., when `.bazelci/presubmit.yml` is
    modified), `monitor_remote_ci.py` automatically approves and unblocks it via
@@ -58,13 +60,19 @@ or when monitoring CI after PR updates:
    `analyze-ci-failure` skill on the reported failure (instructing the
    subagent to pass its own subagent conversation ID to
    `analyze_ci_failure.py` so only its completion message wakes the parent).
+   When many Buildkite jobs fail together, inspect 1–3 representative jobs
+   instead of spawning an analyzer per job.
 5. **Autonomous Flake Retry**: If the CI Failure Analyzer subagent confirms
    that the failure is a transient infrastructure or network flake (e.g. disk
    I/O error, 504 gateway, sandbox initialization failure, or `setup-bazel`
    failing with `Unable to find Bazelisk version`), **immediately and
    autonomously** launch a separate subagent using `invoke_subagent` with the
    role "CI Job Retrier" and the prompt template in
-   `.agents/skills/monitor-ci-results/retry-job-prompt.md` to run the
-   `retry-ci-job` skill for `<pr_number>`. Do not execute the script
-   directly; use the subagent and skill orchestration instead. Continue
-   monitoring without pausing to ask the user.
+   `.agents/skills/monitor-ci-results/retry-job-prompt.md`, passing
+   `--buildkite-build bazel/rules-python-python/<n> --rebuild` for mass
+   Buildkite failures, `--buildkite-job-id <uuid>` for isolated Buildkite
+   failures, `--github-job-id <id>` for isolated GitHub Actions failures, or
+   `--pr <pr_number>` as `{retry_target}`. Do not execute the script directly;
+   use the subagent and skill orchestration instead. During sustained `504`
+   outages, verify HTTP `GET` liveness with `schedule` timer backoff before
+   retrying. Continue monitoring without pausing to ask the user.

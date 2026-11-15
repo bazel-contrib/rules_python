@@ -609,7 +609,7 @@ in the environment). Note: On Bazel 7 changes to the variables named here do
 not cause packages to be re-fetched. Don't fetch different things based on the
 value of these variables.
 
-:::{versionadded} VERSION_NEXT_FEATURE
+:::{versionadded} 2.5.0
 :::
 """,
     ),
@@ -944,10 +944,17 @@ function in general are the same as used in the {obj}`pip.default.platform` attr
 If you only care for the host platform and do not have a usecase to cross-build, then you can put in
 a string `"{os}_{arch}"` as the value here. You could also use `"{os}_{arch}_freethreaded"` as well.
 
+Use `"*"` to evaluate the requirements for all built-in default platforms and
+any custom platforms configured with {obj}`pip.default`.
+
 :::{include} /_includes/experimental_api.md
 :::
 
 :::{versionadded} 1.8.0
+:::
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+Added support for `"*"` to select all of the configured platforms.
 :::
 """,
         ),
@@ -959,7 +966,7 @@ the uv.lock file will be used as the primary source for package metadata.
 :::{versionadded} 2.2.0
 :::
 
-:::{versionchanged} VERSION_NEXT_PATCH
+:::{versionchanged} 2.5.0
 Package platforms follow dependency markers from virtual and editable workspace
 roots, including development dependency groups. All recorded optional extras
 remain enabled, and their dependency markers are respected. Locks without

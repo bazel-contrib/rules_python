@@ -1,8 +1,9 @@
 [project]
 name = "example_wheel"
 version = "0.0.0"
+requires-python = ">=3.14"
 dependencies = [
     # This is for running publishing tests
-    "pypiserver>=2.2.0",
+    "pypiserver>=2.4.3",
     "legacy-cgi; python_version >= '3.13'",
 ]
