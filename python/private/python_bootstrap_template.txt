@@ -454,11 +454,10 @@ print(site.getsitepackages(["{venv_src}"])[-1])
         link_to = normpath(join(runfiles_root, link_to_rf_path))
         venv_parent = dirname(venv_abs_path)
         # A cached venv can leave this parent as a dangling link to an old EXTRACT_ROOT.
-        if os.path.islink(venv_parent):
-            try:
-                os.stat(venv_parent)
-            except FileNotFoundError:
-                os.unlink(venv_parent)
+        # islink() is False for a junction on Windows, but lexists() doesn't
+        # follow it, and unlink() removes it.
+        if os.path.lexists(venv_parent) and not os.path.exists(venv_parent):
+            os.unlink(venv_parent)
         os.makedirs(venv_parent, exist_ok=True)
         _symlink_exist_ok(from_=venv_abs_path, to=link_to)
 
