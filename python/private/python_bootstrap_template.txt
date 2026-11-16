@@ -669,16 +669,22 @@ def _link_file_windows(from_, to):
   # volume, so fall back to copying the file.
   try:
     os.link(to, from_)
+  # Another process sharing RULES_PYTHON_EXTRACT_ROOT created it first.
+  except FileExistsError:
+    return
   except OSError as e:
     print_verbose("hard link failed, copying:", to, "error:", e)
     shutil.copy2(to, from_)
 
 def _link_dir_windows(from_, to):
+  import _winapi
   try:
     # Junctions don't need any privileges, but need an absolute target.
-    import _winapi
-    _winapi.CreateJunction(abspath(to), from_)
-  except (ImportError, AttributeError, OSError) as e:
+    _winapi.CreateJunction(to, from_)
+  # Another process sharing RULES_PYTHON_EXTRACT_ROOT created it first.
+  except FileExistsError:
+    return
+  except OSError as e:
     print_verbose("junction failed, copying:", to, "error:", e)
     shutil.copytree(to, from_)
 
