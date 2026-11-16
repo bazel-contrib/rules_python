@@ -138,7 +138,7 @@ fn test_a_single_entry_point() {
     let want = "\
 import sys
 
-# See @rules_python//python/private:py_console_script_gen.py for explanation
+# See @rules_python//crates/py_console_script_gen for explanation
 if getattr(sys.flags, \"safe_path\", False):
     # We are running on Python 3.11 and we don't need this workaround
     pass

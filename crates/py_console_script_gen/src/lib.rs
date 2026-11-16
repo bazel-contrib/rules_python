@@ -2,6 +2,15 @@
 //!
 //! Parses the `[console_scripts]` section of a wheel's `entry_points.txt`, selects the
 //! requested (or guessed) entry point, and renders a Python entrypoint script to `OUT`.
+//!
+//! The rendered script trims `sys.path[0]` when it points outside the runfiles tree. For
+//! Python versions earlier than 3.11 and Bazel versions earlier than 7.0, `sys.path[0]` escapes
+//! the runfiles tree (see <https://github.com/bazel-contrib/rules_python/issues/382> and
+//! <https://github.com/bazelbuild/bazel/pull/15701>), so a `py_binary` named like the program
+//! it wraps (`flake8`, `pylint`, `pytest`, ...) ends up importing its own internals from the
+//! Bazel entrypoint script. Dropping the first `sys.path` entry when it lacks `.runfiles` fixes
+//! console_scripts under `bazel run`; binaries defined at the root of an external repository
+//! (e.g. `@pypi_pylint//`) are unaffected because that path is already inside runfiles.
 
 // Errors must be returned, not panicked; see the `rust-lint` config in .bazelrc.
 #![deny(clippy::expect_used, clippy::unwrap_used)]
@@ -50,12 +59,11 @@ pub fn parse_console_scripts(content: &str) -> Option<HashMap<String, String>> {
     let mut in_console_scripts = false;
     let mut console_scripts: HashMap<String, String> = HashMap::new();
 
-    for raw_line in content.lines() {
-        let trimmed = raw_line.trim();
-        if trimmed.is_empty() || trimmed.starts_with(['#', ';']) {
-            continue;
-        }
-
+    let lines = content
+        .lines()
+        .map(|raw_line| (raw_line, raw_line.trim()))
+        .filter(|(_, trimmed)| !trimmed.is_empty() && !trimmed.starts_with(['#', ';']));
+    for (raw_line, trimmed) in lines {
         if let Some(section) = trimmed.strip_prefix('[').and_then(|s| s.strip_suffix(']')) {
             in_console_scripts = section.trim() == "console_scripts";
             continue;
@@ -88,7 +96,7 @@ pub fn render_template(shebang: &str, module: &str, attr: &str, entry_point: &st
     format!(
         "{shebang_prefix}import sys
 
-# See @rules_python//python/private:py_console_script_gen.py for explanation
+# See @rules_python//crates/py_console_script_gen for explanation
 if getattr(sys.flags, \"safe_path\", False):
     # We are running on Python 3.11 and we don't need this workaround
     pass
