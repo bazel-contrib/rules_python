@@ -17,7 +17,7 @@ fn temp_test_dir(prefix: &str) -> PathBuf {
 
 #[test]
 fn test_subcommands_registry_sorted_and_complete() {
-    assert_eq!(SUBCOMMANDS.len(), 8);
+    assert_eq!(SUBCOMMANDS.len(), 9);
     let mut sorted = SUBCOMMANDS.to_vec();
     sorted.sort_unstable();
     assert_eq!(SUBCOMMANDS, sorted.as_slice());
