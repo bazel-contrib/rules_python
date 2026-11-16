@@ -43,7 +43,39 @@ def _load_bootstrap() -> dict:
 
 class CachedVenvDanglingSymlinkTest(unittest.TestCase):
     def test_replaces_dangling_package_link_before_creating_child_link(self) -> None:
+        self._test_replaces_dangling_package_link(symlinks_supported=True)
+
+    @unittest.skipUnless(os.name == "nt", "junctions are Windows only")
+    def test_replaces_dangling_package_junction_before_creating_child_link(
+        self,
+    ) -> None:
+        self._test_replaces_dangling_package_link(symlinks_supported=False)
+
+    @unittest.skipUnless(os.name == "nt", "junctions are Windows only")
+    def test_dangling_junction_is_detected_and_removed(self) -> None:
+        # The bootstrap relies on these to remove a dangling junction, which
+        # islink() doesn't detect.
+        import _winapi
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            target = root / "target"
+            target.mkdir()
+            junction = root / "junction"
+            _winapi.CreateJunction(str(target), str(junction))  # pyrefly: ignore[missing-attribute]
+            target.rmdir()
+
+            self.assertFalse(os.path.islink(junction))
+            self.assertTrue(os.path.lexists(junction))
+            self.assertFalse(os.path.exists(junction))
+            os.unlink(junction)
+            self.assertFalse(os.path.lexists(junction))
+
+    def _test_replaces_dangling_package_link(self, *, symlinks_supported) -> None:
         bootstrap = _load_bootstrap()
+        # False uses the fallback for when symlinks can't be created, which
+        # creates a junction for a directory.
+        bootstrap["_symlinks_supported"] = symlinks_supported
         with tempfile.TemporaryDirectory() as temp:
             root = pathlib.Path(temp)
             runfiles = root / "runfiles"
@@ -78,7 +110,9 @@ class CachedVenvDanglingSymlinkTest(unittest.TestCase):
             package_init = package / "__init__.py"
             self.assertTrue(package.is_dir())
             self.assertFalse(package.is_symlink())
-            self.assertTrue(package_init.is_symlink())
+            self.assertFalse(getattr(os.path, "isjunction", lambda _: False)(package))
+            # The fallback creates a hard link for a file.
+            self.assertEqual(package_init.is_symlink(), symlinks_supported)
             self.assertTrue(os.path.samefile(package_init, new_package / "__init__.py"))
 
 
