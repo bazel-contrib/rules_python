@@ -1,0 +1,15 @@
+load("@rules_rust//rust:defs.bzl", "rust_test")
+
+package(default_visibility = ["//:__subpackages__"])
+
+licenses(["notice"])
+
+rust_test(
+    name = "py_test_main_validator_test",
+    size = "small",
+    srcs = ["py_test_main_validator_test.rs"],
+    edition = "2024",
+    deps = [
+        "//crates/py_test_main_validator:py_test_main_validator_lib",
+    ],
+)
