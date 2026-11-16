@@ -1,0 +1,20 @@
+load("@rules_rust//rust:defs.bzl", "rust_test")
+
+package(default_visibility = ["//:__subpackages__"])
+
+licenses(["notice"])
+
+rust_test(
+    name = "extract_wheel_files_test",
+    size = "small",
+    srcs = ["extract_wheel_files_test.rs"],
+    data = [
+        "//crates/shrubbery",
+        "//examples/wheel:minimal_with_py_package",
+    ],
+    edition = "2024",
+    deps = [
+        "//crates/extract_wheel_files:extract_wheel_files_lib",
+        "@crates//:zip",
+    ],
+)
