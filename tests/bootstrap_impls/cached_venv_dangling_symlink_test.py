@@ -82,10 +82,16 @@ class CachedVenvDanglingSymlinkTest(unittest.TestCase):
             old_package = runfiles / "old/annotated_types"
             old_package.mkdir(parents=True)
             (old_package / "__init__.py").touch()
+            # The venv isn't run, and Windows can't delete a hard link to the
+            # running interpreter, e.g. when cleaning up the temporary
+            # directory, so link to a stand-in instead.
+            python = root / "python/python.exe"
+            python.parent.mkdir()
+            python.touch()
             bootstrap.update(
                 EXTRACT_ROOT=str(root / "cache"),
                 PYTHON_BINARY="_main/_process.venv/Scripts/python.exe",
-                PYTHON_BINARY_ACTUAL=sys.executable,
+                PYTHON_BINARY_ACTUAL=str(python),
                 RESOLVE_PYTHON_BINARY_AT_RUNTIME=False,
                 RUNTIME_VENV_SYMLINKS={
                     "Lib/site-packages/annotated_types": "old/annotated_types",
