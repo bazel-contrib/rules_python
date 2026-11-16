@@ -1,145 +1,46 @@
 //! Library for generating console_script entrypoint Python files from `entry_points.txt`.
+//!
+//! Parses the `[console_scripts]` section of a wheel's `entry_points.txt`, selects the
+//! requested (or guessed) entry point, and renders a Python entrypoint script to `OUT`.
+
+// Errors must be returned, not panicked; see the `rust-lint` config in .bazelrc.
+#![deny(clippy::expect_used, clippy::unwrap_used)]
 
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::ExitCode;
 
-/// Parsed command-line options for `py_console_script_gen`.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Options {
-    pub entry_points: PathBuf,
-    pub out: PathBuf,
-    pub console_script: Option<String>,
-    pub console_script_guess: String,
-    pub shebang: String,
+use anyhow::{Context, Result, bail};
+use lexopt::prelude::*;
+
+mod flags {
+    // keep-sorted start
+    pub const CONSOLE_SCRIPT: &str = "console-script";
+    pub const CONSOLE_SCRIPT_GUESS: &str = "console-script-guess";
+    pub const HELP: &str = "help";
+    pub const HELP_SHORT: char = 'h';
+    pub const SHEBANG: &str = "shebang";
+    // keep-sorted end
 }
 
-/// Expands `@flagfile` arguments into `OsString` values via `argfile`.
-pub fn expand_args<I, T>(args: I) -> Result<Vec<OsString>, String>
-where
-    I: IntoIterator<Item = T>,
-    T: Into<OsString>,
-{
-    let raw_args: Vec<OsString> = args.into_iter().map(Into::into).collect();
-    if raw_args.iter().any(|arg| arg == "@") {
-        return Err("flagfile path after '@' must not be empty".to_string());
-    }
-    argfile::expand_args_from(
-        raw_args.into_iter(),
-        argfile::parse_fromfile,
-        argfile::PREFIX,
-    )
-    .map_err(|e| format!("failed to read flagfile: {e}"))
-}
+/// Usage text for `--help`. `lexopt` does not generate help, so this is maintained by hand.
+const USAGE: &str = "\
+Usage: py_console_script_gen [OPTIONS] --console-script-guess <NAME> <ENTRY_POINTS_TXT> <OUT>
 
-/// Parses command-line arguments (excluding `argv[0]`) into `Options`.
-pub fn parse_args<I, T>(args: I) -> Result<Options, String>
-where
-    I: IntoIterator<Item = T>,
-    T: Into<OsString>,
-{
-    use lexopt::prelude::*;
+Generate a console_script entrypoint Python file from a wheel's entry_points.txt.
 
-    let expanded = expand_args(args)?;
-    let mut positional: Vec<PathBuf> = Vec::with_capacity(2);
-    let mut console_script: Option<String> = None;
-    let mut console_script_guess: Option<String> = None;
-    let mut shebang = String::new();
+Arguments:
+  <ENTRY_POINTS_TXT>             The entry_points.txt within the dist-info of a PyPI wheel
+  <OUT>                          The output file
 
-    let mut parser = lexopt::Parser::from_args(expanded);
-    while let Some(arg) = parser.next().map_err(|e| e.to_string())? {
-        match arg {
-            Short('h') | Long("help") => {
-                return Err(
-                    "Usage: py_console_script_gen [--console-script <str>] --console-script-guess <str> [--shebang <str>] <ENTRY_POINTS_TXT> <OUT>"
-                        .to_string(),
-                );
-            }
-            Long("console-script") => {
-                let val = parser
-                    .value()
-                    .map_err(|e| e.to_string())?
-                    .string()
-                    .map_err(|e| e.to_string())?;
-                console_script = (!val.is_empty()).then_some(val);
-            }
-            Long("console-script-guess") => {
-                let val = parser
-                    .value()
-                    .map_err(|e| e.to_string())?
-                    .string()
-                    .map_err(|e| e.to_string())?;
-                console_script_guess = Some(val);
-            }
-            Long("shebang") => {
-                shebang = parser
-                    .value()
-                    .map_err(|e| e.to_string())?
-                    .string()
-                    .map_err(|e| e.to_string())?;
-            }
-            Value(val) => positional.push(PathBuf::from(val)),
-            _ => return Err(arg.unexpected().to_string()),
-        }
-    }
-
-    let console_script_guess = console_script_guess.ok_or_else(|| {
-        "the following arguments are required: --console-script-guess".to_string()
-    })?;
-
-    if positional.len() != 2 {
-        return Err(format!(
-            "expected 2 positional arguments (ENTRY_POINTS_TXT OUT), got {}",
-            positional.len()
-        ));
-    }
-
-    let mut pos_iter = positional.into_iter();
-    let entry_points = pos_iter.next().unwrap();
-    let out = pos_iter.next().unwrap();
-
-    Ok(Options {
-        entry_points,
-        out,
-        console_script,
-        console_script_guess,
-        shebang,
-    })
-}
-
-/// Runs the generator using parsed `Options`.
-pub fn run_with_options(options: &Options) -> Result<(), String> {
-    run(
-        &options.entry_points,
-        &options.out,
-        options.console_script.as_deref(),
-        &options.console_script_guess,
-        &options.shebang,
-    )
-}
-
-/// Parses CLI arguments (excluding `argv[0]` and subcommand name), generates the console script,
-/// and returns the process exit code.
-pub fn run_cli<I, T>(args: I) -> ExitCode
-where
-    I: IntoIterator<Item = T>,
-    T: Into<OsString>,
-{
-    let options = match parse_args(args) {
-        Ok(opts) => opts,
-        Err(msg) => {
-            eprintln!("py_console_script_gen: error: {msg}");
-            return ExitCode::FAILURE;
-        }
-    };
-    if let Err(err) = run_with_options(&options) {
-        eprintln!("py_console_script_gen: error: {err}");
-        return ExitCode::FAILURE;
-    }
-    ExitCode::SUCCESS
-}
+Options:
+  --console-script <NAME>        The console_script to generate the entry_point template for
+  --console-script-guess <NAME>  The string used for guessing the console_script if it is not provided
+  --shebang <SHEBANG>            The shebang to use for the entry point python file
+  @<FLAGFILE>                    Read newline-delimited arguments from <FLAGFILE>
+  -h, --help                     Print this help";
 
 /// Parses the `[console_scripts]` section from an `entry_points.txt` INI string.
 ///
@@ -208,39 +109,41 @@ if __name__ == \"__main__\":
     )
 }
 
-/// Generates a console script Python file from `entry_points.txt` according to the given parameters.
-pub fn run(
-    entry_points: &Path,
-    out: &Path,
-    console_script: Option<&str>,
-    console_script_guess: &str,
-    shebang: &str,
-) -> Result<(), String> {
-    let content = fs::read_to_string(entry_points)
-        .map_err(|e| format!("failed to read {}: {e}", entry_points.display()))?;
+/// Generates the console script Python file described by `options`.
+///
+/// # Errors
+///
+/// Returns `Err` if `entry_points` cannot be read, provides no `[console_scripts]`, does not
+/// contain the requested (or guessed) console script, or if `out` cannot be written.
+pub fn run(options: &Options) -> Result<()> {
+    let content = fs::read_to_string(&options.entry_points)
+        .with_context(|| format!("reading {}", options.entry_points.display()))?;
 
-    let console_scripts = parse_console_scripts(&content).ok_or_else(|| {
-        "The package does not provide any console_scripts in its entry_points.txt".to_string()
-    })?;
+    let console_scripts = parse_console_scripts(&content)
+        .context("The package does not provide any console_scripts in its entry_points.txt")?;
 
-    let (script_name, is_explicit) = match console_script.filter(|s| !s.is_empty()) {
-        Some(explicit) => (explicit, true),
-        None => (console_script_guess, false),
+    let available = || {
+        let mut names: Vec<_> = console_scripts.keys().cloned().collect();
+        names.sort_unstable();
+        names.join(", ")
     };
 
-    let Some(entry_point) = console_scripts.get(script_name) else {
-        let mut available: Vec<_> = console_scripts.keys().cloned().collect();
-        available.sort_unstable();
-        let available_list = available.join(", ");
-        return if is_explicit {
-            Err(format!(
-                "The console_script '{script_name}' was not found, only the following are available: {available_list}"
-            ))
-        } else {
-            Err(format!(
-                "Tried to guess that you wanted '{script_name}', but could not find it. Please select one of the following console scripts: {available_list}"
-            ))
-        };
+    let entry_point = match &options.console_script {
+        Some(name) => console_scripts.get(name).with_context(|| {
+            format!(
+                "The console_script '{name}' was not found, only the following are available: {}",
+                available()
+            )
+        })?,
+        None => {
+            let guess = &options.console_script_guess;
+            console_scripts.get(guess).with_context(|| {
+                format!(
+                    "Tried to guess that you wanted '{guess}', but could not find it. Please select one of the following console scripts: {}",
+                    available()
+                )
+            })?
+        }
     };
 
     let (module, entry_point_callable) = entry_point.rsplit_once(':').unwrap_or(("", entry_point));
@@ -248,16 +151,125 @@ pub fn run(
         .split_once('.')
         .map_or(entry_point_callable, |(first, _)| first);
 
-    let rendered = render_template(shebang, module, attr, entry_point_callable);
-
-    if let Some(parent) = out.parent()
-        && !parent.as_os_str().is_empty()
-    {
-        fs::create_dir_all(parent)
-            .map_err(|e| format!("failed to create directory {}: {e}", parent.display()))?;
-    }
-
-    fs::write(out, rendered).map_err(|e| format!("failed to write {}: {e}", out.display()))?;
+    let rendered = render_template(&options.shebang, module, attr, entry_point_callable);
+    fs::write(&options.out, rendered)
+        .with_context(|| format!("writing {}", options.out.display()))?;
 
     Ok(())
+}
+
+/// Parsed command-line options for `py_console_script_gen`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Options {
+    /// Path to the `entry_points.txt` file to parse.
+    pub entry_points: PathBuf,
+    /// Path of the Python entrypoint script to write.
+    pub out: PathBuf,
+    /// Explicitly requested console script name; `None` when absent or empty.
+    pub console_script: Option<String>,
+    /// Name to look up when `console_script` is `None`.
+    pub console_script_guess: String,
+    /// Shebang line to prepend to the script; empty for none.
+    pub shebang: String,
+}
+
+/// Result of parsing the command line.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Cli {
+    /// `--help` was requested.
+    Help,
+    /// Generate the console script with the given options.
+    Run(Options),
+}
+
+/// Parses command-line arguments (excluding `argv[0]` and subcommand name) into [`Cli`].
+///
+/// # Errors
+///
+/// Returns `Err` if an `@flagfile` cannot be read, an unknown flag is given, a flag is missing its
+/// value, `--console-script-guess` is absent, or there are not exactly two positional arguments.
+pub fn parse_args<I, T>(args: I) -> Result<Cli>
+where
+    I: IntoIterator<Item = T>,
+    T: Into<OsString>,
+{
+    let expanded = argfile::expand_args_from(
+        args.into_iter().map(Into::into),
+        argfile::parse_fromfile,
+        argfile::PREFIX,
+    )
+    .context("reading @flagfile")?;
+
+    let mut positional: Vec<PathBuf> = Vec::with_capacity(2);
+    let mut console_script: Option<String> = None;
+    let mut console_script_guess: Option<String> = None;
+    let mut shebang = String::new();
+
+    let mut parser = lexopt::Parser::from_args(expanded);
+    while let Some(arg) = parser.next()? {
+        match arg {
+            Short(flags::HELP_SHORT) | Long(flags::HELP) => return Ok(Cli::Help),
+            Long(flags::CONSOLE_SCRIPT) => {
+                let val = parser.value()?.string()?;
+                console_script = (!val.is_empty()).then_some(val);
+            }
+            Long(flags::CONSOLE_SCRIPT_GUESS) => {
+                console_script_guess = Some(parser.value()?.string()?);
+            }
+            Long(flags::SHEBANG) => {
+                shebang = parser.value()?.string()?;
+            }
+            Value(val) => positional.push(PathBuf::from(val)),
+            _ => bail!("{}", arg.unexpected()),
+        }
+    }
+
+    let console_script_guess = console_script_guess.with_context(|| {
+        format!(
+            "missing required argument: --{}",
+            flags::CONSOLE_SCRIPT_GUESS
+        )
+    })?;
+
+    if positional.len() != 2 {
+        bail!(
+            "expected 2 positional arguments (ENTRY_POINTS_TXT OUT), got {}",
+            positional.len()
+        );
+    }
+    let out = positional.remove(1);
+    let entry_points = positional.remove(0);
+
+    Ok(Cli::Run(Options {
+        entry_points,
+        out,
+        console_script,
+        console_script_guess,
+        shebang,
+    }))
+}
+
+/// Parses CLI arguments (excluding `argv[0]` and subcommand name), generates the console script,
+/// and returns the process exit code.
+pub fn run_cli<I, T>(args: I) -> ExitCode
+where
+    I: IntoIterator<Item = T>,
+    T: Into<OsString>,
+{
+    let options = match parse_args(args) {
+        Ok(Cli::Help) => {
+            println!("{USAGE}");
+            return ExitCode::SUCCESS;
+        }
+        Ok(Cli::Run(opts)) => opts,
+        Err(err) => {
+            eprintln!("py_console_script_gen: error: {err:#}");
+            return ExitCode::FAILURE;
+        }
+    };
+    if let Err(err) = run(&options) {
+        eprintln!("py_console_script_gen: error: {err:#}");
+        return ExitCode::FAILURE;
+    }
+    ExitCode::SUCCESS
 }
