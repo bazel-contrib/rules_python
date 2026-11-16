@@ -79,10 +79,7 @@ sh_py_run_test(
     py_src = "bin.py",
     sh_src = "run_binary_without_symlinks_test.sh",
     # The fallback for when symlinks can't be created is Windows only.
-    target_compatible_with = select({
-        "@platforms//os:windows": [],
-        "//conditions:default": ["@platforms//:incompatible"],
-    }),
+    target_compatible_with = ["@platforms//os:windows"],
 )
 
 sh_py_run_test(
