@@ -1,57 +1,63 @@
 //! Library for generating the output directory for `py_wheel_dist`.
 //!
-//! Usage:
-//!   `py_wheel_dist --wheel <path> --name_file <path> --output <path>`
-//!
 //! Reads the canonical wheel filename from `--name_file` (UTF-8, whitespace-trimmed),
 //! creates the `--output` directory, and copies `--wheel` to `<output>/<wheel_name>`.
 
+// Errors must be returned, not panicked; see the `rust-lint` config in .bazelrc.
+#![deny(clippy::expect_used, clippy::unwrap_used)]
+
 use std::ffi::OsString;
 use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-/// Validates and trims the wheel filename read from `--name_file`.
-///
-/// Ensures the trimmed name is non-empty and a valid single file basename without
-/// path separators (`/`, `\`) or parent directory traversal (`..`).
-pub fn validate_wheel_name(raw_name: &str) -> io::Result<&str> {
-    let trimmed = raw_name.trim();
-    if trimmed.is_empty() {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            "wheel name in --name_file is empty",
-        ));
-    }
-    if trimmed == "."
-        || trimmed == ".."
-        || trimmed.contains('/')
-        || trimmed.contains('\\')
-        || trimmed.contains("..")
-        || trimmed.contains('\0')
-    {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!("invalid wheel filename in --name_file: '{trimmed}'"),
-        ));
-    }
-    Ok(trimmed)
+use anyhow::{Context, Result, bail};
+use lexopt::prelude::*;
+
+mod flags {
+    // keep-sorted start
+    pub const HELP: &str = "help";
+    pub const HELP_SHORT: char = 'h';
+    pub const NAME_FILE: &str = "name_file";
+    pub const OUTPUT: &str = "output";
+    pub const WHEEL: &str = "wheel";
+    // keep-sorted end
 }
 
-/// Creates the output directory and copies the wheel file to `<output>/<wheel_name>`.
+/// Usage text for `--help`. `lexopt` does not generate help, so this is maintained by hand.
+const USAGE: &str = "\
+Usage: py_wheel_dist --wheel <PATH> --name_file <PATH> --output <PATH>
+
+Copy a wheel into a dist directory under its canonical filename.
+
+Options:
+  --wheel <PATH>       Path to the wheel to copy
+  --name_file <PATH>   File containing the sanitized wheel filename
+  --output <PATH>      Output directory to copy the wheel into
+  @<FLAGFILE>          Read newline-delimited arguments from <FLAGFILE>
+  -h, --help           Print this help";
+
+/// Creates the output directory and copies the wheel file to `<output>/<wheel_name>`, where
+/// `wheel_name` is the whitespace-trimmed content of `name_file_path`.
 pub fn create_wheel_dist(
     wheel_path: &Path,
     name_file_path: &Path,
     output_dir: &Path,
-) -> io::Result<PathBuf> {
-    let raw_name = fs::read_to_string(name_file_path)?;
-    let wheel_name = validate_wheel_name(&raw_name)?;
+) -> Result<PathBuf> {
+    let raw_name = fs::read_to_string(name_file_path)
+        .with_context(|| format!("reading {}", name_file_path.display()))?;
+    let wheel_name = raw_name.trim();
 
-    fs::create_dir_all(output_dir)?;
+    fs::create_dir_all(output_dir).with_context(|| format!("creating {}", output_dir.display()))?;
 
     let destination = output_dir.join(wheel_name);
-    fs::copy(wheel_path, &destination)?;
+    fs::copy(wheel_path, &destination).with_context(|| {
+        format!(
+            "copying {} to {}",
+            wheel_path.display(),
+            destination.display()
+        )
+    })?;
     Ok(destination)
 }
 
@@ -66,97 +72,60 @@ pub struct Options {
     pub output: PathBuf,
 }
 
-fn parse_flagfile(content: &str, prefix: char) -> Vec<argfile::Argument> {
-    content
-        .lines()
-        .filter(|line| !line.is_empty())
-        .map(|line| argfile::Argument::parse_ref(line, prefix))
-        .collect()
+/// Result of parsing the command line.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Cli {
+    /// `--help` was requested.
+    Help,
+    /// Copy the wheel with the given options.
+    Run(Options),
 }
 
-fn parse_non_empty_path(parser: &mut lexopt::Parser, flag: &str) -> Result<PathBuf, String> {
-    let val = parser.value().map_err(|e| e.to_string())?;
-    if val.is_empty() {
-        return Err(format!("empty value for {flag}"));
-    }
-    Ok(PathBuf::from(val))
-}
-
-/// Parses command-line arguments (excluding `argv[0]`) into [`Options`].
-///
-/// Supports `--flag value`, `--flag=value`, and `@flagfile` argument expansion.
-pub fn parse_args<I, T>(args: I) -> Result<Options, String>
+/// Parses command-line arguments (excluding `argv[0]` and subcommand name) into [`Cli`].
+pub fn parse_args<I, T>(args: I) -> Result<Cli>
 where
     I: IntoIterator<Item = T>,
     T: Into<OsString>,
 {
-    use lexopt::prelude::*;
+    let expanded = argfile::expand_args_from(
+        args.into_iter().map(Into::into),
+        argfile::parse_fromfile,
+        argfile::PREFIX,
+    )
+    .context("reading @flagfile")?;
 
-    let raw_args: Vec<OsString> = args.into_iter().map(Into::into).collect();
-    if raw_args.iter().any(|arg| arg == "@") {
-        return Err("empty @flagfile path".to_string());
-    }
-    let expanded = argfile::expand_args_from(raw_args.into_iter(), parse_flagfile, argfile::PREFIX)
-        .map_err(|e| format!("failed to read flagfile: {e}"))?;
-
-    let mut wheel = None;
-    let mut name_file = None;
-    let mut output = None;
+    let mut wheel: Option<PathBuf> = None;
+    let mut name_file: Option<PathBuf> = None;
+    let mut output: Option<PathBuf> = None;
 
     let mut parser = lexopt::Parser::from_args(expanded);
-    while let Some(arg) = parser.next().map_err(|e| e.to_string())? {
+    while let Some(arg) = parser.next()? {
         match arg {
-            Short('h') | Long("help") => {
-                return Err(
-                    "Usage: py_wheel_dist --wheel <path> --name_file <path> --output <path>"
-                        .to_string(),
-                );
+            Short(flags::HELP_SHORT) | Long(flags::HELP) => return Ok(Cli::Help),
+            Long(flags::WHEEL) => {
+                wheel = Some(PathBuf::from(parser.value()?));
             }
-            Long("wheel") => wheel = Some(parse_non_empty_path(&mut parser, "--wheel")?),
-            Long("name_file") => {
-                name_file = Some(parse_non_empty_path(&mut parser, "--name_file")?);
+            Long(flags::NAME_FILE) => {
+                name_file = Some(PathBuf::from(parser.value()?));
             }
-            Long("output") => output = Some(parse_non_empty_path(&mut parser, "--output")?),
-            Long(other) => {
-                let other = other.to_owned();
-                if let Some(val) = parser.optional_value() {
-                    return Err(format!(
-                        "unexpected argument: --{other}={}",
-                        val.to_string_lossy()
-                    ));
-                }
-                return Err(format!("unexpected argument: --{other}"));
+            Long(flags::OUTPUT) => {
+                output = Some(PathBuf::from(parser.value()?));
             }
-            Short(ch) => {
-                if let Some(val) = parser.optional_value() {
-                    return Err(format!(
-                        "unexpected argument: -{ch}{}",
-                        val.to_string_lossy()
-                    ));
-                }
-                return Err(format!("unexpected argument: -{ch}"));
-            }
-            Value(val) => {
-                return Err(format!("unexpected argument: {}", val.to_string_lossy()));
-            }
+            _ => bail!("{}", arg.unexpected()),
         }
     }
 
-    let wheel = wheel.ok_or_else(|| "missing required argument: --wheel".to_string())?;
+    let wheel = wheel.with_context(|| format!("missing required argument: --{}", flags::WHEEL))?;
     let name_file =
-        name_file.ok_or_else(|| "missing required argument: --name_file".to_string())?;
-    let output = output.ok_or_else(|| "missing required argument: --output".to_string())?;
+        name_file.with_context(|| format!("missing required argument: --{}", flags::NAME_FILE))?;
+    let output =
+        output.with_context(|| format!("missing required argument: --{}", flags::OUTPUT))?;
 
-    Ok(Options {
+    Ok(Cli::Run(Options {
         wheel,
         name_file,
         output,
-    })
-}
-
-/// Executes `py_wheel_dist` with the parsed [`Options`].
-pub fn run(options: &Options) -> io::Result<PathBuf> {
-    create_wheel_dist(&options.wheel, &options.name_file, &options.output)
+    }))
 }
 
 /// Parses CLI arguments (excluding `argv[0]` and subcommand name), populates the wheel dist
@@ -167,14 +136,18 @@ where
     T: Into<OsString>,
 {
     let options = match parse_args(args) {
-        Ok(opts) => opts,
-        Err(msg) => {
-            eprintln!("py_wheel_dist: error: {msg}");
+        Ok(Cli::Help) => {
+            println!("{USAGE}");
+            return ExitCode::SUCCESS;
+        }
+        Ok(Cli::Run(opts)) => opts,
+        Err(err) => {
+            eprintln!("py_wheel_dist: error: {err:#}");
             return ExitCode::FAILURE;
         }
     };
-    if let Err(err) = run(&options) {
-        eprintln!("py_wheel_dist: error: {err}");
+    if let Err(err) = create_wheel_dist(&options.wheel, &options.name_file, &options.output) {
+        eprintln!("py_wheel_dist: error: {err:#}");
         return ExitCode::FAILURE;
     }
     ExitCode::SUCCESS
