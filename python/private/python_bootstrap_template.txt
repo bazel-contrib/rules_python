@@ -688,14 +688,14 @@ def _link_dir_windows(from_, to):
     print_verbose("junction failed, copying:", to, "error:", e)
     shutil.copytree(to, from_)
 
-def _remove_read_only_file_windows(path):
-  """Removes a read-only file without changing its read-only attribute.
+_kernel32 = None
 
-  Windows refuses to delete a read-only file, such as a hard link to or a
-  copy of a Bazel output. Clearing the attribute would also clear it for the
-  other hard links of the file, i.e. the Bazel output, so the file is deleted
-  with FILE_DISPOSITION_FLAG_IGNORE_READONLY_ATTRIBUTE instead.
-  """
+def _get_kernel32():
+  """Returns kernel32 with the prototypes that cleaning up the venv needs."""
+  global _kernel32
+  if _kernel32 is not None:
+    return _kernel32
+
   import ctypes
   from ctypes import wintypes
 
@@ -709,7 +709,23 @@ def _remove_read_only_file_windows(path):
   kernel32.SetFileInformationByHandle.argtypes = [
       wintypes.HANDLE, ctypes.c_int, wintypes.LPVOID, wintypes.DWORD,
   ]
+  kernel32.CloseHandle.restype = wintypes.BOOL
   kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+  _kernel32 = kernel32
+  return kernel32
+
+def _remove_read_only_file_windows(path):
+  """Removes a read-only file without changing its read-only attribute.
+
+  Windows refuses to delete a read-only file, such as a hard link to or a
+  copy of a Bazel output. Clearing the attribute would also clear it for the
+  other hard links of the file, i.e. the Bazel output, so the file is deleted
+  with FILE_DISPOSITION_FLAG_IGNORE_READONLY_ATTRIBUTE instead.
+  """
+  import ctypes
+  from ctypes import wintypes
+
+  kernel32 = _get_kernel32()
 
   DELETE = 0x00010000
   FILE_SHARE_READ_WRITE_DELETE = 0x7
