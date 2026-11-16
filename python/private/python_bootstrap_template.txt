@@ -685,6 +685,10 @@ def _link_dir_windows(from_, to):
     return
   except OSError as e:
     print_verbose("junction failed, copying:", to, "error:", e)
+    # This can still fail with FileExistsError if another process sharing
+    # RULES_PYTHON_EXTRACT_ROOT creates the directory while copying. Both
+    # creating the junction and a concurrent run have to fail for that, so
+    # this isn't handled.
     shutil.copytree(to, from_)
 
 _kernel32 = None
