@@ -1,0 +1,209 @@
+//! Rewrites a `console_script` wrapper's shebang into a batch/shell-Python polyglot.
+//!
+//! Reads `<in_path>`, replaces its first line with a platform-specific polyglot header for
+//! `<target_os>`, writes the result to `<out_path>`, and marks the output executable on Unix.
+
+// Errors must be returned, not panicked; see the `rust-lint` config in .bazelrc.
+#![deny(clippy::expect_used, clippy::unwrap_used)]
+
+use std::ffi::OsString;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::ExitCode;
+use std::str::FromStr;
+
+use anyhow::{Context, Result, bail};
+use lexopt::prelude::*;
+
+mod flags {
+    // keep-sorted start
+    pub const HELP: &str = "help";
+    pub const HELP_SHORT: char = 'h';
+    // keep-sorted end
+}
+
+/// Usage text for `--help`. `lexopt` does not generate help, so this is maintained by hand.
+const USAGE: &str = "\
+Usage: venv_shebang_rewriter <IN_PATH> <OUT_PATH> <TARGET_OS>
+
+Rewrite a console_script wrapper's shebang into a batch/shell-Python polyglot.
+
+Arguments:
+  <IN_PATH>     Path to the input script
+  <OUT_PATH>    Path to write the rewritten script to
+  <TARGET_OS>   Target OS family: 'unix' or 'windows'
+
+Options:
+  -h, --help    Print this help";
+
+/// Shell-Python polyglot header for Unix-like platforms.
+pub const UNIX_HEADER: &[u8] =
+    b"#!/bin/sh\n'''exec' \"$(dirname \"$0\")/python3\" \"$0\" \"$@\"\n' '''\n";
+
+/// Batch-Python polyglot header for Windows (`python.exe`).
+pub const WINDOWS_PYTHON_HEADER: &[u8] =
+    b"@setlocal enabledelayedexpansion & \"%~dp0python.exe\" -x \"%~f0\" %* & exit /b !ERRORLEVEL!\r\n";
+
+/// Batch-Python polyglot header for Windows GUI scripts (`pythonw.exe`).
+pub const WINDOWS_PYTHONW_HEADER: &[u8] =
+    b"@setlocal enabledelayedexpansion & \"%~dp0pythonw.exe\" -x \"%~f0\" %* & exit /b !ERRORLEVEL!\r\n";
+
+/// Splits `input` at the first `b'\n'` byte into `(first_line, rest)`.
+///
+/// `first_line` includes the trailing `b'\n'` if one is present, or the entire slice
+/// if `input` contains no newline. `rest` contains all bytes after the first `b'\n'`.
+pub fn split_first_line(input: &[u8]) -> (&[u8], &[u8]) {
+    if let Some(pos) = input.iter().position(|&b| b == b'\n') {
+        (&input[..=pos], &input[pos + 1..])
+    } else {
+        (input, b"")
+    }
+}
+
+/// Rewrites the first line of `input` into a batch or shell-Python polyglot header,
+/// preserving the remaining bytes verbatim.
+pub fn rewrite_shebang_bytes(input: &[u8], target_os: TargetOs) -> Vec<u8> {
+    let (first_line, rest) = split_first_line(input);
+    let header = match target_os {
+        TargetOs::Windows if first_line.starts_with(b"#!pythonw") => WINDOWS_PYTHONW_HEADER,
+        TargetOs::Windows => WINDOWS_PYTHON_HEADER,
+        TargetOs::Unix => UNIX_HEADER,
+    };
+
+    let mut output = Vec::with_capacity(header.len() + rest.len());
+    output.extend_from_slice(header);
+    output.extend_from_slice(rest);
+    output
+}
+
+/// Reads `in_path`, rewrites the shebang for `target_os`, writes the result to `out_path`,
+/// and sets executable permissions (`mode | 0o111`) on Unix.
+///
+/// # Errors
+///
+/// Returns an error if `in_path` cannot be read, or `out_path` cannot be written or
+/// have its permissions updated.
+pub fn rewrite_shebang(in_path: &Path, out_path: &Path, target_os: TargetOs) -> Result<()> {
+    let input = fs::read(in_path).with_context(|| format!("reading {}", in_path.display()))?;
+    let output = rewrite_shebang_bytes(&input, target_os);
+
+    fs::write(out_path, &output).with_context(|| format!("writing {}", out_path.display()))?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(out_path)
+            .with_context(|| format!("reading metadata of {}", out_path.display()))?
+            .permissions();
+        perms.set_mode(perms.mode() | 0o111);
+        fs::set_permissions(out_path, perms)
+            .with_context(|| format!("setting permissions on {}", out_path.display()))?;
+    }
+
+    Ok(())
+}
+
+/// Target operating system family for generated shebang headers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TargetOs {
+    Unix,
+    Windows,
+}
+
+impl FromStr for TargetOs {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        match s {
+            "unix" => Ok(Self::Unix),
+            "windows" => Ok(Self::Windows),
+            other => bail!("unsupported target_os '{other}': expected 'unix' or 'windows'"),
+        }
+    }
+}
+
+/// Parsed command-line options for `venv_shebang_rewriter`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Options {
+    /// Path to the input script.
+    pub in_path: PathBuf,
+    /// Path to write the rewritten script to.
+    pub out_path: PathBuf,
+    /// Target OS family selecting the polyglot header.
+    pub target_os: TargetOs,
+}
+
+/// Result of parsing the command line.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Cli {
+    /// `--help` was requested.
+    Help,
+    /// Rewrite the shebang with the given options.
+    Run(Options),
+}
+
+/// Parses command-line arguments (excluding `argv[0]` and subcommand name) into [`Cli`].
+///
+/// Expects exactly three positionals: `<in_path> <out_path> <target_os>`.
+pub fn parse_args<I, T>(args: I) -> Result<Cli>
+where
+    I: IntoIterator<Item = T>,
+    T: Into<OsString>,
+{
+    let mut positional: Vec<OsString> = Vec::new();
+
+    let mut parser = lexopt::Parser::from_args(args);
+    while let Some(arg) = parser.next()? {
+        match arg {
+            Short(flags::HELP_SHORT) | Long(flags::HELP) => return Ok(Cli::Help),
+            Value(val) => positional.push(val),
+            _ => bail!("{}", arg.unexpected()),
+        }
+    }
+
+    if positional.len() != 3 {
+        bail!(
+            "expected 3 positional arguments, got {}\n{USAGE}",
+            positional.len()
+        );
+    }
+    let mut positional = positional.into_iter();
+    let in_path = PathBuf::from(positional.next().context("missing <IN_PATH>")?);
+    let out_path = PathBuf::from(positional.next().context("missing <OUT_PATH>")?);
+    let target_os = positional.next().context("missing <TARGET_OS>")?;
+    let target_os = target_os
+        .to_str()
+        .with_context(|| format!("target_os is not valid UTF-8: {target_os:?}"))?
+        .parse::<TargetOs>()?;
+
+    Ok(Cli::Run(Options {
+        in_path,
+        out_path,
+        target_os,
+    }))
+}
+
+/// Parses CLI arguments (excluding `argv[0]` and subcommand name), rewrites the shebang, and
+/// returns the process exit code.
+pub fn run_cli<I, T>(args: I) -> ExitCode
+where
+    I: IntoIterator<Item = T>,
+    T: Into<OsString>,
+{
+    let options = match parse_args(args) {
+        Ok(Cli::Help) => {
+            println!("{USAGE}");
+            return ExitCode::SUCCESS;
+        }
+        Ok(Cli::Run(opts)) => opts,
+        Err(err) => {
+            eprintln!("venv_shebang_rewriter: error: {err:#}");
+            return ExitCode::FAILURE;
+        }
+    };
+    if let Err(err) = rewrite_shebang(&options.in_path, &options.out_path, options.target_os) {
+        eprintln!("venv_shebang_rewriter: error: {err:#}");
+        return ExitCode::FAILURE;
+    }
+    ExitCode::SUCCESS
+}

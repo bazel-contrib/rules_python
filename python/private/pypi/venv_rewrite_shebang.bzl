@@ -4,6 +4,8 @@ load("//python/private:attributes.bzl", "WINDOWS_CONSTRAINTS_ATTRS")
 load("//python/private:common.bzl", "is_windows_platform", "runfiles_root_path")
 load("//python/private:py_info.bzl", "PyInfoBuilder", "VenvSymlinkEntry", "VenvSymlinkKind")
 load("//python/private:rule_builders.bzl", "ruleb")
+load("//python/private:toolchain_types.bzl", "SHRUBBERY_TOOLCHAIN_TYPE")
+load("//python/private/toolchains:shrubbery_toolchain.bzl", "get_shrubbery_tool")
 
 def _venv_rewrite_shebang_impl(ctx):
     is_windows = is_windows_platform(ctx)
@@ -16,20 +18,31 @@ def _venv_rewrite_shebang_impl(ctx):
     in_file = ctx.file.src
 
     action_args = ctx.actions.args()
-    rewriter_file = ctx.files._venv_shebang_rewriter[0]
-    inputs = depset([in_file, rewriter_file])
-
-    if rewriter_file.path.endswith(".ps1"):
-        action_exe = "powershell.exe"
-        action_args.add_all([
-            "-ExecutionPolicy",
-            "Bypass",
-            "-NoProfile",
-            "-File",
-            rewriter_file,
-        ])
+    tool = get_shrubbery_tool(
+        ctx,
+        "venv_shebang_rewriter",
+        ctx.attr._venv_shebang_rewriter,
+    )
+    if tool.is_rust:
+        inputs = depset([in_file])
+        action_exe = tool.files_to_run
+        action_toolchain = tool.toolchain
+        action_args.add_all(tool.prefix_args)
     else:
-        action_exe = ctx.attr._venv_shebang_rewriter[DefaultInfo].files_to_run
+        rewriter_file = ctx.files._venv_shebang_rewriter[0]
+        inputs = depset([in_file, rewriter_file])
+        action_toolchain = None
+        if rewriter_file.path.endswith(".ps1"):
+            action_exe = "powershell.exe"
+            action_args.add_all([
+                "-ExecutionPolicy",
+                "Bypass",
+                "-NoProfile",
+                "-File",
+                rewriter_file,
+            ])
+        else:
+            action_exe = tool.files_to_run
 
     action_args.add(in_file)
     action_args.add(out_file)
@@ -42,7 +55,7 @@ def _venv_rewrite_shebang_impl(ctx):
         arguments = [action_args],
         mnemonic = "PyVenvRewriteBin",
         progress_message = "Rewriting venv bin script %{input}",
-        toolchain = None,
+        toolchain = action_toolchain,
     )
 
     symlink = VenvSymlinkEntry(
@@ -66,6 +79,9 @@ def _venv_rewrite_shebang_impl(ctx):
 _builder = ruleb.Rule(
     implementation = _venv_rewrite_shebang_impl,
     executable = True,
+    toolchains = [
+        ruleb.ToolchainType(SHRUBBERY_TOOLCHAIN_TYPE, mandatory = False),
+    ],
 )
 _builder.attrs.update({
     "package": attr.string(),

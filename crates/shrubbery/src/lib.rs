@@ -14,6 +14,7 @@ pub mod subcommands {
     pub const EXTRACT_WHEEL_FILES: &str = "extract_wheel_files";
     pub const PY_CONSOLE_SCRIPT_GEN: &str = "py_console_script_gen";
     pub const PY_WHEEL_DIST: &str = "py_wheel_dist";
+    pub const VENV_SHEBANG_REWRITER: &str = "venv_shebang_rewriter";
     pub const WHEELMAKER: &str = "wheelmaker";
     pub const ZIP_MAIN_MAKER: &str = "zip_main_maker";
     pub const ZIPPER: &str = "zipper";
@@ -27,6 +28,7 @@ pub const SUBCOMMANDS: &[&str] = &[
     subcommands::EXTRACT_WHEEL_FILES,
     subcommands::PY_CONSOLE_SCRIPT_GEN,
     subcommands::PY_WHEEL_DIST,
+    subcommands::VENV_SHEBANG_REWRITER,
     subcommands::WHEELMAKER,
     subcommands::ZIP_MAIN_MAKER,
     subcommands::ZIPPER,
@@ -75,6 +77,7 @@ where
         subcommands::EXTRACT_WHEEL_FILES => extract_wheel_files_lib::run_cli(iter),
         subcommands::PY_CONSOLE_SCRIPT_GEN => py_console_script_gen_lib::run_cli(iter),
         subcommands::PY_WHEEL_DIST => py_wheel_dist_lib::run_cli(iter),
+        subcommands::VENV_SHEBANG_REWRITER => venv_shebang_rewriter_lib::run_cli(iter),
         subcommands::WHEELMAKER => wheelmaker_lib::run_cli(iter),
         subcommands::ZIP_MAIN_MAKER => zip_main_maker_lib::run_cli(iter),
         subcommands::ZIPPER => zipper_lib::run_cli(iter),
