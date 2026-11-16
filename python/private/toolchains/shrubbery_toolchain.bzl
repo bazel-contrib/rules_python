@@ -61,8 +61,12 @@ def get_shrubbery_tool(ctx, subcommand, fallback):
     Returns:
         {type}`struct` with fields:
         * `executable`: {type}`Target` to pass to `actions_run()`.
-        * `prefix_args`: {type}`list[str]` `[subcommand]` when resolved from
-          the `shrubbery` toolchain, else `[]`.
+        * `files_to_run`: {type}`FilesToRunProvider` to pass to
+          `ctx.actions.run(executable = ...)`.
+        * `is_rust`: {type}`bool` True when resolved from the `shrubbery`
+          toolchain.
+        * `prefix_args`: {type}`list[str]` `[subcommand]` when `is_rust` is
+          True, else `[]`.
         * `toolchain`: {type}`Label | None` the toolchain type to pass to
           `actions_run()` or `ctx.actions.run()` so the action runs on the exec
           platform the tool was built for. `None` when falling back to
@@ -70,9 +74,14 @@ def get_shrubbery_tool(ctx, subcommand, fallback):
     """
     toolchain = ctx.toolchains[SHRUBBERY_TOOLCHAIN_TYPE]
     if toolchain and toolchain.shrubbery:
+        executable = toolchain.shrubbery
         return struct(
             # Target to pass to `actions_run()`.
-            executable = toolchain.shrubbery,
+            executable = executable,
+            # `FilesToRunProvider` to pass to `ctx.actions.run(executable = ...)`.
+            files_to_run = executable[DefaultInfo].files_to_run,
+            # True when resolved from the `shrubbery` toolchain.
+            is_rust = True,
             # Leading subcommand argument prepended when invoking `shrubbery`.
             prefix_args = [subcommand],
             # Toolchain type for `actions_run()` / `ctx.actions.run()`.
@@ -81,6 +90,10 @@ def get_shrubbery_tool(ctx, subcommand, fallback):
     return struct(
         # Fallback tool target to pass to `actions_run()`.
         executable = fallback,
+        # `FilesToRunProvider` to pass to `ctx.actions.run(executable = ...)`.
+        files_to_run = fallback[DefaultInfo].files_to_run,
+        # False when falling back to the built-in Python or script tool.
+        is_rust = False,
         # Empty prefix when invoking the standalone fallback tool directly.
         prefix_args = [],
         # `None` so fallback tools use the default exec tools or host execution.

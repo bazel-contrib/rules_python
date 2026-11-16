@@ -19,7 +19,9 @@ load("//python:py_binary.bzl", "py_binary")
 load("//python/private:bzlmod_enabled.bzl", "BZLMOD_ENABLED")
 load("//python/private:py_package.bzl", "py_package_lib")
 load("//python/private:py_wheel.bzl", _PyWheelInfo = "PyWheelInfo", _py_wheel = "py_wheel")
+load("//python/private:toolchain_types.bzl", "SHRUBBERY_TOOLCHAIN_TYPE")
 load("//python/private:util.bzl", "copy_propagating_kwargs")
+load("//python/private/toolchains:shrubbery_toolchain.bzl", "get_shrubbery_tool")
 
 # Re-export as public API
 PyWheelInfo = _PyWheelInfo
@@ -45,12 +47,14 @@ def _py_wheel_dist_impl(ctx):
     args.add("--name_file", name_file)
     args.add("--output", out.path)
 
+    tool = get_shrubbery_tool(ctx, "py_wheel_dist", ctx.attr._copier)
     ctx.actions.run(
         mnemonic = "PyWheelDistDir",
-        executable = ctx.executable._copier,
+        executable = tool.files_to_run,
+        toolchain = tool.toolchain,
         inputs = [wheel, name_file],
         outputs = [out],
-        arguments = [args],
+        arguments = tool.prefix_args + [args],
     )
     return [
         DefaultInfo(
@@ -84,6 +88,9 @@ This also has the advantage that stamping information is included in the wheel's
             default = Label("//python/private:py_wheel_dist"),
         ),
     },
+    toolchains = [
+        config_common.toolchain_type(SHRUBBERY_TOOLCHAIN_TYPE, mandatory = False),
+    ],
 )
 
 def py_wheel(
