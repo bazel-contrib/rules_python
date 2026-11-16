@@ -1,0 +1,18 @@
+{
+  "display_name": "PR Queue",
+  "description": "Pending GitHub PR review queue and manual /review-code worktree launcher.",
+  "command": "python3",
+  "args": ["server.py"],
+  "restart_policy": "always",
+  "has_web_ui": true,
+  "ui_config": {
+    "display_name": "PR Queue",
+    "views": [
+      {
+        "title": "PR Queue",
+        "path": "/",
+        "entrypoint": "SIDECAR_UI_ENTRYPOINT_AUX_PANE"
+      }
+    ]
+  }
+}
