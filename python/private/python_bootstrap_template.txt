@@ -116,6 +116,19 @@ IS_WINDOWS = os.name == "nt"
 BIN_DIR_NAME = "bin" if not IS_WINDOWS else "Scripts"
 LIB_DIR_NAME = "lib" if not IS_WINDOWS else "Lib"
 
+# Windows only: set to False once creating a symlink fails, e.g. without the
+# privilege to create symlinks, so that it isn't attempted for every file.
+# Tests set the environment variable to use the fallback even when symlinks
+# can be created.
+_symlinks_supported = not (
+    IS_WINDOWS and os.environ.get("RULES_PYTHON_TESTING_DISABLE_SYMLINKS")
+)
+
+# The build of Windows 10 1809 and Windows Server 2019, which added
+# FILE_DISPOSITION_FLAG_IGNORE_READONLY_ATTRIBUTE that the fallback for when
+# symlinks can't be created needs to clean up.
+_WINDOWS_FALLBACK_MIN_BUILD = 17763
+
 # Windows APIs can be picky about slashes depending on the context,
 # so convert to backslashes to avoid any issues.
 if IS_WINDOWS:
@@ -616,27 +629,14 @@ def _run_execv(python_program, argv, env):
       print_verbose("pyprog head:" + str(f.read(50)))
     raise
 
-# Windows only: set to False once creating a symlink fails, e.g. without the
-# privilege to create symlinks, so that it isn't attempted for every file.
-# Tests set the environment variable to use the fallback even when symlinks
-# can be created.
-_SYMLINKS_SUPPORTED = not (
-    IS_WINDOWS and os.environ.get("RULES_PYTHON_TESTING_DISABLE_SYMLINKS")
-)
-
-# The build of Windows 10 1809 and Windows Server 2019, which added
-# FILE_DISPOSITION_FLAG_IGNORE_READONLY_ATTRIBUTE that the fallback for when
-# symlinks can't be created needs to clean up.
-_WINDOWS_FALLBACK_MIN_BUILD = 17763
-
 def _symlink_exist_ok(*, from_, to):
   """Creates a symlink, or on Windows, a hard link, junction or copy if that's not possible."""
-  global _SYMLINKS_SUPPORTED
+  global _symlinks_supported
   # On Windows, symlinks have to be told whether they're
   # pointing to a file or directory. Python is supposed to auto-detect
   # this, but in practice, this doesn't reliably happen.
   is_dir = os.path.isdir(to)
-  if _SYMLINKS_SUPPORTED:
+  if _symlinks_supported:
     try:
       os.symlink(to, from_, target_is_directory=is_dir)
       return
@@ -651,7 +651,7 @@ def _symlink_exist_ok(*, from_, to):
             "1809 and Windows Server 2019: {}".format(e)
         ) from e
       print_verbose("symlink failed, falling back to links or copies:", e)
-      _SYMLINKS_SUPPORTED = False
+      _symlinks_supported = False
 
   if os.path.lexists(from_):
     return
