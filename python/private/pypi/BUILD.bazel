@@ -515,6 +515,8 @@ bzl_library(
     deps = [
         "//python/private:attributes",
         "//python/private:common",
+        "//python/private:toolchain_types",
+        "//python/private/toolchains:shrubbery_toolchain",
     ],
 )
 

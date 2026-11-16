@@ -2,10 +2,17 @@
 
 load("//python/private:attributes.bzl", "WINDOWS_CONSTRAINTS_PLAIN_ATTRS")
 load("//python/private:common.bzl", "is_windows_platform")
+load("//python/private:toolchain_types.bzl", "SHRUBBERY_TOOLCHAIN_TYPE")
+load("//python/private/toolchains:shrubbery_toolchain.bzl", "get_shrubbery_tool")
 
 def _gen_wheel_record_impl(ctx):
     is_windows = is_windows_platform(ctx)
-    rewriter_file = ctx.files._wheel_record_rewriter[0]
+    tool = get_shrubbery_tool(
+        ctx,
+        "wheel_record_rewriter",
+        ctx.attr._wheel_record_rewriter,
+    )
+    rewriter_file = None if tool.is_rust else ctx.files._wheel_record_rewriter[0]
     out_files = []
 
     for in_file in ctx.files.srcs:
@@ -27,21 +34,25 @@ def _gen_wheel_record_impl(ctx):
         out_files.append(out_file)
 
         action_args = ctx.actions.args()
-        inputs = depset([in_file, rewriter_file])
-
-        if rewriter_file.path.endswith(".ps1"):
-            action_exe = "powershell.exe"
-            action_args.add_all([
-                "-ExecutionPolicy",
-                "Bypass",
-                "-NoProfile",
-                "-File",
-                rewriter_file,
-            ])
+        if tool.is_rust:
+            inputs = depset([in_file])
+            action_exe = tool.files_to_run
+            action_toolchain = tool.toolchain
+            action_args.add_all(tool.prefix_args)
         else:
-            action_exe = (
-                ctx.attr._wheel_record_rewriter[DefaultInfo].files_to_run
-            )
+            inputs = depset([in_file, rewriter_file])
+            action_toolchain = None
+            if rewriter_file.path.endswith(".ps1"):
+                action_exe = "powershell.exe"
+                action_args.add_all([
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-NoProfile",
+                    "-File",
+                    rewriter_file,
+                ])
+            else:
+                action_exe = tool.files_to_run
 
         action_args.add(in_file)
         action_args.add(out_file)
@@ -56,7 +67,7 @@ def _gen_wheel_record_impl(ctx):
             arguments = [action_args],
             mnemonic = "PyRewriteWheelRecord",
             progress_message = "Rewriting wheel RECORD %{output}",
-            toolchain = None,
+            toolchain = action_toolchain,
         )
 
     return [
@@ -81,4 +92,7 @@ gen_wheel_record = rule(
             cfg = "exec",
         ),
     },
+    toolchains = [
+        config_common.toolchain_type(SHRUBBERY_TOOLCHAIN_TYPE, mandatory = False),
+    ],
 )
