@@ -655,6 +655,10 @@ def _symlink_exist_ok(*, from_, to):
 
   if os.path.lexists(from_):
     return
+  # The target can itself be a symlink, e.g. when Bazel could create the
+  # runfiles symlinks. A hard link to a symlink is also a symlink, so link to
+  # the file or directory that it points to instead.
+  to = os.path.realpath(to)
   if is_dir:
     _link_dir_windows(from_, to)
   else:
