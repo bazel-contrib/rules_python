@@ -23,6 +23,9 @@ which cannot be done in pure starlark according to
 https://github.com/bazelbuild/bazel/issues/14744
 """
 
+load("//python/private/toolchains:shrubbery_toolchain.bzl", "get_shrubbery_tool")
+load(":toolchain_types.bzl", "SHRUBBERY_TOOLCHAIN_TYPE")
+
 _ENTRY_POINTS_TXT = "entry_points.txt"
 
 def _get_entry_points_txt(entry_points_txt):
@@ -46,15 +49,21 @@ def _py_console_script_gen_impl(ctx):
     args.add(entry_points_txt)
     args.add(ctx.outputs.out)
 
+    tool = get_shrubbery_tool(
+        ctx,
+        "py_console_script_gen",
+        ctx.attr._tool,
+    )
     ctx.actions.run(
         inputs = [
             entry_points_txt,
         ],
         outputs = [ctx.outputs.out],
-        arguments = [args],
+        arguments = tool.prefix_args + [args],
         mnemonic = "PyConsoleScriptBinaryGen",
         progress_message = "Generating py_console_script_binary main: %{label}",
-        executable = ctx.executable._tool,
+        executable = tool.files_to_run,
+        toolchain = tool.toolchain,
     )
 
     return [DefaultInfo(
@@ -93,7 +102,10 @@ py_console_script_gen = rule(
             cfg = "exec",
         ),
     },
-    doc = """\
+    toolchains = [
+        config_common.toolchain_type(SHRUBBERY_TOOLCHAIN_TYPE, mandatory = False),
+    ],
+    doc = """
 Builds an entry_point script from an entry_points.txt file.
 """,
 )

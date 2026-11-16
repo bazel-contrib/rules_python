@@ -1,0 +1,15 @@
+load("@rules_rust//rust:defs.bzl", "rust_test")
+
+package(default_visibility = ["//:__subpackages__"])
+
+licenses(["notice"])
+
+rust_test(
+    name = "py_console_script_gen_test",
+    size = "small",
+    srcs = ["py_console_script_gen_test.rs"],
+    edition = "2024",
+    deps = [
+        "//crates/py_console_script_gen:py_console_script_gen_lib",
+    ],
+)
