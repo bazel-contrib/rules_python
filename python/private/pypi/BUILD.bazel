@@ -456,6 +456,8 @@ bzl_library(
         "//python/private:common",
         "//python/private:py_info",
         "//python/private:rule_builders",
+        "//python/private:toolchain_types",
+        "//python/private/toolchains:shrubbery_toolchain",
     ],
 )
 
