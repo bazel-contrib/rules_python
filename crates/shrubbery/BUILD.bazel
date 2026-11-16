@@ -10,6 +10,7 @@ rust_library(
     srcs = ["src/lib.rs"],
     edition = "2024",
     deps = [
+        "//crates/build_data_writer:build_data_writer_lib",
         "//crates/exe_zip_maker:exe_zip_maker_lib",
         "//crates/extract_wheel_files:extract_wheel_files_lib",
         "//crates/py_console_script_gen:py_console_script_gen_lib",
