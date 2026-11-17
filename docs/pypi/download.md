@@ -182,6 +182,21 @@ selects the optional dependencies of the project. The packages that are not
 part of the hub are ignored, so a single `pyproject.toml` can list tools that
 are missing from the lock file.
 
+The extras requested in the selected groups are exposed by the hub even if the
+lock file does not request them, for example because the lock file was
+generated with `--strip-extras`. With the following `pyproject.toml`:
+
+```toml
+[project]
+dependencies = ["requests[socks]"]
+```
+
+the hub has the `@pypi_hub//requests:[socks]` target and
+`@pypi_hub//requests` includes the `socks` extra on all of the platforms. The
+environment markers of the requirements are ignored when selecting the extras.
+The dependencies of the extras, such as `pysocks`, still have to be in the lock
+file. See [extras](./use.md#extras) for the targets of the extras.
+
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
 
