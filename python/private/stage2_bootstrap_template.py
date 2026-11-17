@@ -27,6 +27,7 @@ import re
 import runpy
 import types
 import uuid
+import warnings
 from functools import cache
 
 # ===== Template substitutions start =====
@@ -650,5 +651,31 @@ def main():
             _run_py_module(MAIN_MODULE)
         sys.exit(0)
 
+
+# To help eliminate nondeterministic output, particularly when remotely
+# executing, we here wrap Python's formatwarning() to cause it to
+# produce paths relative to the current directory as of the launch of
+# the executable.
+
+original_formatwarning = warnings.formatwarning
+original_cwd = os.getcwd()
+
+
+def relpath_formatwarning(message, category, filename, lineno, line=None):
+    # Only paths within the directory are made relative, because the
+    # number of `..` in the path to e.g. the stdlib would depend on the
+    # depth of the directory.
+    try:
+        if os.path.isabs(filename) and os.path.normcase(
+            os.path.commonpath([filename, original_cwd])
+        ) == os.path.normcase(original_cwd):
+            filename = os.path.relpath(filename, original_cwd)
+    except ValueError:
+        # On Windows, paths on different drives don't have a common path.
+        pass
+    return original_formatwarning(message, category, filename, lineno, line=line)
+
+
+warnings.formatwarning = relpath_formatwarning
 
 main()
