@@ -214,10 +214,8 @@ def test_restores_lockfile_when_update_raises(
     _assert_lockfile_preserved(lockfile_path, _STALE_LOCKFILE)
 
 
-def test_windows_short_base_dir_shortens_execroot_path(
-    tmp_path: pathlib.Path,
-) -> None:
-    outer_output_base = tmp_path / "bg4v2njf"
+def test_windows_short_base_dir_shortens_execroot_path() -> None:
+    outer_output_base = pathlib.Path("/b/bg4v2njf")
     long_test_tmpdir = (
         outer_output_base
         / "execroot"
@@ -230,6 +228,8 @@ def test_windows_short_base_dir_shortens_execroot_path(
     assert short_base.parent == outer_output_base
     assert len(short_base.name) == 8
     assert (
-        bzlmod_lockfile_test.runner._windows_short_base_dir(tmp_path / "no_execroot")
+        bzlmod_lockfile_test.runner._windows_short_base_dir(
+            pathlib.Path("/b/bg4v2njf/no_execroot")
+        )
         is None
     )
