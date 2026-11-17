@@ -285,13 +285,10 @@ def _pip_repository_impl(rctx):
             "config.bzl",
             rctx.attr._config_template,
             substitutions = {
-                # The available extras of each package for the spoke
-                # repositories to check if the extras of their dependencies
-                # are available.
                 "%%PACKAGES%%": render.dict({
-                    pkg: sorted(selected_extras.get(pkg, []))
+                    pkg: None
                     for pkg in bzl_packages
-                }, value_repr = render.list),
+                }, value_repr = lambda x: "None"),
             },
         )
         config_repo_template = repr(rctx.attr.name)

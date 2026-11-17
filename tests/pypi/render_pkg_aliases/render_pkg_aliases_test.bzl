@@ -17,7 +17,6 @@
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load(
     "//python/private/pypi:render_pkg_aliases.bzl",
-    "available_extras",
     "get_whl_flag_versions",
     "render_multiplatform_pkg_aliases",
     "render_pkg_aliases",
@@ -269,24 +268,6 @@ pkg_aliases(
 )""")
 
 _tests.append(_test_aliases_with_extras)
-
-def _test_available_extras(env):
-    got = available_extras({
-        "bar": {
-            whl_config_setting(version = "3.2"): "pypi_32_bar",
-        },
-        "foo": {
-            whl_config_setting(version = "3.2", target_platforms = ["cp32_linux_x86_64"], extras = ["b"]): "pypi_32_foo",
-            whl_config_setting(version = "3.2", target_platforms = ["cp32_osx_aarch64"], extras = ["a", "b"]): "pypi_32_foo",
-        },
-    })
-
-    env.expect.that_dict(got).contains_exactly({
-        "bar": [],
-        "foo": ["a", "b"],
-    })
-
-_tests.append(_test_available_extras)
 
 def _test_aliases_with_extras_for_repo_names(env):
     actual = render_pkg_aliases(
