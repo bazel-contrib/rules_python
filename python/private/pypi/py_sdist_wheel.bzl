@@ -1,5 +1,8 @@
 """Rule for building a Python wheel (.whl) from an sdist archive in a Bazel build action."""
 
+load("@rules_cc//cc:action_names.bzl", "ACTION_NAMES")
+load("@rules_cc//cc:find_cc_toolchain.bzl", "find_cc_toolchain")
+load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("//python/private:attr_builders.bzl", "attrb")
 load("//python/private:attributes.bzl", "REQUIRED_EXEC_GROUP_BUILDERS")
 load("//python/private:builders.bzl", "builders")
@@ -13,6 +16,8 @@ load(
     "//python/private:toolchain_types.bzl",
     "EXEC_TOOLS_TOOLCHAIN_TYPE",
     "TARGET_TOOLCHAIN_TYPE",
+    "CC_TOOLCHAIN_TYPE",
+    "PY_CC_TOOLCHAIN_TYPE",
 )
 load("//python/private:version.bzl", "version")
 load(":py_installed_wheel_info.bzl", "PyInstalledWheelInfo")
@@ -157,6 +162,9 @@ Note that git-formatted patches with `a/` and `b/` path prefixes require strip `
         cfg = "exec",
         default = _BOOTSTRAP_DEPS,
     ),
+    "_cc_toolchain": lambda: attrb.Label(
+        default = Label("@rules_cc//cc:current_cc_toolchain"),
+    ),
     "_platform_constraints": lambda: attrb.LabelKeyedStringDict(
         default = _PLATFORM_CONSTRAINTS,
     ),
@@ -277,6 +285,10 @@ def _py_sdist_wheel_impl(ctx):
     target_runtime = target_tc.py3_runtime if target_tc else None
     _validate_sdist_toolchains(exec_runtime, target_runtime)
 
+    cc_toolchain = find_cc_toolchain(ctx, mandatory = False)
+    py_cc_tc_info = ctx.toolchains[PY_CC_TOOLCHAIN_TYPE]
+    py_cc_toolchain = py_cc_tc_info.py_cc_toolchain if py_cc_tc_info else None
+
     if not ctx.attr.distribution or not ctx.attr.version:
         parsed_dist, parsed_ver = _parse_sdist_filename(ctx.file.sdist.basename)
     else:
@@ -352,6 +364,87 @@ def _py_sdist_wheel_impl(ctx):
     for patch_file, strip_val in zip(patches, strips):
         args.add("--patch", "{}:{}".format(patch_file.path, strip_val))
 
+    transitive_inputs = [build_deps.files, bootstrap_deps.files]
+
+    if cc_toolchain:
+        transitive_inputs.append(cc_toolchain.all_files)
+        feature_config = cc_common.configure_features(
+            ctx = ctx,
+            cc_toolchain = cc_toolchain,
+            requested_features = ctx.features,
+            unsupported_features = ctx.disabled_features,
+        )
+        cc_bin = cc_common.get_tool_for_action(
+            feature_configuration = feature_config,
+            action_name = ACTION_NAMES.c_compile,
+        )
+        cxx_bin = cc_common.get_tool_for_action(
+            feature_configuration = feature_config,
+            action_name = ACTION_NAMES.cpp_compile,
+        )
+        compile_vars = cc_common.create_compile_variables(
+            cc_toolchain = cc_toolchain,
+            feature_configuration = feature_config,
+            use_pic = True,
+        )
+        c_flags = cc_common.get_memory_inefficient_command_line(
+            feature_configuration = feature_config,
+            action_name = ACTION_NAMES.c_compile,
+            variables = compile_vars,
+        )
+        cxx_flags = cc_common.get_memory_inefficient_command_line(
+            feature_configuration = feature_config,
+            action_name = ACTION_NAMES.cpp_compile,
+            variables = compile_vars,
+        )
+        link_vars = cc_common.create_link_variables(
+            cc_toolchain = cc_toolchain,
+            feature_configuration = feature_config,
+            is_using_linker = True,
+            is_linking_dynamic_library = True,
+        )
+        ld_flags = cc_common.get_memory_inefficient_command_line(
+            feature_configuration = feature_config,
+            action_name = ACTION_NAMES.cpp_link_dynamic_library,
+            variables = link_vars,
+        )
+        static_rt_libs = cc_toolchain.static_runtime_lib(
+            feature_configuration = feature_config,
+        )
+        transitive_inputs.append(static_rt_libs)
+        if cc_bin:
+            args.add("--cc", cc_bin)
+        if cxx_bin:
+            args.add("--cxx", cxx_bin)
+        if cc_toolchain.ar_executable:
+            args.add("--ar", cc_toolchain.ar_executable)
+        if cc_toolchain.sysroot:
+            args.add("--sysroot", cc_toolchain.sysroot)
+        args.add_all(c_flags, format_each = "--cflag=%s")
+        args.add_all(cxx_flags, format_each = "--cxxflag=%s")
+        args.add_all(ld_flags, format_each = "--ldflag=%s")
+        args.add_all(static_rt_libs, format_each = "--ldflag=%s")
+
+    # Target Python runtime files (includes target lib/python3.13/_sysconfigdata_*.py)
+    if target_runtime and target_runtime.interpreter:
+        transitive_inputs.append(target_runtime.files)
+        # interpreter is <python_root>/bin/python3, so dirname of dirname is <python_root>
+        args.add("--target-python-bin", target_runtime.interpreter.path)
+
+    # Target Python C headers (include/python3.13/Python.h, pyconfig.h) & SOABI
+    if py_cc_toolchain:
+        headers_cc_info = py_cc_toolchain.headers.providers_map["CcInfo"]
+        transitive_inputs.append(headers_cc_info.compilation_context.headers)
+        args.add_all(
+            headers_cc_info.compilation_context.includes,
+            uniquify = True,
+            format_each = "--target-python-include=%s",
+        )
+        if py_cc_toolchain.soabi:
+            args.add("--target-soabi", py_cc_toolchain.soabi)
+        if py_cc_toolchain.platform_tag:
+            args.add("--target-platform-tag", py_cc_toolchain.platform_tag)
+
     helper_files = (
         ctx.files._sdist_wheel_builder_helpers if PyInterpreterProgramInfo in ctx.attr.builder else []
     )
@@ -363,7 +456,7 @@ def _py_sdist_wheel_impl(ctx):
     )
     inputs = depset(
         direct = [ctx.file.sdist] + patches + helper_files,
-        transitive = [build_deps.files, bootstrap_deps.files],
+        transitive = transitive_inputs,
     )
 
     actions_run(
@@ -415,10 +508,13 @@ and only supports building wheels compatible with the host platform.
 :::
 """,
     exec_groups = dict(REQUIRED_EXEC_GROUP_BUILDERS),
+    fragments = ["cpp"],
     attrs = PY_SDIST_WHEEL_ATTRS,
     provides = [PyBuiltWheelInfo],
     toolchains = [
         ruleb.ToolchainType(TARGET_TOOLCHAIN_TYPE, mandatory = False),
         ruleb.ToolchainType(EXEC_TOOLS_TOOLCHAIN_TYPE, mandatory = True),
+        ruleb.ToolchainType(CC_TOOLCHAIN_TYPE, mandatory = False),
+        ruleb.ToolchainType(PY_CC_TOOLCHAIN_TYPE, mandatory = False),
     ],
 ).build()
