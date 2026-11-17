@@ -492,7 +492,12 @@ def hub_platforms(module_ctx, *, python_version, config):
     Returns:
         {type}`dict[str, struct]` the target platforms, keyed by the ABI and the platform name.
     """
-    return _platforms(module_ctx, python_version = python_version, config = config, target_platforms = [])
+    return _platforms(
+        module_ctx,
+        python_version = python_version,
+        config = config,
+        target_platforms = [],
+    )
 
 def _platforms(module_ctx, *, python_version, config, target_platforms):
     platforms = {}

@@ -214,7 +214,13 @@ def facts_cache(known_facts, facts_version = _FACT_VERSION, wheel_platforms = No
             facts_version,
             wheel_filter,
         ),
-        setdefault = lambda url, value: _store_facts(facts, facts_version, url, value, wheel_filter),
+        setdefault = lambda url, value: _store_facts(
+            facts,
+            facts_version,
+            url,
+            value,
+            wheel_filter,
+        ),
         known_facts = known_facts,
         facts = facts,
     )
@@ -272,7 +278,13 @@ def _is_selectable_by_any(platforms, dist):
 
     return False
 
-def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_version, wheel_filter = None):
+def _get_from_facts(
+        facts,
+        known_facts,
+        index_url,
+        requested_versions,
+        facts_version,
+        wheel_filter = None):
     if known_facts.get("fact_version") != facts_version:
         # cannot trust known facts, different version that we know how to parse
         return None
@@ -383,8 +395,8 @@ def _store_facts(facts, fact_version, index_url, value, wheel_filter = None):
       "fact_version": "<_FACT_VERSION>",
 
       # The platforms that the stored wheels are filtered for, see `_wheel_filter`.
-      # Absent if all wheels are stored.
-      "wheel_filter": ["<implementation>|<major.minor Python version>|<comma-separated abi tags>|<comma-separated platform tags>"],
+      # Absent if all wheels are stored. The tags are comma-separated lists.
+      "wheel_filter": ["<implementation>|<major.minor Python version>|<abi tags>|<platform tags>"],
 
       # From the index page, e.g. `foo@https://pypi.org/simple/`
       "<pkg_normalized>@<index_url>": "<package page URL>",
