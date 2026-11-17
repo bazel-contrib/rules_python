@@ -23,7 +23,9 @@ load(":version_from_filename.bzl", "version_from_filename")
 #      `<distribution>@<root_url>`. Each distribution URL maps to a single
 #      string with only the information that cannot be derived from the URL:
 #      `<digest>[|<filename>[|<yanked>]]`.
-_FACT_VERSION = "v3"
+# v4: the facts store only the wheels that the `wheel_filter` platforms can
+#      select, so an older reader must not use them.
+_FACT_VERSION = "v4"
 
 def pypi_cache(mctx = None, store = None, wheel_platforms = None):
     """The cache for PyPI index queries.
