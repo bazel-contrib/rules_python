@@ -66,14 +66,14 @@ pub fn create_wheel_dist(
     Ok(destination)
 }
 
-/// Parses command-line arguments (excluding `argv[0]` and subcommand name) into [`Cli`].
+/// Parses command-line arguments (excluding `argv[0]` and subcommand name) into [`ParsedArgs`].
 ///
 /// # Errors
 ///
 /// Returns an error if a `@flagfile` cannot be read, an unknown flag or positional argument is
 /// passed, a flag is missing its value, or any of `--wheel`, `--name_file`, or `--output` is
 /// omitted.
-pub fn parse_args<I, T>(args: I) -> Result<Cli>
+pub fn parse_args<I, T>(args: I) -> Result<ParsedArgs>
 where
     I: IntoIterator<Item = T>,
     T: Into<OsString>,
@@ -92,7 +92,7 @@ where
     let mut parser = lexopt::Parser::from_args(expanded);
     while let Some(arg) = parser.next()? {
         match arg {
-            Short(flags::HELP_SHORT) | Long(flags::HELP) => return Ok(Cli::Help),
+            Short(flags::HELP_SHORT) | Long(flags::HELP) => return Ok(ParsedArgs::Help),
             Long(flags::WHEEL) => {
                 wheel = Some(PathBuf::from(parser.value()?));
             }
@@ -112,7 +112,7 @@ where
     let output =
         output.with_context(|| format!("missing required argument: --{}", flags::OUTPUT))?;
 
-    Ok(Cli::Run(Options {
+    Ok(ParsedArgs::Options(Options {
         wheel,
         name_file,
         output,
@@ -127,11 +127,11 @@ where
     T: Into<OsString>,
 {
     let options = match parse_args(args) {
-        Ok(Cli::Help) => {
+        Ok(ParsedArgs::Help) => {
             println!("{USAGE}");
             return ExitCode::SUCCESS;
         }
-        Ok(Cli::Run(opts)) => opts,
+        Ok(ParsedArgs::Options(opts)) => opts,
         Err(err) => {
             eprintln!("py_wheel_dist: error: {err:#}");
             return ExitCode::FAILURE;
@@ -144,13 +144,13 @@ where
     ExitCode::SUCCESS
 }
 
-/// Result of parsing the command line.
+/// Result of parsing command-line arguments.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Cli {
+pub enum ParsedArgs {
     /// `--help` was requested.
     Help,
-    /// Copy the wheel with the given options.
-    Run(Options),
+    /// Parsed command-line options.
+    Options(Options),
 }
 
 /// Parsed command-line options for `py_wheel_dist`.

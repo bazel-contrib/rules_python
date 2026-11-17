@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use py_wheel_dist_lib::{Cli, Options, create_wheel_dist, parse_args, run_cli};
+use py_wheel_dist_lib::{Options, ParsedArgs, create_wheel_dist, parse_args, run_cli};
 
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
@@ -37,20 +37,20 @@ impl Drop for TempDir {
     }
 }
 
-fn parse_run<I, T>(args: I) -> Options
+fn parse_options<I, T>(args: I) -> Options
 where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString>,
 {
     match parse_args(args).expect("arguments should parse") {
-        Cli::Run(opts) => opts,
-        Cli::Help => panic!("unexpected --help"),
+        ParsedArgs::Options(opts) => opts,
+        ParsedArgs::Help => panic!("unexpected --help"),
     }
 }
 
 #[test]
 fn test_parse_args_space_separated() {
-    let opts = parse_run([
+    let opts = parse_options([
         "--wheel",
         "path/to/foo.whl",
         "--name_file",
@@ -70,7 +70,7 @@ fn test_parse_args_space_separated() {
 
 #[test]
 fn test_parse_args_equals_separated() {
-    let opts = parse_run([
+    let opts = parse_options([
         "--wheel=path/to/foo.whl",
         "--name_file=path/to/name.txt",
         "--output=path/to/dist",
@@ -89,9 +89,12 @@ fn test_parse_args_equals_separated() {
 fn test_parse_args_help() {
     assert_eq!(
         parse_args(["--help"]).expect("--help should parse"),
-        Cli::Help
+        ParsedArgs::Help
     );
-    assert_eq!(parse_args(["-h"]).expect("-h should parse"), Cli::Help);
+    assert_eq!(
+        parse_args(["-h"]).expect("-h should parse"),
+        ParsedArgs::Help
+    );
 }
 
 #[test]
@@ -104,7 +107,7 @@ fn test_parse_args_flagfile() {
     )
     .expect("flagfile should be writable");
 
-    let opts = parse_run([format!("@{}", flagfile.display())]);
+    let opts = parse_options([format!("@{}", flagfile.display())]);
     assert_eq!(
         opts,
         Options {
@@ -123,7 +126,7 @@ fn test_parse_args_mixed_flagfile_and_overrides() {
         .expect("flagfile should be writable");
 
     let flagfile_arg = format!("@{}", flagfile.display());
-    let opts = parse_run([
+    let opts = parse_options([
         flagfile_arg.as_str(),
         "--wheel=override.whl",
         "--output",
