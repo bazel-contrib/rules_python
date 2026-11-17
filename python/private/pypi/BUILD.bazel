@@ -650,6 +650,7 @@ bzl_library(
     srcs = ["hub_exposure.bzl"],
     deps = [
         ":dependency_groups",
+        ":whl_config_setting",
         "//python/private:pyproject_utils",
     ],
 )

@@ -24,7 +24,7 @@ load("//python/private:pyproject_utils.bzl", "read_pyproject", "version_from_req
 load("//python/private:repo_utils.bzl", "repo_utils")
 load(":default_platforms.bzl", "default_platforms")
 load(":hub_builder.bzl", "hub_builder")
-load(":hub_exposure.bzl", "hub_exposure")
+load(":hub_exposure.bzl", "add_extras", "hub_exposure")
 load(":hub_repository.bzl", "hub_repository", "whl_config_settings_to_json")
 load(":parse_whl_name.bzl", "parse_whl_name")
 load(":pep508_env.bzl", "env")
@@ -374,15 +374,21 @@ You cannot use both the additive_build_content and additive_build_content_file a
             packages = out.whl_map.keys(),
         )
 
-    configured_hubs = hub_exposure(
+    exposure = hub_exposure(
         module_ctx,
         hubs = hubs,
         default_pyproject = config.pyproject_toml,
         _fail = _fail,
     )
-    if configured_hubs == None:
+    if exposure == None:
         return None
+    configured_hubs = exposure.packages
     exposed_packages.update(configured_hubs)
+
+    # The extras requested in the `pyproject.toml`, e.g. `requests[socks]`,
+    # are exposed by the hub even if the lock file does not have them.
+    for hub_name, extras in exposure.extras.items():
+        hub_whl_map[hub_name] = add_extras(hub_whl_map[hub_name], extras)
 
     return struct(
         configured_hubs = configured_hubs,
@@ -1132,6 +1138,10 @@ Each item is one of:
   packages of the hub including the transitive dependencies, i.e. all of the
   packages from the requirements files or the `uv.lock` file.
 
+The extras of the selected requirements, e.g. `requests[socks]`, are also
+exposed by the hub, see [Configuring the Exposed Packages](#pip-configure).
+With `"transitive"` the extras of all of the groups are exposed.
+
 See [Configuring the Exposed Packages](#pip-configure) for examples.
 
 :::{versionadded} VERSION_NEXT_FEATURE
@@ -1166,7 +1176,8 @@ The packages are selected from a `pyproject.toml` file using the
 `[project] dependencies`, `[project.optional-dependencies]` and PEP 735
 `[dependency-groups]` tables. The other packages of the hub, e.g. the
 transitive dependencies, are still used by the packages that need them, but
-they are not public.
+they are not public. The extras requested by the selected requirements, e.g.
+`requests[socks]`, are exposed even if the lock file does not request them.
 
 Only the root module and the module that created the hub can configure it. If
 both do, the root module wins. Multiple tags for the same hub are combined.

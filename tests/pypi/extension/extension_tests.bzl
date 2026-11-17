@@ -900,6 +900,48 @@ def _test_configure_default_pyproject(env):
 
 _tests.append(_test_configure_default_pyproject)
 
+def _test_configure_extras(env):
+    # The extras requested in the pyproject.toml are added to the hub even if
+    # the lock file does not request them.
+    pypi = _parse_modules(
+        env,
+        module_ctx = _pypi_mock_mctx(
+            _mod(
+                name = "rules_python",
+                parse = [_configure_parse(pyproject_toml = "pyproject.toml")],
+                configure = [_configure(hub_name = "pypi_a", dependency_groups = ["default"])],
+            ),
+            os_name = "linux",
+            arch_name = "x86_64",
+            mock_files = {
+                "pyproject.toml": """\
+[project]
+dependencies = ["simple[foo]", "other-pkg"]
+""",
+                "requirements.txt": _CONFIGURE_REQUIREMENTS,
+            },
+        ),
+        available_interpreters = {
+            "python_3_15_host": "unit_test_interpreter_target",
+        },
+        minor_mapping = {"3.15": "3.15.19"},
+    )
+
+    pypi.configured_hubs().contains_exactly({"pypi_a": ["other_pkg", "simple"]})
+    pypi.hub_whl_map().contains_exactly({"pypi_a": {
+        "other_pkg": {
+            "pypi_a_315_other_pkg": [whl_config_setting(version = "3.15")],
+        },
+        "simple": {
+            "pypi_a_315_simple": [whl_config_setting(version = "3.15", extras = ["foo"])],
+        },
+        "transitive_pkg": {
+            "pypi_a_315_transitive_pkg": [whl_config_setting(version = "3.15")],
+        },
+    }})
+
+_tests.append(_test_configure_extras)
+
 def _test_not_configured_exposes_all(env):
     # The pyproject.toml does not filter the hub without `pip.configure`.
     pypi = _configure_parse_modules(
