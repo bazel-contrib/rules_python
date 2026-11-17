@@ -111,6 +111,18 @@ class ZipAppSignalsTest(unittest.TestCase):
         # while it's still extracting the zip. A hangup (e.g. closing the
         # terminal), SIGTERM or SIGKILL at that point must not leak the
         # directory. Repeat, since the timing varies.
+        probe = tempfile.mkdtemp(dir=os.environ.get("TEST_TMPDIR"))
+        created = subprocess.run(
+            ["mktemp", "-d"],
+            env={**os.environ, "TMPDIR": probe},
+            stdout=subprocess.PIPE,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        os.rmdir(created)
+        if os.path.dirname(created) != probe:
+            # e.g. macOS, where `mktemp -d` ignores TMPDIR.
+            self.skipTest("mktemp -d doesn't honor TMPDIR")
         for sig in (signal.SIGHUP, signal.SIGTERM, signal.SIGKILL):
             for attempt in range(5):
                 with self.subTest(signal=sig.name, attempt=attempt):

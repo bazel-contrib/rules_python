@@ -132,7 +132,12 @@ run_signal_case unhandled 143 "" || exit 1
 # The shell bootstrap (bootstrap_impl=script) must also remove the extraction
 # directory when it's killed while still unzipping. Signal it as soon as the
 # directory appears in a private TMPDIR. Repeat, since the timing varies.
-if head -n 1 "$bin" | grep -q "bash"; then
+# Skipped where `mktemp -d` ignores TMPDIR (e.g. macOS).
+probe=$(mktemp -d "${test_dir}/probe.XXXXXX")
+probe_created=$(TMPDIR="$probe" mktemp -d)
+rmdir "$probe_created"
+if [[ "$(dirname "$probe_created")" == "$probe" ]] &&
+   head -n 1 "$bin" | grep -q "bash"; then
   for sig in HUP TERM KILL; do
     for attempt in 1 2 3 4 5; do
       tmp=$(mktemp -d "${test_dir}/tmp.XXXXXX")
