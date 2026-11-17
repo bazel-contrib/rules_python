@@ -1392,7 +1392,7 @@ def _maybe_add_test_main_validation(ctx, main_py, output_groups):
         "py_test_main_validator",
         ctx.attr._validate_test_main,
     )
-    if not validator.is_rust:
+    if not validator.from_shrubbery_toolchain:
         exec_tools_toolchain = ctx.toolchains[EXEC_TOOLS_TOOLCHAIN_TYPE]
         if (
             exec_tools_toolchain == None or

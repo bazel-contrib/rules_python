@@ -46,28 +46,6 @@ Options:
   @<FLAGFILE>          Read newline-delimited arguments from <FLAGFILE>
   -h, --help           Print this help";
 
-/// Error returned when a Python source file cannot be decoded or parsed.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SyntaxError {
-    pub message: String,
-}
-
-impl SyntaxError {
-    pub fn new(message: impl Into<String>) -> Self {
-        Self {
-            message: message.into(),
-        }
-    }
-}
-
-impl fmt::Display for SyntaxError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.message)
-    }
-}
-
-impl std::error::Error for SyntaxError {}
-
 /// Formats the validation failure message matching `_format_error` in
 /// `python/private/py_test_main_validator.py`.
 pub fn format_error(label: &str, src_name: &str) -> String {
@@ -278,12 +256,21 @@ fn parse_python_module(source: &str) -> std::result::Result<ModModule, SyntaxErr
 }
 
 /// Parses `source` bytes and returns whether the module runs tests (or defines no test code).
+///
+/// # Errors
+///
+/// Returns [`SyntaxError`] if `source` contains null bytes, cannot be decoded according to UTF-8
+/// or its PEP 263 coding cookie, or is not valid Python syntax.
 pub fn module_runs_tests_bytes(source: &[u8]) -> std::result::Result<bool, SyntaxError> {
     let text = decode_python_source(source)?;
     module_runs_tests_str(&text)
 }
 
 /// Parses `source` string and returns whether the module runs tests (or defines no test code).
+///
+/// # Errors
+///
+/// Returns [`SyntaxError`] if `source` contains null bytes or is not valid Python syntax.
 pub fn module_runs_tests_str(source: &str) -> std::result::Result<bool, SyntaxError> {
     let module = parse_python_module(source)?;
     Ok(module_runs_tests(&module.body))
@@ -291,35 +278,22 @@ pub fn module_runs_tests_str(source: &str) -> std::result::Result<bool, SyntaxEr
 
 /// Parses `source` string and returns whether the module has at least one active top-level
 /// statement.
+///
+/// # Errors
+///
+/// Returns [`SyntaxError`] if `source` contains null bytes or is not valid Python syntax.
 pub fn module_runs_something_str(source: &str) -> std::result::Result<bool, SyntaxError> {
     let module = parse_python_module(source)?;
     Ok(module_runs_something(&module.body))
 }
 
-/// Parsed command-line options for `py_test_main_validator`.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Options {
-    /// Path to the main `.py` source file to analyze.
-    pub src: PathBuf,
-    /// Human-friendly name of the source file, used in error messages (defaults to `src`).
-    pub src_name: String,
-    /// The `py_test` target label, used in error messages.
-    pub label: String,
-    /// Path to the validation marker file to write on success.
-    pub output: PathBuf,
-}
-
-/// Result of parsing the command line.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Cli {
-    /// `--help` was requested.
-    Help,
-    /// Validate the main module with the given options.
-    Run(Options),
-}
-
-/// Parses command-line arguments (excluding `argv[0]` and subcommand name) into [`Cli`].
-pub fn parse_args<I, T>(args: I) -> Result<Cli>
+/// Parses command-line arguments (excluding `argv[0]` and subcommand name) into [`ParsedArgs`].
+///
+/// # Errors
+///
+/// Returns `Err` if an `@flagfile` cannot be read, an unknown flag is given, a flag value is
+/// missing or not valid UTF-8, or `--src` or `--output` is omitted.
+pub fn parse_args<I, T>(args: I) -> Result<ParsedArgs>
 where
     I: IntoIterator<Item = T>,
     T: Into<OsString>,
@@ -339,7 +313,7 @@ where
     let mut parser = lexopt::Parser::from_args(expanded);
     while let Some(arg) = parser.next()? {
         match arg {
-            Short(flags::HELP_SHORT) | Long(flags::HELP) => return Ok(Cli::Help),
+            Short(flags::HELP_SHORT) | Long(flags::HELP) => return Ok(ParsedArgs::Help),
             Long(flags::SRC) => {
                 src = Some(PathBuf::from(parser.value()?));
             }
@@ -364,7 +338,7 @@ where
         src_name = src.display().to_string();
     }
 
-    Ok(Cli::Run(Options {
+    Ok(ParsedArgs::Options(Options {
         src,
         src_name,
         label,
@@ -415,11 +389,11 @@ where
     T: Into<OsString>,
 {
     let options = match parse_args(args) {
-        Ok(Cli::Help) => {
+        Ok(ParsedArgs::Help) => {
             println!("{USAGE}");
             return ExitCode::SUCCESS;
         }
-        Ok(Cli::Run(opts)) => opts,
+        Ok(ParsedArgs::Options(opts)) => opts,
         Err(err) => {
             let _ = writeln!(stderr, "py_test_main_validator: error: {err:#}");
             return ExitCode::FAILURE;
@@ -443,4 +417,50 @@ where
     T: Into<OsString>,
 {
     run(args, &mut io::stderr())
+}
+
+/// Error returned when a Python source file cannot be decoded or parsed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SyntaxError {
+    pub message: String,
+}
+
+impl SyntaxError {
+    pub fn new(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+        }
+    }
+}
+
+impl fmt::Display for SyntaxError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl std::error::Error for SyntaxError {}
+
+/// Result of parsing command-line arguments.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ParsedArgs {
+    /// `--help` was requested.
+    Help,
+    /// Parsed options for validating the main module.
+    Options(Options),
+}
+
+/// Parsed command-line options for `py_test_main_validator`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Options {
+    /// Path to the main `.py` source file to analyze, relative to the current working directory
+    /// or absolute.
+    pub src: PathBuf,
+    /// Human-friendly name of the source file, used in error messages (defaults to `src`).
+    pub src_name: String,
+    /// The `py_test` target label, used in error messages.
+    pub label: String,
+    /// Path to the validation marker file to write on success, relative to the current working
+    /// directory or absolute.
+    pub output: PathBuf,
 }

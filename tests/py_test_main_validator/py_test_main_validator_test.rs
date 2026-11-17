@@ -5,17 +5,17 @@ use std::process::ExitCode;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use py_test_main_validator_lib::{
-    Cli, Options, format_error, module_runs_something_str, module_runs_tests_bytes,
+    Options, ParsedArgs, format_error, module_runs_something_str, module_runs_tests_bytes,
     module_runs_tests_str, parse_args, run, run_cli, validate_test_main,
 };
 
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
-/// Parses `args` and unwraps the `Cli::Run` variant.
-fn parse_run<const N: usize>(args: [String; N]) -> Options {
+/// Parses `args` and unwraps the `ParsedArgs::Options` variant.
+fn parse_options<const N: usize>(args: [String; N]) -> Options {
     match parse_args(args).expect("arguments should parse successfully") {
-        Cli::Run(options) => options,
-        Cli::Help => panic!("expected Cli::Run, got Cli::Help"),
+        ParsedArgs::Options(options) => options,
+        ParsedArgs::Help => panic!("expected ParsedArgs::Options, got ParsedArgs::Help"),
     }
 }
 
@@ -45,7 +45,7 @@ impl Drop for TempDir {
 }
 
 fn runs_tests(source: &str) -> bool {
-    module_runs_tests_str(&dedent(source)).expect("expected valid Python syntax")
+    module_runs_tests_str(&dedent(source)).expect("source should be valid Python syntax")
 }
 
 fn dedent(s: &str) -> String {
@@ -732,7 +732,7 @@ fn test_cli_flagfile_and_label_fallback() {
     )
     .unwrap();
 
-    let parsed = parse_run([format!("@{}", flagfile.display())]);
+    let parsed = parse_options([format!("@{}", flagfile.display())]);
     assert_eq!(parsed.src, src);
     assert_eq!(parsed.src_name, "pkg/inert.py");
     assert_eq!(parsed.label, "");
@@ -928,11 +928,11 @@ fn test_pep263_coding_cookies_and_run_cli_exit_codes() {
 
 #[test]
 fn test_parse_args_help_and_src_name_fallback() {
-    assert_eq!(parse_args(["--help"]).unwrap(), Cli::Help);
-    assert_eq!(parse_args(["-h"]).unwrap(), Cli::Help);
+    assert_eq!(parse_args(["--help"]).unwrap(), ParsedArgs::Help);
+    assert_eq!(parse_args(["-h"]).unwrap(), ParsedArgs::Help);
 
     // `--src_name` defaults to `--src` when omitted, matching the Python tool.
-    let parsed = parse_run([
+    let parsed = parse_options([
         "--src=pkg/test_a.py".to_string(),
         "--output=out.txt".to_string(),
     ]);
