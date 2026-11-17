@@ -1153,6 +1153,28 @@ def _test_pypi_cache_facts_store_urls_relative_to_common_directory(env):
         },
     })
 
+    # Different schemes share no directory.
+    env.expect.that_dict(_facts_for([
+        "http://example.com/pkg-1.0.0-py3-none-any.whl",
+        "https://example.com/pkg-1.0.0-py3-none-any.whl",
+    ])).contains_exactly({
+        "": {
+            "http://example.com/pkg-1.0.0-py3-none-any.whl": "sha256:0",
+            "https://example.com/pkg-1.0.0-py3-none-any.whl": "sha256:1",
+        },
+    })
+
+    # Absolute and relative URLs share no directory.
+    env.expect.that_dict(_facts_for([
+        "../../packages/ab/pkg-1.0.0-py3-none-any.whl",
+        "https://example.com/pkg-1.0.0-py3-none-any.whl",
+    ])).contains_exactly({
+        "": {
+            "../../packages/ab/pkg-1.0.0-py3-none-any.whl": "sha256:0",
+            "https://example.com/pkg-1.0.0-py3-none-any.whl": "sha256:1",
+        },
+    })
+
     # A single URL shares its own directory.
     env.expect.that_dict(_facts_for([
         "https://example.com/files/pkg-1.0.0-py3-none-any.whl",
@@ -1221,6 +1243,58 @@ def _test_pypi_cache_facts_store_urls_relative_to_common_directory(env):
     })
 
 _tests.append(_test_pypi_cache_facts_store_urls_relative_to_common_directory)
+
+def _test_pypi_cache_reads_dist_facts_with_many_directories(env):
+    """Verifies that each directory group expands on its own, e.g. after a lockfile merge."""
+    cache = _cache(env, mctx = mocks.mctx(facts = {
+        "fact_version": "v5",
+        "pkg@https://{PYPI_INDEX_URL}": {
+            "https://a.example.com/files/": {
+                "pkg-1.0.0-py3-none-any.whl": "sha256:whl",
+            },
+            "https://b.example.com/": {
+                "files/pkg-1.0.0.tar.gz": "sha256:sdist",
+            },
+        },
+    }))
+
+    key = ("https://{PYPI_INDEX_URL}/pkg/", "https://pypi.org/simple/pkg/", ["1.0.0"])
+    got = cache.get(key)
+    got.whls().contains_exactly({
+        "sha256:whl": struct(
+            digest = "sha256:whl",
+            version = "1.0.0",
+            filename = "pkg-1.0.0-py3-none-any.whl",
+            metadata_url = "",
+            metadata_sha256 = "",
+            url = "https://a.example.com/files/pkg-1.0.0-py3-none-any.whl",
+            yanked = None,
+        ),
+    })
+    got.sdists().contains_exactly({
+        "sha256:sdist": struct(
+            digest = "sha256:sdist",
+            version = "1.0.0",
+            filename = "pkg-1.0.0.tar.gz",
+            metadata_url = "",
+            metadata_sha256 = "",
+            url = "https://b.example.com/files/pkg-1.0.0.tar.gz",
+            yanked = None,
+        ),
+    })
+
+    # The lockfile facts use one common directory again.
+    cache.expect_facts().contains_exactly({
+        "fact_version": "v5",
+        "pkg@https://{PYPI_INDEX_URL}": {
+            "https://": {
+                "a.example.com/files/pkg-1.0.0-py3-none-any.whl": "sha256:whl",
+                "b.example.com/files/pkg-1.0.0.tar.gz": "sha256:sdist",
+            },
+        },
+    })
+
+_tests.append(_test_pypi_cache_reads_dist_facts_with_many_directories)
 
 def _test_pypi_cache_ignores_malformed_dist_facts(env):
     """Verifies that a dist fact without directory groups is treated as absent."""
