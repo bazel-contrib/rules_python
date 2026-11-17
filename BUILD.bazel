@@ -115,10 +115,17 @@ filegroup(
 # gazelle/BUILD.bazel and treats gazelle/* as part of //.
 filegroup(
     name = "gazelle_downloader_configs",
-    srcs = [
-        "gazelle/downloader_cfg.bazelrc",
-        "gazelle/downloader_config.cfg",
-    ],
+    # Use a glob because //gazelle is a real subpackage (so these labels would
+    # be invalid and fail loading of the root package, which every target now
+    # depends on through the default package_metadata) when rules_python is used
+    # as an external repository, e.g. in the gazelle integration tests.
+    srcs = glob(
+        [
+            "gazelle/downloader_cfg.bazelrc",
+            "gazelle/downloader_config.cfg",
+        ],
+        allow_empty = True,
+    ),
     visibility = ["//tests:__subpackages__"],
 )
 # LINT.ThenChange(//dev/sync_downloader_configs.py:synced_files)
