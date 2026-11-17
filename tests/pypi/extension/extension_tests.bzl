@@ -75,6 +75,10 @@ def _default(
         whl_platform_tags = whl_platform_tags or [],
     )
 
+def _default_whl_abi_tags(os, cpu, freethreaded):
+    platform = "{}_{}{}".format(os, cpu, freethreaded)
+    return default_platforms()[platform]["whl_abi_tags"]
+
 # The default value for the default platforms tags use in `_mod`.
 _default_tags_default = [
     _default(
@@ -85,7 +89,7 @@ _default_tags_default = [
             "@platforms//os:{}".format(os),
             "@platforms//cpu:{}".format(cpu),
         ],
-        whl_abi_tags = ["cp{major}{minor}t"] if freethreaded else ["abi3", "cp{major}{minor}"],
+        whl_abi_tags = _default_whl_abi_tags(os, cpu, freethreaded),
         whl_platform_tags = whl_platform_tags,
     )
     for (os, cpu, freethreaded), whl_platform_tags in {
