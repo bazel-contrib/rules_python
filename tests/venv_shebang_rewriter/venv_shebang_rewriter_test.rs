@@ -5,16 +5,16 @@ use std::process::{Command, ExitCode};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use venv_shebang_rewriter_lib::{
-    Cli, Options, TargetOs, UNIX_HEADER, WINDOWS_PYTHON_HEADER, WINDOWS_PYTHONW_HEADER, parse_args,
-    rewrite_shebang, rewrite_shebang_bytes, run_cli, split_first_line,
+    Options, ParsedArgs, TargetOs, UNIX_HEADER, WINDOWS_PYTHON_HEADER, WINDOWS_PYTHONW_HEADER,
+    parse_args, rewrite_shebang, rewrite_shebang_bytes, run_cli, split_first_line,
 };
 
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
-fn parse_run<const N: usize>(args: [&str; N]) -> Options {
+fn parse_options<const N: usize>(args: [&str; N]) -> Options {
     match parse_args(args).expect("arguments should parse successfully") {
-        Cli::Run(options) => options,
-        Cli::Help => panic!("expected Cli::Run, got Cli::Help"),
+        ParsedArgs::Options(options) => options,
+        ParsedArgs::Help => panic!("expected ParsedArgs::Options, got ParsedArgs::Help"),
     }
 }
 
@@ -226,7 +226,7 @@ fn test_parse_args_and_missing_args_error() {
     assert_eq!(run_cli(["only_one_arg"]), ExitCode::FAILURE);
 
     assert_eq!(
-        parse_run(["in.py", "out.py", "windows"]),
+        parse_options(["in.py", "out.py", "windows"]),
         Options {
             in_path: PathBuf::from("in.py"),
             out_path: PathBuf::from("out.py"),
@@ -234,7 +234,7 @@ fn test_parse_args_and_missing_args_error() {
         }
     );
     assert_eq!(
-        parse_run(["in.py", "out.py", "unix"]).target_os,
+        parse_options(["in.py", "out.py", "unix"]).target_os,
         TargetOs::Unix
     );
 }
@@ -243,11 +243,11 @@ fn test_parse_args_and_missing_args_error() {
 fn test_parse_args_help() {
     assert_eq!(
         parse_args(["--help"]).expect("--help should parse successfully"),
-        Cli::Help
+        ParsedArgs::Help
     );
     assert_eq!(
         parse_args(["-h"]).expect("-h should parse successfully"),
-        Cli::Help
+        ParsedArgs::Help
     );
     assert_eq!(run_cli(["--help"]), ExitCode::SUCCESS);
 }

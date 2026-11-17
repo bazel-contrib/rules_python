@@ -23,9 +23,9 @@ def _venv_rewrite_shebang_impl(ctx):
         "venv_shebang_rewriter",
         ctx.attr._venv_shebang_rewriter,
     )
-    if tool.is_rust:
+    if tool.from_shrubbery_toolchain:
         inputs = depset([in_file])
-        action_exe = tool.files_to_run
+        action_exe = tool.executable[DefaultInfo].files_to_run
         action_toolchain = tool.toolchain
         action_args.add_all(tool.prefix_args)
     else:
@@ -42,7 +42,7 @@ def _venv_rewrite_shebang_impl(ctx):
                 rewriter_file,
             ])
         else:
-            action_exe = tool.files_to_run
+            action_exe = tool.executable[DefaultInfo].files_to_run
 
     action_args.add(in_file)
     action_args.add(out_file)
