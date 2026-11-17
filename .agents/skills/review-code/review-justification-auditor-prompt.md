@@ -13,7 +13,8 @@ thresholds across `git diff`, comments, PR descriptions, and review replies:
      authorized `/private/` loads in `tests/` or internal non-`python/` packages
      such as `crates/` and `tools/` loading `distribution_filegroup.bzl`,
      `# pyrefly: ignore[...]`, `# ruff: noqa`, `# type: ignore`).
-   - Custom timeouts or retry counts.
+   - Custom timeouts, retry counts, or payload/UI caps outside the conservative
+     self-approvable criteria in `.agents/rules/code-style.md`.
    - Review thread replies claiming a rule or convention does not apply.
 3. Classify every exception into one of three outcomes:
    - Missing Justification (`Severity: SHOULD-FIX`): A rule permits justified

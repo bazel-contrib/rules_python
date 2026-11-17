@@ -5,6 +5,7 @@ load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "matching")
 load("@rules_testing//lib:unit_test.bzl", "unit_test")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
+load("//python:packaging.bzl", "py_wheel")
 load("//python:py_binary.bzl", "py_binary")
 load("//python/private/toolchains:repo.bzl", "configure_tool_toolchains")  # buildifier: disable=bzl-visibility
 load("//python/private/toolchains:shrubbery_toolchain.bzl", "shrubbery_toolchain")  # buildifier: disable=bzl-visibility
@@ -23,14 +24,21 @@ _tests = []
 # skip there.
 #
 # On Windows, py_zipapp uses the Bazel launcher instead of a self-executable
-# zip, so PyZipAppCreateExecutableZip is not created; skip there for zipapp
-# self-executable tests.
-_COMPATIBLE_WITH = SUPPORTS_BZLMOD + NOT_WINDOWS
+# zip (so PyZipAppCreateExecutableZip is not created), so skip py_zipapp action
+# tests on Windows.
+_ZIPAPP_COMPATIBLE_WITH = SUPPORTS_BZLMOD + NOT_WINDOWS
 _SHRUBBERY_SUFFIX = "crates/shrubbery/shrubbery"
 _PYTHON_EXE_ZIP_MAKER_SUFFIX = "tools/zipapp/exe_zip_maker_.py"
+_PYTHON_WHEELMAKER_SUFFIX = "tools/wheelmaker"
 _PYTHON_ZIP_MAIN_MAKER_SUFFIX = "tools/zipapp/zip_main_maker_.py"
 _PYTHON_ZIPPER_SUFFIX = "tools/zipapp/zipper_.py"
 _NEED_SHRUBBERY_FLAG = str(Label("//python/private/toolchains:need_shrubbery"))
+
+def _endswith_exe(suffix):
+    return matching.custom(
+        "<endswith '{}[.exe]'>".format(suffix),
+        lambda v: v.removesuffix(".exe").endswith(suffix),
+    )
 
 def _define_py_zipapp_subject(name):
     rt_util.helper_target(
@@ -51,7 +59,7 @@ def _test_py_zipapp_default_uses_toolchain_shrubbery(name):
         name = name,
         impl = _test_py_zipapp_uses_toolchain_shrubbery_impl,
         target = name + "_subject",
-        attr_values = {"target_compatible_with": _COMPATIBLE_WITH},
+        attr_values = {"target_compatible_with": _ZIPAPP_COMPATIBLE_WITH},
     )
 
 _tests.append(_test_py_zipapp_default_uses_toolchain_shrubbery)
@@ -65,7 +73,7 @@ def _test_py_zipapp_uses_toolchain_shrubbery(name):
         config_settings = {
             _NEED_SHRUBBERY_FLAG: "yes",
         },
-        attr_values = {"target_compatible_with": _COMPATIBLE_WITH},
+        attr_values = {"target_compatible_with": _ZIPAPP_COMPATIBLE_WITH},
     )
 
 def _test_py_zipapp_uses_toolchain_shrubbery_impl(env, target):
@@ -93,7 +101,7 @@ def _test_py_zipapp_flag_disabled_uses_python_fallbacks(name):
         config_settings = {
             _NEED_SHRUBBERY_FLAG: "no",
         },
-        attr_values = {"target_compatible_with": _COMPATIBLE_WITH},
+        attr_values = {"target_compatible_with": _ZIPAPP_COMPATIBLE_WITH},
     )
 
 def _test_py_zipapp_flag_disabled_uses_python_fallbacks_impl(env, target):
@@ -110,6 +118,62 @@ def _test_py_zipapp_flag_disabled_uses_python_fallbacks_impl(env, target):
         )
 
 _tests.append(_test_py_zipapp_flag_disabled_uses_python_fallbacks)
+
+def _define_py_wheel_subject(name):
+    rt_util.helper_target(
+        py_wheel,
+        name = name + "_subject",
+        distribution = "mydist",
+        version = "1.0.0",
+    )
+
+def _test_py_wheel_default_uses_toolchain_shrubbery(name):
+    _define_py_wheel_subject(name)
+    analysis_test(
+        name = name,
+        impl = _test_py_wheel_uses_toolchain_shrubbery_impl,
+        target = name + "_subject",
+        attr_values = {"target_compatible_with": SUPPORTS_BZLMOD},
+    )
+
+_tests.append(_test_py_wheel_default_uses_toolchain_shrubbery)
+
+def _test_py_wheel_uses_toolchain_shrubbery(name):
+    _define_py_wheel_subject(name)
+    analysis_test(
+        name = name,
+        impl = _test_py_wheel_uses_toolchain_shrubbery_impl,
+        target = name + "_subject",
+        config_settings = {
+            _NEED_SHRUBBERY_FLAG: "yes",
+        },
+        attr_values = {"target_compatible_with": SUPPORTS_BZLMOD},
+    )
+
+def _test_py_wheel_uses_toolchain_shrubbery_impl(env, target):
+    action = env.expect.that_target(target).action_named("PyWheel")
+    action.argv().contains_predicate(_endswith_exe(_SHRUBBERY_SUFFIX))
+    action.argv().contains("wheelmaker")
+
+_tests.append(_test_py_wheel_uses_toolchain_shrubbery)
+
+def _test_py_wheel_flag_disabled_uses_python_wheelmaker(name):
+    _define_py_wheel_subject(name)
+    analysis_test(
+        name = name,
+        impl = _test_py_wheel_flag_disabled_uses_python_wheelmaker_impl,
+        target = name + "_subject",
+        config_settings = {
+            _NEED_SHRUBBERY_FLAG: "no",
+        },
+        attr_values = {"target_compatible_with": SUPPORTS_BZLMOD},
+    )
+
+def _test_py_wheel_flag_disabled_uses_python_wheelmaker_impl(env, target):
+    action = env.expect.that_target(target).action_named("PyWheel")
+    action.argv().contains_predicate(_endswith_exe(_PYTHON_WHEELMAKER_SUFFIX))
+
+_tests.append(_test_py_wheel_flag_disabled_uses_python_wheelmaker)
 
 def _test_prebuilt_file_toolchain_target(name):
     rt_util.helper_target(
