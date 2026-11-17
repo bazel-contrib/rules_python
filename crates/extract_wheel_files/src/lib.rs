@@ -40,12 +40,21 @@ Options:
   -h, --help        Print this help";
 
 /// Compiles a start-anchored regular expression (`Python re.match` semantics).
+///
+/// # Errors
+///
+/// Returns an error if `regex_pattern` is not valid regular expression syntax.
 pub fn compile_pattern(regex_pattern: &str) -> Result<Regex> {
     let anchored_pattern = format!(r"\A(?:{regex_pattern})");
     Regex::new(&anchored_pattern).with_context(|| format!("invalid regex '{regex_pattern}'"))
 }
 
-/// Parses CSV `RECORD` bytes and returns the list of file paths (column 0).
+/// Parses CSV `RECORD` bytes and returns the list of file paths (column 0), relative to the
+/// wheel root.
+///
+/// # Errors
+///
+/// Returns an error if `record_bytes` contains malformed CSV records or invalid UTF-8.
 pub fn parse_record(record_bytes: &[u8]) -> Result<Vec<String>> {
     let mut reader = csv::ReaderBuilder::new()
         .has_headers(false)
@@ -61,7 +70,13 @@ pub fn parse_record(record_bytes: &[u8]) -> Result<Vec<String>> {
     Ok(paths)
 }
 
-/// Reads the `.dist-info/RECORD` file from `whl_path` and returns the list of file paths (column 0).
+/// Reads the `.dist-info/RECORD` file from `whl_path` and returns the list of file paths
+/// (column 0), relative to the wheel root.
+///
+/// # Errors
+///
+/// Returns an error if `whl_path` cannot be opened as a valid ZIP archive, does not contain
+/// exactly one `.dist-info/RECORD` entry, or the `RECORD` entry cannot be read and parsed.
 pub fn get_record(whl_path: &Path) -> Result<Vec<String>> {
     let mut archive = open_wheel_archive(whl_path)?;
     // zip 9 returns `Result<Cow<str>>` per entry name; a bad name means the
@@ -90,7 +105,8 @@ pub fn get_record(whl_path: &Path) -> Result<Vec<String>> {
     parse_record(&record_bytes)
 }
 
-/// Filters `whl_record` entries by a pre-compiled `regex`.
+/// Filters `whl_record` entries by a pre-compiled `regex`, returning matching paths relative to
+/// the wheel root.
 pub fn get_files<I, S>(whl_record: I, regex: &Regex) -> Vec<String>
 where
     I: IntoIterator<Item = S>,
@@ -104,6 +120,11 @@ where
 }
 
 /// Extracts `files` from `whl_path` into `outdir`.
+///
+/// # Errors
+///
+/// Returns an error if `outdir` cannot be created, `whl_path` cannot be opened, or any entry in
+/// `files` is missing from the archive or cannot be written to disk.
 pub fn extract_files<I, S>(whl_path: &Path, files: I, outdir: &Path) -> Result<()>
 where
     I: IntoIterator<Item = S>,
@@ -156,28 +177,25 @@ fn sanitize_extract_path(outdir: &Path, entry_name: &str) -> PathBuf {
     dest
 }
 
-/// Parsed CLI options for `extract_wheel_files`.
-#[derive(Debug, Clone)]
-pub struct Options {
-    /// Path to the input `.whl` file.
-    pub whl_path: PathBuf,
-    /// Directory to extract matching files into.
-    pub outdir: PathBuf,
-    /// Start-anchored pattern RECORD paths must match.
-    pub regex: Regex,
+/// Executes the full `extract_wheel_files` workflow for the given options.
+///
+/// # Errors
+///
+/// Returns an error if the wheel or its `.dist-info/RECORD` cannot be read or matching entries
+/// cannot be extracted into `options.outdir`.
+pub fn run(options: &Options) -> Result<()> {
+    let record = get_record(&options.whl_path)?;
+    let files = get_files(&record, &options.regex);
+    extract_files(&options.whl_path, &files, &options.outdir)
 }
 
-/// Result of parsing the command line.
-#[derive(Debug, Clone)]
-pub enum Cli {
-    /// `--help` was requested.
-    Help,
-    /// Extract files with the given options.
-    Run(Options),
-}
-
-/// Parses command-line arguments (excluding `argv[0]` and subcommand name) into [`Cli`].
-pub fn parse_args<I, T>(args: I) -> Result<Cli>
+/// Parses command-line arguments (excluding `argv[0]` and subcommand name) into [`ParsedArgs`].
+///
+/// # Errors
+///
+/// Returns an error if an unknown flag is passed, the positional argument count is not 2 or 3,
+/// or the regex pattern is invalid UTF-8 or invalid regular expression syntax.
+pub fn parse_args<I, T>(args: I) -> Result<ParsedArgs>
 where
     I: IntoIterator<Item = T>,
     T: Into<OsString>,
@@ -187,7 +205,7 @@ where
     let mut parser = lexopt::Parser::from_args(args.into_iter().map(Into::into));
     while let Some(arg) = parser.next()? {
         match arg {
-            Short(flags::HELP_SHORT) | Long(flags::HELP) => return Ok(Cli::Help),
+            Short(flags::HELP_SHORT) | Long(flags::HELP) => return Ok(ParsedArgs::Help),
             Value(val) => positional.push(val),
             _ => bail!("{}", arg.unexpected()),
         }
@@ -203,27 +221,20 @@ where
     // The length check above guarantees the first two positionals exist.
     let whl_path = PathBuf::from(positional.remove(0));
     let outdir = PathBuf::from(positional.remove(0));
-    let regex_pattern = match positional.pop() {
-        Some(raw) => raw
-            .into_string()
+    let regex_pattern = if let Some(raw) = positional.pop() {
+        raw.into_string()
             .ok()
-            .context("regex pattern is not valid UTF-8")?,
-        None => String::new(),
+            .context("regex pattern is not valid UTF-8")?
+    } else {
+        String::new()
     };
     let regex = compile_pattern(&regex_pattern)?;
 
-    Ok(Cli::Run(Options {
+    Ok(ParsedArgs::Options(Options {
         whl_path,
         outdir,
         regex,
     }))
-}
-
-/// Executes the full `extract_wheel_files` workflow for the given options.
-pub fn run(options: &Options) -> Result<()> {
-    let record = get_record(&options.whl_path)?;
-    let files = get_files(&record, &options.regex);
-    extract_files(&options.whl_path, &files, &options.outdir)
 }
 
 /// Parses CLI arguments (excluding `argv[0]` and subcommand name), extracts matching wheel files,
@@ -234,11 +245,11 @@ where
     T: Into<OsString>,
 {
     let options = match parse_args(args) {
-        Ok(Cli::Help) => {
+        Ok(ParsedArgs::Help) => {
             println!("{USAGE}");
             return ExitCode::SUCCESS;
         }
-        Ok(Cli::Run(opts)) => opts,
+        Ok(ParsedArgs::Options(opts)) => opts,
         Err(err) => {
             eprintln!("extract_wheel_files: error: {err:#}");
             return ExitCode::FAILURE;
@@ -249,4 +260,25 @@ where
         return ExitCode::FAILURE;
     }
     ExitCode::SUCCESS
+}
+
+/// Result of parsing command-line arguments.
+#[derive(Debug, Clone)]
+pub enum ParsedArgs {
+    /// `--help` was requested.
+    Help,
+    /// Parsed command-line options.
+    Options(Options),
+}
+
+/// Parsed CLI options for `extract_wheel_files`.
+#[derive(Debug, Clone)]
+pub struct Options {
+    /// Path to the input `.whl` file, relative to the current working directory or absolute.
+    pub whl_path: PathBuf,
+    /// Directory to extract matching files into, relative to the current working directory or
+    /// absolute.
+    pub outdir: PathBuf,
+    /// Start-anchored pattern RECORD paths must match.
+    pub regex: Regex,
 }

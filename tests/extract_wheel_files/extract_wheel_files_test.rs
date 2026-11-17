@@ -7,8 +7,8 @@ use std::process::ExitCode;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use extract_wheel_files_lib::{
-    Cli, Options, compile_pattern, extract_files, get_files, get_record, parse_args, parse_record,
-    run, run_cli,
+    Options, ParsedArgs, compile_pattern, extract_files, get_files, get_record, parse_args,
+    parse_record, run, run_cli,
 };
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipWriter};
@@ -18,40 +18,11 @@ static TEST_COUNTER: AtomicUsize = AtomicUsize::new(0);
 const EXAMPLE_WHEEL_REL_PATH: &str =
     "examples/wheel/example_minimal_package-0.0.1-py3-none-any.whl";
 
-/// Parses `args` and unwraps the [`Cli::Run`] options.
-fn parse_run<const N: usize>(args: [&str; N]) -> Options {
+/// Parses `args` and unwraps the [`ParsedArgs::Options`] options.
+fn parse_options<const N: usize>(args: [&str; N]) -> Options {
     match parse_args(args).expect("arguments should parse") {
-        Cli::Run(opts) => opts,
-        Cli::Help => panic!("expected Cli::Run, got Cli::Help"),
-    }
-}
-
-struct TempDir {
-    path: PathBuf,
-}
-
-impl TempDir {
-    fn new(prefix: &str) -> Self {
-        let id = TEST_COUNTER.fetch_add(1, Ordering::SeqCst);
-        let path = env::temp_dir().join(format!(
-            "extract_wheel_files_test_{}_{}_{}",
-            prefix,
-            std::process::id(),
-            id
-        ));
-        let _ = fs::remove_dir_all(&path);
-        fs::create_dir_all(&path).unwrap();
-        Self { path }
-    }
-
-    fn path(&self) -> &Path {
-        &self.path
-    }
-}
-
-impl Drop for TempDir {
-    fn drop(&mut self) {
-        let _ = fs::remove_dir_all(&self.path);
+        ParsedArgs::Options(opts) => opts,
+        ParsedArgs::Help => panic!("expected ParsedArgs::Options, got ParsedArgs::Help"),
     }
 }
 
@@ -203,10 +174,8 @@ fn test_get_wheel_record() {
     ];
 
     let example_wheel = Path::new(EXAMPLE_WHEEL_REL_PATH);
-    if example_wheel.exists() {
-        let record = get_record(example_wheel).unwrap();
-        assert_eq!(record, expected);
-    }
+    let record = get_record(example_wheel).unwrap();
+    assert_eq!(record, expected);
 
     let tmp = TempDir::new("get_record");
     let synth_whl = tmp.path().join("synth.whl");
@@ -249,13 +218,11 @@ fn test_extract_files() {
     let expected_set: HashSet<String> = files.iter().map(|s| (*s).to_string()).collect();
 
     let example_wheel = Path::new(EXAMPLE_WHEEL_REL_PATH);
-    if example_wheel.exists() {
-        let tmp = TempDir::new("extract_real");
-        let outdir = tmp.path().join("out");
-        extract_files(example_wheel, files, &outdir).unwrap();
-        let extracted = collect_extracted_files(&outdir);
-        assert_eq!(extracted, expected_set);
-    }
+    let tmp_real = TempDir::new("extract_real");
+    let outdir_real = tmp_real.path().join("out");
+    extract_files(example_wheel, files, &outdir_real).unwrap();
+    let extracted_real = collect_extracted_files(&outdir_real);
+    assert_eq!(extracted_real, expected_set);
 
     let tmp = TempDir::new("extract_synth");
     let synth_whl = tmp.path().join("synth.whl");
@@ -428,22 +395,22 @@ fn test_empty_match_still_creates_outdir() {
 
 #[test]
 fn test_parse_args_and_usage() {
-    let opts2 = parse_run(["foo.whl", "out_dir"]);
+    let opts2 = parse_options(["foo.whl", "out_dir"]);
     assert_eq!(opts2.whl_path, PathBuf::from("foo.whl"));
     assert_eq!(opts2.outdir, PathBuf::from("out_dir"));
     assert!(opts2.regex.is_match("anything/at/all.py"));
 
-    let opts3 = parse_run(["foo.whl", "out_dir", r"numpy/.*\.h$"]);
+    let opts3 = parse_options(["foo.whl", "out_dir", r"numpy/.*\.h$"]);
     assert_eq!(opts3.whl_path, PathBuf::from("foo.whl"));
     assert_eq!(opts3.outdir, PathBuf::from("out_dir"));
     assert!(opts3.regex.is_match("numpy/core/api.h"));
     assert!(!opts3.regex.is_match("other/numpy/core/api.h"));
 
-    assert!(matches!(parse_args(["--help"]), Ok(Cli::Help)));
-    assert!(matches!(parse_args(["-h"]), Ok(Cli::Help)));
+    assert!(matches!(parse_args(["--help"]), Ok(ParsedArgs::Help)));
+    assert!(matches!(parse_args(["-h"]), Ok(ParsedArgs::Help)));
     assert!(matches!(
         parse_args(["foo.whl", "--help", "out_dir"]),
-        Ok(Cli::Help)
+        Ok(ParsedArgs::Help)
     ));
 
     for bad in [vec![], vec!["only_wheel.whl"], vec!["a", "b", "c", "d"]] {
@@ -612,9 +579,11 @@ fn test_run_cli_and_subprocess() {
         "crates/shrubbery/shrubbery",
         "crates/shrubbery/shrubbery.exe",
     ];
-    let Some(bin_path) = bin_candidates.iter().map(Path::new).find(|p| p.exists()) else {
-        return;
-    };
+    let bin_path = bin_candidates
+        .iter()
+        .map(Path::new)
+        .find(|p| p.exists())
+        .expect("shrubbery binary should exist in runfiles");
 
     let bad_out = std::process::Command::new(bin_path)
         .arg("extract_wheel_files")
@@ -640,4 +609,33 @@ fn test_run_cli_and_subprocess() {
         stdout_str.contains("Usage: extract_wheel_files <wheel> <out_dir> [regex_pattern]"),
         "unexpected stdout: {stdout_str}"
     );
+}
+
+struct TempDir {
+    path: PathBuf,
+}
+
+impl TempDir {
+    fn new(prefix: &str) -> Self {
+        let id = TEST_COUNTER.fetch_add(1, Ordering::SeqCst);
+        let path = env::temp_dir().join(format!(
+            "extract_wheel_files_test_{}_{}_{}",
+            prefix,
+            std::process::id(),
+            id
+        ));
+        let _ = fs::remove_dir_all(&path);
+        fs::create_dir_all(&path).unwrap();
+        Self { path }
+    }
+
+    fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+impl Drop for TempDir {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.path);
+    }
 }
