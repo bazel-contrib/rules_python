@@ -103,49 +103,15 @@ pub fn rewrite_shebang(in_path: &Path, out_path: &Path, target_os: TargetOs) -> 
     Ok(())
 }
 
-/// Target operating system family for generated shebang headers.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TargetOs {
-    Unix,
-    Windows,
-}
-
-impl FromStr for TargetOs {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self> {
-        match s {
-            "unix" => Ok(Self::Unix),
-            "windows" => Ok(Self::Windows),
-            other => bail!("unsupported target_os '{other}': expected 'unix' or 'windows'"),
-        }
-    }
-}
-
-/// Parsed command-line options for `venv_shebang_rewriter`.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Options {
-    /// Path to the input script.
-    pub in_path: PathBuf,
-    /// Path to write the rewritten script to.
-    pub out_path: PathBuf,
-    /// Target OS family selecting the polyglot header.
-    pub target_os: TargetOs,
-}
-
-/// Result of parsing the command line.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Cli {
-    /// `--help` was requested.
-    Help,
-    /// Rewrite the shebang with the given options.
-    Run(Options),
-}
-
-/// Parses command-line arguments (excluding `argv[0]` and subcommand name) into [`Cli`].
+/// Parses command-line arguments (excluding `argv[0]` and subcommand name) into [`ParsedArgs`].
 ///
 /// Expects exactly three positionals: `<in_path> <out_path> <target_os>`.
-pub fn parse_args<I, T>(args: I) -> Result<Cli>
+///
+/// # Errors
+///
+/// Returns an error if an unknown flag is given, positional argument count is not 3, or
+/// `<target_os>` is not `"unix"` or `"windows"`.
+pub fn parse_args<I, T>(args: I) -> Result<ParsedArgs>
 where
     I: IntoIterator<Item = T>,
     T: Into<OsString>,
@@ -155,7 +121,7 @@ where
     let mut parser = lexopt::Parser::from_args(args);
     while let Some(arg) = parser.next()? {
         match arg {
-            Short(flags::HELP_SHORT) | Long(flags::HELP) => return Ok(Cli::Help),
+            Short(flags::HELP_SHORT) | Long(flags::HELP) => return Ok(ParsedArgs::Help),
             Value(val) => positional.push(val),
             _ => bail!("{}", arg.unexpected()),
         }
@@ -176,7 +142,7 @@ where
         .with_context(|| format!("target_os is not valid UTF-8: {target_os:?}"))?
         .parse::<TargetOs>()?;
 
-    Ok(Cli::Run(Options {
+    Ok(ParsedArgs::Options(Options {
         in_path,
         out_path,
         target_os,
@@ -191,11 +157,11 @@ where
     T: Into<OsString>,
 {
     let options = match parse_args(args) {
-        Ok(Cli::Help) => {
+        Ok(ParsedArgs::Help) => {
             println!("{USAGE}");
             return ExitCode::SUCCESS;
         }
-        Ok(Cli::Run(opts)) => opts,
+        Ok(ParsedArgs::Options(opts)) => opts,
         Err(err) => {
             eprintln!("venv_shebang_rewriter: error: {err:#}");
             return ExitCode::FAILURE;
@@ -206,4 +172,44 @@ where
         return ExitCode::FAILURE;
     }
     ExitCode::SUCCESS
+}
+
+/// Result of parsing command-line arguments.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ParsedArgs {
+    /// `--help` was requested.
+    Help,
+    /// Parsed command-line options.
+    Options(Options),
+}
+
+/// Parsed command-line options for `venv_shebang_rewriter`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Options {
+    /// Path to the input script, relative to the current working directory or absolute.
+    pub in_path: PathBuf,
+    /// Path to write the rewritten script to, relative to the current working directory or
+    /// absolute.
+    pub out_path: PathBuf,
+    /// Target OS family selecting the polyglot header.
+    pub target_os: TargetOs,
+}
+
+/// Target operating system family for generated shebang headers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TargetOs {
+    Unix,
+    Windows,
+}
+
+impl FromStr for TargetOs {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        match s {
+            "unix" => Ok(Self::Unix),
+            "windows" => Ok(Self::Windows),
+            other => bail!("unsupported target_os '{other}': expected 'unix' or 'windows'"),
+        }
+    }
 }
