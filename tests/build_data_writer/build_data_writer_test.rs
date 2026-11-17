@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use build_data_writer_lib::{Cli, Options, parse_env_and_args, run_cli, write_build_data};
+use build_data_writer_lib::{Options, ParsedArgs, parse_env_and_args, run_cli, write_build_data};
 
 static TEST_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
@@ -24,12 +24,12 @@ fn create_temp_dir(prefix: &str) -> PathBuf {
     dir
 }
 
-fn parse_run(env_map: &HashMap<&str, OsString>) -> Options {
+fn parse_options(env_map: &HashMap<&str, OsString>) -> Options {
     match parse_env_and_args(NO_ARGS, |k| env_map.get(k).cloned())
         .expect("environment should parse")
     {
-        Cli::Run(opts) => opts,
-        Cli::Help => panic!("expected Cli::Run, got Cli::Help"),
+        ParsedArgs::Options(opts) => opts,
+        ParsedArgs::Help => panic!("expected ParsedArgs::Options, got ParsedArgs::Help"),
     }
 }
 
@@ -66,7 +66,7 @@ fn test_env_configuration_both_status_files() {
         ("INFO_FILE", info_file.as_os_str().to_owned()),
     ]);
 
-    let opts = parse_run(&env_map);
+    let opts = parse_options(&env_map);
     assert!(opts.stamped);
     write_build_data(&opts).expect("build data should be writable");
 
@@ -88,7 +88,7 @@ fn test_env_configuration_both_status_files() {
 fn test_help_flag() {
     for help in ["--help", "-h"] {
         let cli = parse_env_and_args([help], |_| None).expect("help flag should parse");
-        assert_eq!(cli, Cli::Help, "unexpected result for {help}");
+        assert_eq!(cli, ParsedArgs::Help, "unexpected result for {help}");
     }
     assert_eq!(run_cli(["--help"]), ExitCode::SUCCESS);
 }
@@ -123,10 +123,10 @@ fn test_stamped_parsing() {
 
     let mut env_map = base_env(&output);
     env_map.insert("STAMPED", OsString::from("TRUE"));
-    assert!(parse_run(&env_map).stamped);
+    assert!(parse_options(&env_map).stamped);
 
     env_map.insert("STAMPED", OsString::from("FALSE"));
-    assert!(!parse_run(&env_map).stamped);
+    assert!(!parse_options(&env_map).stamped);
 
     for invalid in ["true", "false", "1", "0", "", "maybe"] {
         env_map.insert("STAMPED", OsString::from(invalid));
@@ -189,7 +189,7 @@ fn test_empty_or_unset_version_and_info_files() {
     env_map.insert("VERSION_FILE", OsString::new());
     env_map.insert("INFO_FILE", OsString::new());
 
-    let parsed = parse_run(&env_map);
+    let parsed = parse_options(&env_map);
     assert_eq!(parsed.version_file, None);
     assert_eq!(parsed.info_file, None);
     write_build_data(&parsed).expect("build data should be writable");
