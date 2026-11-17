@@ -42,6 +42,7 @@ def _test_whl_library_deps_targets(env):
         rules = struct(
             py_library = lambda **kwargs: py_library_calls.append(kwargs),
             env_marker_setting = lambda **kwargs: env_marker_setting_calls.append(kwargs),
+            extra_select = lambda **kwargs: None,
             create_inits = lambda *args, **kwargs: ["_create_inits_target"],
             venv_rewrite_shebang = lambda **kwargs: None,
         ),
@@ -95,6 +96,7 @@ def _test_whl_library_deps_targets_no_deps(env):
     filegroup_calls = []
     py_library_calls = []
     env_marker_setting_calls = []
+    extra_select_calls = []
 
     whl_library_deps_targets(
         name = "foo-0-py3-none-any.whl",
@@ -114,8 +116,21 @@ def _test_whl_library_deps_targets_no_deps(env):
         rules = struct(
             py_library = lambda **kwargs: py_library_calls.append(kwargs),
             env_marker_setting = lambda **kwargs: env_marker_setting_calls.append(kwargs),
+            extra_select = lambda **kwargs: extra_select_calls.append(kwargs),
         ),
     )
+
+    # The packages depending on the extras of this package can still use them.
+    env.expect.that_collection(extra_select_calls).contains_exactly([
+        {
+            "name": "_extras",
+            "actual": select({
+                ":_extras_a": ":[a]",
+                "//conditions:default": ":pkg",
+            }),
+            "visibility": ["//visibility:public"],
+        },
+    ])  # buildifier: @unsorted-dict-items
 
     # If the package is in a group but has no deps, then the public labels should be aliases
     # to the srcs targets and no other targets should be created.
@@ -147,6 +162,8 @@ def _test_extras(env):
     filegroup_calls = []
     py_library_calls = []
     env_marker_setting_calls = []
+    extra_dep_calls = []
+    extra_select_calls = []
 
     whl_library_deps_targets(
         name = "foo-0-py3-none-any.whl",
@@ -166,29 +183,53 @@ def _test_extras(env):
         native = struct(
             filegroup = lambda **kwargs: filegroup_calls.append(kwargs),
             alias = lambda **kwargs: None,
+            config_setting = lambda **kwargs: None,
         ),
         rules = struct(
             py_library = lambda **kwargs: py_library_calls.append(kwargs),
             env_marker_setting = lambda **kwargs: env_marker_setting_calls.append(kwargs),
+            extra_dep = lambda **kwargs: extra_dep_calls.append(kwargs),
+            extra_select = lambda **kwargs: extra_select_calls.append(kwargs),
         ),
     )
 
     # The `pkg` target has no extras because none were requested and there is
     # a target for each extra that the package provides. The `whl` target does
-    # not use the extras. Without the extras available in the hub, the
-    # dependencies use the targets with the extras directly.
+    # not use the extras. The dependencies on the extras of other packages use
+    # the `_extras` target of the package, so that the hub does not need to
+    # know about the extras.
     env.expect.that_collection([
         (c["name"], c["deps"])
         for c in py_library_calls
     ]).contains_exactly([
-        ("pkg", ["srcs", "@pypi//bar:[socks]"]),
-        ("[all]", ["srcs", "@pypi//bar:[socks]", "@pypi//grpc:pkg"]),
-        ("[async]", ["srcs", "@pypi//bar:[socks]", "@pypi//uvloop:pkg"] + select({
+        ("pkg", ["srcs", ":_bar[socks]"]),
+        ("[all]", ["srcs", ":_bar[socks]", "@pypi//grpc:pkg"]),
+        ("[async]", ["srcs", ":_bar[socks]", "@pypi//uvloop:pkg"] + select({
             ":is_include_aiohttp_true": ["@pypi//aiohttp:pkg"],
             "//conditions:default": [],
         })),
-        ("[grpc]", ["srcs", "@pypi//bar:[socks]", "@pypi//grpc:pkg"]),
+        ("[grpc]", ["srcs", ":_bar[socks]", "@pypi//grpc:pkg"]),
     ])
+    env.expect.that_collection(extra_dep_calls).contains_exactly([
+        {
+            "name": "_bar[socks]",
+            "pkg": "@pypi//bar:_extras",
+            "extra": "socks",
+            "visibility": ["//visibility:private"],
+        },
+    ])  # buildifier: @unsorted-dict-items
+    env.expect.that_collection(extra_select_calls).contains_exactly([
+        {
+            "name": "_extras",
+            "actual": select({
+                ":_extras_all": ":[all]",
+                ":_extras_async": ":[async]",
+                ":_extras_grpc": ":[grpc]",
+                "//conditions:default": ":pkg",
+            }),
+            "visibility": ["//visibility:public"],
+        },
+    ])  # buildifier: @unsorted-dict-items
     env.expect.that_collection([
         (c["name"], c["data"])
         for c in filegroup_calls
@@ -208,6 +249,7 @@ _tests.append(_test_extras)
 def _test_extras_in_group(env):
     py_library_calls = []
     filegroup_calls = []
+    extra_select_calls = []
 
     whl_library_deps_targets(
         name = "foo-0-py3-none-any.whl",
@@ -223,12 +265,25 @@ def _test_extras_in_group(env):
         native = struct(
             filegroup = lambda **kwargs: filegroup_calls.append(kwargs),
             alias = lambda **kwargs: None,
+            config_setting = lambda **kwargs: None,
         ),
         rules = struct(
             py_library = lambda **kwargs: py_library_calls.append(kwargs),
             env_marker_setting = lambda **kwargs: None,
+            extra_select = lambda **kwargs: extra_select_calls.append(kwargs),
         ),
     )
+
+    # The members of the group are selected via the group library in the hub.
+    env.expect.that_collection([
+        c["actual"]
+        for c in extra_select_calls
+    ]).contains_exactly([
+        select({
+            ":_extras_a": "@pypi//foo:[a]",
+            "//conditions:default": ":pkg",
+        }),
+    ])
 
     # Only the member targets exclude the other members and the targets are
     # visible to the hub that creates the group library.
@@ -252,6 +307,7 @@ def _test_extras_in_group_legacy(env):
     alias_calls = []
     py_library_calls = []
     filegroup_calls = []
+    extra_select_calls = []
 
     whl_library_deps_targets(
         name = "foo-0-py3-none-any.whl",
@@ -266,12 +322,26 @@ def _test_extras_in_group_legacy(env):
         native = struct(
             filegroup = lambda **kwargs: filegroup_calls.append(kwargs),
             alias = lambda **kwargs: alias_calls.append(kwargs),
+            config_setting = lambda **kwargs: None,
         ),
         rules = struct(
             py_library = lambda **kwargs: py_library_calls.append(kwargs),
             env_marker_setting = lambda **kwargs: None,
+            extra_select = lambda **kwargs: extra_select_calls.append(kwargs),
         ),
     )
+
+    # The public targets of the members point to the group library.
+    env.expect.that_collection([
+        c["actual"]
+        for c in extra_select_calls
+    ]).contains_exactly([
+        select({
+            ":_extras_a": ":[a]",
+            ":_extras_b": ":[b]",
+            "//conditions:default": ":pkg",
+        }),
+    ])
 
     # The member targets are implementation targets and the public targets
     # point to the group library in the config repo.
@@ -304,7 +374,7 @@ def _test_deps_with_extras(env):
     filegroup_calls = []
     py_library_calls = []
     env_marker_setting_calls = []
-    missing_calls = []
+    extra_dep_calls = []
 
     whl_library_deps_targets(
         name = "foo-0-py3-none-any.whl",
@@ -316,51 +386,55 @@ def _test_deps_with_extras(env):
             "baz; sys_platform == 'darwin'",
             "qux[missing]",
         ],
-        # The values are the extras that are available in the hub
+        # The hub does not need to know which extras are available.
         include = {
-            "bar": ["socks"],
-            "baz": ["a", "b"],
-            "qux": [],
+            "bar": None,
+            "baz": None,
+            "qux": None,
         },
         repo = None,
         aliases = {},
         native = struct(
             filegroup = lambda **kwargs: filegroup_calls.append(kwargs),
             alias = lambda **kwargs: None,
+            config_setting = lambda **kwargs: None,
         ),
         rules = struct(
             py_library = lambda **kwargs: py_library_calls.append(kwargs),
             env_marker_setting = lambda **kwargs: env_marker_setting_calls.append(kwargs),
-            missing_extra_error = lambda **kwargs: missing_calls.append(kwargs),
+            extra_dep = lambda **kwargs: extra_dep_calls.append(kwargs),
+            extra_select = lambda **kwargs: None,
         ),
     )
 
-    # The dependencies use the targets with the extras, the missing extras use
-    # a target that fails the build with a helpful message.
+    # The dependencies on the extras use the `_extras` target of the packages
+    # with the requested extra, which is resolved by the package that provides
+    # it. If the package does not provide the extra, then only the package is
+    # used.
     env.expect.that_collection([
         (c["name"], c["deps"])
         for c in py_library_calls
     ]).contains_exactly([
-        ("pkg", ["srcs", "@pypi//bar:[socks]", ":_missing_qux[missing]"] + select({
+        ("pkg", ["srcs", ":_bar[socks]", ":_qux[missing]"] + select({
             ":is_include_baz_2_true": ["@pypi//baz:pkg"],
             "//conditions:default": [],
         }) + select({
-            ":is_include_baz[a]_true": ["@pypi//baz:[a]"],
+            ":is_include_baz[a]_true": [":_baz[a]"],
             "//conditions:default": [],
         }) + select({
-            ":is_include_baz[b]_true": ["@pypi//baz:[b]"],
+            ":is_include_baz[b]_true": [":_baz[b]"],
             "//conditions:default": [],
         })),
     ])
-    env.expect.that_collection(missing_calls).contains_exactly([
-        {
-            "name": "_missing_qux[missing]",
-            "package_name": "qux",
-            "extra": "missing",
-            "required_by": "foo",
-            "visibility": ["//visibility:private"],
-        },
-    ])  # buildifier: @unsorted-dict-items
+    env.expect.that_collection([
+        (c["name"], c["pkg"], c["extra"])
+        for c in extra_dep_calls
+    ]).contains_exactly([
+        ("_bar[socks]", "@pypi//bar:_extras", "socks"),
+        ("_baz[a]", "@pypi//baz:_extras", "a"),
+        ("_baz[b]", "@pypi//baz:_extras", "b"),
+        ("_qux[missing]", "@pypi//qux:_extras", "missing"),
+    ])
 
     # The whl targets do not use the extras.
     env.expect.that_collection([

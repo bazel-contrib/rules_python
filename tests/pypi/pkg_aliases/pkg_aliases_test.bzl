@@ -43,6 +43,7 @@ def _test_legacy_aliases(env):
         "foo": ":pkg",
         "pkg": ":[]",
         "[]": "@repo//:pkg",
+        "_extras": "@repo//:_extras",
         "srcs": "@repo//:srcs",
         "whl_file": "@repo//:whl_file",
         "whl": "@repo//:whl",
@@ -222,6 +223,10 @@ def _test_group_aliases(env):
             "actual": ":pkg",
         },
         {
+            "name": "_extras",
+            "actual": "@repo//:_extras",
+        },
+        {
             "name": "_pkg",
             "actual": "@repo//:pkg",
             "visibility": ["//_groups:__subpackages__"],
@@ -352,6 +357,7 @@ def _test_deps_and_aliases_integration(env):
     # Use this function as it is used in pip_repository
     actual_aliases = []
     actual_env_marker_settings = []
+    actual_extra_select = []
     actual_py_library = {}
 
     # buildifier: disable=unsorted-dict-items
@@ -424,10 +430,18 @@ def _test_deps_and_aliases_integration(env):
         rules = struct(
             whl_library_deps_targets = whl_library_deps_targets,
             env_marker_setting = lambda **kwargs: actual_env_marker_settings.append(kwargs),
+            extra_select = lambda **kwargs: actual_extra_select.append(kwargs),
             py_library = lambda **kwargs: actual_py_library.update(kwargs),
         ),
     )
     env.expect.that_collection(actual_aliases).contains_exactly(want_aliases)
+    env.expect.that_collection(actual_extra_select).contains_exactly([
+        {
+            "name": "_extras",
+            "actual": ":pkg",
+            "visibility": ["//visibility:public"],
+        },
+    ])  # buildifier: @unsorted-dict-items
     env.expect.that_collection(actual_env_marker_settings).contains_exactly(want_settings)
     env.expect.that_dict(actual_py_library).contains_at_least(want_library)
 

@@ -372,6 +372,7 @@ bzl_library(
     name = "pkg_aliases",
     srcs = ["pkg_aliases.bzl"],
     deps = [
+        ":extra_dep",
         ":labels",
         ":whl_library_deps_targets",
         "//python:py_library",
@@ -630,8 +631,8 @@ bzl_library(
     srcs = ["whl_library_deps_targets.bzl"],
     deps = [
         ":env_marker_setting",
+        ":extra_dep",
         ":labels",
-        ":missing_package",
         ":pep508_deps",
         "//python:py_library",
         "//python/private:normalize_name",
