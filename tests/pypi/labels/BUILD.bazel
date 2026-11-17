@@ -1,0 +1,5 @@
+load(":labels_tests.bzl", "labels_test_suite")
+
+labels_test_suite(
+    name = "labels_tests",
+)

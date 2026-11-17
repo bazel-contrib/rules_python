@@ -95,6 +95,33 @@ py_library(
 
 _tests.append(_test_in_hub)
 
+def _test_in_hub_with_extras(env):
+    actual = generate_group_library_build_bazel(
+        repo_prefix = "",
+        groups = {"vbap": ["Pcodedmp", "oletools[Full]"]},
+    )
+
+    # The extras are members only for the py_library targets
+    env.expect.that_str(actual).contains("""\
+filegroup(
+    name = "vbap_whl",
+    srcs = [],
+    data = ["//pcodedmp:_whl"],
+    visibility = ["//:__subpackages__"],
+)""")
+    env.expect.that_str(actual).contains("""\
+py_library(
+    name = "vbap_pkg",
+    srcs = [],
+    deps = [
+        "//oletools:_[full]",
+        "//pcodedmp:_pkg",
+    ],
+    visibility = ["//:__subpackages__"],
+)""")
+
+_tests.append(_test_in_hub_with_extras)
+
 def generate_group_library_build_bazel_test_suite(name):
     """Create the test suite.
 
