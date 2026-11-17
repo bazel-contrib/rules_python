@@ -161,6 +161,34 @@ def _test_config_settings_label_value_relative_to_caller_impl(env, target):
 
 _tests.append(_test_config_settings_label_value_relative_to_caller)
 
+def _test_config_settings_label_value_select(name, config):
+    # The values of a select() can't be resolved by the macro, so canonical
+    # label strings are used.
+    debugger = str(native.package_relative_label(":" + name + "_debugger"))
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject",
+        srcs = ["main.py"],
+        main = "main.py",
+        config_settings = select({
+            "//conditions:default": {
+                "@rules_python//python/config_settings:debugger": debugger,
+            },
+        }),
+    )
+    rt_util.helper_target(
+        py_library,
+        name = name + "_debugger",
+        srcs = [name + "_debugger.py"],
+    )
+    analysis_test(
+        name = name,
+        impl = _test_config_settings_label_value_relative_to_caller_impl,
+        target = name + "_subject",
+    )
+
+_tests.append(_test_config_settings_label_value_select)
+
 def _test_cross_compile_to_unix(name, config):
     rt_util.helper_target(
         config.rule,
