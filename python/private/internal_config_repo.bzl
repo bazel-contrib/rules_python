@@ -39,6 +39,7 @@ config = struct(
   BuiltinPyInfo = getattr(getattr(native, "legacy_globals", None), "PyInfo", {builtin_py_info_symbol}),
   BuiltinPyRuntimeInfo = getattr(getattr(native, "legacy_globals", None), "PyRuntimeInfo", {builtin_py_runtime_info_symbol}),
   BuiltinPyCcLinkParamsProvider = getattr(getattr(native, "legacy_globals", None), "PyCcLinkParamsProvider", {builtin_py_cc_link_params_provider}),
+  toolchain_type_in_rules_python = {toolchain_type_in_rules_python},
 )
 """
 
@@ -110,6 +111,7 @@ def _internal_config_repo_impl(rctx):
         builtin_py_runtime_info_symbol = builtin_py_runtime_info_symbol,
         supports_whl_extraction = str(supports_whl_extraction),
         builtin_py_cc_link_params_provider = builtin_py_cc_link_params_provider,
+        toolchain_type_in_rules_python = str(rctx.attr.toolchain_type_in_rules_python),
         bazel_8_or_later = str(bazel_major_version >= 8),
         bazel_9_or_later = str(bazel_major_version >= 9),
         bazel_10_or_later = str(bazel_major_version > 9),
@@ -141,6 +143,7 @@ internal_config_repo = repository_rule(
     configure = True,
     environ = [_ENABLE_PIPSTAR_ENVVAR_NAME],
     attrs = {
+        "toolchain_type_in_rules_python": attr.bool(),
         "transition_setting_generators": attr.string_list_dict(),
         "transition_settings": attr.string_list(),
     },

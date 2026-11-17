@@ -312,6 +312,12 @@ bzl_library(
 )
 
 bzl_library(
+    name = "python_toolchain_type_bzl",
+    srcs = ["python_toolchain_type.bzl"],
+    deps = ["@rules_python_internal//:rules_python_config_bzl"],
+)
+
+bzl_library(
     name = "python_register_multi_toolchains_bzl",
     srcs = ["python_register_multi_toolchains.bzl"],
     deps = [
