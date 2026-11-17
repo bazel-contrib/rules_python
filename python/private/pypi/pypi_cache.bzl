@@ -409,11 +409,20 @@ def _store_facts(facts, fact_version, index_url, value, wheel_filter = None):
     fact_key = _dist_fact_key(index_url)
     entries = facts.setdefault(fact_key, {})
 
+    # Keep all dists of a version that has no selectable dist. Otherwise the
+    # facts lack the version and the next run fetches the index again.
+    selectable_versions = {
+        d.version: True
+        for dists in (value.sdists, value.whls)
+        for d in dists.values()
+        if _is_selectable(wheel_filter, d)
+    }
+
     # NOTE: iterate separately instead of `sdists | whls`, because both are
     # keyed by digest and hashless sdists and wheels would collide on `""`.
     for dists in (value.sdists, value.whls):
         for digest, d in dists.items():
-            if _is_selectable(wheel_filter, d):
+            if d.version not in selectable_versions or _is_selectable(wheel_filter, d):
                 entries[d.url] = _encode_dist_entry(digest, d)
 
     return value

@@ -826,9 +826,9 @@ _MACOS_ARM64_CP312 = struct(
     whl_platform_tags = ["any", "macosx_*_arm64"],
 )
 
-def _dist(filename, yanked = None):
+def _dist(filename, yanked = None, version = "1.0.0"):
     return struct(
-        version = "1.0.0",
+        version = version,
         filename = filename,
         url = "https://pypi.org/files/" + filename,
         digest = "sha256:" + filename,
@@ -949,6 +949,50 @@ def _test_pypi_cache_facts_filter_yanked_wheels(env):
     got.hashes_by_version().contains_exactly({"1.0.0": [kept.digest]})
 
 _tests.append(_test_pypi_cache_facts_filter_yanked_wheels)
+
+def _test_pypi_cache_facts_keep_versions_without_selectable_dists(env):
+    """Verifies that the facts keep all dists of a version that no platform can select."""
+    cache = _cache(env, mctx = mocks.mctx(facts = {}), wheel_platforms = [_MACOS_ARM64_CP312])
+
+    dists = [
+        _dist("pkg-1.0.0-cp312-cp312-win_amd64.whl"),
+        _dist("pkg-1.0.0-cp312-cp312-win32.whl"),
+        _dist("pkg-2.0.0-cp312-cp312-macosx_11_0_arm64.whl", version = "2.0.0"),
+        _dist("pkg-2.0.0-cp312-cp312-win_amd64.whl", version = "2.0.0"),
+    ]
+    fake_result = struct(
+        sdists = {},
+        whls = {d.digest: d for d in dists},
+        hashes_by_version = {
+            "1.0.0": sorted([d.digest for d in dists[:2]]),
+            "2.0.0": sorted([d.digest for d in dists[2:]]),
+        },
+    )
+    key = ("https://{PYPI_INDEX_URL}/pkg/", "https://pypi.org/simple/pkg/", ["1.0.0", "2.0.0"])
+    cache.setdefault(key, fake_result)
+
+    cache.expect_facts().contains_exactly({
+        "fact_version": "v3",
+        "pkg@https://{PYPI_INDEX_URL}": {
+            "https://pypi.org/files/pkg-1.0.0-cp312-cp312-win32.whl": "sha256:pkg-1.0.0-cp312-cp312-win32.whl",
+            "https://pypi.org/files/pkg-1.0.0-cp312-cp312-win_amd64.whl": "sha256:pkg-1.0.0-cp312-cp312-win_amd64.whl",
+            "https://pypi.org/files/pkg-2.0.0-cp312-cp312-macosx_11_0_arm64.whl": "sha256:pkg-2.0.0-cp312-cp312-macosx_11_0_arm64.whl",
+        },
+        "wheel_filter": ["cpython|3.12|none,abi3,cp312|any,macosx_*_arm64"],
+    })
+
+    # The facts have all of the requested versions, so the next run reads them.
+    cache2 = _cache(
+        env,
+        mctx = mocks.mctx(facts = cache.raw_facts()),
+        wheel_platforms = [_MACOS_ARM64_CP312],
+    )
+    cache2.get(key).hashes_by_version().contains_exactly({
+        "1.0.0": sorted([d.digest for d in dists[:2]]),
+        "2.0.0": [dists[2].digest],
+    })
+
+_tests.append(_test_pypi_cache_facts_keep_versions_without_selectable_dists)
 
 def _test_pypi_cache_facts_filter_wheels_with_the_same_tags(env):
     """Verifies that wheels with the same tags get the same result across packages."""
