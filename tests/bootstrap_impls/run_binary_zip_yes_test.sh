@@ -128,3 +128,36 @@ run_signal_case() {
 
 run_signal_case handled 0 "received:15" || exit 1
 run_signal_case unhandled 143 "" || exit 1
+
+# The shell bootstrap (bootstrap_impl=script) must also remove the extraction
+# directory when it's killed while still unzipping. Signal it as soon as the
+# directory appears in a private TMPDIR. Repeat, since the timing varies.
+if head -n 1 "$bin" | grep -q "bash"; then
+  for sig in HUP TERM KILL; do
+    for attempt in 1 2 3 4 5; do
+      tmp=$(mktemp -d "${test_dir}/tmp.XXXXXX")
+      TMPDIR="$tmp" "$bin" >/dev/null 2>&1 &
+      launcher_pid=$!
+      for _ in {1..30000}; do
+        [[ -n "$(ls -A "$tmp")" ]] && break
+        kill -0 "$launcher_pid" 2>/dev/null || break
+      done
+      if [[ -z "$(ls -A "$tmp")" ]]; then
+        echo "launcher didn't create its extraction directory (SIG$sig #$attempt)" >&2
+        exit 1
+      fi
+      kill "-$sig" "$launcher_pid" 2>/dev/null || true
+      wait "$launcher_pid" 2>/dev/null
+      launcher_pid=""
+      for _ in {1..150}; do
+        [[ -z "$(ls -A "$tmp")" ]] && break
+        sleep 0.1
+      done
+      if [[ -n "$(ls -A "$tmp")" ]]; then
+        echo "ERROR: extraction directory leaked after SIG$sig #$attempt:" >&2
+        ls -A "$tmp" >&2
+        exit 1
+      fi
+    done
+  done
+fi

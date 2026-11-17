@@ -60,15 +60,79 @@ declare -a INTERPRETER_ARGS_FROM_TARGET=(
 %interpreter_args%
 )
 
-cleanup_zip_dir=""
+# Prints an identifier for a running process that changes if the PID is reused,
+# or nothing once the process has exited. A zombie counts as exited, so it
+# doesn't matter whether the caller has reaped it yet.
+process_identity() {
+  local stat fields
+  if [[ -r "/proc/$1/stat" ]]; then
+    stat=$(< "/proc/$1/stat") || return 0
+    # The command name is in parentheses and may contain spaces, so split the
+    # fields after the last ")": field 3 (state) through field 22 (start time).
+    read -r -a fields <<< "${stat##*) }"
+    if [[ "${fields[0]}" != "Z" ]]; then
+      echo "${fields[19]}"
+    fi
+  elif command -v ps >/dev/null 2>&1; then
+    stat=$(ps -o stat=,lstart= -p "$1" 2>/dev/null)
+    stat="${stat#"${stat%%[![:space:]]*}"}"
+    if [[ -n "$stat" && "$stat" != Z* ]]; then
+      echo "${stat#* }"
+    fi
+  elif kill -0 "$1" 2>/dev/null; then
+    echo "running"
+  fi
+}
+
 if [[ "$IS_ZIPFILE" == "1" ]]; then
   # NOTE: Macs have an old version of mktemp, so we must use only the
   # minimal functionality of it.
-  zip_dir=$(mktemp -d)
-
-  if [[ -n "$zip_dir" && -z "${RULES_PYTHON_BOOTSTRAP_VERBOSE:-}" ]]; then
-    cleanup_zip_dir=1
+  if [[ -z "${RULES_PYTHON_BOOTSTRAP_VERBOSE:-}" ]]; then
+    # A detached watcher creates the extraction directory, prints its path,
+    # and removes the directory once this PID exits. exec below replaces this
+    # shell with the Python process, which keeps the PID but not the EXIT trap.
+    # Because the directory only exists once the watcher is running, it's
+    # removed even if this process is killed at any point, including while
+    # unzipping and with SIGKILL. The watcher is double-forked so it isn't a
+    # child of the Python process, and after printing the path it doesn't hold
+    # this process's stdio open. It stays in the caller's process group, so it
+    # ignores the signals sent to a whole group (e.g. Ctrl-C in a terminal) and
+    # exits on its own once the process is gone. Unlike the implicit SIGINT
+    # ignore for background jobs, `trap ''` also applies to the commands it
+    # runs. It ignores SIGPIPE because this process may be gone before it reads
+    # the path.
+    launcher_pid=$$
+    launcher_identity=$(process_identity "$launcher_pid")
+    zip_dir=$( ( (
+      trap '' INT QUIT HUP TERM PIPE
+      dir=$(mktemp -d) || exit 1
+      echo "$dir" || true
+      exec >/dev/null
+      while [[ "$(process_identity "$launcher_pid")" == "$launcher_identity" ]]; do
+        sleep 1
+      done
+      # If this process was killed while unzipping, unzip may still be adding
+      # files, so retry until the directory is gone. unzip can't create it
+      # again: it extracts relative to its working directory, which is the
+      # directory.
+      for _ in {1..60}; do
+        rm -fr "$dir" && break
+        sleep 1
+      done
+    ) </dev/null 2>/dev/null & ) )
+    if [[ -z "$zip_dir" ]]; then
+      echo >&2 "Failed to create a temporary directory to extract the zip into"
+      exit 1
+    fi
+    # Also remove the directory right away if startup fails before exec.
     trap 'rm -fr "$zip_dir"' EXIT
+  else
+    # Keep the extracted files for debugging.
+    zip_dir=$(mktemp -d)
+  fi
+  zip_file="$0"
+  if [[ "$zip_file" != /* ]]; then
+    zip_file="$PWD/$zip_file"
   fi
   # unzip emits a warning and exits with code 1 when there is extraneous data,
   # like this bootstrap prelude code, but otherwise successfully extracts, so
@@ -76,7 +140,9 @@ if [[ "$IS_ZIPFILE" == "1" ]]; then
   # The alternative requires having to copy ourselves elsewhere with the prelude
   # stripped (because zip can't extract from a stream). We avoid that because
   # it's wasteful.
-  ( unzip -q -d "$zip_dir" "$0" 2>/dev/null || true )
+  # Extract relative to the directory, so that if this process is killed, an
+  # orphaned unzip can't recreate the directory after the watcher removes it.
+  ( cd "$zip_dir" && unzip -q "$zip_file" 2>/dev/null || true )
 
   RUNFILES_DIR="$zip_dir/runfiles"
   if [[ ! -d "$RUNFILES_DIR" ]]; then
@@ -155,7 +221,8 @@ python_exe=$(find_python_interpreter "$RUNFILES_DIR" "$PYTHON_BINARY")
 # Zip files have to re-create the venv bin/python3 symlink because they
 # don't contain it already.
 if [[ "$IS_ZIPFILE" == "1" ]]; then
-  # A detached watcher below owns cleanup after exec replaces this bootstrap.
+  # The detached watcher started above owns cleanup after exec replaces this
+  # bootstrap.
   use_exec=1
   # It should always be under runfiles, but double check this. We don't
   # want to accidentally create symlinks elsewhere.
@@ -323,52 +390,6 @@ command=(
   "$stage2_bootstrap"
   "$@"
 )
-
-# Prints an identifier for a running process that changes if the PID is reused,
-# or nothing once the process has exited. A zombie counts as exited, so it
-# doesn't matter whether the caller has reaped it yet.
-process_identity() {
-  local stat fields
-  if [[ -r "/proc/$1/stat" ]]; then
-    stat=$(< "/proc/$1/stat") || return 0
-    # The command name is in parentheses and may contain spaces, so split the
-    # fields after the last ")": field 3 (state) through field 22 (start time).
-    read -r -a fields <<< "${stat##*) }"
-    if [[ "${fields[0]}" != "Z" ]]; then
-      echo "${fields[19]}"
-    fi
-  elif command -v ps >/dev/null 2>&1; then
-    stat=$(ps -o stat=,lstart= -p "$1" 2>/dev/null)
-    stat="${stat#"${stat%%[![:space:]]*}"}"
-    if [[ -n "$stat" && "$stat" != Z* ]]; then
-      echo "${stat#* }"
-    fi
-  elif kill -0 "$1" 2>/dev/null; then
-    echo "running"
-  fi
-}
-
-if [[ -n "$cleanup_zip_dir" ]]; then
-  # exec replaces this shell, so the EXIT trap can't remove the extracted files.
-  # Instead, start a watcher that removes them once this PID, which becomes the
-  # Python process, exits. Unlike the trap, this also works when the process is
-  # killed with SIGKILL. The watcher is double-forked so it isn't a child of the
-  # Python process, and it doesn't hold this process's stdio open. It stays in
-  # the caller's process group, so it ignores the signals sent to a whole group
-  # (e.g. Ctrl-C in a terminal) and exits on its own once the process is gone.
-  # Unlike the implicit SIGINT ignore for background jobs, `trap ''` also
-  # applies to the commands it runs.
-  launcher_pid=$$
-  launcher_identity=$(process_identity "$launcher_pid")
-  ( (
-    trap '' INT QUIT HUP TERM
-    while [[ -n "$launcher_identity" &&
-             "$(process_identity "$launcher_pid")" == "$launcher_identity" ]]; do
-      sleep 1
-    done
-    rm -fr "$zip_dir"
-  ) </dev/null >/dev/null 2>&1 & )
-fi
 
 # We use `exec` instead of a child process so that signals sent directly (e.g.
 # using `kill`) to this process (the PID seen by the calling process) are
