@@ -14,7 +14,6 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
-use std::str::FromStr;
 
 use anyhow::{Context, Result, anyhow, bail};
 use lexopt::prelude::*;
@@ -128,7 +127,10 @@ pub fn rewrite_record_stream<R: Read, W: Write>(
             rewritten_scripts,
         );
         csv_writer
-            .write_record(std::iter::once(rewritten_path.as_str()).chain(record.iter().skip(1)))
+            .write_field(&rewritten_path)
+            .with_context(|| format!("writing RECORD entry {rewritten_path}"))?;
+        csv_writer
+            .write_record(record.iter().skip(1))
             .with_context(|| format!("writing RECORD entry {rewritten_path}"))?;
     }
 
@@ -235,18 +237,21 @@ where
             positional.len()
         );
     }
-    let mut iter = positional.into_iter();
-    let in_path = PathBuf::from(iter.next().context("missing <in_path>")?);
-    let out_path = PathBuf::from(iter.next().context("missing <out_path>")?);
-    let target_os = into_utf8(iter.next().context("missing <target_os>")?, "target_os")?
-        .parse::<TargetOs>()?;
-    let data_dir_basename = into_utf8(
-        iter.next().context("missing <data_dir_basename>")?,
-        "data_dir_basename",
-    )?;
-    let rewritten_scripts = iter
-        .map(|raw| into_utf8(raw, "rewritten script name"))
-        .collect::<Result<HashSet<String>>>()?;
+    let in_path = PathBuf::from(positional.remove(0));
+    let out_path = PathBuf::from(positional.remove(0));
+    let target_os_str = into_utf8(positional.remove(0), "target_os")?;
+    let target_os = if target_os_str == "unix" {
+        TargetOs::Unix
+    } else if target_os_str == "windows" {
+        TargetOs::Windows
+    } else {
+        bail!("unsupported target_os '{target_os_str}'; expected 'unix' or 'windows'");
+    };
+    let data_dir_basename = into_utf8(positional.remove(0), "data_dir_basename")?;
+    let mut rewritten_scripts = HashSet::with_capacity(positional.len());
+    for raw in positional {
+        rewritten_scripts.insert(into_utf8(raw, "rewritten script name")?);
+    }
 
     Ok(ParsedArgs::Options(Options {
         in_path,
@@ -312,18 +317,6 @@ pub struct Options {
 pub enum TargetOs {
     Unix,
     Windows,
-}
-
-impl FromStr for TargetOs {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self> {
-        match s {
-            "unix" => Ok(Self::Unix),
-            "windows" => Ok(Self::Windows),
-            other => bail!("unsupported target_os '{other}'; expected 'unix' or 'windows'"),
-        }
-    }
 }
 
 /// Replacement prefixes corresponding to PEP 376 installation paths.
