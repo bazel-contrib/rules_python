@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@package_metadata//licenses/rules:license.bzl", "license")
 load("@package_metadata//purl:purl.bzl", "purl")
 load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
@@ -120,10 +119,7 @@ filegroup(
     # depends on through the default package_metadata) when rules_python is used
     # as an external repository, e.g. in the gazelle integration tests.
     srcs = glob(
-        [
-            "gazelle/downloader_cfg.bazelrc",
-            "gazelle/downloader_config.cfg",
-        ],
+        ["gazelle/downloader_*"],
         allow_empty = True,
     ),
     visibility = ["//tests:__subpackages__"],
