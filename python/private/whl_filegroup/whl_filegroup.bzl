@@ -10,15 +10,16 @@ def _whl_filegroup_impl(ctx):
         "extract_wheel_files",
         ctx.attr._extract_wheel_files_tool,
     )
+    args = ctx.actions.args()
+    args.add_all(tool.prefix_args)
+    args.add(ctx.file.whl.path)
+    args.add(out_dir.path)
+    args.add(ctx.attr.pattern)
     ctx.actions.run(
         outputs = [out_dir],
         inputs = [ctx.file.whl],
-        arguments = tool.prefix_args + [
-            ctx.file.whl.path,
-            out_dir.path,
-            ctx.attr.pattern,
-        ],
-        executable = tool.files_to_run,
+        arguments = [args],
+        executable = tool.executable[DefaultInfo].files_to_run,
         toolchain = tool.toolchain,
         mnemonic = "PyExtractWheelFiles",
         progress_message = "Extracting %s files from %s" % (ctx.attr.pattern, ctx.file.whl.short_path),
