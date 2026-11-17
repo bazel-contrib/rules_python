@@ -255,11 +255,15 @@ You cannot use both the additive_build_content and additive_build_content_file a
     # See `hub_builder.bzl%hub_builder()` for `HubBuilder`
     pip_hub_map = {}
 
-    # The facts store only the wheels that a configured platform can select for one of the
-    # requested python versions. The host is not used, so the lockfile is the same on all hosts.
+    # The facts store all sdists, but only the wheels that a configured platform can select for
+    # one of the requested Python versions. The host is not used, so the lockfile is the same on
+    # all hosts. A hub with a `uv_lock` does not read the index, so its Python version is not used.
     wheel_platforms = {}
     for mod in module_ctx.modules:
         for pip_attr in mod.tags.parse:
+            if pip_attr.uv_lock:
+                continue
+
             full_python_version = full_version(
                 version = _python_version(module_ctx, pip_attr, config) or "",
                 minor_mapping = kwargs.get("minor_mapping", MINOR_MAPPING),
