@@ -1105,7 +1105,7 @@ def _test_pypi_cache_reads_facts_only_for_the_same_wheel_filter(env):
 _tests.append(_test_pypi_cache_reads_facts_only_for_the_same_wheel_filter)
 
 def _test_pypi_cache_facts_store_urls_relative_to_common_directory(env):
-    """Verifies that the dist urls are stored relative to their longest common directory."""
+    """Verifies that the dist URLs are stored relative to their longest common directory."""
 
     def _facts_for(urls):
         cache = _cache(env, mctx = mocks.mctx(facts = {}))
@@ -1122,7 +1122,11 @@ def _test_pypi_cache_facts_store_urls_relative_to_common_directory(env):
             for i, url in enumerate(urls)
         }
         key = ("https://{PYPI_INDEX_URL}/pkg/", "https://pypi.org/simple/pkg/", ["1.0.0"])
-        cache.setdefault(key, struct(sdists = {}, whls = dists, hashes_by_version = {"1.0.0": sorted(dists)}))
+        cache.setdefault(key, struct(
+            sdists = {},
+            whls = dists,
+            hashes_by_version = {"1.0.0": sorted(dists)},
+        ))
         got = _cache(env, mctx = mocks.mctx(facts = cache.raw_facts())).get(key)
         got.whls().contains_exactly(dists)
         return cache.raw_facts()["pkg@https://{PYPI_INDEX_URL}"]
@@ -1149,7 +1153,7 @@ def _test_pypi_cache_facts_store_urls_relative_to_common_directory(env):
         },
     })
 
-    # A single url shares its own directory.
+    # A single URL shares its own directory.
     env.expect.that_dict(_facts_for([
         "https://example.com/files/pkg-1.0.0-py3-none-any.whl",
     ])).contains_exactly({
@@ -1158,6 +1162,7 @@ def _test_pypi_cache_facts_store_urls_relative_to_common_directory(env):
         },
     })
 
+    # A relative URL keeps its own directory.
     env.expect.that_dict(_facts_for([
         "../../packages/ab/cd/pkg-1.0.0-py3-none-any.whl",
     ])).contains_exactly({
@@ -1185,7 +1190,7 @@ def _test_pypi_cache_facts_store_urls_relative_to_common_directory(env):
         },
     })
 
-    # A url that ends with `/` can be the common directory itself.
+    # A URL that ends with `/` can be the common directory itself.
     env.expect.that_dict(_facts_for([
         "https://example.com/files/pkg-1.0.0-py3-none-any.whl/",
     ])).contains_exactly({
@@ -1204,7 +1209,7 @@ def _test_pypi_cache_facts_store_urls_relative_to_common_directory(env):
         },
     })
 
-    # One url is a prefix of another.
+    # One URL is a prefix of another.
     env.expect.that_dict(_facts_for([
         "https://example.com/files/pkg-1.0.0-py3-none-any.whl",
         "https://example.com/files/pkg-1.0.0-py3-none-any.whl/download",
@@ -1218,7 +1223,7 @@ def _test_pypi_cache_facts_store_urls_relative_to_common_directory(env):
 _tests.append(_test_pypi_cache_facts_store_urls_relative_to_common_directory)
 
 def _test_pypi_cache_ignores_malformed_dist_facts(env):
-    """Verifies that a dist fact that does not group its entries by directory is treated as absent."""
+    """Verifies that a dist fact without directory groups is treated as absent."""
     key = ("https://{PYPI_INDEX_URL}/pkg/", "https://pypi.org/simple/pkg/", ["1.0.0"])
     for fact in [
         {"pkg-1.0.0-py3-none-any.whl": "sha256:sha_whl"},
@@ -1236,7 +1241,7 @@ def _test_pypi_cache_ignores_malformed_dist_facts(env):
 _tests.append(_test_pypi_cache_ignores_malformed_dist_facts)
 
 def _test_pypi_cache_ignores_v4_facts(env):
-    """Verifies that the v4 facts, which store the full dist urls, are ignored."""
+    """Verifies that the v4 facts, which store the full dist URLs, are ignored."""
     mock_ctx = mocks.mctx(facts = {
         "fact_version": "v4",
         "pkg@https://{PYPI_INDEX_URL}": {
