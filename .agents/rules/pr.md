@@ -53,7 +53,17 @@ Before drafting any pull request description, strictly adhere to the rules in
   run or narrate build IDs, commit SHAs, line counts, or trivial diff details
   (e.g., "comment-only"); comment `PTAL` only when ready for re-review.
 * High-level overview only: state *why* the change is made and *how* at a
-  conceptual level. Link related issues (e.g. `Work towards #<issue>`).
+  conceptual level.
+* **Issue References**: Reference issues in PR descriptions (e.g., `Work towards
+  #<issue>`), never in commit messages; rebasing commits with `#<issue>` spams
+  the issue.
+* **Stacked Pull Requests**:
+  * **Same-repo** (head and base branches both in `rules_python`): Base each
+    child PR on its parent branch (`--base <parent-branch>`), register the PRs
+    in GitHub's native PR stack via `.agents/scripts/gh_pr_stack.py` (`create` /
+    `add`), and omit stack headers or tables from the PR description.
+  * **Forked-repo** (head branch in a fork, base branch in `rules_python`):
+    Add `DO NOT MERGE: awaiting #<parent_pr>` to child PR descriptions.
 * **Conciseness & Style (Strunk & White)**: Omit needless words. Use clear,
   active, and direct phrasing for *why* and *how*.
 * **Benchmark Summaries**: Format performance comparisons as a brief 3-5 bullet
@@ -74,8 +84,8 @@ Before drafting any pull request description, strictly adhere to the rules in
 * End every posted PR comment or review reply with an italicized disclosure
   line:
   * If the exact comment text was not shown to and approved by the user before
-    posting (including automatic PR AI disclosure comments):
-    `*This is an automatically generated agent comment.*`
+    posting (including automatic PR disclosures and direct review replies):
+    `*This is an agent-generated comment unreviewed by the user.*`
   * Only if the user was shown the exact comment text and explicitly approved
     posting it:
     `*This is an agent-generated comment reviewed and approved by the user.*`

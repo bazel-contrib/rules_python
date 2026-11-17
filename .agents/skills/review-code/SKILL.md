@@ -243,8 +243,8 @@ file from `.agents/skills/review-code/`:
   at the end of each comment:
   `*This is an agent-generated comment reviewed and approved by the user.*` if
   the user reviewed and approved posting the comment, or
-  `*This is an automatically generated agent comment.*` if posted without user
-  review.
+  `*This is an agent-generated comment unreviewed by the user.*` if posted
+  without user review.
 
 ### Synthesis & Anti-Noise Gate (Guardrails)
 
