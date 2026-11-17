@@ -60,9 +60,8 @@ def get_shrubbery_tool(ctx, subcommand, fallback):
 
     Returns:
         {type}`struct` with fields:
-        * `executable`: {type}`Target` to pass to `actions_run()`.
-        * `files_to_run`: {type}`FilesToRunProvider` to pass to
-          `ctx.actions.run(executable = ...)`.
+        * `executable`: {type}`Target` to pass to `actions_run()` or unwrap via
+          `executable[DefaultInfo].files_to_run` for `ctx.actions.run()`.
         * `from_shrubbery_toolchain`: {type}`bool` True when resolved from the
           `shrubbery` toolchain.
         * `prefix_args`: {type}`list[str]` `[subcommand]` when
@@ -74,13 +73,9 @@ def get_shrubbery_tool(ctx, subcommand, fallback):
     """
     toolchain = ctx.toolchains[SHRUBBERY_TOOLCHAIN_TYPE]
     if toolchain and toolchain.shrubbery:
-        executable = toolchain.shrubbery
         return struct(
-            # Target to pass to `actions_run()` (which inspects target providers
-            # such as `PyInterpreterProgramInfo` and `testing.ExecutionInfo`).
-            executable = executable,
-            # `FilesToRunProvider` to pass to `ctx.actions.run(executable = ...)`.
-            files_to_run = executable[DefaultInfo].files_to_run,
+            # Target to pass to `actions_run()` or unwrap via `DefaultInfo.files_to_run`.
+            executable = toolchain.shrubbery,
             # True when resolved from the `shrubbery` toolchain.
             from_shrubbery_toolchain = True,
             # Leading subcommand argument prepended when invoking `shrubbery`.
@@ -89,11 +84,8 @@ def get_shrubbery_tool(ctx, subcommand, fallback):
             toolchain = SHRUBBERY_TOOLCHAIN_TYPE,
         )
     return struct(
-        # Fallback tool target to pass to `actions_run()` (which inspects target
-        # providers such as `PyInterpreterProgramInfo` and `testing.ExecutionInfo`).
+        # Fallback tool target to pass to `actions_run()` or unwrap via `DefaultInfo.files_to_run`.
         executable = fallback,
-        # `FilesToRunProvider` to pass to `ctx.actions.run(executable = ...)`.
-        files_to_run = fallback[DefaultInfo].files_to_run,
         # False when falling back to the built-in Python or script tool.
         from_shrubbery_toolchain = False,
         # Empty prefix when invoking the standalone fallback tool directly.

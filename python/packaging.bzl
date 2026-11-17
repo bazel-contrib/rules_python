@@ -51,7 +51,7 @@ def _py_wheel_dist_impl(ctx):
 
     ctx.actions.run(
         mnemonic = "PyWheelDistDir",
-        executable = tool.files_to_run,
+        executable = tool.executable[DefaultInfo].files_to_run,
         toolchain = tool.toolchain,
         inputs = [wheel, name_file],
         outputs = [out],
