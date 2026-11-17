@@ -60,9 +60,12 @@ def get_shrubbery_tool(ctx, subcommand, fallback):
 
     Returns:
         {type}`struct` with fields:
-        * `executable`: {type}`Target` to pass to `actions_run()`.
-        * `prefix_args`: {type}`list[str]` `[subcommand]` when resolved from
-          the `shrubbery` toolchain, else `[]`.
+        * `executable`: {type}`Target` to pass to `actions_run()` or unwrap via
+          `executable[DefaultInfo].files_to_run` for `ctx.actions.run()`.
+        * `from_shrubbery_toolchain`: {type}`bool` True when resolved from the
+          `shrubbery` toolchain.
+        * `prefix_args`: {type}`list[str]` `[subcommand]` when
+          `from_shrubbery_toolchain` is True, else `[]`.
         * `toolchain`: {type}`Label | None` the toolchain type to pass to
           `actions_run()` or `ctx.actions.run()` so the action runs on the exec
           platform the tool was built for. `None` when falling back to
@@ -71,16 +74,20 @@ def get_shrubbery_tool(ctx, subcommand, fallback):
     toolchain = ctx.toolchains[SHRUBBERY_TOOLCHAIN_TYPE]
     if toolchain and toolchain.shrubbery:
         return struct(
-            # Target to pass to `actions_run()`.
+            # Target to pass to `actions_run()` or unwrap via `DefaultInfo.files_to_run`.
             executable = toolchain.shrubbery,
+            # True when resolved from the `shrubbery` toolchain.
+            from_shrubbery_toolchain = True,
             # Leading subcommand argument prepended when invoking `shrubbery`.
             prefix_args = [subcommand],
             # Toolchain type for `actions_run()` / `ctx.actions.run()`.
             toolchain = SHRUBBERY_TOOLCHAIN_TYPE,
         )
     return struct(
-        # Fallback tool target to pass to `actions_run()`.
+        # Fallback tool target to pass to `actions_run()` or unwrap via `DefaultInfo.files_to_run`.
         executable = fallback,
+        # False when falling back to the built-in Python or script tool.
+        from_shrubbery_toolchain = False,
         # Empty prefix when invoking the standalone fallback tool directly.
         prefix_args = [],
         # `None` so fallback tools use the default exec tools or host execution.
