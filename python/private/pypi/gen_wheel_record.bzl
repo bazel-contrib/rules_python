@@ -12,7 +12,7 @@ def _gen_wheel_record_impl(ctx):
         "wheel_record_rewriter",
         ctx.attr._wheel_record_rewriter,
     )
-    rewriter_file = None if tool.is_rust else ctx.files._wheel_record_rewriter[0]
+    rewriter_file = None if tool.from_shrubbery_toolchain else ctx.files._wheel_record_rewriter[0]
     out_files = []
 
     for in_file in ctx.files.srcs:
@@ -34,9 +34,9 @@ def _gen_wheel_record_impl(ctx):
         out_files.append(out_file)
 
         action_args = ctx.actions.args()
-        if tool.is_rust:
+        if tool.from_shrubbery_toolchain:
             inputs = depset([in_file])
-            action_exe = tool.files_to_run
+            action_exe = tool.executable[DefaultInfo].files_to_run
             action_toolchain = tool.toolchain
             action_args.add_all(tool.prefix_args)
         else:
@@ -52,7 +52,7 @@ def _gen_wheel_record_impl(ctx):
                     rewriter_file,
                 ])
             else:
-                action_exe = tool.files_to_run
+                action_exe = tool.executable[DefaultInfo].files_to_run
 
         action_args.add(in_file)
         action_args.add(out_file)

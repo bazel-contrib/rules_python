@@ -7,21 +7,21 @@ use std::process::ExitCode;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use wheel_record_rewriter_lib::{
-    Cli, Options, TargetOs, parse_args, rewrite_entry_path, rewrite_record, rewrite_record_files,
-    rewrite_record_str, run_cli,
+    Options, ParsedArgs, TargetOs, parse_args, rewrite_entry_path, rewrite_record,
+    rewrite_record_files, rewrite_record_str, run_cli,
 };
 
 static TEST_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
-/// Parses `args` and unwraps the `Cli::Run` variant.
-fn parse_run<I, T>(args: I) -> Options
+/// Parses `args` and unwraps the `ParsedArgs::Options` variant.
+fn parse_options<I, T>(args: I) -> Options
 where
     I: IntoIterator<Item = T>,
     T: Into<OsString>,
 {
     match parse_args(args).expect("arguments should parse successfully") {
-        Cli::Run(opts) => opts,
-        Cli::Help => panic!("expected Cli::Run, got Cli::Help"),
+        ParsedArgs::Options(opts) => opts,
+        ParsedArgs::Help => panic!("expected ParsedArgs::Options, got ParsedArgs::Help"),
     }
 }
 
@@ -32,12 +32,15 @@ struct TempDir {
 impl TempDir {
     fn new(prefix: &str) -> Self {
         let id = TEST_COUNTER.fetch_add(1, Ordering::SeqCst);
-        let path = env::temp_dir().join(format!(
+        let base = env::var_os("TEST_TMPDIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(env::temp_dir);
+        let path = base.join(format!(
             "wheel_record_rewriter_test_{prefix}_{}_{id}",
             std::process::id(),
         ));
         let _ = fs::remove_dir_all(&path);
-        fs::create_dir_all(&path).unwrap();
+        fs::create_dir_all(&path).expect("temp dir should be creatable");
         Self { path }
     }
 
@@ -149,7 +152,7 @@ fn test_unix_rewrite_full_record() {
         OsString::from("my_py_script.py"),
         OsString::from("quote\"tool"),
     ];
-    let opts = parse_run(&args);
+    let opts = parse_options(&args);
     assert_eq!(opts.target_os, TargetOs::Unix);
     rewrite_record(&opts).unwrap();
 
@@ -174,7 +177,7 @@ fn test_windows_rewrite_with_rewritten_scripts() {
         OsString::from("my_py_script.py"),
         OsString::from("quote\"tool"),
     ];
-    let opts = parse_run(&args);
+    let opts = parse_options(&args);
     assert_eq!(opts.target_os, TargetOs::Windows);
     rewrite_record(&opts).unwrap();
 
@@ -195,7 +198,7 @@ fn test_windows_rewrite_without_rewritten_scripts() {
         OsString::from("windows"),
         OsString::from("foo-1.0.data"),
     ];
-    let opts = parse_run(&args);
+    let opts = parse_options(&args);
     rewrite_record(&opts).unwrap();
 
     let actual = fs::read_to_string(&out_path).unwrap();
@@ -270,11 +273,11 @@ fn test_parse_args_errors_on_missing_or_invalid_args() {
 
 #[test]
 fn test_parse_args_help() {
-    assert_eq!(parse_args(["--help"]).unwrap(), Cli::Help);
-    assert_eq!(parse_args(["-h"]).unwrap(), Cli::Help);
+    assert_eq!(parse_args(["--help"]).unwrap(), ParsedArgs::Help);
+    assert_eq!(parse_args(["-h"]).unwrap(), ParsedArgs::Help);
     assert_eq!(
         parse_args(["in", "out", "unix", "pkg.data", "--help"]).unwrap(),
-        Cli::Help
+        ParsedArgs::Help
     );
     assert_eq!(run_cli(["--help"]), ExitCode::SUCCESS);
 }
@@ -291,7 +294,7 @@ fn test_parse_args_deduplicates_rewritten_scripts_and_supports_double_dash() {
         "tool_b",
         "tool_a",
     ];
-    let opts = parse_run(args);
+    let opts = parse_options(args);
     assert_eq!(opts.in_path, PathBuf::from("-in_file"));
     assert_eq!(opts.out_path, PathBuf::from("-out_file"));
     assert_eq!(opts.target_os, TargetOs::Windows);
