@@ -1,5 +1,5 @@
 {
-  "checksum": "af6910a9a116cc45640233dc3548d1b6a52eb422823f26ce4fc8e5fdd50e38f7",
+  "checksum": "cf368306c8dd147a6031df2caa651504331014c332cac254b12fa02c2dbae5e4",
   "crates": {
     "aho-corasick 1.1.5": {
       "name": "aho-corasick",
@@ -4823,14 +4823,14 @@
       ],
       "license_file": "LICENSE-APACHE"
     },
-    "ruff_python_ast 0.0.20": {
+    "ruff_python_ast 0.0.22": {
       "name": "ruff_python_ast",
-      "version": "0.0.20",
+      "version": "0.0.22",
       "package_url": "https://github.com/astral-sh/ruff",
       "repository": {
         "Http": {
-          "url": "https://static.crates.io/crates/ruff_python_ast/0.0.20/download",
-          "sha256": "f5c31f9196e6333f154b92e6f6f9701d23ddfeee0b7fd45476aacbed7b74b440"
+          "url": "https://static.crates.io/crates/ruff_python_ast/0.0.22/download",
+          "sha256": "5bd02b9405a7e86ed6e6aacc4e59c56133056710905b349f21a869f8b4fe08f8"
         }
       },
       "targets": [
@@ -4889,15 +4889,15 @@
               "target": "memchr"
             },
             {
-              "id": "ruff_python_trivia 0.0.20",
+              "id": "ruff_python_trivia 0.0.22",
               "target": "ruff_python_trivia"
             },
             {
-              "id": "ruff_source_file 0.0.20",
+              "id": "ruff_source_file 0.0.22",
               "target": "ruff_source_file"
             },
             {
-              "id": "ruff_text_size 0.0.20",
+              "id": "ruff_text_size 0.0.22",
               "target": "ruff_text_size"
             },
             {
@@ -4925,7 +4925,7 @@
           ],
           "selects": {}
         },
-        "version": "0.0.20"
+        "version": "0.0.22"
       },
       "license": "MIT",
       "license_ids": [
@@ -4933,14 +4933,14 @@
       ],
       "license_file": null
     },
-    "ruff_python_parser 0.0.20": {
+    "ruff_python_parser 0.0.22": {
       "name": "ruff_python_parser",
-      "version": "0.0.20",
+      "version": "0.0.22",
       "package_url": "https://github.com/astral-sh/ruff",
       "repository": {
         "Http": {
-          "url": "https://static.crates.io/crates/ruff_python_parser/0.0.20/download",
-          "sha256": "2b5b7fd512a12be87d02bbc8d8352f8159a058d1f91e6749f234ca43cb351525"
+          "url": "https://static.crates.io/crates/ruff_python_parser/0.0.22/download",
+          "sha256": "10171887063911117307ee71ba7e427a700688872f5d35d5ae13cb8c0ce2d43d"
         }
       },
       "targets": [
@@ -4989,19 +4989,19 @@
               "target": "memchr"
             },
             {
-              "id": "ruff_python_ast 0.0.20",
+              "id": "ruff_python_ast 0.0.22",
               "target": "ruff_python_ast"
             },
             {
-              "id": "ruff_python_trivia 0.0.20",
+              "id": "ruff_python_trivia 0.0.22",
               "target": "ruff_python_trivia"
             },
             {
-              "id": "ruff_text_size 0.0.20",
+              "id": "ruff_text_size 0.0.22",
               "target": "ruff_text_size"
             },
             {
-              "id": "ruff_unicode_names2 0.0.20",
+              "id": "ruff_unicode_names2 0.0.22",
               "target": "unicode_names2"
             },
             {
@@ -5028,7 +5028,7 @@
           "selects": {}
         },
         "edition": "2024",
-        "version": "0.0.20"
+        "version": "0.0.22"
       },
       "license": "MIT",
       "license_ids": [
@@ -5036,14 +5036,14 @@
       ],
       "license_file": null
     },
-    "ruff_python_trivia 0.0.20": {
+    "ruff_python_trivia 0.0.22": {
       "name": "ruff_python_trivia",
-      "version": "0.0.20",
+      "version": "0.0.22",
       "package_url": "https://github.com/astral-sh/ruff",
       "repository": {
         "Http": {
-          "url": "https://static.crates.io/crates/ruff_python_trivia/0.0.20/download",
-          "sha256": "a867e9037e2c616342dcb77ff69344c59cf956bde079392a6da4b23138246a02"
+          "url": "https://static.crates.io/crates/ruff_python_trivia/0.0.22/download",
+          "sha256": "7737931983c94972d8349ab1912c9bdd217797dbae8443396856be68f80e62d6"
         }
       },
       "targets": [
@@ -5076,11 +5076,11 @@
               "target": "memchr"
             },
             {
-              "id": "ruff_source_file 0.0.20",
+              "id": "ruff_source_file 0.0.22",
               "target": "ruff_source_file"
             },
             {
-              "id": "ruff_text_size 0.0.20",
+              "id": "ruff_text_size 0.0.22",
               "target": "ruff_text_size"
             },
             {
@@ -5099,7 +5099,7 @@
           "selects": {}
         },
         "edition": "2024",
-        "version": "0.0.20"
+        "version": "0.0.22"
       },
       "license": "MIT",
       "license_ids": [
@@ -5107,14 +5107,14 @@
       ],
       "license_file": null
     },
-    "ruff_source_file 0.0.20": {
+    "ruff_source_file 0.0.22": {
       "name": "ruff_source_file",
-      "version": "0.0.20",
+      "version": "0.0.22",
       "package_url": "https://github.com/astral-sh/ruff",
       "repository": {
         "Http": {
-          "url": "https://static.crates.io/crates/ruff_source_file/0.0.20/download",
-          "sha256": "6cd1f298a482a6765b5c6cb1a48e0bfcbfda5be7e1da903af58a59091953d595"
+          "url": "https://static.crates.io/crates/ruff_source_file/0.0.22/download",
+          "sha256": "8817991fb23fd89d9c7e31668e513a4d17801d2349efb5a74fc765bd9c6f63d9"
         }
       },
       "targets": [
@@ -5143,14 +5143,14 @@
               "target": "memchr"
             },
             {
-              "id": "ruff_text_size 0.0.20",
+              "id": "ruff_text_size 0.0.22",
               "target": "ruff_text_size"
             }
           ],
           "selects": {}
         },
         "edition": "2024",
-        "version": "0.0.20"
+        "version": "0.0.22"
       },
       "license": "MIT",
       "license_ids": [
@@ -5158,14 +5158,14 @@
       ],
       "license_file": null
     },
-    "ruff_text_size 0.0.20": {
+    "ruff_text_size 0.0.22": {
       "name": "ruff_text_size",
-      "version": "0.0.20",
+      "version": "0.0.22",
       "package_url": "https://github.com/astral-sh/ruff",
       "repository": {
         "Http": {
-          "url": "https://static.crates.io/crates/ruff_text_size/0.0.20/download",
-          "sha256": "6d05cadff8e7c3c5e2502b179e925892d71c4fb5c3cae9ad92aa131bd53e3348"
+          "url": "https://static.crates.io/crates/ruff_text_size/0.0.22/download",
+          "sha256": "012da5266aedc8e80cf437981526c85a7f55645ea2b063375e0a19bf05365c21"
         }
       },
       "targets": [
@@ -5203,7 +5203,7 @@
           "selects": {}
         },
         "edition": "2024",
-        "version": "0.0.20"
+        "version": "0.0.22"
       },
       "license": "MIT",
       "license_ids": [
@@ -5211,14 +5211,14 @@
       ],
       "license_file": null
     },
-    "ruff_unicode_names2 0.0.20": {
+    "ruff_unicode_names2 0.0.22": {
       "name": "ruff_unicode_names2",
-      "version": "0.0.20",
+      "version": "0.0.22",
       "package_url": "https://github.com/astral-sh/ruff",
       "repository": {
         "Http": {
-          "url": "https://static.crates.io/crates/ruff_unicode_names2/0.0.20/download",
-          "sha256": "ea06a54e7c9ee4fd0b8d0bb04a1b7f029ebc7c26ad2736fcf7d5e464e0b29bc2"
+          "url": "https://static.crates.io/crates/ruff_unicode_names2/0.0.22/download",
+          "sha256": "e0093bf7d9c87185bbb954db78fb1ce7a03e0ede4d76241e957d17fb2dbbb3f3"
         }
       },
       "targets": [
@@ -5268,7 +5268,7 @@
           "selects": {}
         },
         "edition": "2024",
-        "version": "0.0.20"
+        "version": "0.0.22"
       },
       "build_script_attrs": {
         "compile_data_glob": [
@@ -5283,7 +5283,7 @@
         "deps": {
           "common": [
             {
-              "id": "ruff_unicode_names2_generator 0.0.20",
+              "id": "ruff_unicode_names2_generator 0.0.22",
               "target": "unicode_names2_generator"
             }
           ],
@@ -5298,14 +5298,14 @@
       ],
       "license_file": "LICENSE-APACHE"
     },
-    "ruff_unicode_names2_generator 0.0.20": {
+    "ruff_unicode_names2_generator 0.0.22": {
       "name": "ruff_unicode_names2_generator",
-      "version": "0.0.20",
+      "version": "0.0.22",
       "package_url": "https://github.com/astral-sh/ruff",
       "repository": {
         "Http": {
-          "url": "https://static.crates.io/crates/ruff_unicode_names2_generator/0.0.20/download",
-          "sha256": "be96655e37811ac2d840bd87f6af7fe8a31522f685c222a96157f0dbbfbb59b2"
+          "url": "https://static.crates.io/crates/ruff_unicode_names2_generator/0.0.22/download",
+          "sha256": "867f294853d3585ffedc6588db1b0ebc3dfe0acb2e63fa004034f196b8b82e55"
         }
       },
       "targets": [
@@ -5341,7 +5341,7 @@
           "selects": {}
         },
         "edition": "2024",
-        "version": "0.0.20"
+        "version": "0.0.22"
       },
       "license": "MIT OR Apache-2.0",
       "license_ids": [
@@ -5413,11 +5413,11 @@
               "target": "regex"
             },
             {
-              "id": "ruff_python_ast 0.0.20",
+              "id": "ruff_python_ast 0.0.22",
               "target": "ruff_python_ast"
             },
             {
-              "id": "ruff_python_parser 0.0.20",
+              "id": "ruff_python_parser 0.0.22",
               "target": "ruff_python_parser"
             },
             {
@@ -7954,8 +7954,8 @@
     "pep440_rs 0.7.3",
     "pep508_rs 0.9.2",
     "regex 1.13.1",
-    "ruff_python_ast 0.0.20",
-    "ruff_python_parser 0.0.20",
+    "ruff_python_ast 0.0.22",
+    "ruff_python_parser 0.0.22",
     "sha2 0.11.1",
     "zip 9.0.5"
   ],
