@@ -25,7 +25,8 @@ load(":version_from_filename.bzl", "version_from_filename")
 #      `<digest>[|<filename>[|<yanked>]]`.
 # v4: the facts store only the wheels that the `wheel_filter` platforms can
 #      select, so an older reader must not use them.
-# v5: the distribution URLs are grouped under their longest common directory.
+# v5: each distribution fact maps the longest common directory of its URLs to
+#      the entries keyed by the URL relative to that directory.
 _FACT_VERSION = "v5"
 
 def pypi_cache(mctx = None, store = None, wheel_platforms = None):
@@ -414,17 +415,18 @@ def _store_facts(facts, fact_version, index_url, value, wheel_filter = None):
 
       # From the package page, e.g. `foo@https://pypi.org/simple`
       "<distribution>@<root_url>": {
-        "<common directory of the dist urls>": {  # see `_compact_dist_urls`
-          "<dist url relative to the common directory>": "<encoded entry>",  # see `_encode_dist_entry`
+        "<common directory of the dist URLs>": {  # see `_compact_dist_urls`
+          # see `_encode_dist_entry`
+          "<dist URL relative to the common directory>": "<encoded entry>",
         },
       },
     }
     ```
 
-    The facts in memory store the full dist urls. They are made relative only in the
-    facts returned for the lockfile. The merge driver replaces a package's fact as a
-    whole, so a merge never expands the urls of one side against the common directory
-    of the other.
+    The facts in memory keep the full dist URLs. Only {obj}`_lockfile_facts` makes
+    them relative. Each group of a dist fact has its own common directory, so a
+    lockfile merge that unions the groups of both sides still expands to the full
+    URLs.
 
     Adding a new field to the encoded entry requires bumping `_FACT_VERSION`.
     """
@@ -485,24 +487,24 @@ def _index_fact_key(pkg, index_url):
     return pkg + "@" + index_url
 
 def _compact_dist_urls(entries):
-    """Group the dist urls under their longest common directory.
+    """Group the dist URLs under their longest common directory.
 
     The index usually serves all the files of a distribution from the same host
-    and path, so this removes the part of each url that the entries repeat. The
+    and path, so this removes the part of each URL that the entries repeat. The
     common directory ends before any `?` or `#`.
 
     Args:
-        entries: {type}`dict[str, str]` the encoded entries keyed by the full dist url.
+        entries: {type}`dict[str, str]` the encoded entries keyed by the full dist URL.
 
     Returns:
         {type}`dict[str, dict[str, str]]` the common directory mapped to the entries
-        keyed by the url relative to it.
+        keyed by the URL relative to it.
     """
     urls = sorted(entries.keys())
     if not urls:
         return entries
 
-    # The longest common prefix of a sorted list is the one of its first and last items.
+    # The longest common prefix of sorted strings is that of the first and the last.
     first, last = urls[0], urls[-1]
     size = 0
     for i in range(min(len(first), len(last))):
@@ -515,10 +517,10 @@ def _compact_dist_urls(entries):
     return {prefix: {url[len(prefix):]: entries[url] for url in urls}}
 
 def _expand_dist_urls(groups):
-    """Return the entries of {obj}`_compact_dist_urls` keyed by the full dist url.
+    """Return the entries of {obj}`_compact_dist_urls` keyed by the full dist URL.
 
-    Malformed entries, e.g. from a botched lockfile merge, return `{}` so that the
-    index is fetched again.
+    Return `{}` if `groups` or one of its values is not a dict, for example after
+    a botched lockfile merge. The caller then fetches the index again.
     """
     if type(groups) != "dict":
         return {}
