@@ -119,12 +119,13 @@ platforms, for example `foo[bar]` on Linux and `foo[baz]` on macOS, then
 `@pypi//foo:[bar]` on macOS is the same as `@pypi//foo:[]`.
 
 The dependencies of the packages use the extras written in the wheel
-`METADATA`, so if `foo` depends on `bar[socks]`, then `@pypi//foo` depends on
-`@pypi//bar:[socks]`. If the extra is not in the lock file, then building
-`@pypi//foo` fails with a message asking you to add `bar[socks]` to the
-requirements or the lock file. For example, when compiling the requirements
-with `uv pip compile`, pass `--no-strip-extras` to keep the extras in the
-output.
+`METADATA`, so if `foo` depends on `bar[socks]`, then `@pypi//foo` includes
+`bar` and the dependencies of its `socks` extra. The extras of the
+dependencies are resolved by the repository of `bar` from its own `METADATA`,
+so they do not need to be in the lock file, e.g. when the requirements are
+compiled with the extras stripped, but the packages that the extra depends on
+need to be in the lock file. If `bar` does not provide the `socks` extra, then
+only `bar` is used, like `pip` does.
 
 The `whl` targets, e.g. `@pypi//foo:whl`, do not use the extras and include
 only the wheels of the package and its dependencies without extras.
