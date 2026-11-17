@@ -36,9 +36,9 @@ def pypi_cache(mctx = None, store = None, wheel_platforms = None):
     Args:
         mctx: The module context
         store: The in-memory store, should implement dict interface for get and setdefault
-        wheel_platforms: {type}`list[struct] | None` the target platforms of all hubs, as
-            returned by `hub_builder.bzl%platforms`. If set, the facts only store the wheels
-            that one of them can select.
+        wheel_platforms: {type}`list[struct] | None` the target platforms of all hubs that
+            read the index, as the values of `hub_builder.bzl%hub_platforms`. If set, the
+            facts store all sdists, but only the wheels that one of them can select.
 
     Returns:
         A cache struct
@@ -224,7 +224,7 @@ def _wheel_filter(wheel_platforms):
 
     The `key` identifies the platforms. Facts stored with a different `key` may
     lack wheels that the current platforms select, so they are not read. The key
-    has only the major and minor python version, because the wheel tags do not
+    has only the major and minor Python version, because the wheel tags do not
     depend on the patch version.
     """
     if not wheel_platforms:
@@ -278,7 +278,8 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
         return None
 
     if known_facts.get("wheel_filter") != (wheel_filter.key if wheel_filter else None):
-        # the facts were filtered for other platforms and may lack the wheels that we need
+        # the facts were stored with a different wheel filter, or without one, and may lack
+        # the wheels that the current platforms select
         return None
 
     if type(requested_versions) == "dict":
@@ -354,8 +355,8 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
     _set_wheel_filter(facts, wheel_filter)
     facts.setdefault(fact_key, {}).update(used_entries)
 
-    # `wheels_filtered` tells callers that the digests of the wheels that no hub
-    # can select are missing on purpose.
+    # `wheels_filtered` tells callers that the digests of the wheels that no
+    # configured platform can select are missing on purpose.
     return struct(
         whls = known_sources.get("whls", {}),
         sdists = known_sources.get("sdists", {}),
@@ -383,7 +384,7 @@ def _store_facts(facts, fact_version, index_url, value, wheel_filter = None):
 
       # The platforms that the stored wheels are filtered for, see `_wheel_filter`.
       # Absent if all wheels are stored.
-      "wheel_filter": ["<implementation>|<python version>|<abi tags>|<platform tags>"],
+      "wheel_filter": ["<implementation>|<major.minor Python version>|<comma-separated abi tags>|<comma-separated platform tags>"],
 
       # From the index page, e.g. `foo@https://pypi.org/simple/`
       "<pkg_normalized>@<index_url>": "<package page URL>",

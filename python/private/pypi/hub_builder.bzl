@@ -482,11 +482,11 @@ def _detect_interpreter(self, pip_attr, python_version, full_python_version):
     )
 
 def hub_platforms(module_ctx, *, python_version, config):
-    """Return all of the target platforms in `config` for a python version.
+    """Return all of the target platforms in `config` for a Python version.
 
     Args:
         module_ctx: {type}`module_ctx` the module context.
-        python_version: {type}`str` the full python version.
+        python_version: {type}`str` the full Python version.
         config: the platform configuration.
 
     Returns:

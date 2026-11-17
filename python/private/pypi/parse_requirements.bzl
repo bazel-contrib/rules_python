@@ -780,7 +780,8 @@ def _add_dists(*, requirement, index_urls, target_platform, logger = None):
             continue
 
         if getattr(index_urls, "wheels_filtered", False):
-            # The lockfile facts store only the wheels that the configured platforms can select.
+            # The digest belongs to a wheel that no configured platform can select, so the
+            # lockfile facts left it out on purpose. Do not warn.
             continue
 
         logger.warn(lambda: "Could not find a whl or an sdist with hash {}; note that the index may be advertising digests calculated with a different hash algorithm".format(digest))
