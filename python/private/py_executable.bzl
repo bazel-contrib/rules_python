@@ -1728,12 +1728,9 @@ def _write_build_data(ctx):
         "build_data_writer",
         ctx.attr._build_data_writer,
     )
-    if writer.is_rust:
-        action_exe = writer.files_to_run
-        action_toolchain = writer.toolchain
-        action_args.add_all(writer.prefix_args)
-    else:
-        action_toolchain = None
+    action_exe = writer.executable[DefaultInfo].files_to_run
+    action_args.add_all(writer.prefix_args)
+    if not writer.from_shrubbery_toolchain:
         writer_file = ctx.files._build_data_writer[0]
         if writer_file.path.endswith(".ps1"):
             # powershell.exe is used for broader compatibility
@@ -1748,8 +1745,6 @@ def _write_build_data(ctx):
                 writer_file,
             ])
             inputs.add(writer_file)
-        else:
-            action_exe = writer.files_to_run
 
     ctx.actions.run(
         executable = action_exe,
@@ -1767,7 +1762,7 @@ def _write_build_data(ctx):
         outputs = [build_data],
         mnemonic = "PyWriteBuildData",
         progress_message = "Reticulating %{label} build data",
-        toolchain = action_toolchain,
+        toolchain = writer.toolchain,
     )
     return build_data
 

@@ -52,134 +52,6 @@ Environment variables:
 Options:
   -h, --help     Print this help";
 
-/// Configuration options for writing a `build_data.txt` file.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Options {
-    /// Path to the output `build_data.txt` file.
-    pub output: PathBuf,
-    /// Target label string (e.g. `//pkg:target`).
-    pub target: String,
-    /// Whether stamping is enabled.
-    pub stamped: bool,
-    /// Optional path to Bazel's `volatile-status.txt` (`ctx.version_file`).
-    pub version_file: Option<PathBuf>,
-    /// Optional path to Bazel's `stable-status.txt` (`ctx.info_file`).
-    pub info_file: Option<PathBuf>,
-}
-
-/// Result of parsing the command line and environment.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Cli {
-    /// `--help` was requested.
-    Help,
-    /// Write the build data file with the given options.
-    Run(Options),
-}
-
-fn parse_stamped(val: &str) -> Result<bool> {
-    match val {
-        "TRUE" => Ok(true),
-        "FALSE" => Ok(false),
-        other => bail!("{} must be TRUE or FALSE, got '{other}'", env_vars::STAMPED),
-    }
-}
-
-fn required_env<F>(get_env: &F, key: &str) -> Result<String>
-where
-    F: Fn(&str) -> Option<OsString>,
-{
-    get_env(key)
-        .with_context(|| format!("missing required environment variable: {key}"))?
-        .into_string()
-        .map_err(|raw| anyhow::anyhow!("{key} environment variable is not valid UTF-8: {raw:?}"))
-}
-
-/// Parses command-line arguments (excluding `argv[0]` and subcommand name) and the environment
-/// provided by `get_env` into [`Cli`].
-///
-/// # Errors
-///
-/// Returns an error when an argument other than `-h`/`--help` is given, when `OUTPUT`, `TARGET`,
-/// or `STAMPED` is unset, or when `STAMPED` is neither `TRUE` nor `FALSE`.
-pub fn parse_env_and_args<I, T, F>(args: I, get_env: F) -> Result<Cli>
-where
-    I: IntoIterator<Item = T>,
-    T: Into<OsString>,
-    F: Fn(&str) -> Option<OsString>,
-{
-    let mut parser = lexopt::Parser::from_args(args.into_iter().map(Into::into));
-    if let Some(arg) = parser.next()? {
-        match arg {
-            Short(flags::HELP_SHORT) | Long(flags::HELP) => return Ok(Cli::Help),
-            _ => bail!("{}", arg.unexpected()),
-        }
-    }
-
-    let output = get_env(env_vars::OUTPUT)
-        .map(PathBuf::from)
-        .with_context(|| {
-            format!(
-                "missing required environment variable: {}",
-                env_vars::OUTPUT
-            )
-        })?;
-    let target = required_env(&get_env, env_vars::TARGET)?;
-    let stamped = parse_stamped(&required_env(&get_env, env_vars::STAMPED)?)?;
-    let version_file = get_env(env_vars::VERSION_FILE)
-        .filter(|s| !s.is_empty())
-        .map(PathBuf::from);
-    let info_file = get_env(env_vars::INFO_FILE)
-        .filter(|s| !s.is_empty())
-        .map(PathBuf::from);
-
-    Ok(Cli::Run(Options {
-        output,
-        target,
-        stamped,
-        version_file,
-        info_file,
-    }))
-}
-
-/// Parses command-line arguments (excluding `argv[0]` and subcommand name) and the process
-/// environment into [`Cli`].
-///
-/// # Errors
-///
-/// See [`parse_env_and_args`].
-pub fn parse_args<I, T>(args: I) -> Result<Cli>
-where
-    I: IntoIterator<Item = T>,
-    T: Into<OsString>,
-{
-    parse_env_and_args(args, |key| env::var_os(key))
-}
-
-/// Parses CLI arguments (excluding `argv[0]` and subcommand name) and the process environment,
-/// writes the build data file, and returns the process exit code.
-pub fn run_cli<I, T>(args: I) -> ExitCode
-where
-    I: IntoIterator<Item = T>,
-    T: Into<OsString>,
-{
-    let options = match parse_args(args) {
-        Ok(Cli::Help) => {
-            println!("{USAGE}");
-            return ExitCode::SUCCESS;
-        }
-        Ok(Cli::Run(opts)) => opts,
-        Err(err) => {
-            eprintln!("build_data_writer: error: {err:#}");
-            return ExitCode::FAILURE;
-        }
-    };
-    if let Err(err) = write_build_data(&options) {
-        eprintln!("build_data_writer: error: {err:#}");
-        return ExitCode::FAILURE;
-    }
-    ExitCode::SUCCESS
-}
-
 /// Writes the build data file according to `options`.
 ///
 /// # Errors
@@ -217,4 +89,135 @@ fn append_status_file<W: Write>(writer: &mut W, path: &Path) -> Result<()> {
         writer.write_all(b"\n")?;
     }
     Ok(())
+}
+
+fn parse_stamped(val: &str) -> Result<bool> {
+    match val {
+        "TRUE" => Ok(true),
+        "FALSE" => Ok(false),
+        other => bail!("{} must be TRUE or FALSE, got '{other}'", env_vars::STAMPED),
+    }
+}
+
+fn required_env<F>(get_env: &F, key: &str) -> Result<String>
+where
+    F: Fn(&str) -> Option<OsString>,
+{
+    get_env(key)
+        .with_context(|| format!("missing required environment variable: {key}"))?
+        .into_string()
+        .map_err(|raw| anyhow::anyhow!("{key} environment variable is not valid UTF-8: {raw:?}"))
+}
+
+/// Parses command-line arguments (excluding `argv[0]` and subcommand name) and the environment
+/// provided by `get_env` into [`ParsedArgs`].
+///
+/// # Errors
+///
+/// Returns an error when an argument other than `-h`/`--help` is given, when `OUTPUT`, `TARGET`,
+/// or `STAMPED` is unset, or when `STAMPED` is neither `TRUE` nor `FALSE`.
+pub fn parse_env_and_args<I, T, F>(args: I, get_env: F) -> Result<ParsedArgs>
+where
+    I: IntoIterator<Item = T>,
+    T: Into<OsString>,
+    F: Fn(&str) -> Option<OsString>,
+{
+    let mut parser = lexopt::Parser::from_args(args.into_iter().map(Into::into));
+    if let Some(arg) = parser.next()? {
+        match arg {
+            Short(flags::HELP_SHORT) | Long(flags::HELP) => return Ok(ParsedArgs::Help),
+            _ => bail!("{}", arg.unexpected()),
+        }
+    }
+
+    let output = get_env(env_vars::OUTPUT)
+        .map(PathBuf::from)
+        .with_context(|| {
+            format!(
+                "missing required environment variable: {}",
+                env_vars::OUTPUT
+            )
+        })?;
+    let target = required_env(&get_env, env_vars::TARGET)?;
+    let stamped = parse_stamped(&required_env(&get_env, env_vars::STAMPED)?)?;
+    let version_file = get_env(env_vars::VERSION_FILE)
+        .filter(|s| !s.is_empty())
+        .map(PathBuf::from);
+    let info_file = get_env(env_vars::INFO_FILE)
+        .filter(|s| !s.is_empty())
+        .map(PathBuf::from);
+
+    Ok(ParsedArgs::Options(Options {
+        output,
+        target,
+        stamped,
+        version_file,
+        info_file,
+    }))
+}
+
+/// Parses command-line arguments (excluding `argv[0]` and subcommand name) and the process
+/// environment into [`ParsedArgs`].
+///
+/// # Errors
+///
+/// See [`parse_env_and_args`].
+pub fn parse_args<I, T>(args: I) -> Result<ParsedArgs>
+where
+    I: IntoIterator<Item = T>,
+    T: Into<OsString>,
+{
+    parse_env_and_args(args, |key| env::var_os(key))
+}
+
+/// Parses CLI arguments (excluding `argv[0]` and subcommand name) and the process environment,
+/// writes the build data file, and returns the process exit code.
+pub fn run_cli<I, T>(args: I) -> ExitCode
+where
+    I: IntoIterator<Item = T>,
+    T: Into<OsString>,
+{
+    let options = match parse_args(args) {
+        Ok(ParsedArgs::Help) => {
+            println!("{USAGE}");
+            return ExitCode::SUCCESS;
+        }
+        Ok(ParsedArgs::Options(opts)) => opts,
+        Err(err) => {
+            eprintln!("build_data_writer: error: {err:#}");
+            return ExitCode::FAILURE;
+        }
+    };
+    if let Err(err) = write_build_data(&options) {
+        eprintln!("build_data_writer: error: {err:#}");
+        return ExitCode::FAILURE;
+    }
+    ExitCode::SUCCESS
+}
+
+/// Result of parsing command-line arguments and the environment.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ParsedArgs {
+    /// `--help` was requested.
+    Help,
+    /// Parsed command-line and environment options.
+    Options(Options),
+}
+
+/// Configuration options for writing a `build_data.txt` file.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Options {
+    /// Path to the output `build_data.txt` file, relative to the current working directory or
+    /// absolute.
+    pub output: PathBuf,
+    /// Target label string (e.g. `//pkg:target`).
+    pub target: String,
+    /// Whether stamping is enabled.
+    pub stamped: bool,
+    /// Optional path to Bazel's `volatile-status.txt` (`ctx.version_file`), relative to the
+    /// current working directory or absolute.
+    pub version_file: Option<PathBuf>,
+    /// Optional path to Bazel's `stable-status.txt` (`ctx.info_file`), relative to the current
+    /// working directory or absolute.
+    pub info_file: Option<PathBuf>,
 }
