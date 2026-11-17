@@ -306,6 +306,44 @@ def _test_download_url_parallel_with_overrides(env):
 
 _tests.append(_test_download_url_parallel_with_overrides)
 
+def _test_keeps_wheels_filtered_from_facts(env):
+    """Verifies that a result read from filtered facts keeps the `wheels_filtered` flag."""
+    cache = pypi_cache(
+        mctx = mocks.mctx(facts = {
+            "fact_version": "v3",
+            "foo@https://example.com/simple": {
+                "https://example.com/files/foo-1.0-py3-none-any.whl": "sha256:deadbeef",
+            },
+            "wheel_filter": ["cpython|3.12|none|any"],
+        }),
+        wheel_platforms = [struct(
+            env = {"implementation_name": "cpython", "python_full_version": "3.12.0"},
+            whl_abi_tags = ["none"],
+            whl_platform_tags = ["any"],
+        )],
+    )
+
+    contents = simpleapi_download(
+        ctx = mocks.mctx(),
+        attr = struct(
+            index_url_overrides = {},
+            index_url = "https://example.com/simple",
+            extra_index_urls = [],
+            sources = {"foo": ["1.0"]},
+            envsubst = [],
+        ),
+        cache = cache,
+        parallel_download = False,
+    )
+
+    env.expect.that_str(contents["foo"].index_url).equals("https://example.com/simple/foo/")
+    env.expect.that_dict(contents["foo"].hashes_by_version).contains_exactly({
+        "1.0": ["sha256:deadbeef"],
+    })
+    env.expect.that_bool(contents["foo"].wheels_filtered).equals(True)
+
+_tests.append(_test_keeps_wheels_filtered_from_facts)
+
 def _test_download_envsubst_url(env):
     downloads = {}
     reads = [
