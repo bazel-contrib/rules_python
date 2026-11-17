@@ -8,6 +8,8 @@ requests with buttons to launch manual code reviews in isolated Git worktrees.
 - Displays open GitHub PRs filtered by review status, author, draft state, age,
   or custom search query using the `gh` CLI.
 - Fetches on demand without automatic reviews or background polling.
+- Looking up a number shows live PR details (or detects asynchronously if a
+  missing number is an issue), matching review chats, and launch actions.
 - Clicking a PR review button creates or updates a dedicated Git worktree at the
   PR head commit and starts a new conversation running
   `.agents/skills/review-code/SKILL.md`.
@@ -36,7 +38,7 @@ requests with buttons to launch manual code reviews in isolated Git worktrees.
 - `sidecars/pr_queue/git_worktree.py`: Git repo detection and PR worktree setup.
 - `sidecars/pr_queue/ls_client.py`: Loopback Language Server RPC client.
 - `sidecars/pr_queue/server.py`: HTTP backend serving the UI, cached PR queue,
-  review conversation lookup, and worktree/chat launcher.
+  PR/issue and review chat lookup, and worktree/chat launcher.
 - `sidecars/pr_queue/index.html`: Adaptive dark/light side panel frontend.
 - `sidecars/pr_queue/fetch_pr_queue_test.py`: Unit tests for `fetch_pr_queue`.
 - `sidecars/pr_queue/server_test.py`: Unit tests for `server`, `state_store`,

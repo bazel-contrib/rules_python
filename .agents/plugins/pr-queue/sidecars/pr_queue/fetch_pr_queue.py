@@ -37,7 +37,7 @@ _DEFAULT_PR_LIMIT = 100
 PR_JSON_FIELDS = (
     "number,title,url,author,createdAt,updatedAt,headRefName,headRefOid,"
     "baseRefName,isDraft,reviewDecision,reviewRequests,reviews,latestReviews,"
-    "additions,deletions,changedFiles,labels,statusCheckRollup"
+    "additions,deletions,changedFiles,labels,state,statusCheckRollup"
 )
 
 # Allow enough time for large PR lists over slower networks.
@@ -703,10 +703,10 @@ def normalize_pr(
     now: datetime.datetime,
     author_association: str = "",
 ) -> PrSummary:
-    """Converts a single `gh pr list --json` item into a PrSummary.
+    """Converts a single `gh pr list` or `gh pr view` JSON item into a PrSummary.
 
     Args:
-      raw_pr: Parsed JSON object for one PR from `gh pr list`.
+      raw_pr: Parsed JSON object for one PR from `gh pr list` or `gh pr view`.
       repo: Repository slug in `owner/name` form.
       viewer: Active GitHub login for viewer-scoped fields.
       max_age_days: Days since last update after which PRs are marked stale.
@@ -755,6 +755,7 @@ def normalize_pr(
     )
 
     is_draft = bool(raw_pr.get("isDraft"))
+    pr_state = str(raw_pr.get("state") or "OPEN").strip().upper() or "OPEN"
     review_decision = str(raw_pr.get("reviewDecision") or "").upper() or "NONE"
     is_my_pr = bool(viewer_lower and author_login.lower() == viewer_lower)
 
@@ -801,6 +802,7 @@ def normalize_pr(
         checks_total=checks_total,
         action_needed=action_needed,
         is_stale=is_stale,
+        state=pr_state,
     )
 
 
@@ -1136,7 +1138,7 @@ class FetchError(Exception):
 
 @dataclasses.dataclass(frozen=True)
 class PrSummary:
-    """Normalized summary of an open GitHub pull request."""
+    """Normalized summary of a GitHub pull request."""
 
     # GitHub repository in owner/name format.
     repo: str
@@ -1204,6 +1206,8 @@ class PrSummary:
     action_needed: str
     # Whether the PR exceeds max_age_days since updated_at.
     is_stale: bool
+    # PR lifecycle state from GitHub (OPEN, CLOSED, or MERGED).
+    state: str = "OPEN"
 
     def to_dict(self) -> dict[str, object]:
         """Serializes this summary into a JSON-compatible dict."""
