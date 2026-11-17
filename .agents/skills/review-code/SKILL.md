@@ -83,8 +83,10 @@ file from `.agents/skills/review-code/`:
     (`Role: "Code Style & Architecture Auditor"`):
     - Prompt file:
       `.agents/skills/review-code/review-code-style-prompt.md`
-    - Focus: Audits cross-language code style across all code files (`*.py`,
-      `*.rs`, `*.sh`, `*.cc`, `*.h`, `*.go`, `*.bzl`, `*.bazel`): file
+    - Focus: Audits cross-language code style across code and config files
+      (`*.py`, `*.rs`, `*.sh`, `*.cc`, `*.h`, `*.go`, `*.bzl`, `*.bazel`,
+      `*.html`, `*.js`, `*.ts`, `*.css`, `*.yaml`, `*.yml`) against
+      `.agents/rules/code-style.md` and `.agents/rules/web-ui.md`: file
       definition order, guard clauses, fail-closed `else`, single input form,
       no unrequested knobs/aliases, no speculative validation or defensive
       `None` checks, no nested comprehensions, naming precision,
@@ -241,8 +243,8 @@ file from `.agents/skills/review-code/`:
   at the end of each comment:
   `*This is an agent-generated comment reviewed and approved by the user.*` if
   the user reviewed and approved posting the comment, or
-  `*This is an automatically generated agent comment.*` if posted without user
-  review.
+  `*This is an agent-generated comment unreviewed by the user.*` if posted
+  without user review.
 
 ### Synthesis & Anti-Noise Gate (Guardrails)
 
