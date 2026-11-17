@@ -158,6 +158,9 @@ pub fn run(options: &Options) -> Result<()> {
     let attr = entry_point_callable
         .split_once('.')
         .map_or(entry_point_callable, |(first, _)| first);
+    // TODO: handle 'extras' in entry_point generation
+    // See https://github.com/bazel-contrib/rules_python/issues/1383
+    // See https://packaging.python.org/en/latest/specifications/entry-points/
 
     let rendered = render_template(&options.shebang, module, attr, entry_point_callable);
     fs::write(&options.out, rendered)
@@ -166,37 +169,13 @@ pub fn run(options: &Options) -> Result<()> {
     Ok(())
 }
 
-/// Parsed command-line options for `py_console_script_gen`.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Options {
-    /// Path to the `entry_points.txt` file to parse.
-    pub entry_points: PathBuf,
-    /// Path of the Python entrypoint script to write.
-    pub out: PathBuf,
-    /// Explicitly requested console script name; `None` when absent or empty.
-    pub console_script: Option<String>,
-    /// Name to look up when `console_script` is `None`.
-    pub console_script_guess: String,
-    /// Shebang line to prepend to the script; empty for none.
-    pub shebang: String,
-}
-
-/// Result of parsing the command line.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Cli {
-    /// `--help` was requested.
-    Help,
-    /// Generate the console script with the given options.
-    Run(Options),
-}
-
-/// Parses command-line arguments (excluding `argv[0]` and subcommand name) into [`Cli`].
+/// Parses command-line arguments (excluding `argv[0]` and subcommand name) into [`ParsedArgs`].
 ///
 /// # Errors
 ///
 /// Returns `Err` if an `@flagfile` cannot be read, an unknown flag is given, a flag is missing its
 /// value, `--console-script-guess` is absent, or there are not exactly two positional arguments.
-pub fn parse_args<I, T>(args: I) -> Result<Cli>
+pub fn parse_args<I, T>(args: I) -> Result<ParsedArgs>
 where
     I: IntoIterator<Item = T>,
     T: Into<OsString>,
@@ -216,7 +195,7 @@ where
     let mut parser = lexopt::Parser::from_args(expanded);
     while let Some(arg) = parser.next()? {
         match arg {
-            Short(flags::HELP_SHORT) | Long(flags::HELP) => return Ok(Cli::Help),
+            Short(flags::HELP_SHORT) | Long(flags::HELP) => return Ok(ParsedArgs::Help),
             Long(flags::CONSOLE_SCRIPT) => {
                 let val = parser.value()?.string()?;
                 console_script = (!val.is_empty()).then_some(val);
@@ -248,7 +227,7 @@ where
     let out = positional.remove(1);
     let entry_points = positional.remove(0);
 
-    Ok(Cli::Run(Options {
+    Ok(ParsedArgs::Options(Options {
         entry_points,
         out,
         console_script,
@@ -265,11 +244,11 @@ where
     T: Into<OsString>,
 {
     let options = match parse_args(args) {
-        Ok(Cli::Help) => {
+        Ok(ParsedArgs::Help) => {
             println!("{USAGE}");
             return ExitCode::SUCCESS;
         }
-        Ok(Cli::Run(opts)) => opts,
+        Ok(ParsedArgs::Options(opts)) => opts,
         Err(err) => {
             eprintln!("py_console_script_gen: error: {err:#}");
             return ExitCode::FAILURE;
@@ -280,4 +259,30 @@ where
         return ExitCode::FAILURE;
     }
     ExitCode::SUCCESS
+}
+
+/// Result of parsing command-line arguments.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ParsedArgs {
+    /// `--help` was requested.
+    Help,
+    /// Parsed command-line options.
+    Options(Options),
+}
+
+/// Parsed command-line options for `py_console_script_gen`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Options {
+    /// Path to the `entry_points.txt` file to parse, relative to the current working directory or
+    /// absolute.
+    pub entry_points: PathBuf,
+    /// Path of the Python entrypoint script to write, relative to the current working directory
+    /// or absolute.
+    pub out: PathBuf,
+    /// Explicitly requested console script name; `None` when absent or empty.
+    pub console_script: Option<String>,
+    /// Name to look up when `console_script` is `None`.
+    pub console_script_guess: String,
+    /// Shebang line to prepend to the script; empty for none.
+    pub shebang: String,
 }

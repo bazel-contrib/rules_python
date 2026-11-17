@@ -42,27 +42,28 @@ def _get_entry_points_txt(entry_points_txt):
 def _py_console_script_gen_impl(ctx):
     entry_points_txt = _get_entry_points_txt(ctx.attr.entry_points_txt)
 
+    tool = get_shrubbery_tool(
+        ctx,
+        "py_console_script_gen",
+        ctx.attr._tool,
+    )
     args = ctx.actions.args()
+    args.add_all(tool.prefix_args)
     args.add("--console-script", ctx.attr.console_script)
     args.add("--console-script-guess", ctx.attr.console_script_guess)
     args.add("--shebang", ctx.attr.shebang)
     args.add(entry_points_txt)
     args.add(ctx.outputs.out)
 
-    tool = get_shrubbery_tool(
-        ctx,
-        "py_console_script_gen",
-        ctx.attr._tool,
-    )
     ctx.actions.run(
         inputs = [
             entry_points_txt,
         ],
         outputs = [ctx.outputs.out],
-        arguments = tool.prefix_args + [args],
+        arguments = [args],
         mnemonic = "PyConsoleScriptBinaryGen",
         progress_message = "Generating py_console_script_binary main: %{label}",
-        executable = tool.files_to_run,
+        executable = tool.executable[DefaultInfo].files_to_run,
         toolchain = tool.toolchain,
     )
 

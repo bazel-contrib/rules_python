@@ -5,36 +5,11 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use py_console_script_gen_lib::{Cli, Options, parse_args, parse_console_scripts, run, run_cli};
+use py_console_script_gen_lib::{
+    Options, ParsedArgs, parse_args, parse_console_scripts, run, run_cli,
+};
 
 static TEST_COUNTER: AtomicUsize = AtomicUsize::new(0);
-
-struct TempDir {
-    path: PathBuf,
-}
-
-impl TempDir {
-    fn new(prefix: &str) -> Self {
-        let id = TEST_COUNTER.fetch_add(1, Ordering::SeqCst);
-        let path = env::temp_dir().join(format!(
-            "py_console_script_gen_test_{prefix}_{}_{id}",
-            std::process::id(),
-        ));
-        let _ = fs::remove_dir_all(&path);
-        fs::create_dir_all(&path).unwrap();
-        Self { path }
-    }
-
-    fn path(&self) -> &Path {
-        &self.path
-    }
-}
-
-impl Drop for TempDir {
-    fn drop(&mut self) {
-        let _ = fs::remove_dir_all(&self.path);
-    }
-}
 
 /// Builds `Options` for direct `run` invocations.
 fn options(
@@ -53,15 +28,15 @@ fn options(
     }
 }
 
-/// Parses `args` and unwraps the `Cli::Run` variant.
-fn parse_run<I, T>(args: I) -> Options
+/// Parses `args` and unwraps the `ParsedArgs::Options` variant.
+fn parse_options<I, T>(args: I) -> Options
 where
     I: IntoIterator<Item = T>,
     T: Into<OsString>,
 {
     match parse_args(args).expect("arguments should parse") {
-        Cli::Run(opts) => opts,
-        Cli::Help => panic!("expected Cli::Run, got Cli::Help"),
+        ParsedArgs::Options(opts) => opts,
+        ParsedArgs::Help => panic!("expected ParsedArgs::Options, got ParsedArgs::Help"),
     }
 }
 
@@ -208,7 +183,7 @@ fn test_empty_console_script_flag_falls_back_to_guess() {
         entry_points.as_os_str().to_owned(),
         out.as_os_str().to_owned(),
     ];
-    let opts = parse_run(&args);
+    let opts = parse_options(&args);
     assert_eq!(opts.console_script, None);
     assert_eq!(opts.console_script_guess, "my-tool");
     assert_eq!(opts.shebang, "");
@@ -236,7 +211,7 @@ fn test_equals_flag_syntax_and_flagfile() {
     )
     .unwrap();
 
-    let opts = parse_run([format!("@{}", flagfile.display())]);
+    let opts = parse_options([format!("@{}", flagfile.display())]);
     assert_eq!(opts.console_script, None);
     run(&opts).expect("script should be generated");
 
@@ -332,9 +307,12 @@ fn test_nested_class_attribute_entry_point() {
 fn test_help() {
     assert_eq!(
         parse_args(["--help"]).expect("--help should parse"),
-        Cli::Help
+        ParsedArgs::Help
     );
-    assert_eq!(parse_args(["-h"]).expect("-h should parse"), Cli::Help);
+    assert_eq!(
+        parse_args(["-h"]).expect("-h should parse"),
+        ParsedArgs::Help
+    );
     assert_eq!(run_cli(["--help"]), ExitCode::SUCCESS);
 }
 
@@ -348,7 +326,7 @@ fn test_cli_parse_errors_and_double_dash() {
     assert!(parse_args(["--console-script-guess"]).is_err());
     assert!(parse_args(["--shebang"]).is_err());
 
-    let opts = parse_run([
+    let opts = parse_options([
         "--console-script-guess=foo",
         "--",
         "-dash_entry_points.txt",
@@ -375,4 +353,31 @@ fn test_run_cli_exit_codes() {
 
     let code_err = run_cli(["--unknown-flag"]);
     assert_eq!(code_err, ExitCode::FAILURE);
+}
+
+struct TempDir {
+    path: PathBuf,
+}
+
+impl TempDir {
+    fn new(prefix: &str) -> Self {
+        let id = TEST_COUNTER.fetch_add(1, Ordering::SeqCst);
+        let path = env::temp_dir().join(format!(
+            "py_console_script_gen_test_{prefix}_{}_{id}",
+            std::process::id(),
+        ));
+        let _ = fs::remove_dir_all(&path);
+        fs::create_dir_all(&path).unwrap();
+        Self { path }
+    }
+
+    fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+impl Drop for TempDir {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.path);
+    }
 }
