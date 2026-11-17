@@ -30,6 +30,10 @@ def select_dependency_groups(pyproject, specs, _fail = fail):
           * `all`: {type}`bool` whether all of the packages including the
             transitive dependencies should be selected, i.e. `"*"` and
             `"transitive"` were given.
+          * `extras`: {type}`dict[str, list[str]]` the normalized package
+            names mapped to the sorted normalized extras that the selected
+            requirements request, e.g. `requests[socks]`. When `all` is set,
+            the extras of all of the groups are returned.
     """
     groups = {"default": pyproject.dependencies}
     for name, reqs in pyproject.optional_dependencies.items():
@@ -37,10 +41,12 @@ def select_dependency_groups(pyproject, specs, _fail = fail):
     for name, reqs in _expand_dependency_groups(pyproject.dependency_groups, _fail).items():
         groups["group:" + name] = reqs
 
-    if "transitive" in specs:
+    select_all = "transitive" in specs
+    if select_all:
         if "*" not in specs:
             _fail("The 'transitive' dependency group specifier is only supported together with '*', which selects all of the packages, got: {}".format(specs))
-        return struct(packages = [], all = True)
+            return struct(packages = [], all = True, extras = {})
+        specs = ["*"]
 
     selected = {}
     for spec in specs:
@@ -56,18 +62,30 @@ def select_dependency_groups(pyproject, specs, _fail = fail):
     # A self reference like `my-project[test]` selects the optional
     # dependencies, but only one level deep.
     project = normalize_name(pyproject.name or "")
-    packages = {}
+    reqs = []
     for key in selected:
         for req in groups[key]:
             req = requirement(req)
             if req.name_ != project:
-                packages[req.name_] = None
+                reqs.append(req)
                 continue
             for extra in req.extras:
-                for r in groups.get("optional:" + extra, []):
-                    packages[requirement(r).name_] = None
+                reqs.extend([requirement(r) for r in groups.get("optional:" + extra, [])])
 
-    return struct(packages = sorted(packages), all = False)
+    packages = {}
+    extras = {}
+    for req in reqs:
+        packages[req.name_] = None
+        if req.extras:
+            pkg_extras = extras.setdefault(req.name_, {})
+            for extra in req.extras:
+                pkg_extras[extra] = None
+
+    return struct(
+        packages = [] if select_all else sorted(packages),
+        all = select_all,
+        extras = {name: sorted(pkg_extras) for name, pkg_extras in extras.items()},
+    )
 
 def _match(spec, groups):
     if spec == "*":

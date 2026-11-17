@@ -52,6 +52,39 @@ def _test_select_all(env):
 
 _tests.append(_test_select_all)
 
+def _test_select_extras(env):
+    pyproject = struct(
+        name = "my-project",
+        dependencies = ["main-pkg[Foo_Bar, baz]>=1.0", "plain-pkg"],
+        optional_dependencies = {
+            "all": ["my-project[docs]"],
+            "docs": ["docs-pkg[extra]", "main-pkg[docs]"],
+        },
+        dependency_groups = {
+            "dev": ["dev-pkg[cli]", {"include-group": "test"}],
+            "test": ["test-pkg[cov]; sys_platform == 'linux'"],
+        },
+    )
+    for specs, want in [
+        (["default"], {"main_pkg": ["baz", "foo_bar"]}),
+        (["dev"], {"dev_pkg": ["cli"], "test_pkg": ["cov"]}),
+        # The extras of the self reference are the optional dependencies of
+        # the project, not the extras of a package.
+        (["all"], {"docs_pkg": ["extra"], "main_pkg": ["docs"]}),
+        (["default", "docs"], {"docs_pkg": ["extra"], "main_pkg": ["baz", "docs", "foo_bar"]}),
+        (["*", "transitive"], {
+            "dev_pkg": ["cli"],
+            "docs_pkg": ["extra"],
+            "main_pkg": ["baz", "docs", "foo_bar"],
+            "test_pkg": ["cov"],
+        }),
+    ]:
+        got, failures = _select(specs, pyproject = pyproject)
+        env.expect.where(specs = specs).that_collection(failures).contains_exactly([])
+        env.expect.where(specs = specs).that_dict(got.extras).contains_exactly(want)
+
+_tests.append(_test_select_extras)
+
 def _test_select_errors(env):
     for specs, want in [
         (["missing"], "Unknown dependency group 'missing'. Available groups: default, group:dev, group:test, optional:all, optional:docs, optional:grpc"),
