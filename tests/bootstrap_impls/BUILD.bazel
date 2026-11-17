@@ -149,6 +149,21 @@ py_test(
 )
 
 py_reconfig_test(
+    name = "relative_formatwarning_bootstrap_script_test",
+    srcs = ["relative_formatwarning_test.py"],
+    bootstrap_impl = "script",
+    main = "relative_formatwarning_test.py",
+    target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
+)
+
+py_reconfig_test(
+    name = "relative_formatwarning_bootstrap_system_python_test",
+    srcs = ["relative_formatwarning_test.py"],
+    bootstrap_impl = "system_python",
+    main = "relative_formatwarning_test.py",
+)
+
+py_reconfig_test(
     name = "sys_path_order_bootstrap_system_python_test",
     srcs = ["sys_path_order_test.py"],
     bootstrap_impl = "system_python",

@@ -24,7 +24,7 @@ to a subagent. NEVER create or draft PRs directly in the main conversation.
      the PR) the AI disclosure comment explaining how PR comments will be
      handled. When posted automatically during `create pr` without prior user
      review of the comment text, end it with:
-     `*This is an automatically generated agent comment.*`
+     `*This is an agent-generated comment unreviewed by the user.*`
      Only use `*This is an agent-generated comment reviewed and approved by the
      user.*` if the user previously reviewed `pr_info.md` and approved the
      draft text.

@@ -11,6 +11,7 @@ rust_library(
     edition = "2024",
     deps = [
         "//crates/exe_zip_maker:exe_zip_maker_lib",
+        "//crates/wheelmaker:wheelmaker_lib",
         "//crates/zip_main_maker:zip_main_maker_lib",
         "//crates/zipper:zipper_lib",
     ],
