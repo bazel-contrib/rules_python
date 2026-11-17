@@ -42,19 +42,20 @@ def _py_wheel_dist_impl(ctx):
     name_file = ctx.attr.wheel[PyWheelInfo].name_file
     wheel = ctx.attr.wheel[PyWheelInfo].wheel
 
+    tool = get_shrubbery_tool(ctx, "py_wheel_dist", ctx.attr._copier)
     args = ctx.actions.args()
+    args.add_all(tool.prefix_args)
     args.add("--wheel", wheel)
     args.add("--name_file", name_file)
     args.add("--output", out.path)
 
-    tool = get_shrubbery_tool(ctx, "py_wheel_dist", ctx.attr._copier)
     ctx.actions.run(
         mnemonic = "PyWheelDistDir",
         executable = tool.files_to_run,
         toolchain = tool.toolchain,
         inputs = [wheel, name_file],
         outputs = [out],
-        arguments = tool.prefix_args + [args],
+        arguments = [args],
     )
     return [
         DefaultInfo(

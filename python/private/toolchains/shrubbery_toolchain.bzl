@@ -63,10 +63,10 @@ def get_shrubbery_tool(ctx, subcommand, fallback):
         * `executable`: {type}`Target` to pass to `actions_run()`.
         * `files_to_run`: {type}`FilesToRunProvider` to pass to
           `ctx.actions.run(executable = ...)`.
-        * `is_rust`: {type}`bool` True when resolved from the `shrubbery`
-          toolchain.
-        * `prefix_args`: {type}`list[str]` `[subcommand]` when `is_rust` is
-          True, else `[]`.
+        * `from_shrubbery_toolchain`: {type}`bool` True when resolved from the
+          `shrubbery` toolchain.
+        * `prefix_args`: {type}`list[str]` `[subcommand]` when
+          `from_shrubbery_toolchain` is True, else `[]`.
         * `toolchain`: {type}`Label | None` the toolchain type to pass to
           `actions_run()` or `ctx.actions.run()` so the action runs on the exec
           platform the tool was built for. `None` when falling back to
@@ -76,24 +76,26 @@ def get_shrubbery_tool(ctx, subcommand, fallback):
     if toolchain and toolchain.shrubbery:
         executable = toolchain.shrubbery
         return struct(
-            # Target to pass to `actions_run()`.
+            # Target to pass to `actions_run()` (which inspects target providers
+            # such as `PyInterpreterProgramInfo` and `testing.ExecutionInfo`).
             executable = executable,
             # `FilesToRunProvider` to pass to `ctx.actions.run(executable = ...)`.
             files_to_run = executable[DefaultInfo].files_to_run,
             # True when resolved from the `shrubbery` toolchain.
-            is_rust = True,
+            from_shrubbery_toolchain = True,
             # Leading subcommand argument prepended when invoking `shrubbery`.
             prefix_args = [subcommand],
             # Toolchain type for `actions_run()` / `ctx.actions.run()`.
             toolchain = SHRUBBERY_TOOLCHAIN_TYPE,
         )
     return struct(
-        # Fallback tool target to pass to `actions_run()`.
+        # Fallback tool target to pass to `actions_run()` (which inspects target
+        # providers such as `PyInterpreterProgramInfo` and `testing.ExecutionInfo`).
         executable = fallback,
         # `FilesToRunProvider` to pass to `ctx.actions.run(executable = ...)`.
         files_to_run = fallback[DefaultInfo].files_to_run,
         # False when falling back to the built-in Python or script tool.
-        is_rust = False,
+        from_shrubbery_toolchain = False,
         # Empty prefix when invoking the standalone fallback tool directly.
         prefix_args = [],
         # `None` so fallback tools use the default exec tools or host execution.

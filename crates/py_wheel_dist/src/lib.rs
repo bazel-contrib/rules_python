@@ -39,6 +39,11 @@ Options:
 
 /// Creates the output directory and copies the wheel file to `<output>/<wheel_name>`, where
 /// `wheel_name` is the whitespace-trimmed content of `name_file_path`.
+///
+/// # Errors
+///
+/// Returns an error if `name_file_path` cannot be read, `output_dir` cannot be created, or
+/// `wheel_path` cannot be copied to the destination path.
 pub fn create_wheel_dist(
     wheel_path: &Path,
     name_file_path: &Path,
@@ -61,27 +66,13 @@ pub fn create_wheel_dist(
     Ok(destination)
 }
 
-/// Parsed command-line options for `py_wheel_dist`.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Options {
-    /// Path to the input `.whl` file.
-    pub wheel: PathBuf,
-    /// Path to the file containing the canonical wheel filename.
-    pub name_file: PathBuf,
-    /// Path to the output directory where the wheel should be copied.
-    pub output: PathBuf,
-}
-
-/// Result of parsing the command line.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Cli {
-    /// `--help` was requested.
-    Help,
-    /// Copy the wheel with the given options.
-    Run(Options),
-}
-
 /// Parses command-line arguments (excluding `argv[0]` and subcommand name) into [`Cli`].
+///
+/// # Errors
+///
+/// Returns an error if a `@flagfile` cannot be read, an unknown flag or positional argument is
+/// passed, a flag is missing its value, or any of `--wheel`, `--name_file`, or `--output` is
+/// omitted.
 pub fn parse_args<I, T>(args: I) -> Result<Cli>
 where
     I: IntoIterator<Item = T>,
@@ -151,4 +142,26 @@ where
         return ExitCode::FAILURE;
     }
     ExitCode::SUCCESS
+}
+
+/// Result of parsing the command line.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Cli {
+    /// `--help` was requested.
+    Help,
+    /// Copy the wheel with the given options.
+    Run(Options),
+}
+
+/// Parsed command-line options for `py_wheel_dist`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Options {
+    /// Path to the input `.whl` file, relative to the current working directory or absolute.
+    pub wheel: PathBuf,
+    /// Path to the file containing the canonical wheel filename, relative to the current working
+    /// directory or absolute.
+    pub name_file: PathBuf,
+    /// Path to the output directory where the wheel should be copied, relative to the current
+    /// working directory or absolute.
+    pub output: PathBuf,
 }
