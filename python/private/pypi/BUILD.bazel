@@ -15,6 +15,7 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("//python:py_binary.bzl", "py_binary")
 load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
+load(":extra_dep.bzl", "requested_extra")
 
 package(default_visibility = ["//:__subpackages__"])
 
@@ -22,6 +23,13 @@ licenses(["notice"])
 
 exports_files(
     srcs = ["namespace_pkg_tmpl.py"],
+    visibility = ["//visibility:public"],
+)
+
+# The extra requested by the `extra_dep` targets in the whl repositories.
+requested_extra(
+    name = "requested_extra",
+    build_setting_default = "",
     visibility = ["//visibility:public"],
 )
 
@@ -98,6 +106,16 @@ bzl_library(
     name = "deps",
     srcs = ["deps.bzl"],
     deps = ["//python/private:bazel_tools"],
+)
+
+bzl_library(
+    name = "extra_dep",
+    srcs = ["extra_dep.bzl"],
+    deps = [
+        "//python/private:py_cc_link_params_info",
+        "//python/private:py_info",
+        "//python/private:reexports",
+    ],
 )
 
 bzl_library(

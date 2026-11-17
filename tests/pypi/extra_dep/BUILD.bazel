@@ -1,0 +1,3 @@
+load(":extra_dep_tests.bzl", "extra_dep_test_suite")
+
+extra_dep_test_suite(name = "extra_dep_tests")
