@@ -443,6 +443,20 @@ py_wheel(
     version = "0.0.1",
 )
 
+_PYTHON_ENV = {"WHEELMAKER_IMPL": "python"}
+
+_BZLMOD_ENV = select({
+    "//python/private/toolchains:is_need_shrubbery_enabled": {
+        "WHEELMAKER_IMPL": "rust",
+    },
+    "//conditions:default": _PYTHON_ENV,
+})
+
+# In WORKSPACE mode, rules_rust is a stub and @rules_python_tools is not
+# registered, so py_wheel always falls back to the Python wheelmaker even when
+# is_need_shrubbery_enabled matches.
+_WHEELMAKER_ENV = _BZLMOD_ENV if BZLMOD_ENABLED else _PYTHON_ENV
+
 py_test(
     name = "wheel_test",
     srcs = ["wheel_test.py"],
@@ -466,6 +480,7 @@ py_test(
         ":requires_files",
         ":use_rule_with_dir_in_outs",
     ],
+    env = _WHEELMAKER_ENV,
     deps = [
         "//python/runfiles",
     ],
@@ -488,10 +503,12 @@ py_test(
         ":pypiserver",
     ],
     env = {
-        "PUBLISH_PATH": "$(location :minimal_with_py_library.publish)",
-        "SERVER_PATH": "$(location :pypiserver)",
+        # keep-sorted start
+        "PUBLISH_PATH": "$(rootpath :minimal_with_py_library.publish)",
+        "SERVER_PATH": "$(rootpath :pypiserver)",
         "WHEEL_PATH": "$(rootpath :minimal_with_py_library)",
-    },
+        # keep-sorted end
+    } | _WHEELMAKER_ENV,
     target_compatible_with = select({
         "@platforms//os:linux": [],
         "@platforms//os:macos": [],
