@@ -117,10 +117,7 @@ def _pypi_cache_get_facts(self):
     if not self._facts:
         return {}
 
-    return {
-        key: _compact_dist_urls(value) if type(value) == "dict" else value
-        for key, value in self._facts.facts.items()
-    }
+    return self._facts.lockfile_facts()
 
 def memory_cache(cache = None):
     """SimpleAPI cache for making fewer calls.
@@ -201,7 +198,8 @@ def facts_cache(known_facts, facts_version = _FACT_VERSION, wheel_platforms = No
         A struct that has:
             * `get` method for getting values from the facts cache.
             * `setdefault` method for setting values in the cache.
-            * `facts` attribute that should be passed to the {obj}`module_ctx.extension_metadata` to persist facts.
+            * `lockfile_facts` method that returns the facts to pass to
+              {obj}`module_ctx.extension_metadata` to persist them.
     """
     if known_facts == None:
         return None
@@ -226,8 +224,17 @@ def facts_cache(known_facts, facts_version = _FACT_VERSION, wheel_platforms = No
             wheel_filter,
         ),
         known_facts = known_facts,
-        facts = facts,
+        lockfile_facts = lambda: _lockfile_facts(facts),
     )
+
+def _lockfile_facts(facts):
+    """Return the facts with the dist URLs made relative, see {obj}`_compact_dist_urls`."""
+
+    # Only the dist facts are dicts, see `_store_facts`.
+    return {
+        key: _compact_dist_urls(value) if type(value) == "dict" else value
+        for key, value in facts.items()
+    }
 
 def _wheel_filter(wheel_platforms):
     """Return the filter for the wheels to store, or `None` to store all of them.
