@@ -181,6 +181,7 @@ def _test_py_info_builder_impl(env, targets):
     symlink.set_venv_path("test_path")
     symlink.set_link_to_path("test_target")
     symlink.files.add(trans)
+    symlink.link_to_subpaths.add("sub/mod.py")
 
     builder.merge_target(targets.py1)
     builder.merge_targets([targets.py2])
@@ -307,6 +308,7 @@ def _test_py_info_builder_impl(env, targets):
             env.expect.that_str(entry.link_to_path).equals("test_target")
             env.expect.that_str(entry.kind).equals(VenvSymlinkKind.LIB)
             env.expect.that_collection(entry.files.to_list()).contains_exactly([trans])
+            env.expect.that_collection(entry.link_to_subpaths.to_list()).contains_exactly(["sub/mod.py"])
             env.expect.that_bool(entry.package == None).equals(True)
             env.expect.that_bool(entry.version == None).equals(True)
             env.expect.that_bool(entry.link_to_file == None).equals(True)
