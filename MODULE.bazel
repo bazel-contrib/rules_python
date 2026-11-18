@@ -328,6 +328,7 @@ internal_dev_deps = use_extension(
 use_repo(
     internal_dev_deps,
     "buildkite_config",
+    "dylib_read",
     "implicit_namespace_ns_sub1",
     "implicit_namespace_ns_sub2",
     "patch_whl_pkg",

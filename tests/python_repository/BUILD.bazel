@@ -1,3 +1,21 @@
+load("//python:py_test.bzl", "py_test")
+load("//tests/support:support.bzl", "SUPPORTS_BZLMOD")
 load(":python_repository_tests.bzl", "python_repository_test_suite")
 
 python_repository_test_suite(name = "python_repository_tests")
+
+py_test(
+    name = "dylib_read_test",
+    srcs = ["dylib_read_test.py"],
+    data = [
+        "@dylib_read//:libpython3.13.dylib",
+        "@dylib_read//:result.json",
+    ],
+    env = {
+        "DYLIB": "$(rlocationpath @dylib_read//:libpython3.13.dylib)",
+        "RESULT": "$(rlocationpath @dylib_read//:result.json)",
+    },
+    # @dylib_read is set up by the internal_dev_deps module extension.
+    target_compatible_with = SUPPORTS_BZLMOD,
+    deps = ["//python/runfiles"],
+)

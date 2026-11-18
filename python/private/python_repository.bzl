@@ -23,32 +23,65 @@ load(":text_util.bzl", "render")
 
 STANDALONE_INTERPRETER_FILENAME = "STANDALONE_INTERPRETER"
 
-# Mach-O constants from <mach-o/loader.h>, as little-endian bytes. Both macOS
-# architectures (arm64 and x86_64) are little-endian. `rctx.read` maps each
-# byte to one character, and Bazel's Starlark only has octal byte escapes.
-_MH_MAGIC_64 = "\317\372\355\376"
-_LC_ID_DYLIB = "\015\000\000\000"
+# `rctx.read` maps each byte of a file to the character with the same code
+# (Latin-1), and Bazel's Starlark has neither `ord` nor hex escapes, so this
+# table, written with octal escapes, turns a character back into its byte.
+_BYTE_VALUES = {c: i for i, c in enumerate((
+    "\000\001\002\003\004\005\006\007\010\011\012\013\014\015\016\017" +
+    "\020\021\022\023\024\025\026\027\030\031\032\033\034\035\036\037" +
+    "\040\041\042\043\044\045\046\047\050\051\052\053\054\055\056\057" +
+    "\060\061\062\063\064\065\066\067\070\071\072\073\074\075\076\077" +
+    "\100\101\102\103\104\105\106\107\110\111\112\113\114\115\116\117" +
+    "\120\121\122\123\124\125\126\127\130\131\132\133\134\135\136\137" +
+    "\140\141\142\143\144\145\146\147\150\151\152\153\154\155\156\157" +
+    "\160\161\162\163\164\165\166\167\170\171\172\173\174\175\176\177" +
+    "\200\201\202\203\204\205\206\207\210\211\212\213\214\215\216\217" +
+    "\220\221\222\223\224\225\226\227\230\231\232\233\234\235\236\237" +
+    "\240\241\242\243\244\245\246\247\250\251\252\253\254\255\256\257" +
+    "\260\261\262\263\264\265\266\267\270\271\272\273\274\275\276\277" +
+    "\300\301\302\303\304\305\306\307\310\311\312\313\314\315\316\317" +
+    "\320\321\322\323\324\325\326\327\330\331\332\333\334\335\336\337" +
+    "\340\341\342\343\344\345\346\347\350\351\352\353\354\355\356\357" +
+    "\360\361\362\363\364\365\366\367\370\371\372\373\374\375\376\377"
+).elems())}
 
-# Offset of the install name within a `dylib_command`, i.e.
-# `sizeof(struct dylib_command)`, which is where ld64 and `install_name_tool`
-# put it.
-_DYLIB_COMMAND_NAME_OFFSET = 24
-_DYLIB_COMMAND_NAME_OFFSET_BYTES = "\030\000\000\000"
+# Mach-O constants from <mach-o/loader.h>. Both macOS architectures (arm64 and
+# x86_64) are little-endian.
+_MH_MAGIC_64 = "\317\372\355\376"
+_MACH_HEADER_64_SIZE = 32
+_LC_ID_DYLIB = 0xd
+
+# `sizeof(struct load_command)`: `cmd` and `cmdsize`.
+_LOAD_COMMAND_SIZE = 8
+
+# `sizeof(struct dylib_command)`; the install name follows the fixed fields.
+_DYLIB_COMMAND_SIZE = 24
+
+def _u32le(contents, offset):
+    """Decodes the little-endian uint32 at `offset`, which must be in range."""
+    value = 0
+    for i in (3, 2, 1, 0):
+        value = value * 256 + _BYTE_VALUES[contents[offset + i]]
+    return value
 
 def dylib_id_is_rpath(contents, dylib):
     """Tells whether a dylib's LC_ID_DYLIB is `@rpath/<dylib>`.
 
-    This reads the load command instead of shelling out to `otool -D`, which,
+    This parses the load commands instead of shelling out to `otool -D`, which,
     like `install_name_tool`, may not be on PATH.
 
-    A `dylib_command` is `cmd`, `cmdsize`, `name.offset`, then three more
-    32-bit fields, followed by the NUL-terminated name. So a match is an
-    `@rpath/<dylib>\\0` string preceded by `LC_ID_DYLIB` 24 bytes earlier and
-    by a `name.offset` field of 24, 16 bytes earlier. An `LC_LOAD_DYLIB`, or any
-    other occurrence of the same path, does not match.
+    It reads `ncmds` and `sizeofcmds` from the `mach_header_64`, then walks the
+    load commands that follow it by their `cmdsize`, staying within
+    `sizeofcmds`. The first `LC_ID_DYLIB` command decides: its `name.offset`
+    locates the NUL-terminated install name, which must lie inside the command
+    and equal `@rpath/<dylib>`. The same path anywhere else, such as in an
+    `LC_LOAD_DYLIB` command or in the data after the load commands, does not
+    count.
 
-    Only thin 64-bit Mach-O files are recognized; anything else, such as a
-    universal binary, returns False so the caller rewrites the id.
+    Only thin 64-bit Mach-O files are recognized. Anything else, such as a
+    universal or 32-bit binary, or load commands that do not fit in
+    `sizeofcmds`, returns False so that the caller rewrites the id with
+    `install_name_tool`.
 
     Args:
         contents: {type}`str` The dylib's bytes, as read by `rctx.read`.
@@ -57,22 +90,37 @@ def dylib_id_is_rpath(contents, dylib):
     Returns:
         {type}`bool` True if the dylib's id is already `@rpath/<dylib>`.
     """
-    if not contents.startswith(_MH_MAGIC_64):
+    if (len(contents) < _MACH_HEADER_64_SIZE or
+        not contents.startswith(_MH_MAGIC_64)):
         return False
-    name = "@rpath/{}\000".format(dylib)
-    start = 0
+    ncmds = _u32le(contents, 16)
+    end = _MACH_HEADER_64_SIZE + _u32le(contents, 20)  # sizeofcmds
+    if end > len(contents):
+        return False
 
-    # Starlark has no while loop; each iteration advances past one match.
-    for _ in range(len(contents)):
-        idx = contents.find(name, start)
-        if idx < 0:
+    offset = _MACH_HEADER_64_SIZE
+
+    # Every command is at least _LOAD_COMMAND_SIZE bytes, so the walk stops
+    # within `sizeofcmds` even if `ncmds` is bogus.
+    for _ in range(ncmds):
+        if offset + _LOAD_COMMAND_SIZE > end:
             return False
-        cmd = idx - _DYLIB_COMMAND_NAME_OFFSET
-        if (cmd >= 0 and
-            contents[cmd:cmd + 4] == _LC_ID_DYLIB and
-            contents[cmd + 8:cmd + 12] == _DYLIB_COMMAND_NAME_OFFSET_BYTES):
-            return True
-        start = idx + 1
+        cmd = _u32le(contents, offset)
+        cmdsize = _u32le(contents, offset + 4)
+        if cmdsize < _LOAD_COMMAND_SIZE or offset + cmdsize > end:
+            return False
+        if cmd == _LC_ID_DYLIB:
+            if cmdsize < _DYLIB_COMMAND_SIZE:
+                return False
+            name_offset = _u32le(contents, offset + 8)
+            if name_offset < _DYLIB_COMMAND_SIZE or name_offset >= cmdsize:
+                return False
+            name_start = offset + name_offset
+            name_end = contents.find("\000", name_start, offset + cmdsize)
+            if name_end < 0:
+                return False
+            return contents[name_start:name_end] == "@rpath/" + dylib
+        offset += cmdsize
     return False
 
 def is_standalone_interpreter(rctx, python_interpreter_path, *, logger = None):

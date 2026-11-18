@@ -15,6 +15,7 @@
 
 load("@bazel_ci_rules//:rbe_repo.bzl", "rbe_preconfig")
 load("//python/private/pypi:whl_library.bzl", "whl_library")
+load("//tests/python_repository:dylib_read_repo.bzl", "dylib_read_repo")
 load("//tests/support/whl_from_dir:whl_from_dir_repo.bzl", "whl_from_dir_repo")
 load(":runtime_env_repo.bzl", "runtime_env_repo")
 
@@ -29,6 +30,9 @@ def _internal_dev_deps_impl(mctx):
         toolchain = "ubuntu2404",
     )
     runtime_env_repo(name = "rules_python_runtime_env_tc_info")
+
+    # Setup for //tests/python_repository:dylib_read_test
+    dylib_read_repo(name = "dylib_read")
 
     # Setup for //tests/whl_with_build_files
     whl_from_dir_repo(
