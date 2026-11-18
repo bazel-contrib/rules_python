@@ -226,17 +226,18 @@ def _python_repository_impl(rctx):
         # host machine used in the Python standalone build, which causes
         # dyld lookup errors. To fix, set the full path to the dylib as
         # it appears in the Bazel workspace as its LC_ID_DYLIB using
-        # the `install_name_tool` bundled with macOS.
+        # the `install_name_tool` bundled with macOS. Skip it when the id is already set.
         dylib = "libpython{}{}.dylib".format(
             python_short_version,
             "d" if debug else "",
         )
-        repo_utils.execute_checked(
-            rctx,
-            op = "python_repository.FixUpDyldIdPath",
-            arguments = [repo_utils.which_checked(rctx, "install_name_tool"), "-id", "@rpath/{}".format(dylib), "lib/{}".format(dylib)],
-            logger = logger,
-        )
+        if "@rpath/{}".format(dylib) not in rctx.read("lib/{}".format(dylib)):
+            repo_utils.execute_checked(
+                rctx,
+                op = "python_repository.FixUpDyldIdPath",
+                arguments = [repo_utils.which_checked(rctx, "install_name_tool"), "-id", "@rpath/{}".format(dylib), "lib/{}".format(dylib)],
+                logger = logger,
+            )
 
     _create_pycache_symlinks(rctx, logger)
     python_bin = "python.exe" if ("windows" in platform) else "bin/python3"
