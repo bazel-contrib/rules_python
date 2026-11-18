@@ -320,6 +320,43 @@ def test_extras_with_hyphens_are_normalized(env):
 
 _tests.append(test_extras_with_hyphens_are_normalized)
 
+def test_deps_with_extras(env):
+    got = deps(
+        "foo",
+        requires_dist = [
+            "bar[Socks]",
+            "baz[a,b]; sys_platform == 'linux'",
+            "qux",
+            "qux[c]; extra == 'feat'",
+        ],
+        extras = ["feat"],
+        keep_extras = True,
+    )
+
+    # The extras of the dependencies are kept so that the targets with the
+    # extras can be used.
+    env.expect.that_collection(got.deps).contains_exactly(["bar[socks]", "qux", "qux[c]"])
+    env.expect.that_dict(got.deps_select).contains_exactly({
+        "baz[a]": "sys_platform == \"linux\"",
+        "baz[b]": "sys_platform == \"linux\"",
+    })
+
+_tests.append(test_deps_with_extras)
+
+def test_deps_with_extras_excludes_and_includes(env):
+    got = deps(
+        "foo",
+        requires_dist = ["bar", "bar[socks]", "baz[a]", "baz[b]", "qux[b]"],
+        # The excludes are dependencies and the includes are packages
+        excludes = ["bar", "baz[a]"],
+        include = ["bar", "baz"],
+        keep_extras = True,
+    )
+
+    env.expect.that_collection(got.deps).contains_exactly(["bar[socks]", "baz[b]"])
+
+_tests.append(test_deps_with_extras_excludes_and_includes)
+
 def deps_test_suite(name):  # buildifier: disable=function-docstring
     test_suite(
         name = name,

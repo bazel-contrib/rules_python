@@ -1,0 +1,4 @@
+Name: consumer
+Version: 1.0
+Requires-Dist: pkg[optional]
+Requires-Dist: pkg[unknown]
