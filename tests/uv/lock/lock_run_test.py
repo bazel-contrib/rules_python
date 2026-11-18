@@ -232,15 +232,19 @@ class LockTests(unittest.TestCase):
             output = _run_binary(
                 copier_path,
                 "--upgrade-package",
-                "foo",
+                "foo >=2",
                 capture_output=True,
                 env=self._subprocess_env(workspace_dir),
             )
 
             # Then
             self.assertEqual(2, output.returncode, output.stderr)
+            # Quoted for the shell the command is pasted into: CMD on Windows
+            # recognizes only double quotes.
+            quoted = '"foo >=2"' if os.name == "nt" else "'foo >=2'"
             self.assertIn(
-                "bazel run //tests/uv/lock:requirements.run -- --upgrade-package foo",
+                "bazel run //tests/uv/lock:requirements.run -- --upgrade-package "
+                + quoted,
                 output.stderr.decode("utf-8"),
             )
             self.assertFalse(want_path.exists(), "Nothing should be copied")
