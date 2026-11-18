@@ -23,6 +23,58 @@ load(":text_util.bzl", "render")
 
 STANDALONE_INTERPRETER_FILENAME = "STANDALONE_INTERPRETER"
 
+# Mach-O constants from <mach-o/loader.h>, as little-endian bytes. Both macOS
+# architectures (arm64 and x86_64) are little-endian. `rctx.read` maps each
+# byte to one character, and Bazel's Starlark only has octal byte escapes.
+_MH_MAGIC_64 = "\317\372\355\376"
+_LC_ID_DYLIB = "\015\000\000\000"
+
+# Offset of the install name within a `dylib_command`, i.e.
+# `sizeof(struct dylib_command)`, which is where ld64 and `install_name_tool`
+# put it.
+_DYLIB_COMMAND_NAME_OFFSET = 24
+_DYLIB_COMMAND_NAME_OFFSET_BYTES = "\030\000\000\000"
+
+def dylib_id_is_rpath(contents, dylib):
+    """Tells whether a dylib's LC_ID_DYLIB is `@rpath/<dylib>`.
+
+    This reads the load command instead of shelling out to `otool -D`, which,
+    like `install_name_tool`, may not be on PATH.
+
+    A `dylib_command` is `cmd`, `cmdsize`, `name.offset`, then three more
+    32-bit fields, followed by the NUL-terminated name. So a match is an
+    `@rpath/<dylib>\\0` string preceded by `LC_ID_DYLIB` 24 bytes earlier and
+    by a `name.offset` field of 24, 16 bytes earlier. An `LC_LOAD_DYLIB`, or any
+    other occurrence of the same path, does not match.
+
+    Only thin 64-bit Mach-O files are recognized; anything else, such as a
+    universal binary, returns False so the caller rewrites the id.
+
+    Args:
+        contents: {type}`str` The dylib's bytes, as read by `rctx.read`.
+        dylib: {type}`str` The dylib's file name, e.g. `libpython3.13.dylib`.
+
+    Returns:
+        {type}`bool` True if the dylib's id is already `@rpath/<dylib>`.
+    """
+    if not contents.startswith(_MH_MAGIC_64):
+        return False
+    name = "@rpath/{}\000".format(dylib)
+    start = 0
+
+    # Starlark has no while loop; each iteration advances past one match.
+    for _ in range(len(contents)):
+        idx = contents.find(name, start)
+        if idx < 0:
+            return False
+        cmd = idx - _DYLIB_COMMAND_NAME_OFFSET
+        if (cmd >= 0 and
+            contents[cmd:cmd + 4] == _LC_ID_DYLIB and
+            contents[cmd + 8:cmd + 12] == _DYLIB_COMMAND_NAME_OFFSET_BYTES):
+            return True
+        start = idx + 1
+    return False
+
 def is_standalone_interpreter(rctx, python_interpreter_path, *, logger = None):
     """Query a python interpreter target for whether or not it's a rules_rust provided toolchain
 
@@ -226,12 +278,14 @@ def _python_repository_impl(rctx):
         # host machine used in the Python standalone build, which causes
         # dyld lookup errors. To fix, set the full path to the dylib as
         # it appears in the Bazel workspace as its LC_ID_DYLIB using
-        # the `install_name_tool` bundled with macOS. Skip it when the id is already set.
+        # the `install_name_tool` bundled with macOS. Skip it when the
+        # LC_ID_DYLIB is already `@rpath/<dylib>`, so fetching does not need
+        # `install_name_tool` on PATH.
         dylib = "libpython{}{}.dylib".format(
             python_short_version,
             "d" if debug else "",
         )
-        if "@rpath/{}".format(dylib) not in rctx.read("lib/{}".format(dylib)):
+        if not dylib_id_is_rpath(rctx.read("lib/{}".format(dylib)), dylib):
             repo_utils.execute_checked(
                 rctx,
                 op = "python_repository.FixUpDyldIdPath",
