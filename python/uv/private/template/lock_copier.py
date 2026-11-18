@@ -1,3 +1,4 @@
+import shlex
 import sys
 from difflib import unified_diff
 from os import environ
@@ -9,6 +10,18 @@ _LINE = "=" * 80
 def main():
     src = "{{src}}"
     dst = "{{dst}}"
+    update_target = "{{update_target}}"
+
+    if len(sys.argv) > 1:
+        # This copies what the lock build action produced, and no argument can
+        # reach that action; the `.run` target passes them to uv instead.
+        run_target = update_target.removesuffix(".update") + ".run"
+        print(
+            f"{update_target} takes no arguments. To pass them to uv, run:\n\n"
+            f"    bazel run {run_target} -- {shlex.join(sys.argv[1:])}",
+            file=sys.stderr,
+        )
+        return 2
 
     src = Path(src)
     if not src.exists():

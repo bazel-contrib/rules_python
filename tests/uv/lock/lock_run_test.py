@@ -43,14 +43,14 @@ def _relative_rpath(path: str) -> Path:
     raise ValueError(f"Could not find file in runfiles: {path}")
 
 
-def _run_binary(path: Path, **kwargs):
+def _run_binary(path: Path, *args: str, **kwargs):
     """Run a binary, handling Windows .bat files."""
     if os.name == "nt":
         return subprocess.run(
-            ["cmd.exe", "/c", str(path)],
+            ["cmd.exe", "/c", str(path), *args],
             **kwargs,
         )
-    return subprocess.run(path, **kwargs)
+    return subprocess.run([path, *args], **kwargs)
 
 
 class LockTests(unittest.TestCase):
@@ -211,6 +211,39 @@ class LockTests(unittest.TestCase):
             )
             self.assertTrue(want_path.exists(), "The path should exist after the test")
             self.assertNotEqual(want_path.read_text(), "")
+
+    def test_requirements_updating_refuses_arguments(self):
+        # Given
+        copier_path = _relative_rpath("requirements.update")
+
+        # When
+        with tempfile.TemporaryDirectory() as dir:
+            workspace_dir = Path(dir)
+            want_path = (
+                workspace_dir
+                / "tests"
+                / "uv"
+                / "lock"
+                / "testdata"
+                / "requirements.txt"
+            )
+            want_path.parent.mkdir(parents=True)
+
+            output = _run_binary(
+                copier_path,
+                "--upgrade-package",
+                "foo",
+                capture_output=True,
+                env=self._subprocess_env(workspace_dir),
+            )
+
+            # Then
+            self.assertEqual(2, output.returncode, output.stderr)
+            self.assertIn(
+                "bazel run //tests/uv/lock:requirements.run -- --upgrade-package foo",
+                output.stderr.decode("utf-8"),
+            )
+            self.assertFalse(want_path.exists(), "Nothing should be copied")
 
     def test_requirements_run_on_the_first_time(self):
         # Given
