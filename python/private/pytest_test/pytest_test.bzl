@@ -4,8 +4,6 @@ load("//python:py_test.bzl", "py_test")
 
 _DEFAULT_PYTEST = Label("//python/private/pytest_test:default_pytest")
 _DEFAULT_PYTEST_BAZEL = Label("//python/private/pytest_test:default_pytest_bazel")
-_DEFAULT_PYTEST_SHARD = Label("//python/private/pytest_test:default_pytest_shard")
-_DEFAULT_PYTEST_RANDOMLY = Label("//python/private/pytest_test:default_pytest_randomly")
 
 def pytest_test(
         *,
@@ -13,8 +11,6 @@ def pytest_test(
         srcs,
         pytest = None,
         pytest_bazel = None,
-        pytest_shard = None,
-        pytest_randomly = None,
         python_versions = None,
         **kwargs):
     """Run pytest tests.
@@ -29,11 +25,6 @@ def pytest_test(
         pytest: The pytest target to use. Defaults to `@pypi//pytest`.
         pytest_bazel: The pytest-bazel target to use. Defaults to
             `@pypi//pytest_bazel`.
-        pytest_shard: The pytest-shard target to use. Defaults to
-            `@pypi//pytest_shard`.
-        pytest_randomly: The pytest-randomly target to use. Defaults to
-            `@pypi//pytest_randomly`. Pass `@rules_python//python:none` or
-            another empty {obj}`py_library` target to disable it.
         python_versions: List of Python versions to test against. If specified,
             a test is created for each version and grouped under a test_suite
             named `name`.
@@ -46,8 +37,6 @@ def pytest_test(
             srcs = srcs,
             pytest = pytest,
             pytest_bazel = pytest_bazel,
-            pytest_shard = pytest_shard,
-            pytest_randomly = pytest_randomly,
             python_versions = python_versions,
             **kwargs
         )
@@ -57,8 +46,6 @@ def pytest_test(
             srcs = srcs,
             pytest = pytest,
             pytest_bazel = pytest_bazel,
-            pytest_shard = pytest_shard,
-            pytest_randomly = pytest_randomly,
             **kwargs
         )
 
@@ -68,8 +55,6 @@ def _multi_pytest_test(
         srcs,
         pytest = None,
         pytest_bazel = None,
-        pytest_shard = None,
-        pytest_randomly = None,
         python_versions,
         **kwargs):
     if "python_version" in kwargs:
@@ -88,8 +73,6 @@ def _multi_pytest_test(
             srcs = srcs,
             pytest = pytest,
             pytest_bazel = pytest_bazel,
-            pytest_shard = pytest_shard,
-            pytest_randomly = pytest_randomly,
             python_version = python_version,
             **kwargs
         )
@@ -111,18 +94,12 @@ def _single_pytest_test(
         srcs,
         pytest = None,
         pytest_bazel = None,
-        pytest_shard = None,
-        pytest_randomly = None,
         **kwargs):
     deps = kwargs.pop("deps", None) or []
     if pytest == None:
         pytest = _DEFAULT_PYTEST
     if pytest_bazel == None:
         pytest_bazel = _DEFAULT_PYTEST_BAZEL
-    if pytest_shard == None:
-        pytest_shard = _DEFAULT_PYTEST_SHARD
-    if pytest_randomly == None:
-        pytest_randomly = _DEFAULT_PYTEST_RANDOMLY
 
     bootstrap_target = name + "_bootstrap"
     main_file = name + "_boot.py"
@@ -133,20 +110,15 @@ def _single_pytest_test(
         tags = ["manual"],
     )
 
-    extra_deps = [
-        pytest,
-        pytest_bazel,
-        pytest_randomly,
-    ]
-    if kwargs.get("shard_count"):
-        extra_deps.append(pytest_shard)
-
     kwargs = dict(kwargs)
     py_test(
         name = name,
         main = main_file,
         srcs = [bootstrap_target] + srcs,
-        deps = deps + extra_deps,
+        deps = deps + [
+            pytest,
+            pytest_bazel,
+        ],
         **kwargs
     )
 

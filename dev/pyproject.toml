@@ -19,8 +19,6 @@ dependencies = [
     "macholib",
     "markupsafe",
     "pytest",
-    "pytest-bazel",
+    "pytest-bazel==1.0.0rc0",
     "pytest-mock",
-    "pytest-randomly",
-    "pytest-shard",
 ]

@@ -627,13 +627,14 @@ wheels = [
 
 [[package]]
 name = "pytest-bazel"
-version = "0.1.6"
+version = "1.0.0rc0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pytest" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c2/90/4726a39728fb5a5f77a773c5e9d7bfd3a0120aa2029963a88fd06e2c5fb2/pytest_bazel-0.1.6-py3-none-any.whl", hash = "sha256:a29e80e1d67c3db801bdd4d0b6b742f2bfb48cd6841caa33401458e5c4e29c21", size = 10126, upload-time = "2025-10-31T08:41:17.165Z" },
+    { url = "https://files.pythonhosted.org/packages/bc/f6/46ec707db87871a9eceb63df56ba2a3133ddb033d24706781c051d05800e/pytest_bazel-1.0.0rc0-py3-none-any.whl", hash = "sha256:37debc7fca564d4697ecef06a0652c907c5a7bc7143202bc7923107d588d63b3", size = 43463, upload-time = "2026-11-17T23:42:21.364Z" },
 ]
 
 [[package]]
@@ -646,30 +647,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/97/c2/28b9f5b955ff2bcd4727a6f768e2ca9b586cd7c37b95ea5f7b9b873ac7b3/pytest_mock-3.17.0.tar.gz", hash = "sha256:e36576e0985e01027e999891e7a966c67822d40c89ef1b4c8b6e22737e3590b4", size = 43064, upload-time = "2026-10-17T16:21:42.435Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e8/ea/47fbdc8f37410956fd445720e927589b1e2a47772c5f28109f0ce2fa26d9/pytest_mock-3.17.0-py3-none-any.whl", hash = "sha256:1b82aa4b37137248bd687055e109723debeb07b489de1565297dc9589c5f2d6b", size = 11248, upload-time = "2026-10-17T16:21:41.265Z" },
-]
-
-[[package]]
-name = "pytest-randomly"
-version = "5.0.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pytest" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/01/3b/6a40e1b9d925651e601e056a97f60d8a1daeddeac03d5609be60cb4362ce/pytest_randomly-5.0.0.tar.gz", hash = "sha256:e9c575a5873ef168ddbe340ed9e97ce9edb4492ccc821e4b2ac6bb1f0ed515d2", size = 8542, upload-time = "2026-09-01T22:34:20.441Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/10/b4/47e939285caad9a623d021512912ac08dc92a467ad075d179f43729d2934/pytest_randomly-5.0.0-py3-none-any.whl", hash = "sha256:8a0d4703115c0c25b38b6e129fc16b1947b9643ff26a41bc1d185d7e5a7689c1", size = 8920, upload-time = "2026-09-01T22:34:19.227Z" },
-]
-
-[[package]]
-name = "pytest-shard"
-version = "0.1.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pytest" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/c6/ca/3efa6f3b84dab83220db45997e785be726684c2c2c4267bffb7d80101c7f/pytest-shard-0.1.2.tar.gz", hash = "sha256:b86a967fbfd1c8e50295095ccda031b7e890862ee06531d5142844f4c1d1cd67", size = 3579, upload-time = "2020-12-11T19:52:55.083Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/65/7a/dbeb4c54e9fc3b59622f410091365f354a69cda1af10c3b83ac0ca6e6f4f/pytest_shard-0.1.2-py3-none-any.whl", hash = "sha256:407a1df385cebe1feb9b4d2e7eeee8b044f8a24f0919421233159a17c59be2b9", size = 4608, upload-time = "2020-12-11T19:52:54.226Z" },
 ]
 
 [[package]]
@@ -789,8 +766,6 @@ dependencies = [
     { name = "pytest" },
     { name = "pytest-bazel" },
     { name = "pytest-mock" },
-    { name = "pytest-randomly" },
-    { name = "pytest-shard" },
     { name = "readthedocs-sphinx-ext" },
     { name = "sphinx", version = "8.1.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "sphinx", version = "9.0.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
@@ -811,10 +786,8 @@ requires-dist = [
     { name = "pefile" },
     { name = "pyelftools" },
     { name = "pytest" },
-    { name = "pytest-bazel" },
+    { name = "pytest-bazel", specifier = "==1.0.0rc0" },
     { name = "pytest-mock" },
-    { name = "pytest-randomly" },
-    { name = "pytest-shard" },
     { name = "readthedocs-sphinx-ext" },
     { name = "sphinx" },
     { name = "sphinx-autodoc2" },
