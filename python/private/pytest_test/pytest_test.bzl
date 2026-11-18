@@ -11,11 +11,22 @@ def pytest_test(
         srcs,
         pytest = None,
         pytest_bazel = None,
+        pytest_shard = None,
+        pytest_randomly = None,
         python_versions = None,
         **kwargs):
     """Run pytest tests.
 
+    The tests are run with [pytest-bazel](https://pytest-bazel.readthedocs.io/latest/),
+    which makes pytest follow the Bazel test encyclopedia, e.g. for
+    `--test_filter`, sharding, `--runs_per_test` and the test outputs.
+
     :::{versionadded} 2.5.0
+    :::
+
+    :::{versionchanged} VERSION_NEXT_FEATURE
+    `pytest-randomly` and `pytest-shard` are no longer added by default, as
+    `pytest-bazel` 1.0 shards the tests itself.
     :::
 
     Args:
@@ -25,12 +36,23 @@ def pytest_test(
         pytest: The pytest target to use. Defaults to `@pypi//pytest`.
         pytest_bazel: The pytest-bazel target to use. Defaults to
             `@pypi//pytest_bazel`.
+        pytest_shard: Deprecated, `pytest-bazel` shards the tests itself. If
+            set, the target is added to the `deps`.
+        pytest_randomly: An optional pytest-randomly target, e.g.
+            `@pypi//pytest_randomly`, to run the tests in a random order.
+            `pytest-bazel` seeds it from `TEST_RANDOM_SEED` or the
+            `--runs_per_test` run number. If set, the target is added to the
+            `deps`.
         python_versions: List of Python versions to test against. If specified,
             a test is created for each version and grouped under a test_suite
             named `name`.
         **kwargs: Additional arguments passed to {obj}`py_test`. Note that
             `main` is not a supported argument.
     """
+    extra_deps = [dep for dep in (pytest_shard, pytest_randomly) if dep != None]
+    if extra_deps:
+        kwargs["deps"] = (kwargs.get("deps") or []) + extra_deps
+
     if python_versions != None:
         _multi_pytest_test(
             name = name,

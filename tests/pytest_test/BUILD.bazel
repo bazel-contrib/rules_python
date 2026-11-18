@@ -35,6 +35,8 @@ pytest_test(
     srcs = [
         "basic_test.py",
     ],
+    # Kept for compatibility, an empty target adds nothing.
+    pytest_randomly = "//python:none",
     target_compatible_with = SUPPORTS_BZLMOD,
 )
 

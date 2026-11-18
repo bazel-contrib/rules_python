@@ -5,9 +5,11 @@ Use this to create test targets using [pytest](https://pypi.org/project/pytest)
 instead of having to declare the main entrypoint for your {obj}`py_test` rules.
 
 In order to use this rule you'll have to have the following packages:
-* `pytest` and `pytest-bazel` - used to invoke pytest.
-* `pytest-randomly` - used to have consistent random number usage.
-* `pytest-shard` - optional, used only if tests need to be sharded.
+* `pytest` and [`pytest-bazel`](https://pytest-bazel.readthedocs.io/latest/) -
+  used to invoke pytest. `pytest-bazel` also shards the tests and seeds the
+  random number generators for `--runs_per_test`.
+* `pytest-randomly` - optional, to run the tests in a random order, see
+  the `pytest_randomly` argument of {obj}`pytest_test`.
 
 :::{versionadded} 2.5.0
 :::

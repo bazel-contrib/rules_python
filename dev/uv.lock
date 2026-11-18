@@ -627,14 +627,14 @@ wheels = [
 
 [[package]]
 name = "pytest-bazel"
-version = "1.0.0rc0"
+version = "1.0.0rc1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pytest" },
     { name = "tomli", marker = "python_full_version < '3.11'" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bc/f6/46ec707db87871a9eceb63df56ba2a3133ddb033d24706781c051d05800e/pytest_bazel-1.0.0rc0-py3-none-any.whl", hash = "sha256:37debc7fca564d4697ecef06a0652c907c5a7bc7143202bc7923107d588d63b3", size = 43463, upload-time = "2026-11-17T23:42:21.364Z" },
+    { url = "https://files.pythonhosted.org/packages/49/bb/dc451a6cc4c588f4e04056c497c5db312052a7e5a101a9783124fa21d3f6/pytest_bazel-1.0.0rc1-py3-none-any.whl", hash = "sha256:f8c0c02c461699e6c48059d763d945fd6f81f1acfb72b09b4aceeb5dd222475a", size = 43475, upload-time = "2026-11-18T16:00:42.306Z" },
 ]
 
 [[package]]
@@ -786,7 +786,7 @@ requires-dist = [
     { name = "pefile" },
     { name = "pyelftools" },
     { name = "pytest" },
-    { name = "pytest-bazel", specifier = "==1.0.0rc0" },
+    { name = "pytest-bazel", specifier = "==1.0.0rc1" },
     { name = "pytest-mock" },
     { name = "readthedocs-sphinx-ext" },
     { name = "sphinx" },
