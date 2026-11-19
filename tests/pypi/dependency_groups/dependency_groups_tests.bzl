@@ -61,6 +61,37 @@ def _test_select(env):
 
 _tests.append(_test_select)
 
+def _test_self_reference_extras(env):
+    pyproject = struct(
+        name = "my-project",
+        dependencies = [],
+        optional_dependencies = {
+            "a": ["a-pkg", "my-project[b]"],
+            "all": ["My_Project[docs, grpc]"],
+            "b": ["b-pkg", "my-project[a]"],
+            "docs": ["docs-pkg"],
+            "everything": ["my-project[all]", "my-project"],
+            "grpc": ["grpc-pkg"],
+        },
+        dependency_groups = {
+            "ci": ["ci-pkg", "my-project[all]"],
+        },
+    )
+    for specs, want in [
+        (["everything"], ["docs_pkg", "grpc_pkg"]),
+        (["ci"], ["ci_pkg", "docs_pkg", "grpc_pkg"]),
+        (["a"], ["a_pkg", "b_pkg"]),
+    ]:
+        got, failures = _select(specs, pyproject = pyproject)
+        env.expect.where(specs = specs).that_collection(
+            failures,
+        ).contains_exactly([])
+        env.expect.where(specs = specs).that_collection(
+            got.packages,
+        ).contains_exactly(want).in_order()
+
+_tests.append(_test_self_reference_extras)
+
 def _test_select_all(env):
     got, failures = _select(["*", "transitive"])
     env.expect.that_collection(failures).contains_exactly([])

@@ -171,7 +171,8 @@ def _internal_visibility(aliases, has_groups = False):
     have to be visible to them.
 
     Args:
-        aliases: {type}`dict[str, str | dict]` package-to-repo alias mapping.
+        aliases: {type}`dict[str, str | dict[struct, str]]` package-to-repo
+            alias mapping.
         has_groups: {type}`bool` whether requirement cycle groups exist.
 
     Returns:

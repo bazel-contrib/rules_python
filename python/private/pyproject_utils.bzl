@@ -22,11 +22,12 @@ def read_pyproject(module_ctx, pyproject):
           * `dependencies`: {type}`list[str]` the `[project] dependencies`.
           * `optional_dependencies`: {type}`dict[str, list[str]]` the
             `[project.optional-dependencies]` table.
-          * `dependency_groups`: {type}`dict[str, list]` the PEP 735
-            `[dependency-groups]` table. Items are either requirement strings
-            or `{include-group = "<name>"}` tables.
+          * `dependency_groups`: {type}`dict[str, list[str | dict[str, str]]]`
+            the PEP 735 `[dependency-groups]` table. Items are either
+            requirement strings or `{include-group = "<name>"}` tables.
     """
-    data = toml.decode(module_ctx.read(module_ctx.path(pyproject), watch = "yes"))
+    raw = module_ctx.read(module_ctx.path(pyproject), watch = "yes")
+    data = toml.decode(raw)
     project = data.get("project", {})
     return struct(
         # str | None: raw `[project] requires-python` value.
@@ -37,7 +38,8 @@ def read_pyproject(module_ctx, pyproject):
         dependencies = project.get("dependencies") or [],
         # dict[str, list[str]]: `[project.optional-dependencies]` table.
         optional_dependencies = project.get("optional-dependencies") or {},
-        # dict[str, list]: PEP 735 `[dependency-groups]` table.
+        # dict[str, list[str | dict[str, str]]]: PEP 735 `[dependency-groups]`
+        # table of requirement strings and `{"include-group": str}` dicts.
         dependency_groups = data.get("dependency-groups") or {},
     )
 

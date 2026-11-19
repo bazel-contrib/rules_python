@@ -67,18 +67,23 @@ def select_dependency_groups(pyproject, specs, _fail = fail):
             selected[key] = None
 
     # A self reference like `my-project[test]` selects the optional
-    # dependencies, but only one level deep.
+    # dependencies, including nested composite extras.
     project = normalize_name(pyproject.name or "")
     packages = {}
-    for key in selected:
-        for req in groups[key]:
+    queue = list(selected)
+    for _ in range(len(groups)):
+        if not queue:
+            break
+        for req in groups[queue.pop(0)]:
             req = requirement(req)
             if req.name_ != project:
                 packages[req.name_] = None
                 continue
             for extra in req.extras:
-                for r in groups.get("optional:" + extra, []):
-                    packages[requirement(r).name_] = None
+                opt_key = "optional:" + extra
+                if opt_key in groups and opt_key not in selected:
+                    selected[opt_key] = None
+                    queue.append(opt_key)
 
     return struct(
         # list[str]: sorted normalized package names selected by `specs`.
@@ -122,8 +127,8 @@ def _expand_dependency_groups(dependency_groups, _fail):
     """Expand the PEP 735 `include-group` entries.
 
     Args:
-        dependency_groups: {type}`dict[str, list]` the `[dependency-groups]`
-            table.
+        dependency_groups: {type}`dict[str, list[str | dict[str, str]]]` the
+            `[dependency-groups]` table.
         _fail: {type}`callable` the failure function.
 
     Returns:
