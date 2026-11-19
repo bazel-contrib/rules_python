@@ -12,6 +12,7 @@ rust_library(
     deps = [
         "@crates//:anyhow",
         "@crates//:argfile",
+        "@crates//:configparser",
         "@crates//:lexopt",
     ],
 )
