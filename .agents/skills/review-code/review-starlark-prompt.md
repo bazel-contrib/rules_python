@@ -35,11 +35,14 @@ in `git diff` against the project's Starlark coding rules and conventions:
     processable by `buildifier` and `buildozer`.
 13. Check macro and rule hygiene: forward unused wrapper arguments via
     `**kwargs`, silence unused variables with `_ = a, b  # @unused`, require
-    comments above each field when returning a `struct(...)` of fields, prefer
-    analysis-time validation over loading-time checks, prefer
+    comments above each field (with parameterized `list[...]` / `dict[...]`
+    element types, never bare `list` or `dict`) when returning a `struct(...)`
+    of fields, prefer analysis-time validation over loading-time checks, prefer
     `ctx.actions.write` over subprocesses for small static strings, use
     `$(execpath ...)` / `$(execpaths ...)` instead of `$(location)` /
-    `$(locations)`, and check public `.bzl` symbol removals/renames for breaking
+    `$(locations)`, verify functions with injectable `_fail = fail` callbacks
+    `return None` immediately after `_fail(...)` and callers guard against
+    `None`, and check public `.bzl` symbol removals/renames for breaking
     users.
 14. Guardrails: Starlark is not Python (`== None` is correct, mutable defaults
     are frozen, no Python stdlib). Ignore `buildifier` formatting output and
