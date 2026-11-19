@@ -67,6 +67,9 @@ def hub_exposure(module_ctx, *, hubs, default_pyproject = None, _fail = fail):
                 last_pyproject[hub] = tag.pyproject_toml
             if not tag.dependency_groups:
                 # The tag does not select any packages.
+                if tag.testonly:
+                    _fail("pip.configure() for hub '{}' uses `testonly`, which needs the `dependency_groups` of the testonly packages".format(hub))
+                    return None
                 continue
 
             pyproject = last_pyproject.get(hub) or info.pyproject

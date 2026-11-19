@@ -263,6 +263,13 @@ def _test_configure_testonly(env):
         "pip.configure() for hub 'hub' cannot use `testonly` when exposing all of the packages with [\"*\", \"transitive\"]",
     ])
 
+    # The testonly packages need to be selected.
+    got, failures = _exposure(_module(configure = [_configure(testonly = True)]))
+    env.expect.that_str(got).equals(None)
+    env.expect.that_collection(failures).contains_exactly([
+        "pip.configure() for hub 'hub' uses `testonly`, which needs the `dependency_groups` of the testonly packages",
+    ])
+
 _tests.append(_test_configure_testonly)
 
 def hub_exposure_test_suite(name):
