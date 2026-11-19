@@ -247,12 +247,12 @@ file from `.agents/skills/review-code/`:
   prompt text) with the following options:
   1. Post non-draft comments
   2. Post draft comments
-  3. Fix trivial issues and push to PR
+  3. Also fix trivial issues and push to PR
   4. Review feedback further
   5. Also approve PR
   6. Also fix all issues
   7. Also push fixes to PR
-- When `Fix trivial issues and push to PR` is selected, implement all
+- When `Also fix trivial issues and push to PR` is selected, implement all
   `Fix directly and push to PR` issues locally, verify with `buildifier` and
   relevant `bazel test --config=fast-tests` targets, commit, and push explicitly
   to the PR head branch (`git push <remote> HEAD:<branch>`). Do not post review
