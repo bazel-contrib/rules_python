@@ -254,9 +254,10 @@ file from `.agents/skills/review-code/`:
   7. Also push fixes to PR
 - When `Also fix trivial issues and push to PR` is selected, implement all
   `Fix directly and push to PR` issues locally, verify with `buildifier` and
-  relevant `bazel test --config=fast-tests` targets, commit, and push explicitly
-  to the PR head branch (`git push <remote> HEAD:<branch>`). Do not post review
-  comments for issues fixed and pushed directly.
+  relevant `bazel test --config=fast-tests` targets, commit, push explicitly to
+  the PR head branch (`git push <remote> HEAD:<branch>`), and post a PR comment
+  summarizing the trivial issues fixed instead of posting individual inline
+  review comments for them.
 - When fixing and pushing open issues that already had non-draft review comments
   posted, reply to each fixed review thread with the commit SHA (and disclosure
   line) without resolving the thread unless explicitly instructed.
