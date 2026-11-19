@@ -120,6 +120,14 @@ filegroup(
     visibility = NOT_ACTUALLY_PUBLIC,
 )
 
+filegroup(
+    name = "console_script_template",
+    srcs = ["console_script_template.txt"],
+    # Not actually public. Only public because it's an implicit dependency of
+    # py_console_script_gen.
+    visibility = NOT_ACTUALLY_PUBLIC,
+)
+
 # NOTE: Windows builds don't use this bootstrap. Instead, a native Windows
 # program locates some Python exe and runs `python.exe foo.zip` which
 # runs the __main__.py in the zip file.
