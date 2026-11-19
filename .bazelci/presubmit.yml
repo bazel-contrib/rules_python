@@ -404,7 +404,7 @@ tasks:
       # The last value wins, so this overrides the setting in .bazelrc to
       # check that binaries work without the privilege to create symlinks.
       - "echo startup --nowindows_enable_symlinks >> .bazelrc"
-    build_flags:
+    build_flags: &windows_no_symlinks_flags
       ? "--keep_going"
       # The CI user may be able to create symlinks, so force the fallback.
       ? "--action_env=RULES_PYTHON_TESTING_DISABLE_SYMLINKS=1"
@@ -412,11 +412,9 @@ tasks:
       # runfiles tree for an output that isn't downloaded from the remote
       # cache yet, and a junction to a file doesn't work.
       ? "--remote_download_all"
-    test_flags:
-      ? "--keep_going"
-      ? "--action_env=RULES_PYTHON_TESTING_DISABLE_SYMLINKS=1"
-      ? "--remote_download_all"
+      # Repeat in build_flags so `bazel test` reuses the build's analysis cache.
       ? "--test_env=RULES_PYTHON_TESTING_DISABLE_SYMLINKS=1"
+    test_flags: *windows_no_symlinks_flags
 
   integration_test_multi_python_versions_ubuntu_workspace:
     <<: *reusable_build_test_all
