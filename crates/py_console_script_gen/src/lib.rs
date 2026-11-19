@@ -162,7 +162,13 @@ pub fn run(options: &Options) -> Result<()> {
 
     let template = fs::read_to_string(&options.template)
         .with_context(|| format!("reading template {}", options.template.display()))?;
-    let rendered = render_template(&template, &options.shebang, module, attr, entry_point_callable);
+    let rendered = render_template(
+        &template,
+        &options.shebang,
+        module,
+        attr,
+        entry_point_callable,
+    );
     fs::write(&options.out, rendered)
         .with_context(|| format!("writing {}", options.out.display()))?;
 
