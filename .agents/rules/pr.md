@@ -51,7 +51,9 @@ Before drafting any pull request description, strictly adhere to the rules in
   existing PR (such as a Dependabot PR); instead, disclose AI authorship only
   on comments you actually post (see below). Never post comments for every CI
   run or narrate build IDs, commit SHAs, line counts, or trivial diff details
-  (e.g., "comment-only"); comment `PTAL` only when ready for re-review.
+  (e.g., "comment-only"); comment only for substantive answers/questions, a
+  brief notice after `/review-code` re-wraps another contributor's PR
+  description, or `PTAL` when ready for re-review.
 * High-level overview only: state *why* the change is made and *how* at a
   conceptual level.
 * **Issue References**: Reference issues in PR descriptions (e.g., `Work towards
@@ -69,7 +71,12 @@ Before drafting any pull request description, strictly adhere to the rules in
 * **Benchmark Summaries**: Format performance comparisons as a brief 3-5 bullet
   list by workload dimension (speedup range, wall time, RSS) rather than prose.
 * **Preserve Existing Descriptions**: Preserve the author's wording unless
-  instructed to change it. Wrap bodies at 72 columns.
+  instructed to change it. Wrap body prose at 72 columns (excluding long
+  URLs, Markdown links, fenced code blocks, and Markdown tables). As an
+  explicit exception during `/review-code`, run
+  `.agents/skills/review-code/scripts/wrap_pr_body.py` directly on GitHub PRs
+  and, when editing another contributor's PR, post a brief notice comment
+  instead of drafting a long formatting suggestion.
 * **Open Questions & Follow-Up Items**:
   * Add the `"do not merge"` label to the PR when the PR description contains
     open questions (e.g., `gh pr edit <pr> --repo bazel-contrib/rules_python

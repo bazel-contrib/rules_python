@@ -210,6 +210,34 @@ file from `.agents/skills/review-code/`:
   use the `Justification & Exception Auditor` to evaluate it, rejecting weak or
   inaccurate justifications as `SHOULD-FIX` and keeping plausible justifications
   open as `[HUMAN-SIGN-OFF]` until the user explicitly signs off.
+- When reviewing an existing GitHub PR whose description has incorrect line
+  wrapping against `.agents/rules/pr.md` (body prose over 72 columns,
+  excluding long URLs, Markdown links, fenced code blocks, and Markdown
+  tables):
+  - As an explicit exception to the `ask_question` gate for candidate comments
+    on another user's PR, run
+    `.agents/skills/review-code/scripts/wrap_pr_body.py` with
+    `--repo=bazel-contrib/rules_python -- "<pr>"` directly during synthesis.
+    Do not pull raw PR descriptions into LLM context to re-wrap manually or
+    propose a long `Draft Comment`; the script re-fetches via `gh pr view`,
+    strips control characters, wraps prose deterministically, verifies
+    non-whitespace token equivalence, and applies `gh pr edit`.
+  - Only after `wrap_pr_body.py` exits `0` with `status=updated`:
+    - If modifying another contributor's PR, write a brief notice saying PR
+      description prose was wrapped to 72 columns (ending with
+      `*This is an agent-generated comment unreviewed by the user.*`) to
+      `<artifact_dir>/scratch/pr-wrap-notice.md` and post via
+      `gh pr comment --repo=bazel-contrib/rules_python` with
+      `--body-file="<artifact_dir>/scratch/pr-wrap-notice.md" -- "<pr>"`.
+    - On the user's own PR, omit the notice comment.
+    - Record the fix under `## Resolved Issues` in `code-review-results.md`.
+  - If `wrap_pr_body.py` exits `0` with `status=unchanged` (for example, when
+    the PR was wrapped in the interim or no prose lines exceed 72 columns),
+    omit the notice comment and drop the finding (or move it to
+    `## Resolved Issues` if previously recorded).
+  - If `wrap_pr_body.py` fails (e.g., `gh pr edit` lacks permissions), keep
+    the finding under `## Open Issues` in `code-review-results.md` with a
+    1-sentence `Draft Comment` requesting 72-column prose wrapping.
 - Once all sub-agents finish, finalize `code-review-results.md` and provide a
   concise summary with the overall verdict and a clickable markdown link to
   `code-review-results.md` in the response.
