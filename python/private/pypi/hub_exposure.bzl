@@ -36,12 +36,16 @@ def hub_exposure(module_ctx, *, hubs, default_pyproject = None, _fail = fail):
     root_configured = {}
     for mod in root_modules:
         for tag in mod.tags.configure:
-            root_configured[tag.hub_name] = None
+            if tag.dependency_groups:
+                root_configured[tag.hub_name] = None
 
     configured = {}
     exposes_all = {}
     extras = {}
     for mod in module_ctx.modules:
+        # The tags of a module are applied in order like a builder: a tag
+        # without a `pyproject_toml` uses the last one set for the hub.
+        last_pyproject = {}
         for tag in mod.tags.configure:
             hub = tag.hub_name
             if hub not in hubs:
@@ -52,18 +56,27 @@ def hub_exposure(module_ctx, *, hubs, default_pyproject = None, _fail = fail):
                 return None
 
             info = hubs[hub]
-            if not mod.is_root and (mod.name != info.module_name or hub in root_configured):
+            if not mod.is_root and mod.name != info.module_name:
                 # Only the root module and the module that created the hub can
                 # configure it.
                 continue
+            if not mod.is_root and hub in root_configured:
+                continue
 
-            pyproject = (
-                tag.pyproject_toml or
-                info.pyproject or
-                (default_pyproject if info.module_name == root_name else None)
-            )
+            if tag.pyproject_toml:
+                last_pyproject[hub] = tag.pyproject_toml
+            if not tag.dependency_groups:
+                # The tag does not select any packages.
+                continue
+
+            pyproject = last_pyproject.get(hub) or info.pyproject
+            if not pyproject and info.module_name == root_name:
+                pyproject = default_pyproject
             if not pyproject:
-                _fail("pip.configure() for hub '{}' requires a pyproject.toml, set `pyproject_toml` on `pip.configure` or `pip.parse`".format(hub))
+                _fail("pip.configure() for hub '{}' selects the dependency groups {}, which need a pyproject.toml, set `pyproject_toml` on this or an earlier `pip.configure` or on `pip.parse`".format(
+                    hub,
+                    tag.dependency_groups,
+                ))
                 return None
 
             selection = select_dependency_groups(
@@ -71,6 +84,8 @@ def hub_exposure(module_ctx, *, hubs, default_pyproject = None, _fail = fail):
                 tag.dependency_groups,
                 _fail = _fail,
             )
+            if selection == None:
+                return None
             if selection.all:
                 exposes_all[hub] = None
 

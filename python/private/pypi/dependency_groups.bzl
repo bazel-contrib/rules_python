@@ -25,7 +25,7 @@ def select_dependency_groups(pyproject, specs, _fail = fail):
         _fail: {type}`callable` the failure function, mainly for testing.
 
     Returns:
-        {type}`struct` with the attributes:
+        {type}`struct | None` with the attributes:
           * `packages`: {type}`list[str]` the sorted normalized package names.
           * `all`: {type}`bool` whether all of the packages including the
             transitive dependencies should be selected, i.e. `"*"` and
@@ -34,18 +34,24 @@ def select_dependency_groups(pyproject, specs, _fail = fail):
             names mapped to the sorted normalized extras that the selected
             requirements request, e.g. `requests[socks]`. When `all` is set,
             the extras of all of the groups are returned.
+        Returns `None` on failure.
     """
     groups = {"default": pyproject.dependencies}
     for name, reqs in pyproject.optional_dependencies.items():
         groups["optional:" + normalize_name(name)] = reqs
-    for name, reqs in _expand_dependency_groups(pyproject.dependency_groups, _fail).items():
+    expanded = _expand_dependency_groups(pyproject.dependency_groups, _fail)
+    if expanded == None:
+        return None
+    for name, reqs in expanded.items():
         groups["group:" + name] = reqs
 
     select_all = "transitive" in specs
     if select_all:
         if "*" not in specs:
-            _fail("The 'transitive' dependency group specifier is only supported together with '*', which selects all of the packages, got: {}".format(specs))
-            return struct(packages = [], all = True, extras = {})
+            _fail("The 'transitive' dependency group specifier is only supported together with '*', which selects all of the packages, got: {}".format(
+                specs,
+            ))
+            return None
         specs = ["*"]
 
     selected = {}
@@ -56,21 +62,28 @@ def select_dependency_groups(pyproject, specs, _fail = fail):
                 spec,
                 ", ".join(sorted(groups)),
             ))
+            return None
         for key in keys:
             selected[key] = None
 
     # A self reference like `my-project[test]` selects the optional
-    # dependencies, but only one level deep.
+    # dependencies, including nested composite extras.
     project = normalize_name(pyproject.name or "")
     reqs = []
-    for key in selected:
-        for req in groups[key]:
+    queue = list(selected)
+    for _ in range(len(groups)):
+        if not queue:
+            break
+        for req in groups[queue.pop(0)]:
             req = requirement(req)
             if req.name_ != project:
                 reqs.append(req)
                 continue
             for extra in req.extras:
-                reqs.extend([requirement(r) for r in groups.get("optional:" + extra, [])])
+                opt_key = "optional:" + extra
+                if opt_key in groups and opt_key not in selected:
+                    selected[opt_key] = None
+                    queue.append(opt_key)
 
     packages = {}
     extras = {}
@@ -82,12 +95,25 @@ def select_dependency_groups(pyproject, specs, _fail = fail):
                 pkg_extras[extra] = None
 
     return struct(
+        # list[str]: sorted normalized package names selected by `specs`.
         packages = [] if select_all else sorted(packages),
+        # bool: True when all packages including transitive ones are selected.
         all = select_all,
+        # dict[str, list[str]]: the extras requested for the packages.
         extras = {name: sorted(pkg_extras) for name, pkg_extras in extras.items()},
     )
 
 def _match(spec, groups):
+    """Match a dependency group specifier against normalized group keys.
+
+    Args:
+        spec: {type}`str` the dependency group specifier.
+        groups: {type}`dict[str, list[str]]` available groups keyed by
+            prefixed group name.
+
+    Returns:
+        {type}`list[str]` matching keys in `groups`.
+    """
     if spec == "*":
         return groups.keys()
     if spec in ("optional:*", "group:*"):
@@ -112,13 +138,13 @@ def _expand_dependency_groups(dependency_groups, _fail):
     """Expand the PEP 735 `include-group` entries.
 
     Args:
-        dependency_groups: {type}`dict[str, list]` the `[dependency-groups]`
-            table.
+        dependency_groups: {type}`dict[str, list[str | dict[str, str]]]` the
+            `[dependency-groups]` table.
         _fail: {type}`callable` the failure function.
 
     Returns:
-        {type}`dict[str, list[str]]` normalized group names mapped to their
-        requirement strings.
+        {type}`dict[str, list[str]] | None` normalized group names mapped to
+        their requirement strings, or `None` on failure.
     """
     groups = {
         normalize_name(name): items
@@ -140,8 +166,11 @@ def _expand_dependency_groups(dependency_groups, _fail):
 
                 include = normalize_name(item.get("include-group", ""))
                 if include not in groups:
-                    _fail("Unknown dependency group '{}' included from '{}'".format(include, name))
-                    return {}
+                    _fail("Unknown dependency group '{}' included from '{}'".format(
+                        include,
+                        name,
+                    ))
+                    return None
                 if include not in expanded:
                     reqs = None
                     break
@@ -151,7 +180,9 @@ def _expand_dependency_groups(dependency_groups, _fail):
                 expanded[name] = reqs
 
     if len(expanded) != len(groups):
+        unexpanded = [name for name in groups if name not in expanded]
         _fail("Cyclic dependency group includes: {}".format(
-            ", ".join(sorted([name for name in groups if name not in expanded])),
+            ", ".join(sorted(unexpanded)),
         ))
+        return None
     return expanded

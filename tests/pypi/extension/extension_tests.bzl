@@ -25,6 +25,27 @@ load(":pip_parse.bzl", _configure = "configure", _parse = "pip_parse")
 
 _tests = []
 
+_CONFIGURE_REQUIREMENTS = """\
+simple==0.0.1 \
+    --hash=sha256:deadbeef \
+    --hash=sha256:deadbaaf
+other-pkg==0.0.2 \
+    --hash=sha256:deadbeef \
+    --hash=sha256:deadbaaf
+transitive-pkg==0.0.3 \
+    --hash=sha256:deadbeef \
+    --hash=sha256:deadbaaf
+"""
+
+_CONFIGURE_PYPROJECT = """\
+[project]
+dependencies = ["simple"]
+
+[dependency-groups]
+dev = ["other-pkg"]
+test = ["simple"]
+"""
+
 def _pypi_mock_mctx(*modules, os_name = "unittest", arch_name = "exotic", environ = {}, read = None, mock_files = {}):
     _ = read  # @unused
     return mocks.mctx(
@@ -107,7 +128,16 @@ def _dep(*, name, extra_targets = []):
         extra_targets = extra_targets,
     )
 
-def _mod(*, name, default = _default_tags_default, parse = [], override = [], whl_mods = [], dep = [], configure = [], is_root = True):
+def _mod(
+        *,
+        name,
+        default = _default_tags_default,
+        parse = [],
+        override = [],
+        whl_mods = [],
+        dep = [],
+        configure = [],
+        is_root = True):
     return struct(
         name = name,
         tags = struct(
@@ -820,27 +850,6 @@ simple==0.0.1 \
 
 _tests.append(_test_default_index_setting)
 
-_CONFIGURE_REQUIREMENTS = """\
-simple==0.0.1 \
-    --hash=sha256:deadbeef \
-    --hash=sha256:deadbaaf
-other-pkg==0.0.2 \
-    --hash=sha256:deadbeef \
-    --hash=sha256:deadbaaf
-transitive-pkg==0.0.3 \
-    --hash=sha256:deadbeef \
-    --hash=sha256:deadbaaf
-"""
-
-_CONFIGURE_PYPROJECT = """\
-[project]
-dependencies = ["simple"]
-
-[dependency-groups]
-dev = ["other-pkg"]
-test = ["simple"]
-"""
-
 def _configure_parse_modules(env, *modules):
     return _parse_modules(
         env,
@@ -875,7 +884,9 @@ def _test_configure(env):
         _mod(
             name = "rules_python",
             parse = [_configure_parse(pyproject_toml = "pyproject.toml")],
-            configure = [_configure(hub_name = "pypi_a", dependency_groups = ["test"])],
+            configure = [
+                _configure(hub_name = "pypi_a", dependency_groups = ["test"]),
+            ],
         ),
     )
 
@@ -890,9 +901,13 @@ def _test_configure_default_pyproject(env):
         env,
         _mod(
             name = "rules_python",
-            default = _default_tags_default + [_default(pyproject_toml = "pyproject.toml")],
+            default = _default_tags_default + [
+                _default(pyproject_toml = "pyproject.toml"),
+            ],
             parse = [_configure_parse()],
-            configure = [_configure(hub_name = "pypi_a", dependency_groups = ["dev"])],
+            configure = [
+                _configure(hub_name = "pypi_a", dependency_groups = ["dev"]),
+            ],
         ),
     )
 

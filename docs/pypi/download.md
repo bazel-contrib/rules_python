@@ -134,72 +134,6 @@ rename, and `requirement("numpy")` routes through the active hub like
 fixed at loading time, before the active hub is known, so load them from a
 concrete hub instead. Prefer `@pypi//<pkg>` labels in new code.
 
-(pip-configure)=
-### Configuring the Exposed Packages (pip.configure)
-
-By default a hub exposes all of the packages from its requirements files or
-`uv.lock` file, including the transitive dependencies. A `pip.configure` tag
-can limit the hub to the packages listed in a `pyproject.toml` file: the
-`[project] dependencies`, `[project.optional-dependencies]` and PEP 735
-`[dependency-groups]` tables.
-
-```toml
-[project]
-dependencies = ["numpy"]
-
-[dependency-groups]
-dev = ["pytest"]
-```
-
-```starlark
-pip.parse(
-    hub_name = "pypi_hub",
-    pyproject_toml = "//:pyproject.toml",
-    requirements_lock = "//:requirements_lock.txt",
-)
-
-pip.configure(
-    hub_name = "pypi_hub",
-    dependency_groups = ["default", "group:dev"],
-)
-```
-
-Here `@pypi_hub//numpy` and `@pypi_hub//pytest` can be used, but the
-dependencies of `numpy` are only used through `@pypi_hub//numpy`. The
-`all_requirements` lists in the hub's `requirements.bzl` and the
-[Unified @pypi Hub](unified-pypi-hub) only contain the exposed packages.
-
-The {attr}`pip.configure.dependency_groups` attribute defaults to `["*"]`,
-which selects every group. Use `["*", "transitive"]` to expose all of the
-packages of the hub, including the transitive dependencies, which is the same
-as not configuring the hub. Selecting the transitive dependencies of only some
-of the groups is not supported.
-
-Multiple tags for the same hub are combined. Only the root module and the
-module that created the hub can configure it; if both do, the root module
-wins. A self reference such as `my-project[test]` in the `pyproject.toml`
-selects the optional dependencies of the project. The packages that are not
-part of the hub are ignored, so a single `pyproject.toml` can list tools that
-are missing from the lock file.
-
-The extras requested in the selected groups are exposed by the hub even if the
-lock file does not request them, for example because the lock file was
-generated with `--strip-extras`. With the following `pyproject.toml`:
-
-```toml
-[project]
-dependencies = ["requests[socks]"]
-```
-
-the hub has the `@pypi_hub//requests:[socks]` target and
-`@pypi_hub//requests` includes the `socks` extra on all of the platforms. The
-environment markers of the requirements are ignored when selecting the extras.
-The dependencies of the extras, such as `pysocks`, still have to be in the lock
-file. See [extras](./use.md#extras) for the targets of the extras.
-
-:::{versionadded} VERSION_NEXT_FEATURE
-:::
-
 ### Declaring Abstract Dependencies (pip.dep)
 
 :::{versionadded} 2.2.0
@@ -241,6 +175,91 @@ As with any repository rule or extension, if you would like to ensure that `pip_
 re-executed to pick up a non-hermetic change to your environment (e.g., updating your system
 `python` interpreter), you can force it to re-execute by running `bazel sync --only [pip_parse
 name]`.
+
+(pip-configure)=
+## Configuring the Exposed Packages (pip.configure)
+
+By default a hub exposes all of the packages from its requirements files or
+`uv.lock` file, including the transitive dependencies. A `pip.configure` tag
+can limit the hub to the packages listed in a `pyproject.toml` file: the
+`[project] dependencies`, `[project.optional-dependencies]` and PEP 735
+`[dependency-groups]` tables.
+
+```toml
+[project]
+requires-python = "==3.13.0"
+dependencies = ["numpy"]
+
+[dependency-groups]
+dev = ["pytest"]
+```
+
+```starlark
+pip.parse(
+    hub_name = "pypi_hub",
+    pyproject_toml = "//:pyproject.toml",
+    requirements_lock = "//:requirements_lock.txt",
+)
+
+pip.configure(
+    hub_name = "pypi_hub",
+    dependency_groups = ["default", "group:dev"],
+)
+```
+
+Here `@pypi_hub//numpy` and `@pypi_hub//pytest` can be used, but the
+dependencies of `numpy` are only used through `@pypi_hub//numpy`. The
+`all_requirements` lists in the hub's `requirements.bzl` and the
+[Unified @pypi Hub](unified-pypi-hub) only contain the exposed packages.
+
+Use `["*"]` to select every group, or `["*", "transitive"]` to expose all of
+the packages of the hub, including the transitive dependencies, which is the
+same as not configuring the hub. Selecting the transitive dependencies of only
+some of the groups is not supported. A tag without
+{attr}`pip.configure.dependency_groups` does not limit the hub and does not
+need a `pyproject.toml`.
+
+The `pip.configure` tags work like a builder: they are applied in order and
+the tags for the same hub are combined. A `pyproject_toml` set on a tag is used
+by the later tags of the same module and hub, so it only needs to be set once:
+
+```starlark
+pip.configure(
+    hub_name = "pypi_hub",
+    pyproject_toml = "//tools:pyproject.toml",
+    dependency_groups = ["default"],
+)
+
+# Uses //tools:pyproject.toml
+pip.configure(
+    hub_name = "pypi_hub",
+    dependency_groups = ["group:dev"],
+)
+```
+
+Only the root module and the module that created the hub can configure it; if
+both do, the root module wins. A self reference such as `my-project[test]` in
+the `pyproject.toml` selects the optional dependencies of the project. The
+packages that are not part of the hub are ignored, so a single `pyproject.toml`
+can list tools that are missing from the lock file.
+
+The extras requested in the selected groups are exposed by the hub even if the
+lock file does not request them, for example because the lock file was
+generated with `--strip-extras`. With the following `pyproject.toml`:
+
+```toml
+[project]
+dependencies = ["requests[socks]"]
+```
+
+the hub has the `@pypi_hub//requests:[socks]` target and
+`@pypi_hub//requests` includes the `socks` extra on all of the platforms. The
+environment markers of the requirements are ignored when selecting the extras.
+The dependencies of the extras, such as `pysocks`, still have to be in the lock
+file. See [extras](./use.md#extras) for the targets of the extras.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
 
 (per-os-arch-requirements)=
 ## Requirements for a specific OS/Architecture
