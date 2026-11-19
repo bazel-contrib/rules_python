@@ -134,8 +134,50 @@ rename, and `requirement("numpy")` routes through the active hub like
 fixed at loading time, before the active hub is known, so load them from a
 concrete hub instead. Prefer `@pypi//<pkg>` labels in new code.
 
+### Declaring Abstract Dependencies (pip.dep)
+
+:::{versionadded} 2.2.0
+Declaring abstract PyPI dependencies via `pip.dep` tags.
+:::
+
+Sometimes a shared library target or a ruleset needs to depend on a PyPI
+package (e.g., `@pypi//numpy`), but does not want to force a specific package
+version or a concrete `requirements.txt` lock file on its consumers.
+
+Instead of calling `pip.parse()`, the module can declare its dependency using
+the `pip.dep` tag:
+
+```starlark
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+
+# Declare an abstract dependency on 'numpy' and specify extra targets that
+# are expected to be available in the package.
+pip.dep(
+    name = "numpy",
+    extra_targets = ["extra-alias"],
+)
+```
+
+This ensures that the target structure `@pypi//numpy` (and
+`@pypi//numpy:extra-alias`) exists in the unified `@pypi` hub repository, so the
+declaring module can compile and analyze successfully without needing any local
+requirements file.
+
+The actual concrete implementation and version of the package must be provided
+by a downstream module calling `pip.parse`.
+
+If a downstream module attempts to build a target that depends on an abstract
+dependency, but has not provided a concrete implementation for it via any
+`pip.parse` call, the build will fail at execution time.
+
+
+As with any repository rule or extension, if you would like to ensure that `pip_parse` is
+re-executed to pick up a non-hermetic change to your environment (e.g., updating your system
+`python` interpreter), you can force it to re-execute by running `bazel sync --only [pip_parse
+name]`.
+
 (pip-configure)=
-### Configuring the Exposed Packages (pip.configure)
+## Configuring the Exposed Packages (pip.configure)
 
 By default a hub exposes all of the packages from its requirements files or
 `uv.lock` file, including the transitive dependencies. A `pip.configure` tag
@@ -145,6 +187,7 @@ can limit the hub to the packages listed in a `pyproject.toml` file: the
 
 ```toml
 [project]
+requires-python = "==3.13.0"
 dependencies = ["numpy"]
 
 [dependency-groups]
@@ -169,20 +212,38 @@ dependencies of `numpy` are only used through `@pypi_hub//numpy`. The
 `all_requirements` lists in the hub's `requirements.bzl` and the
 [Unified @pypi Hub](unified-pypi-hub) only contain the exposed packages.
 
-The {attr}`pip.configure.dependency_groups` attribute defaults to `["*"]`,
-which selects every group. Use `["*", "transitive"]` to expose all of the
-packages of the hub, including the transitive dependencies, which is the same
-as not configuring the hub. Selecting the transitive dependencies of only some
-of the groups is not supported.
+Use `["*"]` to select every group, or `["*", "transitive"]` to expose all of
+the packages of the hub, including the transitive dependencies, which is the
+same as not configuring the hub. Selecting the transitive dependencies of only
+some of the groups is not supported. A tag without
+{attr}`pip.configure.dependency_groups` does not limit the hub and does not
+need a `pyproject.toml`.
 
-Multiple tags for the same hub are combined. Only the root module and the
-module that created the hub can configure it; if both do, the root module
-wins. A self reference such as `my-project[test]` in the `pyproject.toml`
-selects the optional dependencies of the project. The packages that are not
-part of the hub are ignored, so a single `pyproject.toml` can list tools that
-are missing from the lock file.
+The `pip.configure` tags work like a builder: they are applied in order and
+the tags for the same hub are combined. A `pyproject_toml` set on a tag is used
+by the later tags of the same module and hub, so it only needs to be set once:
 
-#### Testonly Packages
+```starlark
+pip.configure(
+    hub_name = "pypi_hub",
+    pyproject_toml = "//tools:pyproject.toml",
+    dependency_groups = ["default"],
+)
+
+# Uses //tools:pyproject.toml
+pip.configure(
+    hub_name = "pypi_hub",
+    dependency_groups = ["group:dev"],
+)
+```
+
+Only the root module and the module that created the hub can configure it; if
+both do, the root module wins. A self reference such as `my-project[test]` in
+the `pyproject.toml` selects the optional dependencies of the project. The
+packages that are not part of the hub are ignored, so a single `pyproject.toml`
+can list tools that are missing from the lock file.
+
+### Testonly Packages
 
 Set {attr}`pip.configure.testonly` to make the selected packages testonly, so
 that they can only be used by tests and other testonly targets:
@@ -235,48 +296,6 @@ the hub.
 
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
-
-### Declaring Abstract Dependencies (pip.dep)
-
-:::{versionadded} 2.2.0
-Declaring abstract PyPI dependencies via `pip.dep` tags.
-:::
-
-Sometimes a shared library target or a ruleset needs to depend on a PyPI
-package (e.g., `@pypi//numpy`), but does not want to force a specific package
-version or a concrete `requirements.txt` lock file on its consumers.
-
-Instead of calling `pip.parse()`, the module can declare its dependency using
-the `pip.dep` tag:
-
-```starlark
-pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
-
-# Declare an abstract dependency on 'numpy' and specify extra targets that
-# are expected to be available in the package.
-pip.dep(
-    name = "numpy",
-    extra_targets = ["extra-alias"],
-)
-```
-
-This ensures that the target structure `@pypi//numpy` (and
-`@pypi//numpy:extra-alias`) exists in the unified `@pypi` hub repository, so the
-declaring module can compile and analyze successfully without needing any local
-requirements file.
-
-The actual concrete implementation and version of the package must be provided
-by a downstream module calling `pip.parse`.
-
-If a downstream module attempts to build a target that depends on an abstract
-dependency, but has not provided a concrete implementation for it via any
-`pip.parse` call, the build will fail at execution time.
-
-
-As with any repository rule or extension, if you would like to ensure that `pip_parse` is
-re-executed to pick up a non-hermetic change to your environment (e.g., updating your system
-`python` interpreter), you can force it to re-execute by running `bazel sync --only [pip_parse
-name]`.
 
 (per-os-arch-requirements)=
 ## Requirements for a specific OS/Architecture

@@ -100,13 +100,16 @@ hub_repository = repository_rule(
         ),
         "hide_unexposed_packages": attr.bool(
             default = False,
-            doc = "Make the aliases of the packages that are not in `packages` visible only to the wheel repositories.",
+            doc = """
+Make the aliases of the packages that are not in `packages` visible only to
+the wheel repositories.
+""",
         ),
         "packages": attr.string_list(
             mandatory = False,
-            doc = """\
-The list of packages that will be exposed via all_*requirements macros. Defaults to whl_map keys
-unless `hide_unexposed_packages` is set.
+            doc = """
+The list of packages that will be exposed via all_*requirements macros.
+Defaults to whl_map keys unless `hide_unexposed_packages` is set.
 """,
         ),
         "platform_config_settings": attr.string_list_dict(
