@@ -66,6 +66,8 @@ def hub_exposure(module_ctx, *, hubs, default_pyproject = None, _fail = fail):
                 tag.dependency_groups,
                 _fail = _fail,
             )
+            if selection == None:
+                return None
             if selection.all:
                 exposes_all[hub] = None
 

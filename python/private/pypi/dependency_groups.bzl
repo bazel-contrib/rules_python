@@ -25,16 +25,19 @@ def select_dependency_groups(pyproject, specs, _fail = fail):
         _fail: {type}`callable` the failure function, mainly for testing.
 
     Returns:
-        {type}`struct` with the attributes:
+        {type}`struct | None` with the attributes:
           * `packages`: {type}`list[str]` the sorted normalized package names.
           * `all`: {type}`bool` whether all of the packages including the
             transitive dependencies should be selected, i.e. `"*"` and
             `"transitive"` were given.
+        Returns `None` on failure.
     """
     groups = {"default": pyproject.dependencies}
     for name, reqs in pyproject.optional_dependencies.items():
         groups["optional:" + normalize_name(name)] = reqs
     expanded = _expand_dependency_groups(pyproject.dependency_groups, _fail)
+    if expanded == None:
+        return None
     for name, reqs in expanded.items():
         groups["group:" + name] = reqs
 
@@ -43,6 +46,7 @@ def select_dependency_groups(pyproject, specs, _fail = fail):
             _fail("The 'transitive' dependency group specifier is only supported together with '*', which selects all of the packages, got: {}".format(
                 specs,
             ))
+            return None
         return struct(
             # list[str]: sorted normalized package names selected by `specs`.
             packages = [],
@@ -58,6 +62,7 @@ def select_dependency_groups(pyproject, specs, _fail = fail):
                 spec,
                 ", ".join(sorted(groups)),
             ))
+            return None
         for key in keys:
             selected[key] = None
 
@@ -122,8 +127,8 @@ def _expand_dependency_groups(dependency_groups, _fail):
         _fail: {type}`callable` the failure function.
 
     Returns:
-        {type}`dict[str, list[str]]` normalized group names mapped to their
-        requirement strings.
+        {type}`dict[str, list[str]] | None` normalized group names mapped to
+        their requirement strings, or `None` on failure.
     """
     groups = {
         normalize_name(name): items
@@ -149,7 +154,7 @@ def _expand_dependency_groups(dependency_groups, _fail):
                         include,
                         name,
                     ))
-                    return {}
+                    return None
                 if include not in expanded:
                     reqs = None
                     break
@@ -163,4 +168,5 @@ def _expand_dependency_groups(dependency_groups, _fail):
         _fail("Cyclic dependency group includes: {}".format(
             ", ".join(sorted(unexpanded)),
         ))
+        return None
     return expanded

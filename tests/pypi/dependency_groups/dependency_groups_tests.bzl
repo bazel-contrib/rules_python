@@ -80,7 +80,8 @@ def _test_select_errors(env):
             "The 'transitive' dependency group specifier is only supported together with '*', which selects all of the packages, got: [\"default\", \"transitive\"]",
         ),
     ]:
-        _, failures = _select(specs)
+        got, failures = _select(specs)
+        env.expect.where(specs = specs).that_str(got).equals(None)
         env.expect.where(specs = specs).that_collection(
             failures,
         ).contains_exactly([want])
@@ -98,12 +99,13 @@ def _test_include_group_errors(env):
             "Cyclic dependency group includes: a, b",
         ),
     ]:
-        _, failures = _select(["*"], pyproject = struct(
+        got, failures = _select(["a"], pyproject = struct(
             name = None,
             dependencies = [],
             optional_dependencies = {},
             dependency_groups = groups,
         ))
+        env.expect.that_str(got).equals(None)
         env.expect.that_collection(failures).contains_exactly([want])
 
 _tests.append(_test_include_group_errors)

@@ -165,19 +165,29 @@ def _test_configure_module_precedence(env):
 _tests.append(_test_configure_module_precedence)
 
 def _test_configure_errors(env):
-    _, failures = _exposure(
+    got, failures = _exposure(
         _module(configure = [_configure(hub_name = "missing")]),
     )
+    env.expect.that_str(got).equals(None)
     env.expect.that_collection(failures).contains_exactly([
         "pip.configure() refers to unknown hub 'missing'. Available hubs: hub",
     ])
 
-    _, failures = _exposure(
+    got, failures = _exposure(
         _module(configure = [_configure()]),
         hubs = {"hub": _hub()},
     )
+    env.expect.that_str(got).equals(None)
     env.expect.that_collection(failures).contains_exactly([
         "pip.configure() for hub 'hub' requires a pyproject.toml, set `pyproject_toml` on `pip.configure` or `pip.parse`",
+    ])
+
+    got, failures = _exposure(
+        _module(configure = [_configure(dependency_groups = ["missing"])]),
+    )
+    env.expect.that_str(got).equals(None)
+    env.expect.that_collection(failures).contains_exactly([
+        "Unknown dependency group 'missing'. Available groups: default, group:dev, group:test",
     ])
 
 _tests.append(_test_configure_errors)
