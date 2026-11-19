@@ -613,7 +613,23 @@ def main() -> None:
             if cxx_bin:
                 cross_lines.append(f"cpp = {cxx_bin!r}")
             if ar_bin:
-                cross_lines.append(f"ar = {ar_bin!r}")
+                meson_ar = ar_bin
+                if "zig" in ar_bin or "zig" in cc_bin:
+                    # zig-specific adjustment: zig's ar doesn't support thin
+                    # archives.
+                    ar_wrapper = scratch_bin_dir / "ar-no-thin"
+                    ar_wrapper.write_text(
+                        f"#!/usr/bin/env python3\n"
+                        f"import os, sys\n"
+                        f"args = sys.argv[1:]\n"
+                        f"if args and not args[0].startswith('-'):\n"
+                        f"    args[0] = args[0].replace('T', '')\n"
+                        f"os.execv({ar_bin!r}, [{ar_bin!r}, *args])\n",
+                        encoding="utf-8",
+                    )
+                    os.chmod(ar_wrapper, 0o755)
+                    meson_ar = str(ar_wrapper)
+                cross_lines.append(f"ar = {meson_ar!r}")
             cross_lines += [
                 "",
                 "[host_machine]",
