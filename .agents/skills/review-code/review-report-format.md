@@ -33,12 +33,10 @@ For each issue found, provide:
   Keep `<brief/concise description of issue>` to 1–2 short, direct sentences
   (no multi-clause "wall of text" paragraphs, parenthetical `e.g.` scenario
   lists, or `"conversely..."` chains). Omit verbatim code blocks from
-  `Suggested fix:` when prose suffices (formatting/line wrapping, per-field
-  `struct(...)` comments, and splitting compound boolean or inline ternary
-  expressions); when suggesting specific error/failure message wording or a
-  non-trivial code change, include the concrete suggested text in
-  `Suggested fix:` inside `Draft Comment` (not only in `Proposed Fix`). Avoid
-  wrapping lists of visually distinct identifiers (such as `UPPER_SNAKE_CASE`
-  constants) in individual backticks so rendered text does not jump repeatedly
-  into and out of code formatting, and never wrap the entire comment in outer
-  backticks.
+  `Suggested fix:` when prose suffices; when suggesting specific error/failure
+  message wording or a non-trivial code change, include the concrete suggested
+  text in `Suggested fix:` inside `Draft Comment` (not only in `Proposed Fix`).
+  Avoid wrapping lists of visually distinct identifiers (such as
+  `UPPER_SNAKE_CASE` constants) in individual backticks so rendered text does
+  not jump repeatedly into and out of code formatting, and never wrap the
+  entire comment in outer backticks.
