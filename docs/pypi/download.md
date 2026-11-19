@@ -238,10 +238,10 @@ pip.configure(
 ```
 
 Only the root module and the module that created the hub can configure it; if
-both do, the root module wins. A self reference such as `my-project[test]` in the `pyproject.toml`
-selects the optional dependencies of the project. The packages that are not
-part of the hub are ignored, so a single `pyproject.toml` can list tools that
-are missing from the lock file.
+both do, the root module wins. A self reference such as `my-project[test]` in
+the `pyproject.toml` selects the optional dependencies of the project. The
+packages that are not part of the hub are ignored, so a single `pyproject.toml`
+can list tools that are missing from the lock file.
 
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
