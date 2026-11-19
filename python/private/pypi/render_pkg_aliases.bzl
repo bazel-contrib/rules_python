@@ -136,8 +136,14 @@ def render_pkg_aliases(
 
     public = ["//visibility:public"]
     if exposed_packages != None:
-        exposed_packages = {normalize_name(name): None for name in exposed_packages}
-    internal_visibility = _internal_visibility(aliases, has_groups = bool(requirement_cycles))
+        exposed_packages = {
+            normalize_name(name): None
+            for name in exposed_packages
+        }
+    internal_visibility = _internal_visibility(
+        aliases,
+        has_groups = bool(requirement_cycles),
+    )
 
     files = {}
     for name, pkg_aliases in aliases.items():
@@ -159,10 +165,17 @@ def render_pkg_aliases(
     return files
 
 def _internal_visibility(aliases, has_groups = False):
-    """The visibility of the packages that are not exposed.
+    """Return the visibility list for packages that are not exposed.
 
     The wheel repositories depend on the aliases of the hub, so the aliases
     have to be visible to them.
+
+    Args:
+        aliases: {type}`dict[str, str | dict]` package-to-repo alias mapping.
+        has_groups: {type}`bool` whether requirement cycle groups exist.
+
+    Returns:
+        {type}`list[str]` visibility package specifications.
     """
     repo_names = {}
     for pkg_aliases in aliases.values():

@@ -157,6 +157,7 @@ def build_config(
             for name, values in defaults["platforms"].items()
         },
         enable_pipstar_extract = enable_pipstar_extract,
+        # Label | None: default `pyproject.toml` from `pip.default`.
         pyproject_toml = defaults["pyproject_toml"],
         toml_decode = toml.decode,
         unified_hub_requirements_bzl = unified_hub_requirements_bzl,
@@ -369,8 +370,11 @@ You cannot use both the additive_build_content and additive_build_content_file a
         hub_group_map[hub.name] = out.group_map
         hub_whl_map[hub.name] = out.whl_map
         hubs[hub.name] = struct(
+            # str: module that created the hub.
             module_name = hub.module_name,
+            # Label | None: `pyproject_toml` set on `pip.parse`.
             pyproject = hub_pyproject.get(hub.name),
+            # list[str]: normalized names of all packages in the hub.
             packages = out.whl_map.keys(),
         )
 
@@ -385,6 +389,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
     exposed_packages.update(configured_hubs)
 
     return struct(
+        # dict[str, list[str]]: configured hubs and exposed packages.
         configured_hubs = configured_hubs,
         config = config,
         declared_deps = declared_deps,
@@ -419,7 +424,10 @@ def _create_unified_hub_repo(mods):
 
     for hub_name in hubs:
         # The hubs configured with `pip.configure` only expose some packages.
-        hub_packages = mods.configured_hubs.get(hub_name, mods.hub_whl_map[hub_name])
+        hub_packages = mods.configured_hubs.get(
+            hub_name,
+            mods.hub_whl_map[hub_name],
+        )
         for pkg_name in hub_packages:
             norm_pkg = normalize_name(pkg_name)
             if norm_pkg not in packages:
@@ -673,15 +681,18 @@ If you are defining custom platforms in your project and don't want things to cl
     ),
     "pyproject_toml": attr.label(
         mandatory = False,
-        doc = """\
-Label pointing to pyproject.toml file to read the default Python version from.
-When specified, reads the `requires-python` field from pyproject.toml and uses
-it as the default python_version for all `pip.parse()` calls that don't
-explicitly specify one.
+        doc = """
+Label pointing to a `pyproject.toml` file used to read the default Python
+version and, for hubs of the root module, to select exposed packages via
+{obj}`pip.configure`.
+
+When `[project] requires-python` is present, it is used as the default
+`python_version` for `pip.parse()` calls that do not specify one.
 
 :::{note}
-The version must be specified as `==X.Y.Z` (exact version with full semver).
-This is designed to work with dependency management tools like Renovate.
+If `requires-python` is set, the version must be specified as `==X.Y.Z` (exact
+version with full semver). This is designed to work with dependency management
+tools like Renovate.
 :::
 
 :::{versionadded} 2.3.0
@@ -898,13 +909,16 @@ find in case extra indexes are specified.
         ),
         "pyproject_toml": attr.label(
             mandatory = False,
-            doc = """\
-Label pointing to a pyproject.toml file to read the Python version from.
-When specified, the `requires-python` field is used as the `python_version`
-for this `pip.parse()` call, unless `python_version` is set explicitly.
+            doc = """
+Label pointing to a `pyproject.toml` file used to read the Python version and
+to select exposed packages via {obj}`pip.configure`.
+
+When `python_version` is not set explicitly, the `[project] requires-python`
+field is used as the `python_version` for this `pip.parse()` call.
 
 :::{note}
-The version must be specified as `==X.Y.Z` (exact version with full semver).
+When used to derive `python_version`, `requires-python` must be specified as
+`==X.Y.Z` (exact version with full semver).
 :::
 
 :::{versionadded} 2.3.0
@@ -1116,7 +1130,7 @@ _configure_tag = tag_class(
     attrs = {
         "dependency_groups": attr.string_list(
             default = ["*"],
-            doc = """\
+            doc = """
 The `pyproject.toml` dependency groups whose packages the hub exposes.
 
 Each item is one of:
@@ -1132,7 +1146,7 @@ Each item is one of:
   packages of the hub including the transitive dependencies, i.e. all of the
   packages from the requirements files or the `uv.lock` file.
 
-See [Configuring the Exposed Packages](#pip-configure) for examples.
+See {ref}`Configuring the Exposed Packages <pip-configure>` for examples.
 
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
@@ -1140,7 +1154,7 @@ See [Configuring the Exposed Packages](#pip-configure) for examples.
         ),
         "hub_name": attr.string(
             mandatory = True,
-            doc = """\
+            doc = """
 The name of the hub to configure.
 
 :::{versionadded} VERSION_NEXT_FEATURE
@@ -1149,7 +1163,7 @@ The name of the hub to configure.
         ),
         "pyproject_toml": attr.label(
             mandatory = False,
-            doc = """\
+            doc = """
 The `pyproject.toml` file that defines the dependency groups. Defaults to the
 {attr}`pip.parse.pyproject_toml` of the hub, then to
 {attr}`pip.default.pyproject_toml` if the hub is defined by the root module.
@@ -1159,7 +1173,7 @@ The `pyproject.toml` file that defines the dependency groups. Defaults to the
 """,
         ),
     },
-    doc = """\
+    doc = """
 Configure the packages exposed by a hub.
 
 The packages are selected from a `pyproject.toml` file using the
@@ -1171,7 +1185,7 @@ they are not public.
 Only the root module and the module that created the hub can configure it. If
 both do, the root module wins. Multiple tags for the same hub are combined.
 
-See [Configuring the Exposed Packages](#pip-configure) for examples.
+See {ref}`Configuring the Exposed Packages <pip-configure>` for examples.
 
 :::{versionadded} VERSION_NEXT_FEATURE
 :::

@@ -1,7 +1,10 @@
 """dependency_groups tests"""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-load("//python/private/pypi:dependency_groups.bzl", "select_dependency_groups")  # buildifier: disable=bzl-visibility
+load(
+    "//python/private/pypi:dependency_groups.bzl",
+    "select_dependency_groups",
+)  # buildifier: disable=bzl-visibility
 
 _tests = []
 
@@ -35,11 +38,25 @@ def _test_select(env):
         (["optional:*"], ["docs_pkg", "grpc_pkg"]),
         (["group:*"], ["dev_pkg", "shared_pkg", "test_pkg"]),
         (["default", "group:test"], ["main_pkg", "shared_pkg", "test_pkg"]),
-        (["*"], ["dev_pkg", "docs_pkg", "grpc_pkg", "main_pkg", "shared_pkg", "test_pkg"]),
+        (
+            ["*"],
+            [
+                "dev_pkg",
+                "docs_pkg",
+                "grpc_pkg",
+                "main_pkg",
+                "shared_pkg",
+                "test_pkg",
+            ],
+        ),
     ]:
         got, failures = _select(specs)
-        env.expect.where(specs = specs).that_collection(failures).contains_exactly([])
-        env.expect.where(specs = specs).that_collection(got.packages).contains_exactly(want).in_order()
+        env.expect.where(specs = specs).that_collection(
+            failures,
+        ).contains_exactly([])
+        env.expect.where(specs = specs).that_collection(
+            got.packages,
+        ).contains_exactly(want).in_order()
         env.expect.where(specs = specs).that_bool(got.all).equals(False)
 
 _tests.append(_test_select)
@@ -54,18 +71,32 @@ _tests.append(_test_select_all)
 
 def _test_select_errors(env):
     for specs, want in [
-        (["missing"], "Unknown dependency group 'missing'. Available groups: default, group:dev, group:test, optional:all, optional:docs, optional:grpc"),
-        (["default", "transitive"], "The 'transitive' dependency group specifier is only supported together with '*', which selects all of the packages, got: [\"default\", \"transitive\"]"),
+        (
+            ["missing"],
+            "Unknown dependency group 'missing'. Available groups: default, group:dev, group:test, optional:all, optional:docs, optional:grpc",
+        ),
+        (
+            ["default", "transitive"],
+            "The 'transitive' dependency group specifier is only supported together with '*', which selects all of the packages, got: [\"default\", \"transitive\"]",
+        ),
     ]:
         _, failures = _select(specs)
-        env.expect.where(specs = specs).that_collection(failures).contains_exactly([want])
+        env.expect.where(specs = specs).that_collection(
+            failures,
+        ).contains_exactly([want])
 
 _tests.append(_test_select_errors)
 
 def _test_include_group_errors(env):
     for groups, want in [
-        ({"a": [{"include-group": "missing"}]}, "Unknown dependency group 'missing' included from 'a'"),
-        ({"a": [{"include-group": "b"}], "b": [{"include-group": "a"}]}, "Cyclic dependency group includes: a, b"),
+        (
+            {"a": [{"include-group": "missing"}]},
+            "Unknown dependency group 'missing' included from 'a'",
+        ),
+        (
+            {"a": [{"include-group": "b"}], "b": [{"include-group": "a"}]},
+            "Cyclic dependency group includes: a, b",
+        ),
     ]:
         _, failures = _select(["*"], pyproject = struct(
             name = None,

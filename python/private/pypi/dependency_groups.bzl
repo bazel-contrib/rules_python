@@ -34,13 +34,21 @@ def select_dependency_groups(pyproject, specs, _fail = fail):
     groups = {"default": pyproject.dependencies}
     for name, reqs in pyproject.optional_dependencies.items():
         groups["optional:" + normalize_name(name)] = reqs
-    for name, reqs in _expand_dependency_groups(pyproject.dependency_groups, _fail).items():
+    expanded = _expand_dependency_groups(pyproject.dependency_groups, _fail)
+    for name, reqs in expanded.items():
         groups["group:" + name] = reqs
 
     if "transitive" in specs:
         if "*" not in specs:
-            _fail("The 'transitive' dependency group specifier is only supported together with '*', which selects all of the packages, got: {}".format(specs))
-        return struct(packages = [], all = True)
+            _fail("The 'transitive' dependency group specifier is only supported together with '*', which selects all of the packages, got: {}".format(
+                specs,
+            ))
+        return struct(
+            # list[str]: sorted normalized package names selected by `specs`.
+            packages = [],
+            # bool: True when all hub packages are selected.
+            all = True,
+        )
 
     selected = {}
     for spec in specs:
@@ -67,9 +75,24 @@ def select_dependency_groups(pyproject, specs, _fail = fail):
                 for r in groups.get("optional:" + extra, []):
                     packages[requirement(r).name_] = None
 
-    return struct(packages = sorted(packages), all = False)
+    return struct(
+        # list[str]: sorted normalized package names selected by `specs`.
+        packages = sorted(packages),
+        # bool: True when all packages including transitive ones are selected.
+        all = False,
+    )
 
 def _match(spec, groups):
+    """Match a dependency group specifier against normalized group keys.
+
+    Args:
+        spec: {type}`str` the dependency group specifier.
+        groups: {type}`dict[str, list[str]]` available groups keyed by
+            prefixed group name.
+
+    Returns:
+        {type}`list[str]` matching keys in `groups`.
+    """
     if spec == "*":
         return groups.keys()
     if spec in ("optional:*", "group:*"):
@@ -122,7 +145,10 @@ def _expand_dependency_groups(dependency_groups, _fail):
 
                 include = normalize_name(item.get("include-group", ""))
                 if include not in groups:
-                    _fail("Unknown dependency group '{}' included from '{}'".format(include, name))
+                    _fail("Unknown dependency group '{}' included from '{}'".format(
+                        include,
+                        name,
+                    ))
                     return {}
                 if include not in expanded:
                     reqs = None
@@ -133,7 +159,8 @@ def _expand_dependency_groups(dependency_groups, _fail):
                 expanded[name] = reqs
 
     if len(expanded) != len(groups):
+        unexpanded = [name for name in groups if name not in expanded]
         _fail("Cyclic dependency group includes: {}".format(
-            ", ".join(sorted([name for name in groups if name not in expanded])),
+            ", ".join(sorted(unexpanded)),
         ))
     return expanded

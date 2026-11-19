@@ -29,10 +29,15 @@ def read_pyproject(module_ctx, pyproject):
     data = toml.decode(module_ctx.read(module_ctx.path(pyproject), watch = "yes"))
     project = data.get("project", {})
     return struct(
+        # str | None: raw `[project] requires-python` value.
         requires_python = project.get("requires-python"),
+        # str | None: `[project] name`.
         name = project.get("name"),
+        # list[str]: `[project] dependencies` requirement strings.
         dependencies = project.get("dependencies") or [],
+        # dict[str, list[str]]: `[project.optional-dependencies]` table.
         optional_dependencies = project.get("optional-dependencies") or {},
+        # dict[str, list]: PEP 735 `[dependency-groups]` table.
         dependency_groups = data.get("dependency-groups") or {},
     )
 

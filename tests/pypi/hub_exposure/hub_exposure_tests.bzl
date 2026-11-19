@@ -1,7 +1,10 @@
 """hub_exposure tests"""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-load("//python/private/pypi:hub_exposure.bzl", "hub_exposure")  # buildifier: disable=bzl-visibility
+load(
+    "//python/private/pypi:hub_exposure.bzl",
+    "hub_exposure",
+)  # buildifier: disable=bzl-visibility
 load("//tests/support/mocks:mocks.bzl", "mocks")
 
 _tests = []
@@ -22,7 +25,10 @@ def _hub(*, module_name = "root", pyproject = None):
         packages = ["other_pkg", "simple", "transitive_pkg"],
     )
 
-def _configure(hub_name = "hub", dependency_groups = ["*"], pyproject_toml = None):
+def _configure(
+        hub_name = "hub",
+        dependency_groups = ["*"],
+        pyproject_toml = None):
     return mocks.tag(
         hub_name = hub_name,
         dependency_groups = dependency_groups,
@@ -63,9 +69,15 @@ def _test_configure(env):
         # `not-in-hub` is ignored
         (["group:test"], ["simple"]),
     ]:
-        got, failures = _exposure(_module(configure = [_configure(dependency_groups = groups)]))
-        env.expect.where(groups = groups).that_collection(failures).contains_exactly([])
-        env.expect.where(groups = groups).that_dict(got).contains_exactly({"hub": want})
+        got, failures = _exposure(
+            _module(configure = [_configure(dependency_groups = groups)]),
+        )
+        env.expect.where(groups = groups).that_collection(
+            failures,
+        ).contains_exactly([])
+        env.expect.where(groups = groups).that_dict(got).contains_exactly(
+            {"hub": want},
+        )
 
 _tests.append(_test_configure)
 
@@ -87,7 +99,9 @@ def _test_configure_combines_tags(env):
         _configure(dependency_groups = ["dev"]),
     ]))
     env.expect.that_collection(failures).contains_exactly([])
-    env.expect.that_dict(got).contains_exactly({"hub": ["other_pkg", "simple"]})
+    env.expect.that_dict(got).contains_exactly(
+        {"hub": ["other_pkg", "simple"]},
+    )
 
 _tests.append(_test_configure_combines_tags)
 
@@ -115,7 +129,11 @@ def _test_configure_module_precedence(env):
     # The owner of the hub can configure it.
     got, _ = _exposure(
         _module(),
-        _module(name = "dep", is_root = False, configure = [_configure(dependency_groups = ["dev"])]),
+        _module(
+            name = "dep",
+            is_root = False,
+            configure = [_configure(dependency_groups = ["dev"])],
+        ),
         hubs = hubs,
     )
     env.expect.that_dict(got).contains_exactly({"hub": ["other_pkg"]})
@@ -123,7 +141,11 @@ def _test_configure_module_precedence(env):
     # The root module wins over the owner.
     got, _ = _exposure(
         _module(configure = [_configure(dependency_groups = ["default"])]),
-        _module(name = "dep", is_root = False, configure = [_configure(dependency_groups = ["dev"])]),
+        _module(
+            name = "dep",
+            is_root = False,
+            configure = [_configure(dependency_groups = ["dev"])],
+        ),
         hubs = hubs,
     )
     env.expect.that_dict(got).contains_exactly({"hub": ["simple"]})
@@ -131,7 +153,11 @@ def _test_configure_module_precedence(env):
     # Other modules are ignored.
     got, _ = _exposure(
         _module(),
-        _module(name = "other", is_root = False, configure = [_configure(dependency_groups = ["dev"])]),
+        _module(
+            name = "other",
+            is_root = False,
+            configure = [_configure(dependency_groups = ["dev"])],
+        ),
         hubs = hubs,
     )
     env.expect.that_dict(got).contains_exactly({})
@@ -139,7 +165,9 @@ def _test_configure_module_precedence(env):
 _tests.append(_test_configure_module_precedence)
 
 def _test_configure_errors(env):
-    _, failures = _exposure(_module(configure = [_configure(hub_name = "missing")]))
+    _, failures = _exposure(
+        _module(configure = [_configure(hub_name = "missing")]),
+    )
     env.expect.that_collection(failures).contains_exactly([
         "pip.configure() refers to unknown hub 'missing'. Available hubs: hub",
     ])

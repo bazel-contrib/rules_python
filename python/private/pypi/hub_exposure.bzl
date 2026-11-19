@@ -45,18 +45,20 @@ def hub_exposure(module_ctx, *, hubs, default_pyproject = None, _fail = fail):
                 return None
 
             info = hubs[hub]
-            if not mod.is_root and (mod.name != info.module_name or hub in root_configured):
+            if not mod.is_root and mod.name != info.module_name:
                 # Only the root module and the module that created the hub can
                 # configure it.
                 continue
+            if not mod.is_root and hub in root_configured:
+                continue
 
-            pyproject = (
-                tag.pyproject_toml or
-                info.pyproject or
-                (default_pyproject if info.module_name == root_name else None)
-            )
+            pyproject = tag.pyproject_toml or info.pyproject
+            if not pyproject and info.module_name == root_name:
+                pyproject = default_pyproject
             if not pyproject:
-                _fail("pip.configure() for hub '{}' requires a pyproject.toml, set `pyproject_toml` on `pip.configure` or `pip.parse`".format(hub))
+                _fail("pip.configure() for hub '{}' requires a pyproject.toml, set `pyproject_toml` on `pip.configure` or `pip.parse`".format(
+                    hub,
+                ))
                 return None
 
             selection = select_dependency_groups(
