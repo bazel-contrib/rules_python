@@ -157,6 +157,7 @@ def build_config(
             for name, values in defaults["platforms"].items()
         },
         enable_pipstar_extract = enable_pipstar_extract,
+        # Label | None: default `pyproject.toml` from `pip.default`.
         pyproject_toml = defaults["pyproject_toml"],
         toml_decode = toml.decode,
         unified_hub_requirements_bzl = unified_hub_requirements_bzl,
@@ -369,8 +370,11 @@ You cannot use both the additive_build_content and additive_build_content_file a
         hub_group_map[hub.name] = out.group_map
         hub_whl_map[hub.name] = out.whl_map
         hubs[hub.name] = struct(
+            # str: module that created the hub.
             module_name = hub.module_name,
+            # Label | None: `pyproject_toml` set on `pip.parse`.
             pyproject = hub_pyproject.get(hub.name),
+            # list[str]: normalized names of all packages in the hub.
             packages = out.whl_map.keys(),
         )
 
@@ -394,6 +398,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
             unified_testonly_packages[pkg] = None
 
     return struct(
+        # dict[str, struct]: configured hubs, see `hub_exposure`.
         configured_hubs = configured_hubs,
         config = config,
         declared_deps = declared_deps,
@@ -1130,9 +1135,11 @@ execution-phase error when built.
 _configure_tag = tag_class(
     attrs = {
         "dependency_groups": attr.string_list(
-            default = ["*"],
-            doc = """\
-The `pyproject.toml` dependency groups whose packages the hub exposes.
+            default = [],
+            doc = """
+The `pyproject.toml` dependency groups whose packages the hub exposes. The
+default, `[]`, does not select any packages, so the tag does not limit the hub
+and it does not need a `pyproject.toml`.
 
 Each item is one of:
 
@@ -1147,7 +1154,7 @@ Each item is one of:
   packages of the hub including the transitive dependencies, i.e. all of the
   packages from the requirements files or the `uv.lock` file.
 
-See [Configuring the Exposed Packages](#pip-configure) for examples.
+See {ref}`Configuring the Exposed Packages <pip-configure>` for examples.
 
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
@@ -1155,7 +1162,7 @@ See [Configuring the Exposed Packages](#pip-configure) for examples.
         ),
         "hub_name": attr.string(
             mandatory = True,
-            doc = """\
+            doc = """
 The name of the hub to configure.
 
 :::{versionadded} VERSION_NEXT_FEATURE
@@ -1164,10 +1171,13 @@ The name of the hub to configure.
         ),
         "pyproject_toml": attr.label(
             mandatory = False,
-            doc = """\
-The `pyproject.toml` file that defines the dependency groups. Defaults to the
-{attr}`pip.parse.pyproject_toml` of the hub, then to
-{attr}`pip.default.pyproject_toml` if the hub is defined by the root module.
+            doc = """
+The `pyproject.toml` file that defines the dependency groups. It is also used
+by the later `pip.configure` tags of the same module and hub that don't set it.
+Defaults to the last `pyproject_toml` set by an earlier `pip.configure` tag of
+the same module and hub, then to the {attr}`pip.parse.pyproject_toml` of the
+hub, then to {attr}`pip.default.pyproject_toml` if the hub is defined by the
+root module. It is only needed when {attr}`dependency_groups` is set.
 
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
@@ -1191,7 +1201,7 @@ in any of the hubs.
 """,
         ),
     },
-    doc = """\
+    doc = """
 Configure the packages exposed by a hub.
 
 The packages are selected from a `pyproject.toml` file using the
@@ -1200,10 +1210,16 @@ The packages are selected from a `pyproject.toml` file using the
 transitive dependencies, are still used by the packages that need them, but
 they are not public.
 
-Only the root module and the module that created the hub can configure it. If
-both do, the root module wins. Multiple tags for the same hub are combined.
+The tags work like a builder: they are applied in order and multiple tags for
+the same hub are combined, so each tag can configure a different part of the
+hub. A `pyproject_toml` set on a tag is used by the later tags of the same
+module and hub. A tag that does not select any {attr}`dependency_groups` does
+not limit the hub.
 
-See [Configuring the Exposed Packages](#pip-configure) for examples.
+Only the root module and the module that created the hub can configure it. If
+both do, the root module wins.
+
+See {ref}`Configuring the Exposed Packages <pip-configure>` for examples.
 
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
