@@ -493,6 +493,7 @@ def _test_archive_flavor_platform_keys(env):
     platform = "x86_64-unknown-linux-gnu"
     stripped = platform + "-install_only_stripped"
     full = platform + "-full"
+    debug = platform + "-debug"
 
     # The plain platform key prefers install_only.
     py_3_14 = tool_versions["3.14.4"]
@@ -508,7 +509,8 @@ def _test_archive_flavor_platform_keys(env):
     env.expect.that_str(py_3_14["strip_prefix"][full]).equals("python/install")
 
     # Releases without other flavors only have the plain platform key; the
-    # other distributions fall back to it when toolchains are registered.
+    # other archive flavors fall back to it when toolchains are registered.
+    # `debug` does not.
     py_3_12 = tool_versions["3.12.3"]
     env.expect.that_str(py_3_12["sha256"][platform]).equals("3" * 64)
     env.expect.that_collection(py_3_12["sha256"].keys()).contains_exactly([platform])
@@ -520,6 +522,9 @@ def _test_archive_flavor_platform_keys(env):
     )
     env.expect.that_collection(platforms[platform].target_settings).contains(
         str(Label("//python/config_settings:_is_py_pbs_distribution_install_only")),
+    )
+    env.expect.that_collection(platforms[debug].target_settings).contains(
+        str(Label("//python/config_settings:_is_py_pbs_distribution_debug")),
     )
 
 _tests.append(_test_archive_flavor_platform_keys)

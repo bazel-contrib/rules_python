@@ -10,7 +10,9 @@ ARCHIVE_FLAVORS = ["install_only", "install_only_stripped", "full"]
 
 # Platform key suffixes for the non-default archive flavors. Runtimes for the
 # default flavor use the plain platform key (e.g. `x86_64-unknown-linux-gnu`).
+# `debug` is a build flavor: the debug (`Py_DEBUG`) build.
 PBS_DISTRIBUTION_SUFFIXES = {
+    "debug": "-debug",
     "full": "-full",
     "install_only_stripped": "-install_only_stripped",
 }
@@ -39,11 +41,14 @@ def manifest_entry_platform_keys(entry, platform):
 
     Returns:
       A list of platform keys: the plain key, plus the key for the entry's
-      archive flavor if it has one.
+      archive flavor if it has one, plus the debug key for a debug build.
     """
     keys = [platform]
     if entry.archive_flavor in PBS_DISTRIBUTION_SUFFIXES:
         keys.append(platform + PBS_DISTRIBUTION_SUFFIXES[entry.archive_flavor])
+    flavor_parts = entry.build_flavor.replace("-", "+").split("+")
+    if "debug" in flavor_parts:
+        keys.append(platform + PBS_DISTRIBUTION_SUFFIXES["debug"])
     return keys
 
 def manifest_entry_sort_key(entry):
