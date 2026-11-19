@@ -42,8 +42,9 @@ in `git diff` against the project's Starlark coding rules and conventions:
     - Prefer `ctx.actions.write` over subprocesses for small static strings.
     - Use `$(execpath ...)` / `$(execpaths ...)` instead of `$(location)` /
       `$(locations)`.
-    - Return `None` immediately after injectable `_fail(...)` calls
-      (`_fail = fail`) and guard against `None` in callers.
+    - Return immediately after injectable `_fail(...)` calls (`_fail = fail`)
+      using the function's return convention (bare `return`, `return False`, or
+      `return None`) and guard error returns in callers.
     - Check public `.bzl` symbol removals or renames for breaking users.
 14. Guardrails: Starlark is not Python (`== None` is correct, mutable defaults
     are frozen, no Python stdlib). Ignore `buildifier` formatting output and

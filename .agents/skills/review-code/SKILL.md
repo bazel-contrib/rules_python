@@ -220,8 +220,9 @@ file from `.agents/skills/review-code/`:
   - `Args:` and `Returns:` sections on Starlark helper function docstrings.
   - Defining module-level constants (including test constants) before
     functions.
-  - Short-circuiting with `return None` (and guarding `None` in callers) after
-    injectable `_fail(...)` calls.
+  - Short-circuiting immediately after injectable `_fail(...)` calls (using
+    bare `return`, `return False`, or `return None` to match the function's
+    return convention) and guarding error returns in callers.
 - Whenever an open issue in `code-review-results.md` is resolved (via local
   edit, a new commit, or reviewer decision), move it from `## Open Issues` to
   `## Resolved Issues` (never delete it) and record how it was resolved.
@@ -251,12 +252,16 @@ file from `.agents/skills/review-code/`:
   5. Also approve PR
   6. Also fix all issues
   7. Also push fixes to PR
-- When `Also fix trivial issues and push to PR` is selected, implement all
-  `Fix directly and push to PR` issues locally, verify with `buildifier` and
-  relevant `bazel test --config=fast-tests` targets, commit, push explicitly to
-  the PR head branch (`git push <remote> HEAD:<branch>`), and post a PR comment
-  summarizing the trivial issues fixed instead of posting individual inline
-  review comments for them.
+- When `Also fix trivial issues and push to PR` is selected:
+  - Implement all `Fix directly and push to PR` issues locally.
+  - Verify with `buildifier` and relevant `bazel test --config=fast-tests`
+    targets.
+  - Commit the fixes without amending existing PR commits.
+  - Validate `<remote>` and `<branch>` fail-closed (rejecting `..`, leading
+    `-`, `:`, control characters, and shell metacharacters) and push via
+    `git push -- <remote> "HEAD:refs/heads/<branch>"`.
+  - Post a single PR comment summarizing the trivial issues fixed instead of
+    posting individual inline review comments for them.
 - When fixing and pushing open issues that already had non-draft review comments
   posted, reply to each fixed review thread with the commit SHA (and disclosure
   line) without resolving the thread unless explicitly instructed.

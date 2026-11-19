@@ -143,9 +143,11 @@ globs: "*.bzl,BUILD,BUILD.bazel,*.bazel"
 * **`config_setting` Naming**: Prefix `config_setting` names with `is_` (e.g.
   `is_linux_x86_64`), so that `select()` keys read as conditions.
 * **Injectable `_fail = fail` Callbacks**: When a Starlark function accepts an
-  injectable `_fail = fail` callback for testing, immediately `return None`
-  after every `_fail(...)` call and guard `if result == None: return None` in
-  callers so non-aborting test callbacks do not execute invalid state.
+  injectable `_fail = fail` callback for testing, return immediately after
+  every `_fail(...)` call using the function's return convention (bare `return`
+  in void functions, `return False` in boolean validators, or `return None` in
+  value-returning functions) and guard error returns in callers so non-aborting
+  test callbacks do not execute invalid state.
 * **Explicit Required Parameters**: Declare required parameters explicitly
   instead of passing them through `**kwargs`. Document `Args:` and `Returns:`.
 * **Docstring Formatting Invariants**: Use triple-quoted strings for multi-line
