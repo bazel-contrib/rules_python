@@ -51,9 +51,10 @@ Before drafting any pull request description, strictly adhere to the rules in
   existing PR (such as a Dependabot PR); instead, disclose AI authorship only
   on comments you actually post (see below). Never post comments for every CI
   run or narrate build IDs, commit SHAs, line counts, or trivial diff details
-  (e.g., "comment-only"); comment only for substantive answers/questions, a
-  brief notice after `/review-code` re-wraps another contributor's PR
-  description, or `PTAL` when ready for re-review.
+  on your own PR (e.g., "comment-only"); comment `PTAL` only when ready for
+  re-review, post a brief notice when `/review-code` re-wraps another
+  contributor's PR description, or post a single summary comment when pushing
+  direct fixes while reviewing another author's PR.
 * High-level overview only: state *why* the change is made and *how* at a
   conceptual level.
 * **Issue References**: Reference issues in PR descriptions (e.g., `Work towards
