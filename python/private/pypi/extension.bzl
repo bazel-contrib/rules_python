@@ -681,18 +681,15 @@ If you are defining custom platforms in your project and don't want things to cl
     ),
     "pyproject_toml": attr.label(
         mandatory = False,
-        doc = """
-Label pointing to a `pyproject.toml` file used to read the default Python
-version and, for hubs of the root module, to select exposed packages via
-{obj}`pip.configure`.
-
-When `[project] requires-python` is present, it is used as the default
-`python_version` for `pip.parse()` calls that do not specify one.
+        doc = """\
+Label pointing to pyproject.toml file to read the default Python version from.
+When specified, reads the `requires-python` field from pyproject.toml and uses
+it as the default python_version for all `pip.parse()` calls that don't
+explicitly specify one.
 
 :::{note}
-If `requires-python` is set, the version must be specified as `==X.Y.Z` (exact
-version with full semver). This is designed to work with dependency management
-tools like Renovate.
+The version must be specified as `==X.Y.Z` (exact version with full semver).
+This is designed to work with dependency management tools like Renovate.
 :::
 
 :::{versionadded} 2.3.0
@@ -909,16 +906,13 @@ find in case extra indexes are specified.
         ),
         "pyproject_toml": attr.label(
             mandatory = False,
-            doc = """
-Label pointing to a `pyproject.toml` file used to read the Python version and
-to select exposed packages via {obj}`pip.configure`.
-
-When `python_version` is not set explicitly, the `[project] requires-python`
-field is used as the `python_version` for this `pip.parse()` call.
+            doc = """\
+Label pointing to a pyproject.toml file to read the Python version from.
+When specified, the `requires-python` field is used as the `python_version`
+for this `pip.parse()` call, unless `python_version` is set explicitly.
 
 :::{note}
-When used to derive `python_version`, `requires-python` must be specified as
-`==X.Y.Z` (exact version with full semver).
+The version must be specified as `==X.Y.Z` (exact version with full semver).
 :::
 
 :::{versionadded} 2.3.0
