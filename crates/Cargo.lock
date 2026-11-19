@@ -169,6 +169,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "configparser"
+version = "3.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "031ad3d167622974ed636505ae4556267ed4aa2aea0464122fa6bc9698a32825"
+
+[[package]]
 name = "const-oid"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -871,6 +877,7 @@ dependencies = [
  "anyhow",
  "argfile",
  "base64",
+ "configparser",
  "csv",
  "flate2",
  "lexopt",

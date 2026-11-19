@@ -11,7 +11,14 @@ use py_console_script_gen_lib::{
 
 static TEST_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
-/// Builds `Options` for direct `run` invocations.
+fn default_template_path() -> PathBuf {
+    PathBuf::from(
+        env::var_os("CONSOLE_SCRIPT_TEMPLATE")
+            .expect("CONSOLE_SCRIPT_TEMPLATE env var should be set by Bazel"),
+    )
+}
+
+/// Builds `Options` for direct `run` invocations using the repository's console script template.
 fn options(
     entry_points: &Path,
     out: &Path,
@@ -20,6 +27,7 @@ fn options(
     shebang: &str,
 ) -> Options {
     Options {
+        template: default_template_path(),
         entry_points: entry_points.to_path_buf(),
         out: out.to_path_buf(),
         console_script: console_script.map(str::to_owned),
@@ -110,28 +118,57 @@ fn test_a_single_entry_point() {
     run(&options(&entry_points, &out, None, "foo", "")).expect("script should be generated");
 
     let got = fs::read_to_string(&out).unwrap();
-    let want = "\
-import sys
+    let want = r#"import sys
 
 # See @rules_python//crates/py_console_script_gen for explanation
-if getattr(sys.flags, \"safe_path\", False):
+if getattr(sys.flags, "safe_path", False):
     # We are running on Python 3.11 and we don't need this workaround
     pass
-elif \".runfiles\" not in sys.path[0]:
+elif ".runfiles" not in sys.path[0]:
     sys.path = sys.path[1:]
 
 try:
     from foo.bar import baz
 except ImportError:
-    entries = \"\\n\".join(sys.path)
-    print(\"Printing sys.path entries for easier debugging:\", file=sys.stderr)
-    print(f\"sys.path is:\\n{entries}\", file=sys.stderr)
+    entries = "\n".join(sys.path)
+    print("Printing sys.path entries for easier debugging:", file=sys.stderr)
+    print(f"sys.path is:\n{entries}", file=sys.stderr)
     raise
 
-if __name__ == \"__main__\":
+if __name__ == "__main__":
     sys.exit(baz())  # pyrefly: ignore[not-callable]
-";
+"#;
     assert_eq!(got, want);
+}
+
+#[test]
+fn test_custom_template_file() {
+    let tmp = TempDir::new("custom_template");
+    let template = tmp.path().join("custom_template.txt");
+    fs::write(
+        &template,
+        "%shebang%# custom\nfrom %module% import %attr% as _ep\n_ep_call = %entry_point%\n",
+    )
+    .unwrap();
+    let entry_points = tmp.path().join("entry_points.txt");
+    fs::write(&entry_points, "[console_scripts]\nfoo = pkg.sub:Cls.run\n").unwrap();
+    let out = tmp.path().join("out.py");
+
+    let mut opts = options(
+        &entry_points,
+        &out,
+        Some("foo"),
+        "",
+        "#!/usr/bin/env python3",
+    );
+    opts.template = template;
+    run(&opts).expect("custom template should render");
+
+    let got = fs::read_to_string(&out).unwrap();
+    assert_eq!(
+        got,
+        "#!/usr/bin/env python3\n# custom\nfrom pkg.sub import Cls as _ep\n_ep_call = Cls.run\n"
+    );
 }
 
 #[test]
@@ -169,11 +206,14 @@ fn test_shebang_included() {
 #[test]
 fn test_empty_console_script_flag_falls_back_to_guess() {
     let tmp = TempDir::new("empty_console_script_flag");
+    let template = default_template_path();
     let entry_points = tmp.path().join("entry_points.txt");
     fs::write(&entry_points, "[console_scripts]\nmy-tool = pkg.mod:main\n").unwrap();
     let out = tmp.path().join("out.py");
 
     let args: Vec<OsString> = vec![
+        OsString::from("--template"),
+        template.as_os_str().to_owned(),
         OsString::from("--console-script"),
         OsString::from(""),
         OsString::from("--console-script-guess"),
@@ -184,6 +224,7 @@ fn test_empty_console_script_flag_falls_back_to_guess() {
         out.as_os_str().to_owned(),
     ];
     let opts = parse_options(&args);
+    assert_eq!(opts.template, template);
     assert_eq!(opts.console_script, None);
     assert_eq!(opts.console_script_guess, "my-tool");
     assert_eq!(opts.shebang, "");
@@ -197,6 +238,7 @@ fn test_empty_console_script_flag_falls_back_to_guess() {
 #[test]
 fn test_equals_flag_syntax_and_flagfile() {
     let tmp = TempDir::new("flagfile");
+    let template = default_template_path();
     let entry_points = tmp.path().join("entry_points.txt");
     fs::write(&entry_points, "[console_scripts]\ncli = pkg.cli:run\n").unwrap();
     let out = tmp.path().join("out.py");
@@ -204,7 +246,8 @@ fn test_equals_flag_syntax_and_flagfile() {
     fs::write(
         &flagfile,
         format!(
-            "--console-script\n\n--console-script-guess=cli\n--shebang=#!/usr/bin/python3\n{}\n{}\n",
+            "--template={}\n--console-script\n\n--console-script-guess=cli\n--shebang=#!/usr/bin/python3\n{}\n{}\n",
+            template.display(),
             entry_points.display(),
             out.display()
         ),
@@ -259,10 +302,47 @@ MyTool = trailing.mod:func
 }
 
 #[test]
-fn test_parse_console_scripts_edge_cases() {
-    assert_eq!(parse_console_scripts(""), None);
+fn test_multiple_sections_with_non_console_scripts_last() {
+    let tmp = TempDir::new("multiple_sections_trailing");
+    let entry_points = tmp.path().join("entry_points.txt");
+    fs::write(
+        &entry_points,
+        "\
+[gui_scripts]
+gui_before = pkg.gui:before
+
+[console_scripts]
+cli_one = pkg.cli:one
+cli_two = pkg.cli:two
+
+[pytest11]
+my_plugin = pkg.plugin
+
+[flake8.extension]
+F99 = pkg.flake8:Checker
+",
+    )
+    .unwrap();
+    let out = tmp.path().join("out.py");
+
+    run(&options(&entry_points, &out, Some("cli_two"), "", ""))
+        .expect("console_scripts entry before trailing sections should resolve");
+    let got = fs::read_to_string(&out).unwrap();
+    assert!(got.contains("from pkg.cli import two\n"));
+
+    let err = run(&options(&entry_points, &out, Some("F99"), "", "")).unwrap_err();
     assert_eq!(
-        parse_console_scripts("[console_scripts]\nempty_val = \n   indented = ignored:fn\n"),
+        err.to_string(),
+        "The console_script 'F99' was not found, only the following are available: cli_one, cli_two"
+    );
+}
+
+#[test]
+fn test_parse_console_scripts_edge_cases() {
+    assert_eq!(parse_console_scripts("").expect("empty INI is valid"), None);
+    assert_eq!(
+        parse_console_scripts("[console_scripts]\nempty_val = \nno_delim_key\n")
+            .expect("empty values should parse"),
         None
     );
 
@@ -270,12 +350,13 @@ fn test_parse_console_scripts_edge_cases() {
         "\
 [ console_scripts ]
 alpha = pkg.a:first
-  continuation_line_ignored
+  continuation_line
 alpha = pkg.a:override
 beta : pkg.b:run
 empty_ignored =   
 ",
     )
+    .expect("INI should parse")
     .expect("console_scripts section should be non-empty");
 
     assert_eq!(parsed.len(), 2);
@@ -284,6 +365,11 @@ empty_ignored =
         Some("pkg.a:override")
     );
     assert_eq!(parsed.get("beta").map(String::as_str), Some("pkg.b:run"));
+
+    assert!(
+        parse_console_scripts("[unclosed_section\nfoo = bar:baz\n").is_err(),
+        "unclosed section header should fail"
+    );
 }
 
 #[test]
@@ -319,19 +405,49 @@ fn test_help() {
 #[test]
 fn test_cli_parse_errors_and_double_dash() {
     assert!(parse_args(["entry_points.txt", "out.py"]).is_err());
-    assert!(parse_args(["--console-script-guess=foo", "only_one_positional"]).is_err());
-    assert!(parse_args(["--console-script-guess=foo", "--unknown-flag", "a", "b"]).is_err());
-    assert!(parse_args(["--console-script-guess=foo", "-x", "a", "b"]).is_err());
+    assert!(parse_args(["--console-script-guess=foo", "a", "b"]).is_err());
+    assert!(parse_args(["--template=tmpl.txt", "a", "b"]).is_err());
+    assert!(
+        parse_args([
+            "--template=tmpl.txt",
+            "--console-script-guess=foo",
+            "only_one"
+        ])
+        .is_err()
+    );
+    assert!(
+        parse_args([
+            "--template=tmpl.txt",
+            "--console-script-guess=foo",
+            "--unknown-flag",
+            "a",
+            "b"
+        ])
+        .is_err()
+    );
+    assert!(
+        parse_args([
+            "--template=tmpl.txt",
+            "--console-script-guess=foo",
+            "-x",
+            "a",
+            "b"
+        ])
+        .is_err()
+    );
+    assert!(parse_args(["--template"]).is_err());
     assert!(parse_args(["--console-script"]).is_err());
     assert!(parse_args(["--console-script-guess"]).is_err());
     assert!(parse_args(["--shebang"]).is_err());
 
     let opts = parse_options([
+        "--template=tmpl.txt",
         "--console-script-guess=foo",
         "--",
         "-dash_entry_points.txt",
         "-dash_out.py",
     ]);
+    assert_eq!(opts.template, PathBuf::from("tmpl.txt"));
     assert_eq!(opts.entry_points, PathBuf::from("-dash_entry_points.txt"));
     assert_eq!(opts.out, PathBuf::from("-dash_out.py"));
 }
@@ -339,11 +455,14 @@ fn test_cli_parse_errors_and_double_dash() {
 #[test]
 fn test_run_cli_exit_codes() {
     let tmp = TempDir::new("run_cli");
+    let template = default_template_path();
     let entry_points = tmp.path().join("entry_points.txt");
     fs::write(&entry_points, "[console_scripts]\ncli = pkg.cli:main\n").unwrap();
     let out = tmp.path().join("cli_out.py");
 
     let code_ok = run_cli([
+        OsString::from("--template"),
+        template.as_os_str().to_owned(),
         OsString::from("--console-script-guess=cli"),
         entry_points.as_os_str().to_owned(),
         out.as_os_str().to_owned(),
