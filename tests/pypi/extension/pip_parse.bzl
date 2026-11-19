@@ -2,7 +2,7 @@
 
 def configure(
         *,
-        dependency_groups = ["*"],
+        dependency_groups = [],
         hub_name,
         pyproject_toml = None):
     """Simulate the PyPI extension configure tag class for testing."""

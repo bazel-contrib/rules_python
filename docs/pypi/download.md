@@ -212,15 +212,33 @@ dependencies of `numpy` are only used through `@pypi_hub//numpy`. The
 `all_requirements` lists in the hub's `requirements.bzl` and the
 [Unified @pypi Hub](unified-pypi-hub) only contain the exposed packages.
 
-The {attr}`pip.configure.dependency_groups` attribute defaults to `["*"]`,
-which selects every group. Use `["*", "transitive"]` to expose all of the
-packages of the hub, including the transitive dependencies, which is the same
-as not configuring the hub. Selecting the transitive dependencies of only some
-of the groups is not supported.
+Use `["*"]` to select every group, or `["*", "transitive"]` to expose all of
+the packages of the hub, including the transitive dependencies, which is the
+same as not configuring the hub. Selecting the transitive dependencies of only
+some of the groups is not supported. A tag without
+{attr}`pip.configure.dependency_groups` does not limit the hub and does not
+need a `pyproject.toml`.
 
-Multiple tags for the same hub are combined. Only the root module and the
-module that created the hub can configure it; if both do, the root module
-wins. A self reference such as `my-project[test]` in the `pyproject.toml`
+The `pip.configure` tags work like a builder: they are applied in order and
+the tags for the same hub are combined. A `pyproject_toml` set on a tag is used
+by the later tags of the same module and hub, so it only needs to be set once:
+
+```starlark
+pip.configure(
+    hub_name = "pypi_hub",
+    pyproject_toml = "//tools:pyproject.toml",
+    dependency_groups = ["default"],
+)
+
+# Uses //tools:pyproject.toml
+pip.configure(
+    hub_name = "pypi_hub",
+    dependency_groups = ["group:dev"],
+)
+```
+
+Only the root module and the module that created the hub can configure it; if
+both do, the root module wins. A self reference such as `my-project[test]` in the `pyproject.toml`
 selects the optional dependencies of the project. The packages that are not
 part of the hub are ignored, so a single `pyproject.toml` can list tools that
 are missing from the lock file.

@@ -1123,9 +1123,11 @@ execution-phase error when built.
 _configure_tag = tag_class(
     attrs = {
         "dependency_groups": attr.string_list(
-            default = ["*"],
+            default = [],
             doc = """
-The `pyproject.toml` dependency groups whose packages the hub exposes.
+The `pyproject.toml` dependency groups whose packages the hub exposes. The
+default, `[]`, does not select any packages, so the tag does not limit the hub
+and it does not need a `pyproject.toml`.
 
 Each item is one of:
 
@@ -1158,9 +1160,12 @@ The name of the hub to configure.
         "pyproject_toml": attr.label(
             mandatory = False,
             doc = """
-The `pyproject.toml` file that defines the dependency groups. Defaults to the
-{attr}`pip.parse.pyproject_toml` of the hub, then to
-{attr}`pip.default.pyproject_toml` if the hub is defined by the root module.
+The `pyproject.toml` file that defines the dependency groups. It is also used
+by the later `pip.configure` tags of the same module and hub that don't set it.
+Defaults to the last `pyproject_toml` set by an earlier `pip.configure` tag of
+the same module and hub, then to the {attr}`pip.parse.pyproject_toml` of the
+hub, then to {attr}`pip.default.pyproject_toml` if the hub is defined by the
+root module. It is only needed when {attr}`dependency_groups` is set.
 
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
@@ -1176,8 +1181,14 @@ The packages are selected from a `pyproject.toml` file using the
 transitive dependencies, are still used by the packages that need them, but
 they are not public.
 
+The tags work like a builder: they are applied in order and multiple tags for
+the same hub are combined, so each tag can configure a different part of the
+hub. A `pyproject_toml` set on a tag is used by the later tags of the same
+module and hub. A tag that does not select any {attr}`dependency_groups` does
+not limit the hub.
+
 Only the root module and the module that created the hub can configure it. If
-both do, the root module wins. Multiple tags for the same hub are combined.
+both do, the root module wins.
 
 See {ref}`Configuring the Exposed Packages <pip-configure>` for examples.
 
