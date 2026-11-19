@@ -127,18 +127,17 @@ file from `.agents/skills/review-code/`:
     - Prompt file:
       `.agents/skills/review-code/review-comment-readability-prompt.md`
     - Focus: Polishes `Problem`, `Proposed Fix`, `Draft Comment`, and
-      `Draft Reply` text for rendered readability—enforcing the mechanical
-      `Draft Comment` structure (`<brief/concise description of issue>`,
-      bounded `Suggested fix:`, and optional `Where:` when multiple locations
-      are affected), cutting dense "wall of text" paragraphs down to 1–2 short,
-      direct sentences, omitting verbatim code snippets when a concise prose
-      instruction suffices (formatting, per-field `struct(...)` comments, and
-      splitting compound boolean or inline ternary expressions), ensuring
-      suggested error/message wording is explicitly included in `Draft Comment`
-      (not left only in `Proposed Fix`), removing excessive inline backticks
-      when listing multiple identifiers (such as `UPPER_SNAKE_CASE` constants)
-      so text does not jump repeatedly into and out of code formatting, and
-      stripping outer backtick wrappers.
+      `Draft Reply` text for rendered readability:
+      - Enforce the mechanical `Draft Comment` structure (`<brief/concise
+        description of issue>`, bounded `Suggested fix:`, and optional `Where:`
+        when multiple locations are affected).
+      - Cut dense "wall of text" paragraphs down to 1–2 short, direct
+        sentences.
+      - Omit verbatim code snippets when a concise prose instruction suffices.
+      - Include concrete suggested error/message wording in `Draft Comment`
+        (not left only in `Proposed Fix`).
+      - Remove excessive inline backticks across identifier lists (such as
+        `UPPER_SNAKE_CASE` constants) and strip outer backtick wrappers.
 
 ### Action Instructions
 - Immediately create a user-facing review artifact named

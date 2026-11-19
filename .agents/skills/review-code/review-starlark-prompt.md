@@ -33,17 +33,18 @@ in `git diff` against the project's Starlark coding rules and conventions:
     flag top-level target-instantiation ternaries (`rule_a(...) if cond else
     rule_b(...)`) that belong in a `.bzl` helper macro so `BUILD` files remain
     processable by `buildifier` and `buildozer`.
-13. Check macro and rule hygiene: forward unused wrapper arguments via
-    `**kwargs`, silence unused variables with `_ = a, b  # @unused`, require
-    comments above each field (with parameterized `list[...]` / `dict[...]`
-    element types, never bare `list` or `dict`) when returning a `struct(...)`
-    of fields, prefer analysis-time validation over loading-time checks, prefer
-    `ctx.actions.write` over subprocesses for small static strings, use
-    `$(execpath ...)` / `$(execpaths ...)` instead of `$(location)` /
-    `$(locations)`, verify functions with injectable `_fail = fail` callbacks
-    `return None` immediately after `_fail(...)` and callers guard against
-    `None`, and check public `.bzl` symbol removals/renames for breaking
-    users.
+13. Check macro and rule hygiene:
+    - Forward unused wrapper arguments via `**kwargs`.
+    - Silence unused variables with `_ = a, b  # @unused`.
+    - Comment each field when returning a `struct(...)`, using parameterized
+      `list[...]` / `dict[...]` element types (never bare `list` or `dict`).
+    - Prefer analysis-time validation over loading-time checks.
+    - Prefer `ctx.actions.write` over subprocesses for small static strings.
+    - Use `$(execpath ...)` / `$(execpaths ...)` instead of `$(location)` /
+      `$(locations)`.
+    - Return `None` immediately after injectable `_fail(...)` calls
+      (`_fail = fail`) and guard against `None` in callers.
+    - Check public `.bzl` symbol removals or renames for breaking users.
 14. Guardrails: Starlark is not Python (`== None` is correct, mutable defaults
     are frozen, no Python stdlib). Ignore `buildifier` formatting output and
     unowned wrapper macro docstrings.
