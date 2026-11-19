@@ -142,6 +142,12 @@ globs: "*.bzl,BUILD,BUILD.bazel,*.bazel"
   above `provider()` declarations that do not end in `Info` (e.g. `*Fileset`).
 * **`config_setting` Naming**: Prefix `config_setting` names with `is_` (e.g.
   `is_linux_x86_64`), so that `select()` keys read as conditions.
+* **Injectable `_fail = fail` Callbacks**: When a Starlark function accepts an
+  injectable `_fail = fail` callback for testing, return immediately after
+  every `_fail(...)` call using the function's return convention (bare `return`
+  in void functions, `return False` in boolean validators, or `return None` in
+  value-returning functions) and guard error returns in callers so non-aborting
+  test callbacks do not execute invalid state.
 * **Explicit Required Parameters**: Declare required parameters explicitly
   instead of passing them through `**kwargs`. Document `Args:` and `Returns:`.
 * **Docstring Formatting Invariants**: Use triple-quoted strings for multi-line
@@ -150,7 +156,8 @@ globs: "*.bzl,BUILD,BUILD.bazel,*.bazel"
   arguments, link to shared symbols (`{obj}`) or guides (`{ref}`) instead of
   repeating rules, and put extended examples in `docs/`.
 * When returning a `struct(...)` of fields, add a comment above each field
-  describing its value.
+  describing its value and parameterized container element types (e.g.,
+  `dict[str, list[str]]`, never bare `list` or `dict`).
 * **Workaround Comments**: Comment non-obvious workarounds with the intent, why
   the direct approach fails, and why the workaround works.
 * **No Bazel Copyright Headers**: Do not add Bazel copyright headers to new or
