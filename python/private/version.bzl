@@ -188,6 +188,32 @@ def accept_placeholder(parser):
 
     return parser.accept()
 
+def _accept_sequence(parser, predicate, value):
+    """Accept a sequence of tokens or placeholders that match the `predicate`.
+
+    Args:
+      parser: The normalizer.
+      predicate: function taking a token and returning a boolean
+        saying if we want to accept the token.
+      value: the function to apply to the token to get the string to add.
+
+    Returns:
+      whether at least one token or placeholder was accepted.
+    """
+    ctx = parser.open_context()
+    start = ctx["start"]
+
+    for i in range(start, len(parser.input) + 1):
+        if not accept(parser, predicate, value) and not accept_placeholder(parser):
+            if i - start >= 1:
+                if ctx["norm"].isdigit():
+                    # PEP 440: Integer Normalization
+                    ctx["norm"] = str(int(ctx["norm"]))
+                return parser.accept()
+            break
+
+    return parser.discard()
+
 def accept_digits(parser):
     """Accept multiple digits (or placeholders), up to a non-digit/placeholder.
 
@@ -197,20 +223,18 @@ def accept_digits(parser):
     Returns:
       whether some digits (or placeholders) were accepted.
     """
+    return _accept_sequence(parser, _isdigit, str)
 
-    ctx = parser.open_context()
-    start = ctx["start"]
+def accept_alnum(parser):
+    """Accept an alphanumeric sequence.
 
-    for i in range(start, len(parser.input) + 1):
-        if not accept(parser, _isdigit, str) and not accept_placeholder(parser):
-            if i - start >= 1:
-                if ctx["norm"].isdigit():
-                    # PEP 440: Integer Normalization
-                    ctx["norm"] = str(int(ctx["norm"]))
-                return parser.accept()
-            break
+    Args:
+      parser: The normalizer.
 
-    return parser.discard()
+    Returns:
+      whether an alphanumeric sequence was accepted.
+    """
+    return _accept_sequence(parser, _isalnum, _lower)
 
 def accept_string(parser, string, replacement):
     """Accept a `string` in the input. Output `replacement`.
@@ -232,27 +256,6 @@ def accept_string(parser, string, replacement):
     ctx["norm"] = replacement
 
     return parser.accept()
-
-def accept_alnum(parser):
-    """Accept an alphanumeric sequence.
-
-    Args:
-      parser: The normalizer.
-
-    Returns:
-      whether an alphanumeric sequence was accepted.
-    """
-
-    ctx = parser.open_context()
-    start = ctx["start"]
-
-    for i in range(start, len(parser.input) + 1):
-        if not accept(parser, _isalnum, _lower) and not accept_placeholder(parser):
-            if i - start >= 1:
-                return parser.accept()
-            break
-
-    return parser.discard()
 
 def accept_dot_number(parser):
     """Accept a dot followed by digits.
@@ -297,20 +300,13 @@ def accept_separator_alnum(parser):
     Returns:
       whether a separator and an alphanumeric string were accepted.
     """
-    ctx = parser.open_context()
+    parser.open_context()
 
     # PEP 440: Local version segments
     if not accept(parser, _in([".", "-", "_"]), "."):
         return parser.discard()
 
     if accept_alnum(parser):
-        # First character is separator; skip it.
-        value = ctx["norm"][1:]
-
-        # PEP 440: Integer Normalization
-        if value.isdigit():
-            value = str(int(value))
-            ctx["norm"] = ctx["norm"][0] + value
         return parser.accept()
 
     return parser.discard()
@@ -540,39 +536,39 @@ def normalize_pep440(version):
     return _parse(version, strict = True)["norm"]
 
 def _parse(version_str, strict = True, _fail = fail):
-    """Escape the version component of a filename.
+    """Split the version into its normalized segments.
 
-    See https://packaging.python.org/en/latest/specifications/binary-distribution-format/#escaping-and-unicode
-    and https://peps.python.org/pep-0440/
+    See https://peps.python.org/pep-0440/
 
     Args:
       version_str: version string to be normalized according to PEP 440.
-      strict: fail if the version is invalid, defaults to True.
+      strict: fail if the version is invalid, defaults to True. If it is
+        False, then the `.*` suffix of the version specifiers is accepted.
       _fail: Used for tests
 
     Returns:
-      string containing the normalized version.
+      A dict with the normalized version (`norm`), its segments (`epoch`,
+      `release`, `pre`, `post`, `dev` and `local`) as strings and `is_prefix`,
+      or None if the version is invalid.
     """
 
     # https://packaging.python.org/en/latest/specifications/version-specifiers/#leading-and-trailing-whitespace
     version = version_str.strip()
-    is_prefix = False
-
-    if not strict:
-        is_prefix = version.endswith(".*")
-        version = version.strip(" .*")  # PEP 440: Leading and Trailing Whitespace and ".*"
+    is_prefix = not strict and version.endswith(".*")
+    if is_prefix:
+        version = version[:-len(".*")]
 
     parser = _new(version)
-    accept(parser, _is("v"), "")  # PEP 440: Preceding v character
+    accept(parser, _in(["v", "V"]), "")  # PEP 440: Preceding v character
     accept_epoch(parser)
-    accept_release(parser)
+    has_release = accept_release(parser)
     accept_prerelease(parser)
     accept_postrelease(parser)
     accept_devrelease(parser)
     accept_local(parser)
 
     parser_ctx = parser.context()
-    if parser.input[parser_ctx["start"]:]:
+    if not has_release or parser.input[parser_ctx["start"]:]:
         if strict:
             _fail(
                 "Failed to parse PEP 440 version identifier '%s'." % parser.input,
@@ -585,7 +581,7 @@ def _parse(version_str, strict = True, _fail = fail):
     return parser_ctx
 
 def parse(version_str, strict = False, _fail = fail):
-    """Parse a PEP4408 compliant version.
+    """Parse a PEP440 compliant version.
 
     This is similar to `normalize_pep440`, but it parses individual components to
     comparable types.
@@ -615,9 +611,16 @@ def parse(version_str, strict = False, _fail = fail):
     if not parts:
         return None
 
+    if "{" in parts["norm"]:
+        if strict:
+            _fail("Cannot parse a version with placeholders: {}".format(version_str))
+
+        # The placeholders can be normalized, but they cannot be compared.
+        return None
+
     if parts["is_prefix"] and (parts["local"] or parts["post"] or parts["dev"] or parts["pre"]):
         if strict:
-            _fail("local version part has been obtained, but only public segments can have prefix matches")
+            _fail("Only the epoch and the release segments can be used with prefix matching: {}".format(version_str))
 
         # https://peps.python.org/pep-0440/#public-version-identifiers
         return None
