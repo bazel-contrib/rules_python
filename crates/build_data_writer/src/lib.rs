@@ -64,11 +64,7 @@ pub fn write_build_data(options: &Options) -> Result<()> {
     let mut writer = BufWriter::new(file);
 
     writeln!(writer, "TARGET {}", options.target)?;
-    writeln!(
-        writer,
-        "STAMPED {}",
-        if options.stamped { "TRUE" } else { "FALSE" }
-    )?;
+    writeln!(writer, "STAMPED {}", options.stamped)?;
 
     if let Some(version_file) = &options.version_file {
         append_status_file(&mut writer, version_file)?;
@@ -89,14 +85,6 @@ fn append_status_file<W: Write>(writer: &mut W, path: &Path) -> Result<()> {
         writer.write_all(b"\n")?;
     }
     Ok(())
-}
-
-fn parse_stamped(val: &str) -> Result<bool> {
-    match val {
-        "TRUE" => Ok(true),
-        "FALSE" => Ok(false),
-        other => bail!("{} must be TRUE or FALSE, got '{other}'", env_vars::STAMPED),
-    }
 }
 
 fn required_env<F>(get_env: &F, key: &str) -> Result<String>
@@ -139,7 +127,18 @@ where
             )
         })?;
     let target = required_env(&get_env, env_vars::TARGET)?;
-    let stamped = parse_stamped(&required_env(&get_env, env_vars::STAMPED)?)?;
+    let stamped = if let Some(val) = get_env(env_vars::STAMPED) {
+        match val.to_str() {
+            Some("TRUE") => "TRUE",
+            Some("FALSE") => "FALSE",
+            _ => bail!("{} must be TRUE or FALSE, got {val:?}", env_vars::STAMPED),
+        }
+    } else {
+        bail!(
+            "missing required environment variable: {}",
+            env_vars::STAMPED
+        );
+    };
     let version_file = get_env(env_vars::VERSION_FILE)
         .filter(|s| !s.is_empty())
         .map(PathBuf::from);
@@ -212,8 +211,8 @@ pub struct Options {
     pub output: PathBuf,
     /// Target label string (e.g. `//pkg:target`).
     pub target: String,
-    /// Whether stamping is enabled.
-    pub stamped: bool,
+    /// Stamping marker (`"TRUE"` or `"FALSE"`).
+    pub stamped: &'static str,
     /// Optional path to Bazel's `volatile-status.txt` (`ctx.version_file`), relative to the
     /// current working directory or absolute.
     pub version_file: Option<PathBuf>,

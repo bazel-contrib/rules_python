@@ -67,7 +67,7 @@ fn test_env_configuration_both_status_files() {
     ]);
 
     let opts = parse_options(&env_map);
-    assert!(opts.stamped);
+    assert_eq!(opts.stamped, "TRUE");
     write_build_data(&opts).expect("build data should be writable");
 
     let result = fs::read_to_string(&output_path).unwrap();
@@ -123,10 +123,10 @@ fn test_stamped_parsing() {
 
     let mut env_map = base_env(&output);
     env_map.insert("STAMPED", OsString::from("TRUE"));
-    assert!(parse_options(&env_map).stamped);
+    assert_eq!(parse_options(&env_map).stamped, "TRUE");
 
     env_map.insert("STAMPED", OsString::from("FALSE"));
-    assert!(!parse_options(&env_map).stamped);
+    assert_eq!(parse_options(&env_map).stamped, "FALSE");
 
     for invalid in ["true", "false", "1", "0", "", "maybe"] {
         env_map.insert("STAMPED", OsString::from(invalid));
@@ -173,7 +173,7 @@ fn test_empty_or_unset_version_and_info_files() {
     let opts = Options {
         output: output_path.clone(),
         target: "//foo:bar".to_string(),
-        stamped: false,
+        stamped: "FALSE",
         version_file: None,
         info_file: None,
     };
@@ -202,7 +202,7 @@ fn test_empty_or_unset_version_and_info_files() {
     let opts_empty_file = Options {
         output: output_path.clone(),
         target: "//foo:qux".to_string(),
-        stamped: true,
+        stamped: "TRUE",
         version_file: Some(empty_file),
         info_file: None,
     };
@@ -229,7 +229,7 @@ fn test_status_files_without_trailing_newline() {
     let opts = Options {
         output: output_path.clone(),
         target: "//a:b".to_string(),
-        stamped: true,
+        stamped: "TRUE",
         version_file: Some(version_file),
         info_file: Some(info_file),
     };
@@ -252,7 +252,7 @@ fn test_truncates_existing_output() {
     let opts1 = Options {
         output: output_path.clone(),
         target: "//first:target_with_long_previous_content".to_string(),
-        stamped: true,
+        stamped: "TRUE",
         version_file: None,
         info_file: None,
     };
@@ -261,7 +261,7 @@ fn test_truncates_existing_output() {
     let opts2 = Options {
         output: output_path.clone(),
         target: "//second:short".to_string(),
-        stamped: false,
+        stamped: "FALSE",
         version_file: None,
         info_file: None,
     };
@@ -280,7 +280,7 @@ fn test_missing_status_file_errors() {
     let opts = Options {
         output: temp_dir.join("out.txt"),
         target: "//t:t".to_string(),
-        stamped: true,
+        stamped: "TRUE",
         version_file: Some(temp_dir.join("does_not_exist.txt")),
         info_file: None,
     };
