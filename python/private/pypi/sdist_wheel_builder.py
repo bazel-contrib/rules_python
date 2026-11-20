@@ -601,9 +601,17 @@ def main() -> None:
                     env["PYTHONPATH"] = os.pathsep.join(resolved_python_paths)
 
         pyproject_file = sdist_root / "pyproject.toml"
-        if (is_cross and
-                pyproject_file.is_file() and
-                "mesonpy" in pyproject_file.read_text(errors="ignore")):
+        is_meson = (
+            pyproject_file.is_file()
+            and "mesonpy" in pyproject_file.read_text(errors="ignore")
+        )
+        if is_meson:
+            # Prevent Meson from querying host pkg-config (e.g.
+            # /usr/lib/.../python-3.13.pc -> -I/usr/include/python3.13)
+            # instead of Bazel's hermetic Python headers via sysconfig.
+            env.setdefault("PKG_CONFIG_LIBDIR", "")
+
+        if is_cross and is_meson:
             cpu_family = {"x86_32": "x86"}.get(args.target_cpu, args.target_cpu)
             cross_ini = scratch_dir / "meson-cross.ini"
             cross_lines = [
