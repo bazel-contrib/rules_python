@@ -100,6 +100,24 @@ def _test_select_all(env):
 
 _tests.append(_test_select_all)
 
+def _test_select_empty_wildcards(env):
+    pyproject = struct(
+        name = "my-project",
+        dependencies = ["main-pkg"],
+        optional_dependencies = {},
+        dependency_groups = {},
+    )
+    for specs, want in [
+        (["optional:*"], []),
+        (["group:*"], []),
+        (["*"], ["main_pkg"]),
+    ]:
+        got, failures = _select(specs, pyproject = pyproject)
+        env.expect.where(specs = specs).that_collection(failures).contains_exactly([])
+        env.expect.where(specs = specs).that_collection(got.packages).contains_exactly(want)
+
+_tests.append(_test_select_empty_wildcards)
+
 def _test_select_errors(env):
     for specs, want in [
         (
