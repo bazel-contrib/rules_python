@@ -919,23 +919,29 @@ def _get_coverage_details(ctx):
           dependencies of the executable.
         * from_deps: {type}`bool` whether `coverage` is importable from the
           flag target, so that the runtime `coverage_tool` is not needed.
-        * rcfiles: {type}`list[File]` the `.coveragerc` files to merge.
+        * rcfiles: {type}`depset[File]` the files that may contain the
+          `.coveragerc` files to merge. They are filtered when the bootstrap is
+          expanded, see `_map_coverage_rcfile`.
     """
     if not ctx.configuration.coverage_enabled or _is_tool_config(ctx):
-        return struct(dep = None, from_deps = False, rcfiles = [])
+        return struct(dep = None, from_deps = False, rcfiles = depset())
 
     # The flag defaults to an empty `py_library`, which has no sources.
     target = ctx.attr._coverage_flag
     if target[PyInfo].transitive_sources:
-        rcfiles = [
-            f
-            for f in target[DefaultInfo].default_runfiles.files.to_list()
-            # Skip any `.coveragerc` shipped inside of a wheel.
-            if f.basename == ".coveragerc" and "/site-packages/" not in f.short_path
-        ]
-        return struct(dep = target, from_deps = True, rcfiles = rcfiles)
+        return struct(
+            dep = target,
+            from_deps = True,
+            rcfiles = target[DefaultInfo].default_runfiles.files,
+        )
 
-    return struct(dep = None, from_deps = False, rcfiles = [])
+    return struct(dep = None, from_deps = False, rcfiles = depset())
+
+def _map_coverage_rcfile(f):
+    # Skip any `.coveragerc` shipped inside of a wheel.
+    if f.basename != ".coveragerc" or "/site-packages/" in f.short_path:
+        return None
+    return f.short_path
 
 def _get_coverage_tool_runfiles_path(ctx, runtime):
     if (ctx.configuration.coverage_enabled and
@@ -971,16 +977,22 @@ def _create_stage2_bootstrap(
     else:
         main_py_path = ""
 
+    # Expanded at execution time to avoid flattening the runfiles of the
+    # `coverage` target during analysis.
+    computed_subs = ctx.actions.template_dict()
+    computed_subs.add_joined(
+        "%coverage_rcfiles%",
+        coverage.rcfiles,
+        join_with = ":",
+        map_each = _map_coverage_rcfile,
+    )
+
     ctx.actions.expand_template(
         template = template,
         output = output,
         substitutions = {
             "%build_data_file%": runfiles_root_path(ctx, build_data_file.short_path),
             "%coverage_instrumented%": str(int(ctx.configuration.coverage_enabled and ctx.coverage_instrumented())),
-            "%coverage_rcfiles%": ":".join([
-                runfiles_root_path(ctx, f.short_path)
-                for f in coverage.rcfiles
-            ]),
             "%coverage_tool%": _get_coverage_tool_runfiles_path(ctx, runtime),
             "%import_all%": "True" if read_possibly_native_flag(ctx, "python_import_all_repositories") else "False",
             "%imports%": ":".join(imports.to_list()),
@@ -991,6 +1003,7 @@ def _create_stage2_bootstrap(
             "%venv_root%": venv.venv_root,
             "%workspace_name%": ctx.workspace_name,
         },
+        computed_substitutions = computed_subs,
         is_executable = True,
     )
     return output

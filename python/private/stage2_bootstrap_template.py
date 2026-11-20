@@ -53,9 +53,12 @@ VENV_SITE_PACKAGES = "%venv_rel_site_packages%"
 # string, 1 or 0
 COVERAGE_INSTRUMENTED = "%coverage_instrumented%" == "1"
 
-# Colon-delimited runfiles-root-relative paths to the `.coveragerc` files to
-# merge, in order.
+# Colon-delimited `File.short_path` values of the `.coveragerc` files to merge,
+# in order.
 COVERAGE_RCFILES = "%coverage_rcfiles%"
+
+# The name of the main repository in the runfiles.
+WORKSPACE_NAME = "%workspace_name%"
 
 # runfiles-root-relative path to a file with binary-specific build information
 # It uses forward slashes, so must be converted for proper usage on Windows.
@@ -391,7 +394,12 @@ def _write_coverage_rc(rcfile_name, *, runfiles_root, source):
         return parser
 
     config = new_parser()
-    for rel_path in COVERAGE_RCFILES.split(":") if COVERAGE_RCFILES else []:
+    for short_path in COVERAGE_RCFILES.split(":") if COVERAGE_RCFILES else []:
+        # The `../` prefix is for files in other repos.
+        if short_path.startswith("../"):
+            rel_path = short_path[len("../") :]
+        else:
+            rel_path = os.path.join(WORKSPACE_NAME, short_path)
         path = os.path.join(runfiles_root, rel_path)
         print_verbose_coverage("merging coveragerc:", path)
         user_config = new_parser()
