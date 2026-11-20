@@ -14,6 +14,7 @@
 """Module extension for internal dev_dependency=True setup."""
 
 load("@bazel_ci_rules//:rbe_repo.bzl", "rbe_preconfig")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("//python/private/pypi:whl_library.bzl", "whl_library")
 load("//tests/support/whl_from_dir:whl_from_dir_repo.bzl", "whl_from_dir_repo")
 load(":runtime_env_repo.bzl", "runtime_env_repo")
@@ -147,6 +148,16 @@ def _internal_dev_deps_impl(mctx):
                 "whls": ["pkg-1.0-any-none-any.whl"],
             }),
         },
+    )
+
+    # Setup for //tests/support/pypa_packaging, the sdist is used because the
+    # wheel does not have the tests.
+    http_archive(
+        name = "pypa_packaging",
+        build_file = "//tests/support/pypa_packaging:packaging.BUILD.bazel",
+        sha256 = "94edc256424af38762eb31306eed28beb9f0efc50a8837492c9d6fd6004aed79",
+        strip_prefix = "packaging-26.3",
+        url = "https://files.pythonhosted.org/packages/7d/fa/3944b40b07da9ce895c0e6303a5ab7d53da063554f534556b134a54d6093/packaging-26.3.tar.gz",
     )
 
 def _whl_library_from_dir(*, name, output, root, **kwargs):

@@ -1,3 +1,11 @@
+load(":packaging_conformance_tests.bzl", "packaging_conformance_test_suite")
 load(":version_test.bzl", "version_test_suite")
+
+exports_files(
+    ["packaging_cases.bzl"],
+    visibility = ["//tests/support/pypa_packaging:__pkg__"],
+)
+
+packaging_conformance_test_suite(name = "packaging_conformance_tests")
 
 version_test_suite(name = "version_tests")
