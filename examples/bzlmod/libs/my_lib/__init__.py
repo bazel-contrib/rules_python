@@ -19,10 +19,16 @@ def websockets_is_for_python_version(sanitized_version_check):
     # We are checking that the name of the repository folders
     # match the expected generated names. If we update the folder
     # structure or naming we will need to modify this test.
-    want = f"_{sanitized_version_check}_websockets"
+    #
+    # The wheels downloaded with the bazel downloader are extracted in a
+    # repository named after the wheel filename, which has the python tag.
+    wants = [
+        f"_{sanitized_version_check}_websockets",
+        f"_cp{sanitized_version_check}_cp{sanitized_version_check}",
+    ]
     got_full = websockets.__file__
-    if want not in got_full:
-        print(f"Failed, expected '{want}' to be a substring of '{got_full}'.")
+    if not any(want in got_full for want in wants):
+        print(f"Failed, expected one of {wants} to be a substring of '{got_full}'.")
         return False
 
     return True

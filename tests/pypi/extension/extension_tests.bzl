@@ -751,7 +751,9 @@ def _test_default_index_setting(env):
                 ),
             ],
             environ = {"RULES_PYTHON_PIP_INDEX_URL": "https://pypi.internal.org/simple"},
-            want_index_url = "https://pypi.internal.org/simple",
+            # The unresolved template is passed on, because the resolved value
+            # may contain credentials.
+            want_index_url = "${RULES_PYTHON_PIP_INDEX_URL}",
         ),
         struct(
             modules = [
@@ -774,8 +776,9 @@ def _test_default_index_setting(env):
             ],
             environ = {"RULES_PYTHON_PIP_INDEX_URL": "https://pypi.internal.org/simple"},
             # We want the file to have lower precedence than our default if the
-            # `my_module` is setting the default.
-            want_index_url = "https://pypi.internal.org/simple",
+            # `my_module` is setting the default. The unresolved template is
+            # passed on, because the resolved value may contain credentials.
+            want_index_url = "${RULES_PYTHON_PIP_INDEX_URL}",
         ),
     ]:
         pypi = _parse_modules(

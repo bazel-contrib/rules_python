@@ -1,0 +1,3 @@
+load(":shared_whl_srcs_tests.bzl", "shared_whl_srcs_test_suite")
+
+shared_whl_srcs_test_suite(name = "shared_whl_srcs_tests")
