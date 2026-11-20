@@ -9,7 +9,7 @@
 
 use std::ffi::OsString;
 use std::fs::{self, File};
-use std::io::{self, BufReader, Read};
+use std::io::{self, BufReader, Read, Seek};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -70,15 +70,28 @@ pub fn parse_record(record_bytes: &[u8]) -> Result<Vec<String>> {
     Ok(paths)
 }
 
-/// Reads the `.dist-info/RECORD` file from `whl_path` and returns the list of file paths
+/// Opens `whl_path` as a ZIP archive.
+///
+/// # Errors
+///
+/// Returns an error if `whl_path` cannot be opened or is not a valid ZIP archive.
+pub fn open_wheel_archive(whl_path: &Path) -> Result<ZipArchive<BufReader<File>>> {
+    let file = File::open(whl_path).with_context(|| format!("opening {}", whl_path.display()))?;
+    ZipArchive::new(BufReader::new(file))
+        .with_context(|| format!("{} is not a valid zip file", whl_path.display()))
+}
+
+/// Reads the `.dist-info/RECORD` file from `archive` and returns the list of file paths
 /// (column 0), relative to the wheel root.
 ///
 /// # Errors
 ///
-/// Returns an error if `whl_path` cannot be opened as a valid ZIP archive, does not contain
+/// Returns an error if `archive` contains invalid UTF-8 entry names, does not contain
 /// exactly one `.dist-info/RECORD` entry, or the `RECORD` entry cannot be read and parsed.
-pub fn get_record(whl_path: &Path) -> Result<Vec<String>> {
-    let mut archive = open_wheel_archive(whl_path)?;
+pub fn get_record<R: Read + Seek>(
+    archive: &mut ZipArchive<R>,
+    whl_path: &Path,
+) -> Result<Vec<String>> {
     // zip 9 returns `Result<Cow<str>>` per entry name; a bad name means the
     // archive is malformed, so surface it rather than skipping the entry.
     let mut record_names: Vec<String> = Vec::new();
@@ -119,20 +132,25 @@ where
         .collect()
 }
 
-/// Extracts `files` from `whl_path` into `outdir`.
+/// Extracts `files` from `archive` into `outdir`.
 ///
 /// # Errors
 ///
-/// Returns an error if `outdir` cannot be created, `whl_path` cannot be opened, or any entry in
-/// `files` is missing from the archive or cannot be written to disk.
-pub fn extract_files<I, S>(whl_path: &Path, files: I, outdir: &Path) -> Result<()>
+/// Returns an error if `outdir` cannot be created or any entry in `files` is missing from
+/// `archive` or cannot be written to disk.
+pub fn extract_files<R, I, S>(
+    archive: &mut ZipArchive<R>,
+    whl_path: &Path,
+    files: I,
+    outdir: &Path,
+) -> Result<()>
 where
+    R: Read + Seek,
     I: IntoIterator<Item = S>,
     S: AsRef<str>,
 {
     fs::create_dir_all(outdir).with_context(|| format!("creating {}", outdir.display()))?;
 
-    let mut archive = open_wheel_archive(whl_path)?;
     for file in files {
         let entry_name = file.as_ref();
         let mut entry = archive
@@ -153,16 +171,10 @@ where
         let mut out_file = File::create(&dest_path)
             .with_context(|| format!("creating {}", dest_path.display()))?;
         io::copy(&mut entry, &mut out_file)
-            .with_context(|| format!("extracting '{entry_name}' to {}", dest_path.display(),))?;
+            .with_context(|| format!("extracting '{entry_name}' to {}", dest_path.display()))?;
     }
 
     Ok(())
-}
-
-fn open_wheel_archive(whl_path: &Path) -> Result<ZipArchive<BufReader<File>>> {
-    let file = File::open(whl_path).with_context(|| format!("opening {}", whl_path.display()))?;
-    ZipArchive::new(BufReader::new(file))
-        .with_context(|| format!("{} is not a valid zip file", whl_path.display()))
 }
 
 /// Mirrors `zipfile.ZipFile._extract_member`: drops empty, `.`, and `..` path components so an
@@ -177,16 +189,18 @@ fn sanitize_extract_path(outdir: &Path, entry_name: &str) -> PathBuf {
     dest
 }
 
-/// Executes the full `extract_wheel_files` workflow for the given options.
+/// Executes the full `extract_wheel_files` workflow for the given options, opening the wheel
+/// archive once.
 ///
 /// # Errors
 ///
 /// Returns an error if the wheel or its `.dist-info/RECORD` cannot be read or matching entries
 /// cannot be extracted into `options.outdir`.
 pub fn run(options: &Options) -> Result<()> {
-    let record = get_record(&options.whl_path)?;
+    let mut archive = open_wheel_archive(&options.whl_path)?;
+    let record = get_record(&mut archive, &options.whl_path)?;
     let files = get_files(&record, &options.regex);
-    extract_files(&options.whl_path, &files, &options.outdir)
+    extract_files(&mut archive, &options.whl_path, &files, &options.outdir)
 }
 
 /// Parses command-line arguments (excluding `argv[0]` and subcommand name) into [`ParsedArgs`].
