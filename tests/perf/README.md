@@ -80,14 +80,17 @@ The time is of Bazel 9.1.1 on a laptop, only the ratios are meaningful.
 
 | Workload | Steps | Bazel, µs |
 |---|---:|---:|
-| `evaluate_long` | 6376 | 781.4 |
-| `evaluate_non_strict` | 703 | 74.2 |
-| `evaluate_string` | 362 | 34.9 |
-| `evaluate_two_strings` | 750 | 81.3 |
-| `evaluate_version` | 525 | 69.9 |
-| `tokenize_long` | 4870 | 424.0 |
-| `tokenize_no_whitespace` | 563 | 49.6 |
-| `tokenize_version` | 305 | 27.5 |
+| `evaluate_long` | 1974 | 383.6 |
+| `evaluate_long_parsed` | 693 | 114.1 |
+| `evaluate_non_strict` | 286 | 58.4 |
+| `evaluate_string` | 122 | 24.5 |
+| `evaluate_two_strings` | 229 | 43.0 |
+| `evaluate_version` | 283 | 56.4 |
+| `evaluate_version_parsed` | 132 | 21.3 |
+| `parse_long` | 1284 | 231.5 |
+| `tokenize_long` | 514 | 112.9 |
+| `tokenize_no_whitespace` | 84 | 23.0 |
+| `tokenize_version` | 48 | 10.8 |
 | `version_is_compatible` | 64 | 8.6 |
 | `version_is_eq_prefix` | 10 | 2.5 |
 | `version_is_ge` | 54 | 6.2 |
@@ -109,3 +112,9 @@ The notable changes of the results, the numbers are the steps.
 | Parse the release-only versions without the parser | `version_parse_release` | 881 | 53 |
 |  | `evaluate_version` | 1975 | 525 |
 |  | `evaluate_long` | 11056 | 6376 |
+| Rewrite the marker evaluation | `tokenize_long` | 4870 | 514 |
+|  | `evaluate_string` | 362 | 122 |
+|  | `evaluate_version` | 525 | 283 |
+|  | `evaluate_long` | 6376 | 1974 |
+| Evaluate the markers that are parsed with `parse` | `evaluate_version_parsed` | 283 | 132 |
+|  | `evaluate_long_parsed` | 1974 | 693 |

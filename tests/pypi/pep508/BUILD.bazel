@@ -1,7 +1,13 @@
 load(":deps_tests.bzl", "deps_test_suite")
 load(":env_tests.bzl", "env_test_suite")
 load(":evaluate_tests.bzl", "evaluate_test_suite")
+load(":packaging_conformance_tests.bzl", "packaging_conformance_test_suite")
 load(":requirement_tests.bzl", "requirement_test_suite")
+
+exports_files(
+    ["packaging_cases.bzl"],
+    visibility = ["//tests/support/pypa_packaging:__pkg__"],
+)
 
 deps_test_suite(
     name = "deps_tests",
@@ -13,6 +19,10 @@ env_test_suite(
 
 evaluate_test_suite(
     name = "evaluate_tests",
+)
+
+packaging_conformance_test_suite(
+    name = "packaging_conformance_tests",
 )
 
 requirement_test_suite(

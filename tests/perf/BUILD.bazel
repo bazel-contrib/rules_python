@@ -13,7 +13,6 @@ py_library(
     ],
     data = [
         "workloads.bzl",
-        "//python/private:enum.bzl",
         "//python/private:version.bzl",
         "//python/private/pypi:bzl",
     ],

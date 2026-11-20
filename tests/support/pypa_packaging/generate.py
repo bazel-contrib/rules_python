@@ -17,11 +17,13 @@ import json
 import operator
 import os
 import pathlib
+import random
 import sys
 import types
 import typing
 
 import packaging
+from packaging.markers import InvalidMarker, Marker, UndefinedComparison
 from packaging.specifiers import InvalidSpecifier, Specifier
 
 _HEADER = '''"""Conformance test cases generated from `packaging=={version}`.
@@ -88,6 +90,38 @@ _MATRIX_SPECS = _MATRIX_VERSIONS + [
     "3.13.*",
     "3.13.0.*",
     "1!3.*",
+]
+
+
+# The environment that is used to evaluate the markers, unless the test case
+# overrides the values.
+_MARKER_ENV = {
+    "extra": "foo",
+    "implementation_name": "cpython",
+    "implementation_version": "3.11.4",
+    "os_name": "posix",
+    "platform_machine": "x86_64",
+    "platform_python_implementation": "CPython",
+    "platform_release": "6.1.0",
+    "platform_system": "Linux",
+    "platform_version": "#1 SMP PREEMPT_DYNAMIC Debian 6.1.55-1 (2023-09-29)",
+    "python_full_version": "3.11.4",
+    "python_version": "3.11",
+    "sys_platform": "linux",
+}
+
+# The expressions that are combined with `and`, `or` and parenthesis to test
+# the precedence and the grouping.
+_MARKER_ATOMS = [
+    'os_name == "posix"',
+    'os_name == "nt"',
+    "sys_platform != 'linux'",
+    'python_version >= "3.8"',
+    'python_full_version < "3.11.4"',
+    'platform_machine in "x86_64 amd64"',
+    '"arm" in platform_machine',
+    '"posix" == os_name',
+    'extra == "foo"',
 ]
 
 
@@ -238,6 +272,114 @@ def version_cases(test_version, test_specifiers):
     )
 
 
+def _evaluate_marker(marker, env):
+    try:
+        return Marker(marker).evaluate(env)
+    except (InvalidMarker, UndefinedComparison):
+        return None
+
+
+def _random_marker(rng, depth):
+    if depth == 0 or rng.random() < 0.3:
+        return rng.choice(_MARKER_ATOMS)
+
+    marker = _random_marker(rng, depth - 1)
+    for _ in range(rng.randint(1, 3)):
+        marker += rng.choice([" and ", " or "]) + _random_marker(rng, depth - 1)
+
+    return "({})".format(marker) if rng.random() < 0.5 else marker
+
+
+def _marker_table(variables, operators, values):
+    rows = []
+    for variable, op, value in itertools.product(variables, operators, values):
+        # The test builds the markers the same way.
+        assert '"' not in value, value
+        result = ""
+        for marker in [
+            '{} {} "{}"'.format(variable, op, value),
+            '"{}" {} {}'.format(value, op, variable),
+        ]:
+            got = _evaluate_marker(marker, _MARKER_ENV)
+            # "E" means that it is an error to evaluate the marker.
+            result += "E" if got is None else "T" if got else "F"
+        rows.append((variable, op, value, result))
+    return rows
+
+
+def marker_cases(test_markers):
+    """Generate the test cases for `//python/private/pypi:pep508_evaluate.bzl`."""
+    markers = _TestModule(test_markers)
+
+    evaluate_cases = []
+    for test_name in [
+        "test_evaluates",
+        "test_evaluate_pep345_markers",
+        "test_version_like_equality",
+    ]:
+        for marker, env, expected in markers.parametrize(test_name):
+            if env is None:
+                # These depend on the interpreter that runs the tests.
+                continue
+
+            got = _evaluate_marker(marker, _MARKER_ENV | env)
+            if got != expected:
+                raise ValueError(
+                    "The default environment changes the result of: " + marker
+                )
+            evaluate_cases.append((marker, json.dumps(env, sort_keys=True), expected))
+
+    invalid = markers.parametrize("test_parses_invalid") + [
+        'python_version >= "3"' + line_break
+        for line_break in markers.parametrize("test_parses_invalid_trailing_line_break")
+    ]
+
+    rng = random.Random(508)
+    logic = {}
+    for _ in range(100):
+        marker = _random_marker(rng, 3)
+        logic[marker] = _evaluate_marker(marker, _MARKER_ENV)
+
+    ns = markers.namespace
+    return "".join(
+        [
+            _HEADER.format(version=packaging.__version__),
+            _list(
+                "MARKER_ENV",
+                sorted(_MARKER_ENV.items()),
+                "The (name, value) of the default environment for the cases below.",
+            ),
+            _list(
+                "EVALUATE_CASES",
+                evaluate_cases,
+                "(marker, JSON of the environment overrides, expected)",
+            ),
+            _list(
+                "INVALID_MARKERS",
+                invalid,
+                "Strings that are not valid markers.",
+            ),
+            _list(
+                "MARKER_TABLE",
+                _marker_table(
+                    ns["VARIABLES"]
+                    + ns["PEP_345_VARIABLES"]
+                    + ns["SETUPTOOLS_VARIABLES"],
+                    ns["OPERATORS"],
+                    ns["VALUES"],
+                ),
+                "(variable, operator, value, results); the results are T/F/E(rror) for\n"
+                "# `<variable> <operator> <value>` and `<value> <operator> <variable>`.",
+            ),
+            _list(
+                "LOGIC_CASES",
+                sorted(logic.items()),
+                "(marker, expected)",
+            ),
+        ]
+    )
+
+
 def _resolve(path):
     """Resolve a path that may be a runfiles path."""
     if os.path.exists(path):
@@ -257,10 +399,16 @@ def main(argv):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--test-version", required=True)
     parser.add_argument("--test-specifiers", required=True)
+    parser.add_argument("--test-markers", required=True)
     parser.add_argument(
         "--version-cases",
         required=True,
         help="The file with the version test cases to write or check.",
+    )
+    parser.add_argument(
+        "--marker-cases",
+        required=True,
+        help="The file with the marker test cases to write or check.",
     )
     parser.add_argument(
         "--check",
@@ -274,6 +422,7 @@ def main(argv):
             _resolve(args.test_version),
             _resolve(args.test_specifiers),
         ),
+        args.marker_cases: marker_cases(_resolve(args.test_markers)),
     }
 
     stale = []

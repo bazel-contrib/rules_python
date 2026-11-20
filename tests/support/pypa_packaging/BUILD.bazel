@@ -5,9 +5,11 @@ load("//tests/support:support.bzl", "SUPPORTS_BZLMOD")
 _ARGS = [
     "--test-version=$(rlocationpath @pypa_packaging//:tests/test_version.py)",
     "--test-specifiers=$(rlocationpath @pypa_packaging//:tests/test_specifiers.py)",
+    "--test-markers=$(rlocationpath @pypa_packaging//:tests/test_markers.py)",
 ]
 
 _DATA = [
+    "@pypa_packaging//:tests/test_markers.py",
     "@pypa_packaging//:tests/test_specifiers.py",
     "@pypa_packaging//:tests/test_version.py",
 ]
@@ -24,6 +26,7 @@ py_binary(
     name = "update",
     srcs = ["generate.py"],
     args = _ARGS + [
+        "--marker-cases=tests/pypi/pep508/packaging_cases.bzl",
         "--version-cases=tests/version/packaging_cases.bzl",
     ],
     data = _DATA,
@@ -37,9 +40,11 @@ py_test(
     srcs = ["generate.py"],
     args = _ARGS + [
         "--check",
+        "--marker-cases=$(rlocationpath //tests/pypi/pep508:packaging_cases.bzl)",
         "--version-cases=$(rlocationpath //tests/version:packaging_cases.bzl)",
     ],
     data = _DATA + [
+        "//tests/pypi/pep508:packaging_cases.bzl",
         "//tests/version:packaging_cases.bzl",
     ],
     main = "generate.py",
