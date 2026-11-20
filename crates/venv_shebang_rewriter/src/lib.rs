@@ -58,8 +58,10 @@ Options:
 /// * **As Python**: Line 1 (`#!/bin/sh`) is a `#` comment, and lines 2–3 (`'''exec' ... \n' '''`)
 ///   form a single triple-quoted string literal that Python evaluates and discards before running
 ///   the rest of the file.
-pub const UNIX_HEADER: &[u8] =
-    b"#!/bin/sh\n'''exec' \"$(dirname \"$0\")/python3\" \"$0\" \"$@\"\n' '''\n";
+pub const UNIX_HEADER: &[u8] = br#"#!/bin/sh
+'''exec' "$(dirname "$0")/python3" "$0" "$@"
+' '''
+"#;
 
 /// Batch-Python polyglot header for Windows (`python.exe`, CRLF-terminated for `.bat`/`.cmd`):
 ///
@@ -71,13 +73,19 @@ pub const UNIX_HEADER: &[u8] =
 ///   `cmd.exe` reaches the Python body on line 2.
 /// * **As Python**: `-x` instructs CPython to skip the first line of the source file, ignoring the
 ///   batch command and executing the remaining Python code starting at line 2.
-pub const WINDOWS_PYTHON_HEADER: &[u8] =
-    b"@setlocal enabledelayedexpansion & \"%~dp0python.exe\" -x \"%~f0\" %* & exit /b !ERRORLEVEL!\r\n";
+pub const WINDOWS_PYTHON_HEADER: &[u8] = concat!(
+    r#"@setlocal enabledelayedexpansion & "%~dp0python.exe" -x "%~f0" %* & exit /b !ERRORLEVEL!"#,
+    "\r\n",
+)
+.as_bytes();
 
 /// Batch-Python polyglot header for Windows GUI scripts (`pythonw.exe`); works identically to
 /// [`WINDOWS_PYTHON_HEADER`] when the input script's shebang starts with `#!pythonw`.
-pub const WINDOWS_PYTHONW_HEADER: &[u8] =
-    b"@setlocal enabledelayedexpansion & \"%~dp0pythonw.exe\" -x \"%~f0\" %* & exit /b !ERRORLEVEL!\r\n";
+pub const WINDOWS_PYTHONW_HEADER: &[u8] = concat!(
+    r#"@setlocal enabledelayedexpansion & "%~dp0pythonw.exe" -x "%~f0" %* & exit /b !ERRORLEVEL!"#,
+    "\r\n",
+)
+.as_bytes();
 
 /// Splits `input` at the first `b'\n'` byte into `(first_line, rest)`.
 ///
