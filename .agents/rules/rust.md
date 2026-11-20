@@ -12,10 +12,10 @@ globs: "*.rs,Cargo.toml,Cargo.lock,Cargo.Bazel.lock,MODULE.bazel"
   scratch.
 * Never hand-roll CLI argument parsers (`lexopt` or `clap`), `@flagfile`
   response-file readers (`argfile`), CSV/INI/JSON/TOML format parsers (`csv`,
-  etc.), base64/hex codecs (`base64`), language or packaging-spec parsers
-  (`ruff_python_parser`, `pep440_rs`, `pep508_rs`), regex engines (`regex`),
-  archive/compression codecs (`zip`, `flate2`), or cryptographic hashes
-  (`sha2`).
+  `configparser`, etc.), base64/hex codecs (`base64`), language or
+  packaging-spec parsers (`ruff_python_parser`, `pep440_rs`, `pep508_rs`),
+  regex engines (`regex`), archive/compression codecs (`zip`, `flate2`), or
+  cryptographic hashes (`sha2`).
 
 ## Dependency Vetting & Versioning
 When adding or updating a Rust crate dependency:
@@ -46,11 +46,13 @@ When adding or updating a Rust crate dependency:
 * **Edition & control flow**: Use `edition = "2024"`. Flatten nested
   conditionals with early `continue`/`return` guards and `let`-chains
   (`if let Some(ext) = path.extension() && ext == "whl"`).
-* **String & line processing**: Prefer `str` pattern methods (`split_once`,
-  `rsplit_once`, `strip_prefix`, `strip_suffix`) over manual index slicing.
-  Iterate lines directly with `str::lines()` (`.map(str::trim).filter(...)`)
-  instead of pre-allocating `.replace("\r\n", "\n")` (`str::lines()` strips both
-  `\n` and `\r\n`).
+* **String & line processing**: Prefer raw string literals (`r#"..."#`) when a
+  string contains embedded quotes or backslashes instead of backslash-escaping
+  them. Prefer `str` pattern methods (`split_once`, `rsplit_once`,
+  `strip_prefix`, `strip_suffix`) over manual index slicing. Iterate lines
+  directly with `str::lines()` (`.map(str::trim).filter(...)`) instead of
+  pre-allocating `.replace("\r\n", "\n")` (`str::lines()` strips both `\n` and
+  `\r\n`).
 * **Filesystem parent directories**: Pass `parent` directly to
   `fs::create_dir_all(parent)` without `!parent.as_os_str().is_empty()` (`""` is
   already a no-op).

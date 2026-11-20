@@ -96,7 +96,7 @@ def _make_bazel_simulator(
         args: Sequence[str], **_kwargs: object
     ) -> subprocess.CompletedProcess[str]:
         cmd_list = list(args)
-        subcommand = cmd_list[1]
+        subcommand = next(a for a in cmd_list[1:] if not a.startswith("-"))
         if subcommand == "test":
             if force_test_failure_stderr is not None:
                 return subprocess.CompletedProcess(
@@ -199,7 +199,8 @@ def test_restores_lockfile_when_update_raises(
         args: Sequence[str], **_kwargs: object
     ) -> subprocess.CompletedProcess[str]:
         cmd_list = list(args)
-        if cmd_list[1] == "test":
+        subcommand = next(a for a in cmd_list[1:] if not a.startswith("-"))
+        if subcommand == "test":
             return subprocess.CompletedProcess(cmd_list, 1, stdout="", stderr="")
         lockfile_path.write_bytes(_UPDATED_LOCKFILE)
         raise OSError("simulated bazel crash after partial lockfile write")
@@ -211,3 +212,24 @@ def test_restores_lockfile_when_update_raises(
             _run_case()
 
     _assert_lockfile_preserved(lockfile_path, _STALE_LOCKFILE)
+
+
+def test_windows_short_base_dir_shortens_execroot_path() -> None:
+    outer_output_base = pathlib.Path("/b/bg4v2njf")
+    long_test_tmpdir = (
+        outer_output_base
+        / "execroot"
+        / "_main"
+        / "_tmp"
+        / "2b67879734a8223e62fed43efa249f19"
+    )
+    short_base = bzlmod_lockfile_test.runner._windows_short_base_dir(long_test_tmpdir)
+    assert short_base is not None
+    assert short_base.parent == outer_output_base
+    assert len(short_base.name) == 8
+    assert (
+        bzlmod_lockfile_test.runner._windows_short_base_dir(
+            pathlib.Path("/b/bg4v2njf/no_execroot")
+        )
+        is None
+    )
