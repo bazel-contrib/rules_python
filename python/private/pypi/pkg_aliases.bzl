@@ -32,6 +32,7 @@ setting maps to and their precedence, refer to documentation on that page.
 """
 
 load("@bazel_skylib//lib:selects.bzl", "selects")
+load("//python:py_library.bzl", "py_library")
 load("//python/private:common_labels.bzl", "labels")
 load("//python/private:text_util.bzl", "render")
 load(
@@ -86,6 +87,7 @@ def pkg_aliases(
         extras = [],
         include = [],
         group_deps = [],
+        testonly = False,
         **kwargs):
     """Create aliases for an actual package.
 
@@ -107,10 +109,14 @@ def pkg_aliases(
             dependencies when parsing the requires_dist. Comes from METADATA or a lock file.
         include: {type}`list[str]` The subset of packages to include.
             Comes from `//:config.bzl#packages`
+        testonly: {type}`bool` Whether the public targets should be testonly.
+            Bazel does not enforce `testonly` on aliases, so the main public
+            targets are testonly wrappers around the aliases.
         **kwargs: extra kwargs to pass to {bzl:obj}`get_config_settings`.
     """
     _native = kwargs.pop("native", native)
     rules = kwargs.pop("rules", struct(
+        py_library = py_library,
         whl_library_deps_targets = whl_library_deps_targets,
     ))
     select = kwargs.pop("select", selects.with_or)
@@ -118,6 +124,7 @@ def pkg_aliases(
     _native.alias(
         name = name,
         actual = ":" + PY_LIBRARY_PUBLIC_LABEL,
+        **({"testonly": True} if testonly else {})
     )
 
     if requires_dist:
@@ -210,20 +217,72 @@ def pkg_aliases(
         elif target_name in (WHEEL_FILE, PY_SRCS_LABEL):
             kwargs["visibility"] = ["//visibility:private"]
 
-        _native.alias(
+        # The private targets are used by the non-testonly `//_groups` libraries.
+        _alias(
+            _native,
+            rules,
             name = target_name,
             actual = _actual,
+            testonly = testonly and not target_name.startswith("_"),
             **kwargs
         )
 
     if group_name:
-        _native.alias(
+        _alias(
+            _native,
+            rules,
             name = PY_LIBRARY_PUBLIC_LABEL,
             actual = "//_groups:{}_pkg".format(group_name),
+            testonly = testonly,
         )
-        _native.alias(
+        _alias(
+            _native,
+            rules,
             name = WHEEL_FILE_PUBLIC_LABEL,
             actual = "//_groups:{}_whl".format(group_name),
+            testonly = testonly,
+        )
+
+# The public targets that are wrapped in testonly targets, because Bazel does
+# not enforce `testonly` on aliases.
+_TESTONLY_WRAPPED = [
+    PY_LIBRARY_PUBLIC_LABEL,
+    WHEEL_FILE_PUBLIC_LABEL,
+    DATA_LABEL,
+    DIST_INFO_LABEL,
+    EXTRACTED_WHEEL_FILES,
+]
+
+def _alias(_native, rules, *, name, actual, testonly, **kwargs):
+    if not testonly:
+        _native.alias(name = name, actual = actual, **kwargs)
+        return
+
+    if name not in _TESTONLY_WRAPPED:
+        # E.g. the extra aliases, which may point to executables. Best effort,
+        # because Bazel does not enforce `testonly` on aliases.
+        _native.alias(name = name, actual = actual, testonly = True, **kwargs)
+        return
+
+    impl = "_testonly_" + name
+    _native.alias(
+        name = impl,
+        actual = actual,
+        visibility = ["//visibility:private"],
+    )
+    if name == PY_LIBRARY_PUBLIC_LABEL:
+        rules.py_library(
+            name = name,
+            deps = [":" + impl],
+            testonly = True,
+            **kwargs
+        )
+    else:
+        _native.filegroup(
+            name = name,
+            srcs = [":" + impl],
+            testonly = True,
+            **kwargs
         )
 
 def multiplatform_whl_aliases(

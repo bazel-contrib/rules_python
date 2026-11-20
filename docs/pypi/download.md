@@ -176,6 +176,104 @@ re-executed to pick up a non-hermetic change to your environment (e.g., updating
 `python` interpreter), you can force it to re-execute by running `bazel sync --only [pip_parse
 name]`.
 
+(pip-configure)=
+## Configuring the Exposed Packages (pip.configure)
+
+By default a hub exposes all of the packages from its requirements files or
+`uv.lock` file, including the transitive dependencies. A `pip.configure` tag
+can limit the hub to the packages listed in a `pyproject.toml` file: the
+`[project] dependencies`, `[project.optional-dependencies]` and PEP 735
+`[dependency-groups]` tables.
+
+```toml
+[project]
+requires-python = "==3.13.0"
+dependencies = ["numpy"]
+
+[dependency-groups]
+dev = ["pytest"]
+```
+
+```starlark
+pip.parse(
+    hub_name = "pypi_hub",
+    pyproject_toml = "//:pyproject.toml",
+    requirements_lock = "//:requirements_lock.txt",
+)
+
+pip.configure(
+    hub_name = "pypi_hub",
+    dependency_groups = ["default", "group:dev"],
+)
+```
+
+Here `@pypi_hub//numpy` and `@pypi_hub//pytest` can be used, but the
+dependencies of `numpy` are only used through `@pypi_hub//numpy`. The
+`all_requirements` lists in the hub's `requirements.bzl` and the
+[Unified @pypi Hub](unified-pypi-hub) only contain the exposed packages.
+
+Use `["*"]` to select every group, or `["*", "transitive"]` to expose all of
+the packages of the hub, including the transitive dependencies, which is the
+same as not configuring the hub. Selecting the transitive dependencies of only
+some of the groups is not supported. A tag without
+{attr}`pip.configure.dependency_groups` does not limit the hub and does not
+need a `pyproject.toml`.
+
+The `pip.configure` tags work like a builder: they are applied in order and
+the tags for the same hub are combined. A `pyproject_toml` set on a tag is used
+by the later tags of the same module and hub, so it only needs to be set once:
+
+```starlark
+pip.configure(
+    hub_name = "pypi_hub",
+    pyproject_toml = "//tools:pyproject.toml",
+    dependency_groups = ["default"],
+)
+
+# Uses //tools:pyproject.toml
+pip.configure(
+    hub_name = "pypi_hub",
+    dependency_groups = ["group:dev"],
+)
+```
+
+Only the root module and the module that created the hub can configure it; if
+both do, the root module wins. A self reference such as `my-project[test]` in
+the `pyproject.toml` selects the optional dependencies of the project. The
+packages that are not part of the hub are ignored, so a single `pyproject.toml`
+can list tools that are missing from the lock file.
+
+### Testonly Packages
+
+Set {attr}`pip.configure.testonly` to make the selected packages testonly, so
+that they can only be used by tests and other testonly targets:
+
+```starlark
+pip.configure(
+    hub_name = "pypi_hub",
+    dependency_groups = ["default"],
+)
+pip.configure(
+    hub_name = "pypi_hub",
+    dependency_groups = ["group:test"],
+    testonly = True,
+)
+```
+
+A package that is also selected by a tag without `testonly` is not testonly.
+The testonly packages are left out of the `all_requirements`,
+`all_whl_requirements` and `all_data_requirements` lists in the hub's
+`requirements.bzl` and are listed in `all_testonly_requirements` instead. In
+the [Unified @pypi Hub](unified-pypi-hub), a package is testonly if it is
+testonly in any of the hubs.
+
+The other packages of the hub depend on the testonly packages through the same
+targets, so a package that a non-testonly package depends on can't be
+testonly.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+
 (per-os-arch-requirements)=
 ## Requirements for a specific OS/Architecture
 
