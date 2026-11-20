@@ -26,23 +26,32 @@ def deps(
         requires_dist,
         extras = [],
         excludes = [],
-        include = []):
+        include = [],
+        keep_extras = False):
     """Parse the RequiresDist from wheel METADATA
 
     Args:
         name: {type}`str` the name of the wheel.
         requires_dist: {type}`list[str]` the list of RequiresDist lines from the
             METADATA file.
-        excludes: {type}`list[str]` what packages should we exclude.
+        excludes: {type}`list[str]` what dependencies should we exclude, e.g.
+            `foo` or `foo[bar]`, in the same format as the returned values.
         include: {type}`list[str]` what packages should we exclude. If it is not
             specified, then we will include all deps from `requires_dist`.
         extras: {type}`list[str]` the requested extras to generate targets for.
+        keep_extras: {type}`bool` keep the extras of the dependencies, if
+            `True`, the dependencies with extras are returned as `foo[bar]`.
 
     Returns:
         A struct with attributes:
         * deps: {type}`list[str]` dependencies to include unconditionally.
         * deps_select: {type}`dict[str, list[str]]` dependencies to include on particular
               subset of target platforms.
+
+        The dependencies are normalized names, e.g. `foo`, or normalized names
+        with a single extra, e.g. `foo[bar]`, if the dependency is requested
+        with extras and `keep_extras` is set. A dependency with multiple
+        extras, e.g. `foo[bar,baz]`, is returned as `foo[bar]` and `foo[baz]`.
     """
     if not requires_dist:
         return struct(
@@ -60,25 +69,25 @@ def deps(
     want_extras = _resolve_extras(name, reqs, extras)
     include = [normalize_name(n) for n in include]
 
-    # drop self edges
-    excludes = [name] + [normalize_name(x) for x in excludes]
-
-    reqs_by_name = {}
+    reqs_by_dep = {}
 
     for req in reqs:
-        if req.name_ in excludes:
+        # drop self edges
+        if req.name_ == name:
             continue
 
         if include and req.name_ not in include:
             continue
 
-        reqs_by_name.setdefault(req.name, []).append(req)
+        for dep in ["{}[{}]".format(req.name_, e) for e in req.extras if keep_extras] or [req.name_]:
+            if dep not in excludes:
+                reqs_by_dep.setdefault(dep, []).append(req)
 
-    for name, reqs in reqs_by_name.items():
+    for dep, reqs in reqs_by_dep.items():
         _add_reqs(
             deps,
             deps_select,
-            normalize_name(name),
+            dep,
             reqs,
             extras = want_extras,
         )
@@ -92,8 +101,6 @@ def deps(
     )
 
 def _add(deps, deps_select, dep, markers = None):
-    dep = normalize_name(dep)
-
     if not markers:
         deps[dep] = True
     elif len(markers) == 1:

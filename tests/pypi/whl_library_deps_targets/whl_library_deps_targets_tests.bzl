@@ -33,7 +33,6 @@ def _test_whl_library_deps_targets(env):
         # Overrides for testing
         repo = None,
         aliases = None,
-        extras = [],
         native = struct(
             filegroup = lambda **kwargs: filegroup_calls.append(kwargs),
             alias = lambda **kwargs: None,
@@ -102,10 +101,10 @@ def _test_whl_library_deps_targets_no_deps(env):
         metadata_name = "Foo",
         dep_template = "@pypi//{name}:{target}",
         requires_dist = [],
+        provides_extra = ["A"],
         group_name = "qux",
         repo = None,
         aliases = {},
-        extras = [],
         native = struct(
             filegroup = lambda **kwargs: filegroup_calls.append(kwargs),
             alias = lambda **kwargs: alias_calls.append(kwargs),
@@ -131,6 +130,11 @@ def _test_whl_library_deps_targets_no_deps(env):
             "actual": "whl_file",
             "visibility": ["//visibility:public"],
         },
+        {
+            "name": "[a]",
+            "actual": "srcs",
+            "visibility": ["//visibility:public"],
+        },
     ])  # buildifier: @unsorted-dict-items
 
     env.expect.that_collection(filegroup_calls).contains_exactly([])
@@ -138,6 +142,247 @@ def _test_whl_library_deps_targets_no_deps(env):
     env.expect.that_collection(env_marker_setting_calls).contains_exactly([])
 
 _tests.append(_test_whl_library_deps_targets_no_deps)
+
+def _test_extras(env):
+    filegroup_calls = []
+    py_library_calls = []
+    env_marker_setting_calls = []
+
+    whl_library_deps_targets(
+        name = "foo-0-py3-none-any.whl",
+        metadata_name = "Foo",
+        dep_template = "@pypi//{name}:{target}",
+        requires_dist = [
+            "bar[socks]",
+            "grpc; extra == 'grpc'",
+            "aiohttp; extra == 'async' and python_version < '3.12'",
+            "uvloop; extra == 'async'",
+            "foo[grpc]; extra == 'all'",
+        ],
+        provides_extra = ["async", "grpc", "all"],
+        include = ["bar", "grpc", "aiohttp", "uvloop"],
+        repo = None,
+        aliases = {},
+        native = struct(
+            filegroup = lambda **kwargs: filegroup_calls.append(kwargs),
+            alias = lambda **kwargs: None,
+        ),
+        rules = struct(
+            py_library = lambda **kwargs: py_library_calls.append(kwargs),
+            env_marker_setting = lambda **kwargs: env_marker_setting_calls.append(kwargs),
+        ),
+    )
+
+    # The `pkg` target has no extras because none were requested and there is
+    # a target for each extra that the package provides. The `whl` target does
+    # not use the extras. Without the extras available in the hub, the
+    # dependencies use the targets with the extras directly.
+    env.expect.that_collection([
+        (c["name"], c["deps"])
+        for c in py_library_calls
+    ]).contains_exactly([
+        ("pkg", ["srcs", "@pypi//bar:[socks]"]),
+        ("[all]", ["srcs", "@pypi//bar:[socks]", "@pypi//grpc:pkg"]),
+        ("[async]", ["srcs", "@pypi//bar:[socks]", "@pypi//uvloop:pkg"] + select({
+            ":is_include_aiohttp_true": ["@pypi//aiohttp:pkg"],
+            "//conditions:default": [],
+        })),
+        ("[grpc]", ["srcs", "@pypi//bar:[socks]", "@pypi//grpc:pkg"]),
+    ])
+    env.expect.that_collection([
+        (c["name"], c["data"])
+        for c in filegroup_calls
+    ]).contains_exactly([
+        ("whl", ["@pypi//bar:whl"]),
+    ])
+    env.expect.that_collection(env_marker_setting_calls).contains_exactly([
+        {
+            "name": "include_aiohttp",
+            "expression": "python_version < \"3.12\"",
+            "visibility": ["//visibility:private"],
+        },
+    ])  # buildifier: @unsorted-dict-items
+
+_tests.append(_test_extras)
+
+def _test_extras_in_group(env):
+    py_library_calls = []
+    filegroup_calls = []
+
+    whl_library_deps_targets(
+        name = "foo-0-py3-none-any.whl",
+        metadata_name = "foo",
+        dep_template = "@pypi//{name}:{target}",
+        requires_dist = ["baz", "bar; extra == 'a'", "qux; extra == 'a'"],
+        provides_extra = ["a"],
+        group_name = "group",
+        # Only the `a` extra is in a cycle with `qux`.
+        group_deps = ["Foo[A]", "qux"],
+        repo = None,
+        aliases = {},
+        native = struct(
+            filegroup = lambda **kwargs: filegroup_calls.append(kwargs),
+            alias = lambda **kwargs: None,
+        ),
+        rules = struct(
+            py_library = lambda **kwargs: py_library_calls.append(kwargs),
+            env_marker_setting = lambda **kwargs: None,
+        ),
+    )
+
+    # Only the member targets exclude the other members and the targets are
+    # visible to the hub that creates the group library.
+    env.expect.that_collection([
+        (c["name"], c["deps"], c["visibility"])
+        for c in py_library_calls
+    ]).contains_exactly([
+        ("pkg", ["srcs", "@pypi//baz:pkg"], ["@pypi//:__subpackages__"]),
+        ("[a]", ["srcs", "@pypi//bar:pkg", "@pypi//baz:pkg"], ["@pypi//:__subpackages__"]),
+    ])
+    env.expect.that_collection([
+        (c["name"], c["data"])
+        for c in filegroup_calls
+    ]).contains_exactly([
+        ("whl", ["@pypi//baz:whl"]),
+    ])
+
+_tests.append(_test_extras_in_group)
+
+def _test_extras_in_group_legacy(env):
+    alias_calls = []
+    py_library_calls = []
+    filegroup_calls = []
+
+    whl_library_deps_targets(
+        name = "foo-0-py3-none-any.whl",
+        metadata_name = "foo",
+        dep_template = "@pip_{name}//:{target}",
+        requires_dist = ["qux", "bar; extra == 'a'"],
+        provides_extra = ["a", "b"],
+        group_name = "group",
+        group_deps = ["foo", "foo[a]", "qux"],
+        repo = None,
+        aliases = {},
+        native = struct(
+            filegroup = lambda **kwargs: filegroup_calls.append(kwargs),
+            alias = lambda **kwargs: alias_calls.append(kwargs),
+        ),
+        rules = struct(
+            py_library = lambda **kwargs: py_library_calls.append(kwargs),
+            env_marker_setting = lambda **kwargs: None,
+        ),
+    )
+
+    # The member targets are implementation targets and the public targets
+    # point to the group library in the config repo.
+    env.expect.that_collection([
+        (c["name"], c["actual"])
+        for c in alias_calls
+    ]).contains_exactly([
+        ("pkg", "@pip__config//_groups:group_pkg"),
+        ("[a]", "@pip__config//_groups:group_pkg"),
+        ("whl", "@pip__config//_groups:group_whl"),
+    ])
+    env.expect.that_collection([
+        (c["name"], c["deps"], c["visibility"])
+        for c in py_library_calls
+    ]).contains_exactly([
+        ("_pkg", ["srcs"], ["@pip__config//_groups:__pkg__"]),
+        ("_[a]", ["srcs", "@pip_bar//:pkg"], ["@pip__config//_groups:__pkg__"]),
+        ("[b]", ["srcs", "@pip_qux//:pkg"], ["//visibility:public"]),
+    ])
+    env.expect.that_collection([
+        (c["name"], c["data"], c["visibility"])
+        for c in filegroup_calls
+    ]).contains_exactly([
+        ("_whl", [], ["@pip__config//_groups:__pkg__"]),
+    ])
+
+_tests.append(_test_extras_in_group_legacy)
+
+def _test_deps_with_extras(env):
+    filegroup_calls = []
+    py_library_calls = []
+    env_marker_setting_calls = []
+    missing_calls = []
+
+    whl_library_deps_targets(
+        name = "foo-0-py3-none-any.whl",
+        metadata_name = "foo",
+        dep_template = "@pypi//{name}:{target}",
+        requires_dist = [
+            "bar[socks]",
+            "baz[a,b]; sys_platform == 'linux'",
+            "baz; sys_platform == 'darwin'",
+            "qux[missing]",
+        ],
+        # The values are the extras that are available in the hub
+        include = {
+            "bar": ["socks"],
+            "baz": ["a", "b"],
+            "qux": [],
+        },
+        repo = None,
+        aliases = {},
+        native = struct(
+            filegroup = lambda **kwargs: filegroup_calls.append(kwargs),
+            alias = lambda **kwargs: None,
+        ),
+        rules = struct(
+            py_library = lambda **kwargs: py_library_calls.append(kwargs),
+            env_marker_setting = lambda **kwargs: env_marker_setting_calls.append(kwargs),
+            missing_extra_error = lambda **kwargs: missing_calls.append(kwargs),
+        ),
+    )
+
+    # The dependencies use the targets with the extras, the missing extras use
+    # a target that fails the build with a helpful message.
+    env.expect.that_collection([
+        (c["name"], c["deps"])
+        for c in py_library_calls
+    ]).contains_exactly([
+        ("pkg", ["srcs", "@pypi//bar:[socks]", ":_missing_qux[missing]"] + select({
+            ":is_include_baz_2_true": ["@pypi//baz:pkg"],
+            "//conditions:default": [],
+        }) + select({
+            ":is_include_baz[a]_true": ["@pypi//baz:[a]"],
+            "//conditions:default": [],
+        }) + select({
+            ":is_include_baz[b]_true": ["@pypi//baz:[b]"],
+            "//conditions:default": [],
+        })),
+    ])
+    env.expect.that_collection(missing_calls).contains_exactly([
+        {
+            "name": "_missing_qux[missing]",
+            "package_name": "qux",
+            "extra": "missing",
+            "required_by": "foo",
+            "visibility": ["//visibility:private"],
+        },
+    ])  # buildifier: @unsorted-dict-items
+
+    # The whl targets do not use the extras.
+    env.expect.that_collection([
+        (c["name"], c["data"])
+        for c in filegroup_calls
+    ]).contains_exactly([
+        ("whl", ["@pypi//bar:whl", "@pypi//qux:whl"] + select({
+            ":is_include_baz_true": ["@pypi//baz:whl"],
+            "//conditions:default": [],
+        })),
+    ])
+    env.expect.that_collection([
+        (c["name"], c["expression"])
+        for c in env_marker_setting_calls
+    ]).contains_exactly([
+        ("include_baz", "(sys_platform == \"darwin\") or (sys_platform == \"linux\")"),
+        ("include_baz_2", "sys_platform == \"darwin\""),
+        ("include_baz[a]", "sys_platform == \"linux\""),
+        ("include_baz[b]", "sys_platform == \"linux\""),
+    ])
+
+_tests.append(_test_deps_with_extras)
 
 def whl_library_deps_targets_test_suite(name):
     """create the test suite.

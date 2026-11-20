@@ -22,6 +22,7 @@ load(
     ":generate_group_library_build_bazel.bzl",
     "generate_group_library_build_bazel",
 )  # buildifier: disable=bzl-visibility
+load(":labels.bzl", "group_member")
 
 NO_MATCH_ERROR_MESSAGE_TEMPLATE = """\
 No matching wheel for current configuration's Python version.
@@ -46,10 +47,11 @@ def _repr_dict(*, value_repr = repr, **kwargs):
     return {k: value_repr(v) for k, v in kwargs.items() if v}
 
 def _repr_config_setting(alias):
-    if alias.target_platforms:
+    if alias.target_platforms or alias.extras:
         return render.call(
             "whl_config_setting",
             **_repr_dict(
+                extras = alias.extras,
                 target_platforms = alias.target_platforms,
                 version = alias.version,
             )
@@ -65,7 +67,7 @@ def _repr_actual(aliases):
     else:
         return render.dict(aliases, key_repr = _repr_config_setting)
 
-def _render_common_aliases(*, name, aliases, **kwargs):
+def _render_common_aliases(*, name, aliases, visibility, **kwargs):
     pkg_aliases = render.call(
         "pkg_aliases",
         name = repr(name),
@@ -80,14 +82,22 @@ def _render_common_aliases(*, name, aliases, **kwargs):
     return """\
 load("@rules_python//python/private/pypi:pkg_aliases.bzl", "pkg_aliases")
 {extra_loads}
-package(default_visibility = ["//visibility:public"])
+package(default_visibility = {visibility})
 
 {aliases}""".format(
         aliases = pkg_aliases,
         extra_loads = extra_loads,
+        visibility = render.list(visibility),
     )
 
-def render_pkg_aliases(*, aliases, requirement_cycles = None, extra_hub_aliases = {}, **kwargs):
+def render_pkg_aliases(
+        *,
+        aliases,
+        requirement_cycles = None,
+        extra_hub_aliases = {},
+        extras = {},
+        exposed_packages = None,
+        **kwargs):
     """Create alias declarations for each PyPI package.
 
     The aliases should be appended to the pip_repository BUILD.bazel file. These aliases
@@ -100,6 +110,11 @@ def render_pkg_aliases(*, aliases, requirement_cycles = None, extra_hub_aliases 
         requirement_cycles: any package groups to also add.
         extra_hub_aliases: The list of extra aliases for each whl to be added
           in addition to the default ones.
+        extras: {type}`dict[str, list[str]]` The requested extras for each
+          whl when the aliases are repo names.
+        exposed_packages: The packages that should be public. When set, the
+            aliases of the other packages are only visible to the wheel
+            repositories.
         **kwargs: Extra kwargs to pass to the rules.
 
     Returns:
@@ -112,32 +127,86 @@ def render_pkg_aliases(*, aliases, requirement_cycles = None, extra_hub_aliases 
         fail("The aliases need to be provided as a dict, got: {}".format(type(aliases)))
 
     whl_group_mapping = {}
+    group_extras = {}
     if requirement_cycles:
+        # The members are the packages, e.g. `foo`, or the extras of the
+        # packages, e.g. `foo[bar]`.
         requirement_cycles = {
-            name: [normalize_name(whl_name) for whl_name in whls]
+            name: [group_member(whl_name) for whl_name in whls]
             for name, whls in requirement_cycles.items()
         }
 
-        whl_group_mapping = {
-            whl_name: group_name
-            for group_name, group_whls in requirement_cycles.items()
-            for whl_name in group_whls
-        }
+        for group_name, members in requirement_cycles.items():
+            for member in members:
+                whl_name, _, extra = member.partition("[")
+                whl_group_mapping[whl_name] = group_name
+                group_extras.setdefault(whl_name, []).append(extra.rstrip("]"))
 
-    files = {
-        "{}/BUILD.bazel".format(normalize_name(name)): _render_common_aliases(
-            name = normalize_name(name),
+        # The package without extras is the default member.
+        group_extras = {k: v for k, v in group_extras.items() if v != [""]}
+
+    public = ["//visibility:public"]
+    if exposed_packages != None:
+        exposed_packages = {
+            normalize_name(name): None
+            for name in exposed_packages
+        }
+    internal_visibility = _internal_visibility(
+        aliases,
+        has_groups = bool(requirement_cycles),
+    )
+
+    files = {}
+    for name, pkg_aliases in aliases.items():
+        name = normalize_name(name)
+        visibility = public
+        if exposed_packages != None and name not in exposed_packages:
+            visibility = internal_visibility
+        files["{}/BUILD.bazel".format(name)] = _render_common_aliases(
+            name = name,
             aliases = pkg_aliases,
-            extra_aliases = extra_hub_aliases.get(normalize_name(name), []),
-            group_name = whl_group_mapping.get(normalize_name(name)),
+            extra_aliases = extra_hub_aliases.get(name, []),
+            extras = extras.get(name, []),
+            group_name = whl_group_mapping.get(name),
+            group_extras = group_extras.get(name),
+            visibility = visibility,
             **kwargs
         ).strip()
-        for name, pkg_aliases in aliases.items()
-    }
 
     if requirement_cycles:
         files["_groups/BUILD.bazel"] = generate_group_library_build_bazel("", requirement_cycles)
     return files
+
+def _internal_visibility(aliases, has_groups = False):
+    """Return the visibility list for packages that are not exposed.
+
+    The wheel repositories depend on the aliases of the hub, so the aliases
+    have to be visible to them.
+
+    Args:
+        aliases: {type}`dict[str, str | dict[struct, str]]` package-to-repo
+            alias mapping.
+        has_groups: {type}`bool` whether requirement cycle groups exist.
+
+    Returns:
+        {type}`list[str]` visibility package specifications.
+    """
+    repo_names = {}
+    for pkg_aliases in aliases.values():
+        if type(pkg_aliases) == type(""):
+            repo_names[pkg_aliases] = None
+            continue
+
+        for repo_name in pkg_aliases.values():
+            repo_names[repo_name] = None
+
+    visibility = [
+        "@{}//:__pkg__".format(repo_name)
+        for repo_name in sorted(repo_names)
+    ]
+    if has_groups:
+        visibility.append("//_groups:__pkg__")
+    return visibility
 
 def _major_minor(python_version):
     major, _, tail = python_version.partition(".")
@@ -242,3 +311,22 @@ def _non_versioned_platform(p, *, strict = False):
         return p
     else:
         fail("Expected to always have a platform in the form '{{abi}}_{{os}}_{{arch}}', got: {}".format(p))
+
+def available_extras(aliases):
+    """Return the extras that are available in the hub for each package.
+
+    Args:
+        aliases: {type}`dict[str, dict[struct, str]]` the packages to the
+            {obj}`whl_config_setting` instances and the repo names.
+
+    Returns:
+        {type}`dict[str, list[str]]` the sorted extras for each package.
+    """
+    return {
+        pkg: sorted({
+            extra: None
+            for setting in settings
+            for extra in setting.extras or []
+        })
+        for pkg, settings in aliases.items()
+    }

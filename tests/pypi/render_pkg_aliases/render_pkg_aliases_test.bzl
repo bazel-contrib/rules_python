@@ -17,6 +17,7 @@
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load(
     "//python/private/pypi:render_pkg_aliases.bzl",
+    "available_extras",
     "get_whl_flag_versions",
     "render_multiplatform_pkg_aliases",
     "render_pkg_aliases",
@@ -57,6 +58,68 @@ pkg_aliases(
     env.expect.that_dict(actual).contains_exactly({want_key: want_content})
 
 _tests.append(_test_legacy_aliases)
+
+def _test_hidden_aliases(env):
+    actual = render_pkg_aliases(
+        aliases = {
+            "bar": "pypi_bar",
+            "foo": "pypi_foo",
+        },
+        exposed_packages = ["foo"],
+    )
+
+    env.expect.that_str(actual["bar/BUILD.bazel"]).equals("""\
+load("@rules_python//python/private/pypi:pkg_aliases.bzl", "pkg_aliases")
+
+package(default_visibility = [
+    "@pypi_bar//:__pkg__",
+    "@pypi_foo//:__pkg__",
+])
+
+pkg_aliases(
+    name = "bar",
+    actual = "pypi_bar",
+)""")
+    env.expect.that_str(actual["foo/BUILD.bazel"]).equals("""\
+load("@rules_python//python/private/pypi:pkg_aliases.bzl", "pkg_aliases")
+
+package(default_visibility = ["//visibility:public"])
+
+pkg_aliases(
+    name = "foo",
+    actual = "pypi_foo",
+)""")
+
+_tests.append(_test_hidden_aliases)
+
+def _test_hidden_aliases_in_groups(env):
+    actual = render_pkg_aliases(
+        aliases = {
+            "bar": "pypi_bar",
+            "baz": "pypi_baz",
+        },
+        requirement_cycles = {
+            "group": ["bar", "baz"],
+        },
+        exposed_packages = ["baz"],
+    )
+
+    env.expect.that_str(actual["bar/BUILD.bazel"]).equals("""\
+load("@rules_python//python/private/pypi:pkg_aliases.bzl", "pkg_aliases")
+
+package(default_visibility = [
+    "@pypi_bar//:__pkg__",
+    "@pypi_baz//:__pkg__",
+    "//_groups:__pkg__",
+])
+
+pkg_aliases(
+    name = "bar",
+    actual = "pypi_bar",
+    group_name = "group",
+)""")
+
+_tests.append(_test_hidden_aliases_in_groups)
 
 def _test_bzlmod_aliases(env):
     # Use this function as it is used in pip_repository
@@ -246,6 +309,85 @@ def _test_get_flag_versions_from_alias_target_platforms(env):
     env.expect.that_dict(got).contains_exactly(want)
 
 _tests.append(_test_get_flag_versions_from_alias_target_platforms)
+
+def _test_aliases_with_extras(env):
+    actual = render_pkg_aliases(
+        aliases = {
+            "foo": {
+                whl_config_setting(version = "3.2", extras = ["b", "a"]): "pypi_32_foo",
+            },
+        },
+    )
+
+    env.expect.that_str(actual["foo/BUILD.bazel"]).contains("""\
+pkg_aliases(
+    name = "foo",
+    actual = {
+        whl_config_setting(
+            extras = ("a", "b"),
+            version = "3.2",
+        ): "pypi_32_foo",
+    },
+)""")
+
+_tests.append(_test_aliases_with_extras)
+
+def _test_available_extras(env):
+    got = available_extras({
+        "bar": {
+            whl_config_setting(version = "3.2"): "pypi_32_bar",
+        },
+        "foo": {
+            whl_config_setting(version = "3.2", target_platforms = ["cp32_linux_x86_64"], extras = ["b"]): "pypi_32_foo",
+            whl_config_setting(version = "3.2", target_platforms = ["cp32_osx_aarch64"], extras = ["a", "b"]): "pypi_32_foo",
+        },
+    })
+
+    env.expect.that_dict(got).contains_exactly({
+        "bar": [],
+        "foo": ["a", "b"],
+    })
+
+_tests.append(_test_available_extras)
+
+def _test_aliases_with_extras_for_repo_names(env):
+    actual = render_pkg_aliases(
+        aliases = {
+            "foo": "pypi_foo",
+        },
+        extras = {"foo": ["a"]},
+    )
+
+    env.expect.that_str(actual["foo/BUILD.bazel"]).contains("""\
+pkg_aliases(
+    name = "foo",
+    actual = "pypi_foo",
+    extras = ["a"],
+)""")
+
+_tests.append(_test_aliases_with_extras_for_repo_names)
+
+def _test_groups_with_extras(env):
+    actual = render_pkg_aliases(
+        aliases = {
+            "bar": {whl_config_setting(version = "3.1"): "pypi_31_bar"},
+            "foo": {whl_config_setting(version = "3.1"): "pypi_31_foo"},
+        },
+        requirement_cycles = {
+            "group": ["Bar", "foo[Extra]"],
+        },
+    )
+
+    env.expect.that_str(actual["foo/BUILD.bazel"]).contains("""\
+    group_name = "group",
+    group_extras = ["extra"],
+""")
+    env.expect.that_str(actual["bar/BUILD.bazel"]).contains("""\
+    group_name = "group",
+""")
+    env.expect.that_bool("group_extras" in actual["bar/BUILD.bazel"]).equals(False)
+
+_tests.append(_test_groups_with_extras)
 
 def render_pkg_aliases_test_suite(name):
     """Create the test suite.

@@ -16,7 +16,6 @@ def _wheels_impl(mrctx):
     common = {
         "envsubst": ["WHEEL_TEST_ADDRESS"],
         "filename": _FILENAME,
-        "requirement": "storage-pkg",
         "sha256": mrctx.read(Label("//:wheel.sha256")).strip(),
         "urls": ["http://${WHEEL_TEST_ADDRESS}/" + _FILENAME],
     }
@@ -25,12 +24,10 @@ def _wheels_impl(mrctx):
     whl_library(name = "nonmatching", whl_patches = _patches("other.whl"), **common)
     whl_library(
         name = "provided",
-        requirement = "storage-pkg",
         whl_file = Label("//:" + _FILENAME),
     )
     whl_library(
         name = "provided_patched",
-        requirement = "storage-pkg",
         whl_file = Label("//:" + _FILENAME),
         whl_patches = _patches(_FILENAME),
     )

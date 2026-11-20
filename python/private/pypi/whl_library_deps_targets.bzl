@@ -8,13 +8,14 @@ load(
     "DATA_LABEL",
     "DIST_INFO_LABEL",
     "EXTRACTED_WHEEL_FILES",
-    "PY_LIBRARY_IMPL_LABEL",
     "PY_LIBRARY_PUBLIC_LABEL",
     "PY_SRCS_LABEL",
     "WHEEL_FILE",
-    "WHEEL_FILE_IMPL_LABEL",
     "WHEEL_FILE_PUBLIC_LABEL",
+    "extra_label",
+    "group_member",
 )
+load(":missing_package.bzl", "missing_extra_error")
 load(":pep508_deps.bzl", "deps")
 
 def whl_library_deps_targets(
@@ -24,7 +25,7 @@ def whl_library_deps_targets(
         aliases = None,
         metadata_name,
         requires_dist = [],
-        extras = [],
+        provides_extra = [],
         include = [],
         group_deps = [],
         group_name = None,
@@ -35,6 +36,7 @@ def whl_library_deps_targets(
         rules = struct(
             py_library = py_library,
             env_marker_setting = env_marker_setting,
+            missing_extra_error = missing_extra_error,
         )):
     """Create all of the whl_library targets.
 
@@ -48,11 +50,14 @@ def whl_library_deps_targets(
             group rules which wrap this library and its fellows together.
         requires_dist: {type}`list[str]` The list of `Requires-Dist` values from
             the whl `METADATA`. Optional because some packages don't have them.
-        extras: {type}`list[str]` The list of requested extras. This essentially
-            includes extra transitive dependencies in the final targets
-            depending on the wheel `METADATA`. Optional because some packages
-            don't request them.
-        include: {type}`list[str]` The list of packages to include.
+        provides_extra: {type}`list[str]` The list of extras that the package
+            provides. For each extra the `[<extra>]` target is created
+            that includes the package and the dependencies of that extra.
+        include: {type}`list[str] | dict[str, list[str] | None]` The list
+            of packages to include. If it is a dict, then the values are the
+            extras of each package that are available in the hub and the
+            dependencies on the extras that are not available will fail the
+            build with a helpful message.
         group_name: {type}`str | None` name of the dependency group (if any).
         dep_template: {type}`str | None` The dep_template to use.
         tags: {type}`list[str]` The tags set on the targets.
@@ -75,27 +80,33 @@ def whl_library_deps_targets(
             DATA_LABEL: repo_label(DATA_LABEL),
         }
 
+    # The members of the group are the packages, e.g. `foo`, or the extras of
+    # the packages, e.g. `foo[bar]`. Only the targets of the members are part
+    # of the group and they do not depend on the other members to avoid cycles.
+    self_name = normalize_name(metadata_name)
+    members = {group_member(m): None for m in group_deps} if group_name else {}
+    is_member = lambda extra: (
+        "{}[{}]".format(self_name, extra) if extra else self_name
+    ) in members
+
     # If this library is a member of a group, its public label aliases need to
     # point to the group implementation rule not the implementation rules. We
     # also need to mark the implementation rules as visible to the group
     # implementation.
+    group_label = None
     if group_name and "//:" in dep_template:
         # This is the legacy behaviour where the group library is outside the hub repo
         #
         # It is expected to disappear when we drop WORKSPACE or drop the vendoring of
         # pip_parse `requirements.bzl` in WORKSPACE. The alternative would be to add
         # another argument to the macro, but it is already full of arguments.
-        label_tmpl = dep_template.format(
+        group_label = dep_template.format(
             name = "_config",
             target = normalize_name(group_name) + "_{}",
         ).replace(
             "//:",
             "//_groups:",
         )
-        aliases = aliases | {
-            PY_LIBRARY_PUBLIC_LABEL: label_tmpl.format(PY_LIBRARY_PUBLIC_LABEL),
-            WHEEL_FILE_PUBLIC_LABEL: label_tmpl.format(WHEEL_FILE_PUBLIC_LABEL),
-        }
         impl_vis = [dep_template.format(
             name = "_config",
             target = "__pkg__",
@@ -103,25 +114,40 @@ def whl_library_deps_targets(
             "//:",
             "//_groups:",
         )]
-
-        py_library_label = PY_LIBRARY_IMPL_LABEL
-        whl_file_label = WHEEL_FILE_IMPL_LABEL
+    elif group_name:
+        impl_vis = [dep_template.format(name = "", target = "__subpackages__")]
     else:
-        py_library_label = PY_LIBRARY_PUBLIC_LABEL
-        whl_file_label = WHEEL_FILE_PUBLIC_LABEL
-        if group_name:
-            impl_vis = [dep_template.format(name = "", target = "__subpackages__")]
-        else:
-            impl_vis = visibility
+        impl_vis = visibility
+
+    def _name(extra, public):
+        # In the legacy mode the targets of the members are implementation
+        # targets and the public targets are aliases to the group.
+        prefix = "_" if group_label and is_member(extra) else ""
+        return prefix + (extra_label(extra) if extra else public)
+
+    def _visibility(extra):
+        # In the legacy mode the targets that are not members are public.
+        return visibility if group_label and not is_member(extra) else impl_vis
+
+    # Create targets for every extra that the package provides, so that the hub
+    # can select only the extras that are requested on each platform without
+    # passing the extras to this repository.
+    extras_targets = [""] + sorted({normalize_name(e): None for e in provides_extra})
+    whl_file_label = _name("", WHEEL_FILE_PUBLIC_LABEL)
+
+    if group_label:
+        for extra in extras_targets:
+            if is_member(extra):
+                aliases[extra_label(extra) if extra else PY_LIBRARY_PUBLIC_LABEL] = group_label.format(PY_LIBRARY_PUBLIC_LABEL)
+        if is_member(""):
+            aliases[WHEEL_FILE_PUBLIC_LABEL] = group_label.format(WHEEL_FILE_PUBLIC_LABEL)
 
     if not requires_dist:
-        # If the package is in a group but has no deps, we still need the public labels to
-        # point at the srcs targets so that the group implementation can use them. We don't
-        # need any of the extra targets, so just create the aliases.
-        aliases = aliases | {
-            py_library_label: repo_label(PY_SRCS_LABEL),
-            whl_file_label: repo_label(WHEEL_FILE),
-        }
+        # If the package is in a group but has no deps, we still need the labels to point at
+        # the srcs targets so that the group implementation can use them.
+        aliases[whl_file_label] = repo_label(WHEEL_FILE)
+        for extra in extras_targets:
+            aliases[_name(extra, PY_LIBRARY_PUBLIC_LABEL)] = repo_label(PY_SRCS_LABEL)
 
     for alias, actual in aliases.items():
         native.alias(
@@ -134,37 +160,62 @@ def whl_library_deps_targets(
         # If there are extras, then they will be visible in requires_dist.
         return
 
-    package_deps = _parse_requires_dist(
-        name = metadata_name,
-        requires_dist = requires_dist,
-        excludes = group_deps,
-        extras = extras,
-        include = include,
-    )
+    # The settings for the deps that are included conditionally keyed by the
+    # dep and the expression.
+    settings = {}
 
-    _config_settings(
-        dependencies_with_markers = package_deps.deps_select,
-        rules = rules,
-        visibility = ["//visibility:private"],
-    )
+    # The dependencies on extras that are not available in the hub.
+    missing_extras = {}
+
+    def _pkg_label(dep):
+        dep_name, _, extra = dep.partition("[")
+        if not extra:
+            return dep_template.format(name = dep_name, target = PY_LIBRARY_PUBLIC_LABEL)
+
+        extra = extra.rstrip("]")
+        available = include.get(dep_name) if type(include) == type({}) else None
+        if available != None and extra not in available:
+            missing_extras[dep] = (dep_name, extra)
+            return ":_missing_" + dep
+
+        return dep_template.format(name = dep_name, target = extra_label(extra))
+
+    whl_label = lambda dep: dep_template.format(name = dep, target = WHEEL_FILE_PUBLIC_LABEL)
 
     if hasattr(native, "filegroup"):
         # We include the whl file as srcs so that `$(location :whl)` expands to the whl file.
-        # The transitive dependencies are available via the `data` attribute.
+        # The transitive dependencies are available via the `data` attribute. The extras
+        # are not used for the whl targets, so only the packages without extras can be
+        # members of the group for the whl targets.
+        whl_deps = deps(
+            name = self_name,
+            requires_dist = requires_dist,
+            include = include,
+            excludes = members if is_member("") else [],
+        )
         native.filegroup(
             name = whl_file_label,
             srcs = [repo_label(WHEEL_FILE)],
             data = _deps(
                 deps = [],
-                package_deps = package_deps,
-                tmpl = dep_template.format(name = "{}", target = WHEEL_FILE_PUBLIC_LABEL),
+                package_deps = whl_deps,
+                conditions = _conditions(settings, whl_deps),
+                label = whl_label,
             ),
-            visibility = impl_vis,
+            visibility = _visibility(""),
         )
 
-    if hasattr(rules, "py_library"):
+    for extra in extras_targets if hasattr(rules, "py_library") else []:
+        package_deps = deps(
+            name = self_name,
+            requires_dist = requires_dist,
+            include = include,
+            excludes = members if is_member(extra) else [],
+            extras = [extra] if extra else [],
+            keep_extras = True,
+        )
         rules.py_library(
-            name = py_library_label,
+            name = _name(extra, PY_LIBRARY_PUBLIC_LABEL),
             # We include as srcs to ensure that the (locations :pkg) works as expected.
             srcs = [repo_label(PY_SRCS_LABEL)],
             deps = _deps(
@@ -173,52 +224,57 @@ def whl_library_deps_targets(
                 # `pyi_srcs`, see `tests/base_rules/py_library`.
                 deps = [repo_label(PY_SRCS_LABEL)],
                 package_deps = package_deps,
-                tmpl = dep_template.format(name = "{}", target = PY_LIBRARY_PUBLIC_LABEL),
+                conditions = _conditions(settings, package_deps),
+                label = _pkg_label,
             ),
             # Disable precompilation on this wrapper target to prevent duplicate
             # pyc generation; the underlying PY_SRCS_LABEL target handles it.
             precompile = "disabled",
             tags = tags,
-            visibility = impl_vis,
+            visibility = _visibility(extra),
         )
 
-def _parse_requires_dist(
-        *,
-        name,
-        requires_dist,
-        excludes,
-        include,
-        extras):
-    return deps(
-        name = normalize_name(name),
-        requires_dist = requires_dist,
-        excludes = excludes,
-        include = include,
-        extras = extras,
-    )
-
-def _config_settings(dependencies_with_markers, rules, **kwargs):
-    """Generate config settings for the targets.
-
-    Args:
-        dependencies_with_markers: {type}`dict[str, str]` The markers to evaluate by
-            each dep.
-        rules: used for testing
-        **kwargs: Extra kwargs to pass to the rule.
-    """
-    for dep, expression in dependencies_with_markers.items():
+    for (_, expression), name in settings.items():
         rules.env_marker_setting(
-            name = "include_{}".format(dep),
+            name = name,
             expression = expression,
-            **kwargs
+            visibility = ["//visibility:private"],
         )
 
-def _deps(deps, package_deps, tmpl):
-    deps = [] + deps + [tmpl.format(d) for d in sorted(package_deps.deps)]
+    for dep, (dep_name, extra) in sorted(missing_extras.items()):
+        rules.missing_extra_error(
+            name = "_missing_" + dep,
+            package_name = dep_name,
+            extra = extra,
+            required_by = metadata_name,
+            visibility = ["//visibility:private"],
+        )
+
+def _conditions(settings, package_deps):
+    return {
+        dep: _setting_name(settings, dep, expression)
+        for dep, expression in package_deps.deps_select.items()
+    }
+
+def _setting_name(settings, dep, expression):
+    """Return a unique name for the setting evaluating the expression for the dep.
+
+    The first expression for a dep is named `include_<dep>` and any different
+    expressions for the same dep get a numeric suffix.
+    """
+    key = (dep, expression)
+    if key not in settings:
+        n = len([d for d, _ in settings if d == dep])
+        settings[key] = "include_{}".format(dep) + ("_{}".format(n + 1) if n else "")
+
+    return settings[key]
+
+def _deps(deps, package_deps, conditions, label):
+    deps = [] + deps + [label(d) for d in sorted(package_deps.deps)]
 
     for dep in package_deps.deps_select:
         deps = deps + select({
-            ":is_include_{}_true".format(dep): [tmpl.format(dep)],
+            ":is_{}_true".format(conditions[dep]): [label(dep)],
             "//conditions:default": [],
         })
 

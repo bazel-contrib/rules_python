@@ -1,0 +1,3 @@
+load(":hub_exposure_tests.bzl", "hub_exposure_test_suite")
+
+hub_exposure_test_suite(name = "hub_exposure_tests")
