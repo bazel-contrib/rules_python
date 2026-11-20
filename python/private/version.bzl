@@ -535,6 +535,40 @@ def normalize_pep440(version):
     """
     return _parse(version, strict = True)["norm"]
 
+def _parse_release_only(version, is_prefix):
+    """Parse a version that only has the release segment, e.g. `3.11.4`.
+
+    The vast majority of the versions that we handle are like this and using
+    the string methods is an order of magnitude cheaper than the parser.
+
+    Args:
+        version: {type}`str` the version without the leading and trailing
+            whitespace.
+        is_prefix: {type}`bool` whether the `.*` suffix was removed.
+
+    Returns:
+        The same as `_parse` or `None` if the full parser needs to be used.
+    """
+    if not version.replace(".", "").isdigit():
+        return None
+
+    parts = version.split(".")
+    if "" in parts:
+        return None
+
+    # PEP 440: Integer Normalization
+    norm = ".".join([str(int(part)) for part in parts])
+    return {
+        "dev": "",
+        "epoch": "",
+        "is_prefix": is_prefix,
+        "local": "",
+        "norm": norm,
+        "post": "",
+        "pre": "",
+        "release": norm,
+    }
+
 def _parse(version_str, strict = True, _fail = fail):
     """Split the version into its normalized segments.
 
@@ -557,6 +591,10 @@ def _parse(version_str, strict = True, _fail = fail):
     is_prefix = not strict and version.endswith(".*")
     if is_prefix:
         version = version[:-len(".*")]
+
+    release_only = _parse_release_only(version, is_prefix)
+    if release_only:
+        return release_only
 
     parser = _new(version)
     accept(parser, _in(["v", "V"]), "")  # PEP 440: Preceding v character

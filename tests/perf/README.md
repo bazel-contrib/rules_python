@@ -80,11 +80,11 @@ The time is of Bazel 9.1.1 on a laptop, only the ratios are meaningful.
 
 | Workload | Steps | Bazel, µs |
 |---|---:|---:|
-| `evaluate_long` | 11056 | 2009.7 |
+| `evaluate_long` | 6376 | 781.4 |
 | `evaluate_non_strict` | 703 | 74.2 |
 | `evaluate_string` | 362 | 34.9 |
 | `evaluate_two_strings` | 750 | 81.3 |
-| `evaluate_version` | 1975 | 432.7 |
+| `evaluate_version` | 525 | 69.9 |
 | `tokenize_long` | 4870 | 424.0 |
 | `tokenize_no_whitespace` | 563 | 49.6 |
 | `tokenize_version` | 305 | 27.5 |
@@ -93,9 +93,19 @@ The time is of Bazel 9.1.1 on a laptop, only the ratios are meaningful.
 | `version_is_ge` | 54 | 6.2 |
 | `version_is_lt` | 48 | 6.3 |
 | `version_key` | 26 | 2.7 |
-| `version_normalize` | 950 | 218.5 |
-| `version_parse_all_segments` | 1514 | 335.6 |
-| `version_parse_invalid` | 628 | 137.6 |
-| `version_parse_pre_release` | 1016 | 239.6 |
-| `version_parse_prefix` | 784 | 178.4 |
-| `version_parse_release` | 881 | 201.1 |
+| `version_normalize` | 24 | 4.8 |
+| `version_parse_all_segments` | 1518 | 329.1 |
+| `version_parse_invalid` | 632 | 136.1 |
+| `version_parse_pre_release` | 1020 | 238.3 |
+| `version_parse_prefix` | 52 | 9.6 |
+| `version_parse_release` | 53 | 9.5 |
+
+## History
+
+The notable changes of the results, the numbers are the steps.
+
+| Change | Workload | Before | After |
+|---|---|---:|---:|
+| Parse the release-only versions without the parser | `version_parse_release` | 881 | 53 |
+|  | `evaluate_version` | 1975 | 525 |
+|  | `evaluate_long` | 11056 | 6376 |
