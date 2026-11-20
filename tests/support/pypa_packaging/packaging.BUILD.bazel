@@ -1,0 +1,13 @@
+"""BUILD file for the sdist of https://pypi.org/project/packaging/."""
+
+load("@rules_python//python:py_library.bzl", "py_library")
+
+package(default_visibility = ["//visibility:public"])
+
+py_library(
+    name = "packaging",
+    srcs = glob(["src/packaging/**/*.py"]),
+    imports = ["src"],
+)
+
+exports_files(glob(["tests/*.py"]))

@@ -1,0 +1,48 @@
+load("//python:py_binary.bzl", "py_binary")
+load("//python:py_test.bzl", "py_test")
+load("//tests/support:support.bzl", "SUPPORTS_BZLMOD")
+
+_ARGS = [
+    "--test-version=$(rlocationpath @pypa_packaging//:tests/test_version.py)",
+    "--test-specifiers=$(rlocationpath @pypa_packaging//:tests/test_specifiers.py)",
+]
+
+_DATA = [
+    "@pypa_packaging//:tests/test_specifiers.py",
+    "@pypa_packaging//:tests/test_version.py",
+]
+
+_DEPS = [
+    "//python/runfiles",
+    "@pypa_packaging//:packaging",
+]
+
+# Regenerate the conformance test cases from the `packaging` test-suite:
+#
+#     bazel run //tests/support/pypa_packaging:update
+py_binary(
+    name = "update",
+    srcs = ["generate.py"],
+    args = _ARGS + [
+        "--version-cases=tests/version/packaging_cases.bzl",
+    ],
+    data = _DATA,
+    main = "generate.py",
+    target_compatible_with = SUPPORTS_BZLMOD,
+    deps = _DEPS,
+)
+
+py_test(
+    name = "up_to_date_test",
+    srcs = ["generate.py"],
+    args = _ARGS + [
+        "--check",
+        "--version-cases=$(rlocationpath //tests/version:packaging_cases.bzl)",
+    ],
+    data = _DATA + [
+        "//tests/version:packaging_cases.bzl",
+    ],
+    main = "generate.py",
+    target_compatible_with = SUPPORTS_BZLMOD,
+    deps = _DEPS,
+)
