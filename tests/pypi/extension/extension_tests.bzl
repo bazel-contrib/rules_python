@@ -896,6 +896,43 @@ def _test_configure(env):
 
 _tests.append(_test_configure)
 
+def _test_configure_platform_specific(env):
+    # A selected package that is not available on all of the platforms is
+    # public, but it is not in the `all_*requirements`.
+    pypi = _parse_modules(
+        env,
+        module_ctx = _pypi_mock_mctx(
+            _mod(
+                name = "rules_python",
+                parse = [_configure_parse(
+                    pyproject_toml = "pyproject.toml",
+                    target_platforms = ["linux_x86_64", "windows_aarch64"],
+                )],
+                configure = [
+                    _configure(hub_name = "pypi_a", dependency_groups = ["default", "dev"]),
+                ],
+            ),
+            os_name = "linux",
+            arch_name = "x86_64",
+            mock_files = {
+                "pyproject.toml": _CONFIGURE_PYPROJECT,
+                "requirements.txt": _CONFIGURE_REQUIREMENTS.replace(
+                    "other-pkg==0.0.2",
+                    "other-pkg==0.0.2 ; sys_platform == 'win32'",
+                ),
+            },
+        ),
+        available_interpreters = {
+            "python_3_15_host": "unit_test_interpreter_target",
+        },
+        minor_mapping = {"3.15": "3.15.19"},
+    )
+
+    pypi.exposed_packages().contains_exactly({"pypi_a": ["simple"]})
+    pypi.configured_hubs().contains_exactly({"pypi_a": ["other_pkg", "simple"]})
+
+_tests.append(_test_configure_platform_specific)
+
 def _test_configure_default_pyproject(env):
     # The `pip.default` pyproject.toml is used for the hubs of the root module.
     pypi = _configure_parse_modules(

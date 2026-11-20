@@ -28,7 +28,7 @@ exports_files(["requirements.bzl"])
 def _impl(rctx):
     if rctx.attr.hide_unexposed_packages:
         bzl_packages = rctx.attr.packages
-        exposed_packages = bzl_packages
+        exposed_packages = rctx.attr.public_packages
     else:
         bzl_packages = rctx.attr.packages or rctx.attr.whl_map.keys()
         exposed_packages = None
@@ -87,8 +87,8 @@ hub_repository = repository_rule(
         "hide_unexposed_packages": attr.bool(
             default = False,
             doc = """
-Make the aliases of the packages that are not in `packages` visible only to
-the wheel repositories.
+Make the aliases of the packages that are not in `public_packages` visible only
+to the wheel repositories.
 """,
         ),
         "packages": attr.string_list(
@@ -101,6 +101,14 @@ Defaults to whl_map keys unless `hide_unexposed_packages` is set.
         "platform_config_settings": attr.string_list_dict(
             doc = "The constraint values for each platform name. The values are string canonical string Label representations",
             mandatory = False,
+        ),
+        "public_packages": attr.string_list(
+            mandatory = False,
+            doc = """
+The packages whose aliases are public when `hide_unexposed_packages` is set.
+Unlike `packages`, it includes the packages that are not available on all of
+the platforms.
+""",
         ),
         "repo_name": attr.string(
             mandatory = True,

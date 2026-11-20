@@ -386,7 +386,17 @@ You cannot use both the additive_build_content and additive_build_content_file a
     )
     if configured_hubs == None:
         return None
-    exposed_packages.update(configured_hubs)
+
+    # The `all_*requirements` only list the selected packages that are
+    # available on all of the platforms, while all of the selected packages
+    # stay public.
+    for hub_name, packages in configured_hubs.items():
+        selected = {name: None for name in packages}
+        exposed_packages[hub_name] = [
+            name
+            for name in exposed_packages[hub_name]
+            if name in selected
+        ]
 
     return struct(
         # dict[str, list[str]]: configured hubs and exposed packages.
@@ -552,6 +562,7 @@ def _pip_impl(module_ctx):
             groups = mods.hub_group_map.get(hub_name),
             # The hubs configured with `pip.configure` hide the other packages.
             hide_unexposed_packages = hub_name in mods.configured_hubs,
+            public_packages = mods.configured_hubs.get(hub_name, []),
         )
 
     _create_unified_hub_repo(mods)
