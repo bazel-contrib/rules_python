@@ -15,6 +15,7 @@ rust_test(
     edition = "2024",
     deps = [
         "//crates/extract_wheel_files:extract_wheel_files_lib",
+        "@crates//:anyhow",
         "@crates//:zip",
     ],
 )

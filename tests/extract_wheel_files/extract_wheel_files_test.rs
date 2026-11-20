@@ -7,8 +7,8 @@ use std::process::ExitCode;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use extract_wheel_files_lib::{
-    Options, ParsedArgs, compile_pattern, extract_files, get_files, get_record, parse_args,
-    parse_record, run, run_cli,
+    Options, ParsedArgs, compile_pattern, extract_files, get_files, get_record, open_wheel_archive,
+    parse_args, parse_record, run, run_cli,
 };
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipWriter};
@@ -24,6 +24,20 @@ fn parse_options<const N: usize>(args: [&str; N]) -> Options {
         ParsedArgs::Options(opts) => opts,
         ParsedArgs::Help => panic!("expected ParsedArgs::Options, got ParsedArgs::Help"),
     }
+}
+
+fn read_wheel_record(whl_path: &Path) -> anyhow::Result<Vec<String>> {
+    let mut archive = open_wheel_archive(whl_path)?;
+    get_record(&mut archive, whl_path)
+}
+
+fn extract_wheel_entries<I, S>(whl_path: &Path, files: I, outdir: &Path) -> anyhow::Result<()>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    let mut archive = open_wheel_archive(whl_path)?;
+    extract_files(&mut archive, whl_path, files, outdir)
 }
 
 /// Helper to build a valid ZIP archive on disk using the `zip` crate.
@@ -78,18 +92,17 @@ fn create_synthetic_minimal_wheel(
     method: CompressionMethod,
     comment: Option<&str>,
 ) {
-    let record_content = concat!(
-        "\"examples/wheel/lib/data,with,commas.txt\",sha256=abc,12\n",
-        "examples/wheel/lib/data.txt,sha256=def,8\n",
-        "examples/wheel/lib/module_with_data.py,sha256=ghi,20\n",
-        "examples/wheel/lib/module_with_type_annotations.py,sha256=jkl,25\n",
-        "examples/wheel/lib/module_with_type_annotations.pyi,sha256=mno,26\n",
-        "examples/wheel/lib/simple_module.py,sha256=pqr,15\n",
-        "examples/wheel/main.py,sha256=stu,18\n",
-        "example_minimal_package-0.0.1.dist-info/WHEEL,sha256=vwx,30\n",
-        "example_minimal_package-0.0.1.dist-info/METADATA,sha256=yz0,40\n",
-        "example_minimal_package-0.0.1.dist-info/RECORD,,\n",
-    );
+    let record_content = r#""examples/wheel/lib/data,with,commas.txt",sha256=abc,12
+examples/wheel/lib/data.txt,sha256=def,8
+examples/wheel/lib/module_with_data.py,sha256=ghi,20
+examples/wheel/lib/module_with_type_annotations.py,sha256=jkl,25
+examples/wheel/lib/module_with_type_annotations.pyi,sha256=mno,26
+examples/wheel/lib/simple_module.py,sha256=pqr,15
+examples/wheel/main.py,sha256=stu,18
+example_minimal_package-0.0.1.dist-info/WHEEL,sha256=vwx,30
+example_minimal_package-0.0.1.dist-info/METADATA,sha256=yz0,40
+example_minimal_package-0.0.1.dist-info/RECORD,,
+"#;
     let entries: &[(&str, &[u8], CompressionMethod)] = &[
         (
             "examples/wheel/lib/data,with,commas.txt",
@@ -140,18 +153,17 @@ fn create_synthetic_minimal_wheel(
 #[test]
 fn test_parse_record_csv_edge_cases() {
     let csv_bytes = concat!(
-        "\"pkg/file,with,commas.txt\",sha256=111,5\r\n",
-        "\r\n",
-        "\"pkg/file\"\"with\"\"quotes.txt\",sha256=222,6\n",
-        "pkg/single_column_flexible\n",
-        "pkg-1.0.dist-info/RECORD,,\r\n",
+        r#""pkg/file,with,commas.txt",sha256=111,5"#,
+        "\r\n\r\n",
+        r#""pkg/file""with""quotes.txt",sha256=222,6"#,
+        "\npkg/single_column_flexible\npkg-1.0.dist-info/RECORD,,\r\n",
     );
     let paths = parse_record(csv_bytes.as_bytes()).unwrap();
     assert_eq!(
         paths,
         vec![
             "pkg/file,with,commas.txt",
-            "pkg/file\"with\"quotes.txt",
+            r#"pkg/file"with"quotes.txt"#,
             "pkg/single_column_flexible",
             "pkg-1.0.dist-info/RECORD",
         ]
@@ -174,13 +186,13 @@ fn test_get_wheel_record() {
     ];
 
     let example_wheel = Path::new(EXAMPLE_WHEEL_REL_PATH);
-    let record = get_record(example_wheel).unwrap();
+    let record = read_wheel_record(example_wheel).unwrap();
     assert_eq!(record, expected);
 
     let tmp = TempDir::new("get_record");
     let synth_whl = tmp.path().join("synth.whl");
     create_synthetic_minimal_wheel(&synth_whl, CompressionMethod::Stored, None);
-    let record = get_record(&synth_whl).unwrap();
+    let record = read_wheel_record(&synth_whl).unwrap();
     assert_eq!(record, expected);
 }
 
@@ -190,7 +202,7 @@ fn test_get_files_with_pattern_and_empty() {
     let whl_path = tmp.path().join("minimal.whl");
     create_synthetic_minimal_wheel(&whl_path, CompressionMethod::Deflated, None);
 
-    let record = get_record(&whl_path).unwrap();
+    let record = read_wheel_record(&whl_path).unwrap();
 
     // Pattern from tests/whl_filegroup/extract_wheel_files_test.py
     let regex = compile_pattern(r"(examples/wheel/lib/.*\.txt$|.*main)").unwrap();
@@ -220,7 +232,7 @@ fn test_extract_files() {
     let example_wheel = Path::new(EXAMPLE_WHEEL_REL_PATH);
     let tmp_real = TempDir::new("extract_real");
     let outdir_real = tmp_real.path().join("out");
-    extract_files(example_wheel, files, &outdir_real).unwrap();
+    extract_wheel_entries(example_wheel, files, &outdir_real).unwrap();
     let extracted_real = collect_extracted_files(&outdir_real);
     assert_eq!(extracted_real, expected_set);
 
@@ -228,7 +240,7 @@ fn test_extract_files() {
     let synth_whl = tmp.path().join("synth.whl");
     create_synthetic_minimal_wheel(&synth_whl, CompressionMethod::Deflated, None);
     let outdir = tmp.path().join("out");
-    extract_files(&synth_whl, files, &outdir).unwrap();
+    extract_wheel_entries(&synth_whl, files, &outdir).unwrap();
     let extracted = collect_extracted_files(&outdir);
     assert_eq!(extracted, expected_set);
     assert_eq!(
@@ -243,7 +255,7 @@ fn test_invalid_zip_error() {
     let bad_zip = tmp.path().join("not_a_zip.whl");
     fs::write(&bad_zip, b"not a zip archive at all").unwrap();
 
-    let err = get_record(&bad_zip).unwrap_err();
+    let err = read_wheel_record(&bad_zip).unwrap_err();
     assert_eq!(
         err.to_string(),
         format!("{} is not a valid zip file", bad_zip.display())
@@ -251,7 +263,7 @@ fn test_invalid_zip_error() {
 
     let short_zip = tmp.path().join("short.whl");
     fs::write(&short_zip, b"short").unwrap();
-    let err2 = get_record(&short_zip).unwrap_err();
+    let err2 = read_wheel_record(&short_zip).unwrap_err();
     assert_eq!(
         err2.to_string(),
         format!("{} is not a valid zip file", short_zip.display())
@@ -259,7 +271,7 @@ fn test_invalid_zip_error() {
 
     // A missing file is an open error, not a "not a valid zip file" error.
     let missing = tmp.path().join("missing.whl");
-    let err3 = get_record(&missing).unwrap_err();
+    let err3 = read_wheel_record(&missing).unwrap_err();
     assert_eq!(err3.to_string(), format!("opening {}", missing.display()));
 }
 
@@ -274,7 +286,7 @@ fn test_missing_or_multiple_record_files_error() {
         &[("pkg/mod.py", b"x = 1\n", CompressionMethod::Stored)],
         None,
     );
-    let err_zero = get_record(&zero_rec_whl).unwrap_err();
+    let err_zero = read_wheel_record(&zero_rec_whl).unwrap_err();
     assert_eq!(
         err_zero.to_string(),
         format!(
@@ -301,7 +313,7 @@ fn test_missing_or_multiple_record_files_error() {
         ],
         None,
     );
-    let err_two = get_record(&two_rec_whl).unwrap_err();
+    let err_two = read_wheel_record(&two_rec_whl).unwrap_err();
     assert_eq!(
         err_two.to_string(),
         format!(
@@ -316,10 +328,10 @@ fn test_csv_quoted_paths_and_deflated_entries() {
     let tmp = TempDir::new("csv_and_deflate");
     let whl_path = tmp.path().join("special.whl");
     let record_csv = concat!(
-        "\"pkg/file,with,commas.txt\",sha256=111,5\r\n",
-        "\"pkg/file\"\"with\"\"quotes.txt\",sha256=222,6\r\n",
-        "pkg/deflated.txt,sha256=333,1300\r\n",
-        "special-1.0.dist-info/RECORD,,\r\n",
+        r#""pkg/file,with,commas.txt",sha256=111,5"#,
+        "\r\n",
+        r#""pkg/file""with""quotes.txt",sha256=222,6"#,
+        "\r\npkg/deflated.txt,sha256=333,1300\r\nspecial-1.0.dist-info/RECORD,,\r\n",
     );
     let repeated = b"hello wheel! ".repeat(100);
     write_test_zip(
@@ -331,7 +343,7 @@ fn test_csv_quoted_paths_and_deflated_entries() {
                 CompressionMethod::Stored,
             ),
             (
-                "pkg/file\"with\"quotes.txt",
+                r#"pkg/file"with"quotes.txt"#,
                 b"quotes",
                 CompressionMethod::Deflated,
             ),
@@ -345,22 +357,23 @@ fn test_csv_quoted_paths_and_deflated_entries() {
         None,
     );
 
-    let record = get_record(&whl_path).unwrap();
+    let record = read_wheel_record(&whl_path).unwrap();
     assert_eq!(
         record,
         vec![
             "pkg/file,with,commas.txt",
-            "pkg/file\"with\"quotes.txt",
+            r#"pkg/file"with"quotes.txt"#,
             "pkg/deflated.txt",
             "special-1.0.dist-info/RECORD",
         ]
     );
 
+    // Extract paths valid on all filesystems (`"` is forbidden in NTFS/Win32 filenames).
     let outdir = tmp.path().join("extracted");
     let opts = Options {
         whl_path: whl_path.clone(),
         outdir: outdir.clone(),
-        regex: compile_pattern("pkg/.*").unwrap(),
+        regex: compile_pattern(r"pkg/(?:file,with|deflated).*").unwrap(),
     };
     run(&opts).unwrap();
 
@@ -368,12 +381,23 @@ fn test_csv_quoted_paths_and_deflated_entries() {
         fs::read(outdir.join("pkg/file,with,commas.txt")).unwrap(),
         b"hello"
     );
-    assert_eq!(
-        fs::read(outdir.join("pkg/file\"with\"quotes.txt")).unwrap(),
-        b"quotes"
-    );
     assert_eq!(fs::read(outdir.join("pkg/deflated.txt")).unwrap(), repeated);
     assert!(!outdir.join("special-1.0.dist-info/RECORD").exists());
+
+    #[cfg(unix)]
+    {
+        let unix_outdir = tmp.path().join("extracted_unix");
+        let unix_opts = Options {
+            whl_path,
+            outdir: unix_outdir.clone(),
+            regex: compile_pattern(r#"pkg/file"with"quotes\.txt"#).unwrap(),
+        };
+        run(&unix_opts).unwrap();
+        assert_eq!(
+            fs::read(unix_outdir.join(r#"pkg/file"with"quotes.txt"#)).unwrap(),
+            b"quotes"
+        );
+    }
 }
 
 #[test]
@@ -521,7 +545,7 @@ fn test_zip_with_archive_comment_and_crc_mismatch() {
         Some("wheel comment!!"),
     );
 
-    let record = get_record(&whl_path).unwrap();
+    let record = read_wheel_record(&whl_path).unwrap();
     assert_eq!(record.len(), 10);
 
     // Corrupt a byte inside the first stored entry's payload and verify CRC error detection.
@@ -536,7 +560,7 @@ fn test_zip_with_archive_comment_and_crc_mismatch() {
     fs::write(&corrupted_whl, &bytes).unwrap();
 
     let outdir = tmp.path().join("out_corrupt");
-    let err = extract_files(
+    let err = extract_wheel_entries(
         &corrupted_whl,
         ["examples/wheel/lib/data,with,commas.txt"],
         &outdir,
@@ -618,7 +642,10 @@ struct TempDir {
 impl TempDir {
     fn new(prefix: &str) -> Self {
         let id = TEST_COUNTER.fetch_add(1, Ordering::SeqCst);
-        let path = env::temp_dir().join(format!(
+        let base = env::var_os("TEST_TMPDIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(env::temp_dir);
+        let path = base.join(format!(
             "extract_wheel_files_test_{}_{}_{}",
             prefix,
             std::process::id(),
