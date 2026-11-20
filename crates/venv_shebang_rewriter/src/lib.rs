@@ -36,15 +36,46 @@ Arguments:
 Options:
   -h, --help    Print this help";
 
-/// Shell-Python polyglot header for Unix-like platforms.
+// Wheel `.data/scripts/*` and `console_scripts` wrappers start with a `#!python` (or `#!pythonw`)
+// placeholder shebang. Because Bazel venvs are relocatable across sandboxes and runfiles trees,
+// their absolute location is not known at build time, and OS `#!` shebangs cannot resolve an
+// interpreter relative to the script's own directory. Instead, we prepend a polyglot header that
+// invokes the sibling interpreter in the venv's `bin/` / `Scripts/` directory and is ignored when
+// Python subsequently parses the same file.
+
+/// Shell-Python polyglot header for Unix-like platforms:
+///
+/// ```text
+/// #!/bin/sh
+/// '''exec' "$(dirname "$0")/python3" "$0" "$@"
+/// ' '''
+/// ```
+///
+/// * **As `/bin/sh`**: `''` (an empty single-quoted string) concatenates onto `'exec'` to run
+///   `exec`, replacing the shell process with `python3` from the script's directory and forwarding
+///   the script path (`"$0"`) and arguments (`"$@"`). Because `exec` does not return, `/bin/sh`
+///   never reads line 3 or the Python body below.
+/// * **As Python**: Line 1 (`#!/bin/sh`) is a `#` comment, and lines 2–3 (`'''exec' ... \n' '''`)
+///   form a single triple-quoted string literal that Python evaluates and discards before running
+///   the rest of the file.
 pub const UNIX_HEADER: &[u8] =
     b"#!/bin/sh\n'''exec' \"$(dirname \"$0\")/python3\" \"$0\" \"$@\"\n' '''\n";
 
-/// Batch-Python polyglot header for Windows (`python.exe`).
+/// Batch-Python polyglot header for Windows (`python.exe`, CRLF-terminated for `.bat`/`.cmd`):
+///
+/// * **As `cmd.exe`**: `@` suppresses command echo; `setlocal enabledelayedexpansion` lets
+///   `!ERRORLEVEL!` expand *after* Python finishes (whereas `%ERRORLEVEL%` would expand when
+///   `cmd.exe` parses the `&`-joined line); `"%~dp0python.exe" -x "%~f0" %*` runs `python.exe` in
+///   the script's directory (`%~dp0`) on the script's full path (`%~f0`) with all arguments
+///   (`%*`); and `exit /b !ERRORLEVEL!` exits batch execution with Python's exit code before
+///   `cmd.exe` reaches the Python body on line 2.
+/// * **As Python**: `-x` instructs CPython to skip the first line of the source file, ignoring the
+///   batch command and executing the remaining Python code starting at line 2.
 pub const WINDOWS_PYTHON_HEADER: &[u8] =
     b"@setlocal enabledelayedexpansion & \"%~dp0python.exe\" -x \"%~f0\" %* & exit /b !ERRORLEVEL!\r\n";
 
-/// Batch-Python polyglot header for Windows GUI scripts (`pythonw.exe`).
+/// Batch-Python polyglot header for Windows GUI scripts (`pythonw.exe`); works identically to
+/// [`WINDOWS_PYTHON_HEADER`] when the input script's shebang starts with `#!pythonw`.
 pub const WINDOWS_PYTHONW_HEADER: &[u8] =
     b"@setlocal enabledelayedexpansion & \"%~dp0pythonw.exe\" -x \"%~f0\" %* & exit /b !ERRORLEVEL!\r\n";
 
