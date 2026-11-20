@@ -14,7 +14,7 @@
 """Tests for parsing the requirement specifier."""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-load("//python/private/pypi:pep508_requirement.bzl", "requirement")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:pep508_requirement.bzl", "requirement", "strip_extras")  # buildifier: disable=bzl-visibility
 
 _tests = []
 
@@ -41,6 +41,19 @@ def _test_requirement_line_parsing(env):
     env.expect.that_dict(got).contains_exactly(want)
 
 _tests.append(_test_requirement_line_parsing)
+
+def _test_strip_extras(env):
+    for line, want in {
+        "foo": "foo",
+        "foo @ https://example.org/foo[1].whl": "foo @ https://example.org/foo[1].whl",
+        "foo==1.0 ; python_version < '3.12' --hash=sha256:deadbeef": "foo==1.0 ; python_version < '3.12' --hash=sha256:deadbeef",
+        "foo[bar,baz] @ https://example.org/foo.whl": "foo @ https://example.org/foo.whl",
+        "foo[bar]": "foo",
+        "foo[bar]==1.0 --hash=sha256:deadbeef": "foo==1.0 --hash=sha256:deadbeef",
+    }.items():
+        env.expect.where(line = line).that_str(strip_extras(line)).equals(want)
+
+_tests.append(_test_strip_extras)
 
 def requirement_test_suite(name):  # buildifier: disable=function-docstring
     test_suite(
