@@ -445,6 +445,19 @@ class FetchPrQueueAsyncTest(unittest.IsolatedAsyncioTestCase):
             "err next line",
         )
 
+    def test_normalize_pr_preserves_lifecycle_state(self) -> None:
+        raw_merged = _make_raw_pr(60)
+        raw_merged["state"] = "merged"
+        summary = fetch_pr_queue.normalize_pr(
+            raw_merged,
+            repo="bazel-contrib/rules_python",
+            viewer="alice",
+            max_age_days=30,
+            now=datetime.datetime(2026, 11, 12, 12, 0, 0, tzinfo=datetime.UTC),
+        )
+        self.assertEqual(summary.state, "MERGED")
+        self.assertEqual(summary.to_dict()["state"], "MERGED")
+
 
 if __name__ == "__main__":
     unittest.main()

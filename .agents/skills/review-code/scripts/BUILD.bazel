@@ -1,0 +1,18 @@
+load("//python:py_library.bzl", "py_library")
+load("//python:py_test.bzl", "py_test")
+
+package(default_visibility = ["//visibility:private"])
+
+py_library(
+    name = "wrap_pr_body",
+    testonly = True,
+    srcs = ["wrap_pr_body.py"],
+    imports = ["."],
+)
+
+py_test(
+    name = "wrap_pr_body_test",
+    size = "small",
+    srcs = ["wrap_pr_body_test.py"],
+    deps = [":wrap_pr_body"],
+)
