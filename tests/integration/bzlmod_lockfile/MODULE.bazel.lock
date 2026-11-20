@@ -393,15 +393,49 @@
   },
   "facts": {
     "@@rules_python+//python/extensions:pip.bzl%pip": {
-      "fact_version": "v3",
+      "fact_version": "v5",
       "pycparser@https://pypi.org/simple": {
-        "https://files.pythonhosted.org/packages/b6/ae/315bbeee126a769cbde43cf4908acb4b40408d8bf8bbf334dd7368d8dadf/pycparser-3.12-py3-none-any.whl": "sha256:a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e",
-        "https://files.pythonhosted.org/packages/cb/27/eeb9f307bf07060f3d9f9aa0fb8c15b01bdfded0a941e4b2719c7f94cacd/pycparser-3.12.tar.gz": "sha256:f03387877eab82ce01bbdfd0ba7252ee55a90b1c708d5129e2ce915475cf1db6"
+        "https://files.pythonhosted.org/packages/": {
+          "b6/ae/315bbeee126a769cbde43cf4908acb4b40408d8bf8bbf334dd7368d8dadf/pycparser-3.12-py3-none-any.whl": "sha256:a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e",
+          "cb/27/eeb9f307bf07060f3d9f9aa0fb8c15b01bdfded0a941e4b2719c7f94cacd/pycparser-3.12.tar.gz": "sha256:f03387877eab82ce01bbdfd0ba7252ee55a90b1c708d5129e2ce915475cf1db6"
+        }
       },
       "six@https://pypi.org/simple": {
-        "https://files.pythonhosted.org/packages/94/e7/b2c673351809dca68a0e064b6af791aa332cf192da575fd474ed7d6f16a2/six-1.17.0.tar.gz": "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81",
-        "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl": "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274"
-      }
+        "https://files.pythonhosted.org/packages/": {
+          "94/e7/b2c673351809dca68a0e064b6af791aa332cf192da575fd474ed7d6f16a2/six-1.17.0.tar.gz": "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81",
+          "b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl": "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274"
+        }
+      },
+      "wheel_filter": [
+        "cpython|3.13|none,abi3,cp313|any,linux_aarch64,manylinux_*_aarch64",
+        "cpython|3.13|none,abi3,cp313|any,linux_armv7l,manylinux_*_armv7l",
+        "cpython|3.13|none,abi3,cp313|any,linux_i686,manylinux_*_i686",
+        "cpython|3.13|none,abi3,cp313|any,linux_ppc64le,manylinux_*_ppc64le",
+        "cpython|3.13|none,abi3,cp313|any,linux_riscv64,manylinux_*_riscv64",
+        "cpython|3.13|none,abi3,cp313|any,linux_s390x,manylinux_*_s390x",
+        "cpython|3.13|none,abi3,cp313|any,linux_x86_64,manylinux_*_x86_64",
+        "cpython|3.13|none,abi3,cp313|any,macosx_*_arm64e",
+        "cpython|3.13|none,abi3,cp313|any,macosx_*_universal2,macosx_*_arm64",
+        "cpython|3.13|none,abi3,cp313|any,macosx_*_universal2,macosx_*_x86_64",
+        "cpython|3.13|none,abi3,cp313|any,musllinux_*_x86_64",
+        "cpython|3.13|none,abi3,cp313|any,win32",
+        "cpython|3.13|none,abi3,cp313|any,win_amd64",
+        "cpython|3.13|none,abi3,cp313|any,win_arm64",
+        "cpython|3.13|none,abi3t,cp313t|any,linux_aarch64,manylinux_*_aarch64",
+        "cpython|3.13|none,abi3t,cp313t|any,linux_armv7l,manylinux_*_armv7l",
+        "cpython|3.13|none,abi3t,cp313t|any,linux_i686,manylinux_*_i686",
+        "cpython|3.13|none,abi3t,cp313t|any,linux_ppc64le,manylinux_*_ppc64le",
+        "cpython|3.13|none,abi3t,cp313t|any,linux_riscv64,manylinux_*_riscv64",
+        "cpython|3.13|none,abi3t,cp313t|any,linux_s390x,manylinux_*_s390x",
+        "cpython|3.13|none,abi3t,cp313t|any,linux_x86_64,manylinux_*_x86_64",
+        "cpython|3.13|none,abi3t,cp313t|any,macosx_*_arm64e",
+        "cpython|3.13|none,abi3t,cp313t|any,macosx_*_universal2,macosx_*_arm64",
+        "cpython|3.13|none,abi3t,cp313t|any,macosx_*_universal2,macosx_*_x86_64",
+        "cpython|3.13|none,abi3t,cp313t|any,musllinux_*_x86_64",
+        "cpython|3.13|none,abi3t,cp313t|any,win32",
+        "cpython|3.13|none,abi3t,cp313t|any,win_amd64",
+        "cpython|3.13|none,abi3t,cp313t|any,win_arm64"
+      ]
     }
   },
   "factsVersions": {}

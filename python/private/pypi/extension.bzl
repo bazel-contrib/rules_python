@@ -19,11 +19,12 @@ load("@pythons_hub//:versions.bzl", "MINOR_MAPPING")
 load("@rules_python_internal//:rules_python_config.bzl", rp_config = "config")
 load("@toml.bzl", "toml")
 load("//python/private:auth.bzl", "AUTH_ATTRS")
+load("//python/private:full_version.bzl", "full_version")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:pyproject_utils.bzl", "read_pyproject", "version_from_requires_python")
 load("//python/private:repo_utils.bzl", "repo_utils")
 load(":default_platforms.bzl", "default_platforms")
-load(":hub_builder.bzl", "hub_builder")
+load(":hub_builder.bzl", "hub_builder", "hub_platforms")
 load(":hub_repository.bzl", "hub_repository", "whl_config_settings_to_json")
 load(":parse_whl_name.bzl", "parse_whl_name")
 load(":pep508_env.bzl", "env")
@@ -157,6 +158,14 @@ def build_config(
         unified_hub_requirements_bzl = unified_hub_requirements_bzl,
     )
 
+def _python_version(module_ctx, pip_attr, config):
+    python_version = pip_attr.python_version
+    if not python_version and pip_attr.pyproject_toml:
+        pyproject = read_pyproject(module_ctx, pip_attr.pyproject_toml)
+        if pyproject.requires_python:
+            python_version = version_from_requires_python(pyproject.requires_python)
+    return python_version or config.python_version
+
 def parse_modules(
         module_ctx,
         _fail = fail,
@@ -245,19 +254,35 @@ You cannot use both the additive_build_content and additive_build_content_file a
     # dict[str repo, HubBuilder]
     # See `hub_builder.bzl%hub_builder()` for `HubBuilder`
     pip_hub_map = {}
-    simpleapi_cache = pypi_cache(mctx = module_ctx)
+
+    # The facts store all sdists, but only the wheels that a configured platform can select for
+    # one of the requested Python versions. The host is not used, so the lockfile is the same on
+    # all hosts. A hub with a `uv_lock` does not read the index, so its Python version is not used.
+    wheel_platforms = {}
+    for mod in module_ctx.modules:
+        for pip_attr in mod.tags.parse:
+            if pip_attr.uv_lock:
+                continue
+
+            full_python_version = full_version(
+                version = _python_version(module_ctx, pip_attr, config) or "",
+                minor_mapping = kwargs.get("minor_mapping", MINOR_MAPPING),
+                fail_on_err = False,
+            )
+            if full_python_version:
+                wheel_platforms.update(hub_platforms(
+                    module_ctx,
+                    python_version = full_python_version,
+                    config = config,
+                ))
+    simpleapi_cache = pypi_cache(mctx = module_ctx, wheel_platforms = wheel_platforms.values())
 
     is_pypi_hub_reserved = module_ctx.getenv("RULES_PYTHON_PYPI_HUB_RESERVED", "0") == "1"
     renamed_default_hub = None
 
     for mod in module_ctx.modules:
         for pip_attr in mod.tags.parse:
-            python_version = pip_attr.python_version
-            if not python_version and pip_attr.pyproject_toml:
-                pyproject = read_pyproject(module_ctx, pip_attr.pyproject_toml)
-                if pyproject.requires_python:
-                    python_version = version_from_requires_python(pyproject.requires_python)
-            python_version = python_version or config.python_version
+            python_version = _python_version(module_ctx, pip_attr, config)
             if not python_version:
                 _fail("pip.parse() requires one of `python_version`, `pyproject_toml`, or `pip.default(pyproject_toml=...)` to be set")
 
