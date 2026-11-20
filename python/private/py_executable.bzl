@@ -2213,6 +2213,8 @@ def _add_config_setting_defaults(kwargs):
     if config_settings == None:
         config_settings = {}
     elif type(config_settings) == "dict":
+        # `config_settings` is configurable and may be a `select()`, which a
+        # macro cannot inspect, so only plain dicts are resolved here.
         config_settings = _resolve_label_setting_values(config_settings)
 
     # NOTE: This code runs in loading phase within the context of the caller.
