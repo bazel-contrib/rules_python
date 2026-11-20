@@ -1,0 +1,15 @@
+load("@rules_rust//rust:defs.bzl", "rust_test")
+
+package(default_visibility = ["//:__subpackages__"])
+
+licenses(["notice"])
+
+rust_test(
+    name = "build_data_writer_test",
+    size = "small",
+    srcs = ["build_data_writer_test.rs"],
+    edition = "2024",
+    deps = [
+        "//crates/build_data_writer:build_data_writer_lib",
+    ],
+)

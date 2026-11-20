@@ -112,6 +112,22 @@ _MAX_CONVERSATION_TITLE_CHARS = 120
 _MAX_CONVERSATION_TITLE_WORDS = 5
 # Single-PR `gh pr view` lookups fetch one PR without pagination.
 _SINGLE_PR_VIEW_TIMEOUT_SECONDS = 15
+# Match missing-resource responses without matching CLI-missing ("not found on PATH") or DNS errors.
+_PR_NOT_FOUND_MARKERS = (
+    # keep-sorted start
+    "could not resolve to a pullrequest",
+    "http 404",
+    "no pull requests found",
+    "pull request not found",
+    # keep-sorted end
+)
+_ISSUE_NOT_FOUND_MARKERS = (
+    # keep-sorted start
+    "could not resolve to an issue",
+    "http 404",
+    '"status":"404"',
+    # keep-sorted end
+)
 # Cap interpolated PR metadata fields to limit prompt bloat and injection surface.
 _PROMPT_META_MAX_CHARS = 300
 # Allow longer URLs than generic fields so PR links with long slugs are preserved.
@@ -573,6 +589,211 @@ def _query_sqlite_pr_conversations(
     return matches
 
 
+def _matches_error_marker(exc: Exception, markers: Sequence[str]) -> bool:
+    lowered = str(exc).lower()
+    return any(marker in lowered for marker in markers)
+
+
+def _enrich_pr_item(
+    item: Mapping[str, object],
+    repo: str,
+    records_by_key: Mapping[str, TriggeredPrRecord],
+    now: datetime.datetime,
+) -> dict[str, object]:
+    """Attaches fresh age and tracked review metadata to a serialized PR item."""
+    copy_item: dict[str, object] = {str(k): v for k, v in item.items()}
+    copy_item["state"] = str(copy_item.get("state") or "OPEN").strip().upper() or "OPEN"
+    # Recompute from `updated_at` (or backfill legacy `stale_days`)
+    # so cached queues and lookups never serve missing or frozen PR ages.
+    updated_at = str(copy_item.get("updated_at") or "").strip()
+    if updated_at:
+        copy_item["days_since_update"] = compute_age_days(updated_at, now)
+    elif (
+        "days_since_update" not in copy_item
+        and isinstance(copy_item.get("stale_days"), int)
+        and not isinstance(copy_item.get("stale_days"), bool)
+    ):
+        copy_item["days_since_update"] = copy_item["stale_days"]
+    raw_num = copy_item.get("number")
+    pr_num = (
+        raw_num if isinstance(raw_num, int) and not isinstance(raw_num, bool) else 0
+    )
+    rec = records_by_key.get(StateStore.record_key(repo, pr_num))
+    if rec is not None:
+        copy_item["triggered_chat"] = {
+            "conversation_id": rec.conversation_id,
+            "title": rec.title,
+            "head_sha": rec.head_sha,
+            "worktree_path": rec.worktree_path,
+            "triggered_at": rec.triggered_at,
+            "stale_commit": bool(
+                copy_item.get("head_ref_oid")
+                and rec.head_sha
+                and copy_item.get("head_ref_oid") != rec.head_sha
+            ),
+        }
+    else:
+        copy_item["triggered_chat"] = None
+    return copy_item
+
+
+def _normalize_issue(
+    raw_issue: Mapping[str, object],
+    *,
+    repo: str,
+    issue_number: int,
+    now: datetime.datetime,
+) -> dict[str, object]:
+    """Converts a GitHub REST issue response into a JSON-serializable summary."""
+    user_obj = raw_issue.get("user")
+    user_dict = user_obj if isinstance(user_obj, dict) else {}
+    author_login = str(user_dict.get("login") or "ghost")
+    user_type = str(user_dict.get("type") or "").strip()
+    is_bot = (
+        user_type == "Bot"
+        or author_login.endswith("[bot]")
+        or author_login.startswith("app/")
+    )
+    raw_labels = raw_issue.get("labels")
+    labels = [
+        str(label["name"])
+        for label in (raw_labels if isinstance(raw_labels, list) else [])
+        if isinstance(label, dict) and label.get("name")
+    ]
+    created_at = str(raw_issue.get("created_at") or "")
+    updated_at = str(raw_issue.get("updated_at") or created_at)
+    num_val = raw_issue.get("number")
+    resolved_num = (
+        num_val
+        if isinstance(num_val, int) and not isinstance(num_val, bool)
+        else issue_number
+    )
+    return {
+        "repo": repo,
+        "number": resolved_num,
+        "title": str(raw_issue.get("title") or ""),
+        "url": str(
+            raw_issue.get("html_url")
+            or f"https://github.com/{repo}/issues/{issue_number}"
+        ),
+        "state": str(raw_issue.get("state") or "open").strip().upper() or "OPEN",
+        "state_reason": str(raw_issue.get("state_reason") or "").strip().lower(),
+        "author": author_login,
+        "is_bot": is_bot,
+        "created_at": created_at,
+        "updated_at": updated_at,
+        "days_since_update": compute_age_days(updated_at, now),
+        "labels": labels,
+    }
+
+
+def _validate_positive_item_number(value: int, *, name: str) -> None:
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise PrQueueError(f"`{name}` must be a positive integer.")
+
+
+async def _fetch_gh_json_object(
+    cmd: Sequence[str],
+    *,
+    label: str,
+    not_found_markers: Sequence[str],
+    runner: Callable[[Sequence[str], int], Awaitable[str]],
+) -> dict[str, object] | None:
+    """Runs a `gh` JSON command, returning `None` for missing resources.
+
+    Args:
+      cmd: Argument vector passed to `gh`.
+      label: Human-readable command label for JSON parse errors.
+      not_found_markers: Lowercased error substrings mapped to `None`.
+      runner: Async `gh` subprocess runner callable.
+
+    Returns:
+      Decoded JSON dict containing `"number"`, or `None` when not found.
+    """
+    try:
+        raw = await runner(cmd, _SINGLE_PR_VIEW_TIMEOUT_SECONDS)
+    except FetchError as exc:
+        if _matches_error_marker(exc, not_found_markers):
+            return None
+        raise
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise FetchError(f"Invalid JSON from `{label}`: {exc}") from exc
+    if not isinstance(parsed, dict) or "number" not in parsed:
+        return None
+    return parsed
+
+
+async def _fetch_pr_view_raw(
+    clean_repo: str,
+    pr_number: int,
+    *,
+    runner: Callable[[Sequence[str], int], Awaitable[str]],
+) -> dict[str, object] | None:
+    """Fetches raw `gh pr view` JSON metadata for `pr_number`.
+
+    Args:
+      clean_repo: Validated repository slug (`owner/name`).
+      pr_number: Positive GitHub pull request number.
+      runner: Async `gh` subprocess runner callable.
+
+    Returns:
+      Raw PR JSON dictionary, or `None` when not resolved as a PR.
+    """
+    return await _fetch_gh_json_object(
+        [
+            "pr",
+            "view",
+            f"--repo={clean_repo}",
+            "--json",
+            PR_JSON_FIELDS,
+            "--",
+            str(pr_number),
+        ],
+        label=f"gh pr view {pr_number}",
+        not_found_markers=_PR_NOT_FOUND_MARKERS,
+        runner=runner,
+    )
+
+
+async def _fetch_issue_summary(
+    clean_repo: str,
+    issue_number: int,
+    *,
+    runner: Callable[[Sequence[str], int], Awaitable[str]],
+) -> dict[str, object] | None:
+    """Fetches and normalizes REST issue metadata for `issue_number`.
+
+    Args:
+      clean_repo: Validated repository slug (`owner/name`).
+      issue_number: Positive GitHub issue number.
+      runner: Async `gh` subprocess runner callable.
+
+    Returns:
+      Normalized issue summary dictionary, or `None` on HTTP 404.
+    """
+    parsed = await _fetch_gh_json_object(
+        ["api", f"repos/{clean_repo}/issues/{issue_number}"],
+        label=f"gh api repos/{clean_repo}/issues/{issue_number}",
+        not_found_markers=_ISSUE_NOT_FOUND_MARKERS,
+        runner=runner,
+    )
+    if parsed is None:
+        return None
+    # Guard against misclassifying a PR if `gh pr view` transiently reported missing.
+    if "pull_request" in parsed:
+        raise FetchError(
+            f"Failed to load pull request #{issue_number} in `{clean_repo}`."
+        )
+    return _normalize_issue(
+        parsed,
+        repo=clean_repo,
+        issue_number=issue_number,
+        now=datetime.datetime.now(datetime.UTC),
+    )
+
+
 async def _fetch_single_pr(
     repo: str,
     pr_number: int,
@@ -591,34 +812,21 @@ async def _fetch_single_pr(
     Returns:
       Serialized PR summary dictionary from `PrSummary.to_dict()`.
     """
-    if isinstance(pr_number, bool) or pr_number <= 0:
-        raise PrQueueError("`pr_number` must be a positive integer.")
+    _validate_positive_item_number(pr_number, name="pr_number")
     clean_repo = validate_repo_slug(repo, error_cls=FetchError)
-    raw = await runner(
-        [
-            "pr",
-            "view",
-            str(pr_number),
-            f"--repo={clean_repo}",
-            "--json",
-            PR_JSON_FIELDS,
-        ],
-        _SINGLE_PR_VIEW_TIMEOUT_SECONDS,
-    )
-    try:
-        parsed = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise FetchError(f"Invalid JSON from `gh pr view {pr_number}`: {exc}") from exc
-    if not isinstance(parsed, dict) or "number" not in parsed:
-        raise PrQueueError(f"PR #{pr_number} not found in `{clean_repo}`.")
-    summary = normalize_pr(
-        parsed,
-        repo=clean_repo,
-        viewer=viewer,
-        max_age_days=DEFAULT_MAX_AGE_DAYS,
-        now=datetime.datetime.now(datetime.UTC),
-    )
-    return summary.to_dict()
+    raw_pr = await _fetch_pr_view_raw(clean_repo, pr_number, runner=runner)
+    if raw_pr is not None:
+        summary = normalize_pr(
+            raw_pr,
+            repo=clean_repo,
+            viewer=viewer,
+            max_age_days=DEFAULT_MAX_AGE_DAYS,
+            now=datetime.datetime.now(datetime.UTC),
+        )
+        return summary.to_dict()
+    if await _fetch_issue_summary(clean_repo, pr_number, runner=runner) is not None:
+        raise PrQueueError(f"#{pr_number} is an issue in `{repo}`, not a pull request.")
+    raise PrQueueError(f"PR #{pr_number} not found in `{repo}`.")
 
 
 def _load_preload_js(candidates: Sequence[Path]) -> bytes | None:
@@ -749,46 +957,11 @@ class PrQueueService:
             items = enriched.get(list_key)
             if not isinstance(items, list):
                 continue
-            updated_items: list[dict[str, object]] = []
-            for item in items:
-                if not isinstance(item, dict):
-                    continue
-                copy_item: dict[str, object] = {str(k): v for k, v in item.items()}
-                # Recompute from `updated_at` (or backfill legacy `stale_days`)
-                # so cached queues never serve missing or frozen PR ages.
-                updated_at = str(copy_item.get("updated_at") or "").strip()
-                if updated_at:
-                    copy_item["days_since_update"] = compute_age_days(updated_at, now)
-                elif (
-                    "days_since_update" not in copy_item
-                    and isinstance(copy_item.get("stale_days"), int)
-                    and not isinstance(copy_item.get("stale_days"), bool)
-                ):
-                    copy_item["days_since_update"] = copy_item["stale_days"]
-                raw_num = copy_item.get("number")
-                pr_num = (
-                    raw_num
-                    if isinstance(raw_num, int) and not isinstance(raw_num, bool)
-                    else 0
-                )
-                rec = records_by_key.get(StateStore.record_key(repo, pr_num))
-                if rec is not None:
-                    copy_item["triggered_chat"] = {
-                        "conversation_id": rec.conversation_id,
-                        "title": rec.title,
-                        "head_sha": rec.head_sha,
-                        "worktree_path": rec.worktree_path,
-                        "triggered_at": rec.triggered_at,
-                        "stale_commit": bool(
-                            copy_item.get("head_ref_oid")
-                            and rec.head_sha
-                            and copy_item.get("head_ref_oid") != rec.head_sha
-                        ),
-                    }
-                else:
-                    copy_item["triggered_chat"] = None
-                updated_items.append(copy_item)
-            enriched[list_key] = updated_items
+            enriched[list_key] = [
+                _enrich_pr_item(item, repo, records_by_key, now)
+                for item in items
+                if isinstance(item, dict)
+            ]
         return enriched
 
     def _cached_queue_response(self, cache: Mapping[str, object]) -> dict[str, object]:
@@ -875,13 +1048,19 @@ class PrQueueService:
         empty_payload["fetched_at"] = ""
         return empty_payload
 
-    async def lookup_pr(self, pr_number: int) -> dict[str, object]:
-        """Finds tracked or historical review conversations for a PR number."""
-        cfg = self._store.get_config()
+    async def _resolve_viewer(self, cfg: PrQueueConfig) -> str:
+        viewer = cfg.user
+        if not viewer:
+            with contextlib.suppress(FetchError):
+                viewer = await get_current_gh_user_async(runner=self._gh_runner)
+        return viewer
+
+    async def _collect_pr_conversations(
+        self, repo: str, pr_number: int
+    ) -> list[dict[str, object]]:
         conversations: list[dict[str, object]] = []
         seen_ids: set[str] = set()
-
-        tracked = self._store.get_triggered_for_pr(cfg.repo, pr_number)
+        tracked = self._store.get_triggered_for_pr(repo, pr_number)
         if tracked is not None:
             seen_ids.add(tracked.conversation_id)
             conversations.append(
@@ -893,11 +1072,10 @@ class PrQueueService:
                     "source": "tracked",
                 }
             )
-
         history = await asyncio.to_thread(
             _query_sqlite_pr_conversations,
             self._conversations_db,
-            cfg.repo,
+            repo,
             pr_number,
         )
         for match in history:
@@ -905,11 +1083,144 @@ class PrQueueService:
             if cid not in seen_ids:
                 seen_ids.add(cid)
                 conversations.append(match)
+        return conversations
 
+    async def _lookup_github_details(
+        self, cfg: PrQueueConfig, pr_number: int
+    ) -> tuple[str, dict[str, object] | None, bool, str]:
+        """Fetches live PR metadata from GitHub with cached fallback on errors.
+
+        Args:
+          cfg: Active PR queue configuration.
+          pr_number: Positive GitHub pull request number.
+
+        Returns:
+          Four-tuple `(item_kind, pr_info, from_cache, pr_error)` where
+          `item_kind` is `"pull_request"`, `"not_found"`, or `"error"`.
+        """
+        records_by_key = self._store.get_triggered_prs()
+        now = datetime.datetime.now(datetime.UTC)
+        cached = self._find_cached_pr(cfg.repo, pr_number)
+        try:
+            clean_repo = validate_repo_slug(cfg.repo, error_cls=FetchError)
+            viewer, raw_pr = await asyncio.gather(
+                self._resolve_viewer(cfg),
+                _fetch_pr_view_raw(clean_repo, pr_number, runner=self._gh_runner),
+            )
+        except FetchError as exc:
+            _LOGGER.warning(
+                "GitHub PR lookup failed for %s#%d: %s",
+                sanitize_log_text(cfg.repo),
+                pr_number,
+                sanitize_log_text(exc),
+            )
+            if cached is not None:
+                enriched_cached = _enrich_pr_item(cached, cfg.repo, records_by_key, now)
+                return ("pull_request", enriched_cached, True, str(exc))
+            return ("error", None, False, str(exc))
+
+        if raw_pr is not None:
+            live_pr = normalize_pr(
+                raw_pr,
+                repo=clean_repo,
+                viewer=viewer,
+                max_age_days=DEFAULT_MAX_AGE_DAYS,
+                now=now,
+            ).to_dict()
+            # `gh pr view` does not expose `authorAssociation`; preserve cached membership.
+            if (
+                cached is not None
+                and not live_pr.get("is_bot")
+                and not live_pr.get("author_association")
+                and str(cached.get("author") or "").lower()
+                == str(live_pr.get("author") or "").lower()
+            ):
+                cached_assoc = (
+                    str(cached.get("author_association") or "").strip().upper()
+                )
+                if cached_assoc:
+                    live_pr["author_association"] = cached_assoc
+                    live_pr["is_project_member"] = bool(cached.get("is_project_member"))
+            return (
+                "pull_request",
+                _enrich_pr_item(live_pr, cfg.repo, records_by_key, now),
+                False,
+                "",
+            )
+        return (
+            "not_found",
+            None,
+            False,
+            f"PR #{pr_number} was not found in {cfg.repo}.",
+        )
+
+    async def lookup_pr(self, pr_number: int) -> dict[str, object]:
+        """Finds GitHub PR details and matching review chats for `pr_number`."""
+        _validate_positive_item_number(pr_number, name="pr_number")
+        cfg = self._store.get_config()
+        conversations, details = await asyncio.gather(
+            self._collect_pr_conversations(cfg.repo, pr_number),
+            self._lookup_github_details(cfg, pr_number),
+        )
+        item_kind, pr_info, from_cache, pr_error = details
         return {
             "repo": cfg.repo,
             "pr_number": pr_number,
+            "item_kind": item_kind,
+            "pr": pr_info,
+            "from_cache": from_cache,
+            "pr_error": pr_error,
             "conversations": conversations,
+        }
+
+    async def lookup_issue(self, issue_number: int) -> dict[str, object]:
+        """Checks whether `issue_number` resolves to a GitHub issue.
+
+        Args:
+          issue_number: Positive GitHub issue number to verify.
+
+        Returns:
+          Response dict with `item_kind` (`"issue"`, `"not_found"`, or `"error"`),
+          normalized `issue` metadata if found, and `error` details.
+        """
+        _validate_positive_item_number(issue_number, name="issue_number")
+        cfg = self._store.get_config()
+        try:
+            clean_repo = validate_repo_slug(cfg.repo, error_cls=FetchError)
+            issue_meta = await _fetch_issue_summary(
+                clean_repo, issue_number, runner=self._gh_runner
+            )
+        except FetchError as exc:
+            _LOGGER.warning(
+                "GitHub issue lookup failed for %s#%d: %s",
+                sanitize_log_text(cfg.repo),
+                issue_number,
+                sanitize_log_text(exc),
+            )
+            return {
+                "repo": cfg.repo,
+                "number": issue_number,
+                "item_kind": "error",
+                "issue": None,
+                "error": str(exc),
+            }
+        if issue_meta is not None:
+            return {
+                "repo": cfg.repo,
+                "number": issue_number,
+                "item_kind": "issue",
+                "issue": issue_meta,
+                "error": "",
+            }
+        return {
+            "repo": cfg.repo,
+            "number": issue_number,
+            "item_kind": "not_found",
+            "issue": None,
+            "error": (
+                f"#{issue_number} was not found as a pull request or issue in "
+                f"{cfg.repo}."
+            ),
         }
 
     async def get_conversation_metadata(
@@ -950,10 +1261,7 @@ class PrQueueService:
         cached = self._find_cached_pr(cfg.repo, pr_number)
         if cached is not None:
             return cached
-        viewer = cfg.user
-        if not viewer:
-            with contextlib.suppress(FetchError):
-                viewer = await get_current_gh_user_async(runner=self._gh_runner)
+        viewer = await self._resolve_viewer(cfg)
         return await _fetch_single_pr(
             cfg.repo, pr_number, viewer, runner=self._gh_runner
         )
@@ -1055,8 +1363,7 @@ class PrQueueService:
         Returns:
           JSON-serializable dict describing the reused or newly launched review.
         """
-        if isinstance(pr_number, bool) or pr_number <= 0:
-            raise PrQueueError("`pr_number` must be a positive integer.")
+        _validate_positive_item_number(pr_number, name="pr_number")
 
         cfg = self._store.get_config()
         async with self._get_launch_lock(cfg.repo, pr_number):
@@ -1345,11 +1652,17 @@ class PrQueueHttpServer:
                 return True
         return False
 
+    @staticmethod
+    def _parse_positive_int_query_param(
+        query: Mapping[str, list[str]], param: str
+    ) -> int:
+        raw = (query.get(param) or [""])[0].strip().lstrip("#")
+        return int(raw) if raw.isascii() and raw.isdigit() else 0
+
     async def _handle_lookup_pr(
         self, query: Mapping[str, list[str]]
     ) -> tuple[HTTPStatus, str, bytes, dict[str, str]]:
-        raw_pr = (query.get("pr") or [""])[0].strip().lstrip("#")
-        pr_num = int(raw_pr) if raw_pr.isascii() and raw_pr.isdigit() else 0
+        pr_num = self._parse_positive_int_query_param(query, "pr")
         if pr_num <= 0:
             return self._json_http_response(
                 HTTPStatus.BAD_REQUEST,
@@ -1360,6 +1673,22 @@ class PrQueueHttpServer:
             )
         return self._json_http_response(
             HTTPStatus.OK, await self.service.lookup_pr(pr_num)
+        )
+
+    async def _handle_lookup_issue(
+        self, query: Mapping[str, list[str]]
+    ) -> tuple[HTTPStatus, str, bytes, dict[str, str]]:
+        issue_num = self._parse_positive_int_query_param(query, "number")
+        if issue_num <= 0:
+            return self._json_http_response(
+                HTTPStatus.BAD_REQUEST,
+                {
+                    "ok": False,
+                    "error": "Query parameter `number` must be a positive integer.",
+                },
+            )
+        return self._json_http_response(
+            HTTPStatus.OK, await self.service.lookup_issue(issue_num)
         )
 
     async def _handle_review(
@@ -1449,6 +1778,9 @@ class PrQueueHttpServer:
 
         if path == "/api/lookup-pr":
             return await self._handle_lookup_pr(query)
+
+        if path == "/api/lookup-issue":
+            return await self._handle_lookup_issue(query)
 
         return self._json_http_response(
             HTTPStatus.NOT_FOUND, {"error": f"Unknown route: {path}"}

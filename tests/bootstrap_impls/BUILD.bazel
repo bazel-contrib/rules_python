@@ -74,6 +74,15 @@ sh_py_run_test(
 )
 
 sh_py_run_test(
+    name = "run_binary_without_symlinks_test",
+    bootstrap_impl = "system_python",
+    py_src = "bin.py",
+    sh_src = "run_binary_without_symlinks_test.sh",
+    # The fallback for when symlinks can't be created is Windows only.
+    target_compatible_with = ["@platforms//os:windows"],
+)
+
+sh_py_run_test(
     name = "run_binary_find_runfiles_test",
     py_src = "bin.py",
     sh_src = "run_binary_find_runfiles_test.sh",
