@@ -106,9 +106,15 @@ fn test_windows_python_shebang_rewrite() {
     let mut expected = WINDOWS_PYTHON_HEADER.to_vec();
     expected.extend_from_slice(body);
     assert_eq!(actual, expected);
-    assert!(actual.starts_with(
-        b"@setlocal enabledelayedexpansion & \"%~dp0python.exe\" -x \"%~f0\" %* & exit /b !ERRORLEVEL!\r\n"
-    ));
+    assert!(
+        actual.starts_with(
+            concat!(
+                r#"@setlocal enabledelayedexpansion & "%~dp0python.exe" -x "%~f0" %* & exit /b !ERRORLEVEL!"#,
+                "\r\n",
+            )
+            .as_bytes()
+        )
+    );
 
     let _ = fs::remove_dir_all(&temp_dir);
 }
@@ -130,9 +136,15 @@ fn test_windows_pythonw_shebang_rewrite() {
     let mut expected = WINDOWS_PYTHONW_HEADER.to_vec();
     expected.extend_from_slice(body);
     assert_eq!(actual, expected);
-    assert!(actual.starts_with(
-        b"@setlocal enabledelayedexpansion & \"%~dp0pythonw.exe\" -x \"%~f0\" %* & exit /b !ERRORLEVEL!\r\n"
-    ));
+    assert!(
+        actual.starts_with(
+            concat!(
+                r#"@setlocal enabledelayedexpansion & "%~dp0pythonw.exe" -x "%~f0" %* & exit /b !ERRORLEVEL!"#,
+                "\r\n",
+            )
+            .as_bytes()
+        )
+    );
 
     let _ = fs::remove_dir_all(&temp_dir);
 }
