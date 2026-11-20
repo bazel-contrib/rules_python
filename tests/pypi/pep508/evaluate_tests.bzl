@@ -214,31 +214,21 @@ def _logical_expression_tests(env):
 _tests.append(_logical_expression_tests)
 
 def _evaluate_partial_only_extra(env):
-    # Given
-    extra = "foo"
-
-    # When
     for input, want in {
         "os_name == 'osx' and extra == 'bar'": False,
         "os_name == 'osx' and extra == 'foo'": "os_name == \"osx\"",
         "platform_system == 'aarch64' and os_name == 'osx' and extra == 'foo'": "platform_system == \"aarch64\" and os_name == \"osx\"",
         "platform_system == 'aarch64' and extra == 'foo' and os_name == 'osx'": "platform_system == \"aarch64\" and os_name == \"osx\"",
         "os_name == 'osx' or extra == 'bar'": "os_name == \"osx\"",
-        "os_name == 'osx' or extra == 'foo'": "",
+        "os_name == 'osx' or extra == 'foo'": True,
         "extra == 'bar' or os_name == 'osx'": "os_name == \"osx\"",
-        "extra == 'foo' or os_name == 'osx'": "",
+        "extra == 'foo' or os_name == 'osx'": True,
         "os_name == 'win' or extra == 'bar' or os_name == 'osx'": "os_name == \"win\" or os_name == \"osx\"",
-        "os_name == 'win' or extra == 'foo' or os_name == 'osx'": "",
+        "os_name == 'win' or extra == 'foo' or os_name == 'osx'": True,
+        "(os_name == 'win' or extra == 'foo') and os_name == 'osx'": "os_name == \"osx\"",
+        "(os_name == 'win' or extra == 'bar') and os_name == 'osx'": "(os_name == \"win\") and os_name == \"osx\"",
     }.items():  # buildifier: @unsorted-dict-items
-        got = evaluate(
-            input,
-            env = {
-                "extra": extra,
-            },
-            strict = False,
-        )
-        env.expect.that_bool(got).equals(want)
-        _check_evaluate(env, input, want, {"extra": extra}, strict = False)
+        _check_evaluate(env, input, want, {"extra": "foo"}, strict = False)
 
 _tests.append(_evaluate_partial_only_extra)
 

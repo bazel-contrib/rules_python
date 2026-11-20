@@ -163,40 +163,32 @@ def to_string(marker):
 def _and_fn(x, y):
     """Our custom `and` evaluation function.
 
-    Allow partial evaluation if one of the values is a string, return the
-    string value because that means that `marker_expr` was set to
-    `strict = False` and we are only evaluating what we can.
+    The values are either bools or strings, which are the expressions that
+    could not be evaluated because `marker_expr` was set to `strict = False`.
     """
-    if not (x and y):
+    if x == False or y == False:
         return False
-
-    x_is_str = type(x) == type("")
-    y_is_str = type(y) == type("")
-    if x_is_str and y_is_str:
-        return "{} and {}".format(x, y)
-    elif x_is_str:
+    elif x == True:
+        return y
+    elif y == True:
         return x
     else:
-        return y
+        return "{} and {}".format(x, y)
 
 def _or_fn(x, y):
     """Our custom `or` evaluation function.
 
-    Allow partial evaluation if one of the values is a string, return the
-    string value because that means that `marker_expr` was set to
-    `strict = False` and we are only evaluating what we can.
+    The values are either bools or strings, which are the expressions that
+    could not be evaluated because `marker_expr` was set to `strict = False`.
     """
-    x_is_str = type(x) == type("")
-    y_is_str = type(y) == type("")
-
-    if x_is_str and y_is_str:
-        return "{} or {}".format(x, y) if x and y else ""
-    elif x_is_str:
-        return "" if y else x
-    elif y_is_str:
-        return "" if x else y
+    if x == True or y == True:
+        return True
+    elif x == False:
+        return y
+    elif y == False:
+        return x
     else:
-        return x or y
+        return "{} or {}".format(x, y)
 
 def _not_fn(x):
     """Our custom `not` evaluation function.
