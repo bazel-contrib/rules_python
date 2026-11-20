@@ -170,6 +170,34 @@ alias(
     visibility = ["//visibility:public"],
 )
 
+# The `coverage` flag is only resolved when collecting coverage for the target
+# config, so that e.g. `@pypi//coverage` is not fetched for regular builds.
+alias(
+    name = "coverage_if_target_config",
+    actual = select({
+        ":is_bazel_config_mode_target": ":coverage_if_enabled",
+        "//conditions:default": "//python/private:empty",
+    }),
+    # Not actually public. Only public because it's an implicit dependency of
+    # rules built via py_binary_rule_builder() / py_test_rule_builder().
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "coverage_if_enabled",
+    actual = select({
+        ":is_coverage_enabled": "//python/config_settings:coverage",
+        "//conditions:default": "//python/private:empty",
+    }),
+    visibility = ["//visibility:private"],
+)
+
+config_setting(
+    name = "is_coverage_enabled",
+    values = {"collect_code_coverage": "true"},
+    visibility = ["//visibility:private"],
+)
+
 bazel_config_mode(name = "bazel_config_mode")
 
 # This should only be set by analysis tests to expose additional metadata to

@@ -1,0 +1,4 @@
+# Used by //tests/coverage:coverage_from_pypi_coveragerc_test
+[report]
+exclude_also =
+    def excluded_by_coveragerc

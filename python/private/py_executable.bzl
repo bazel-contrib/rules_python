@@ -240,6 +240,10 @@ accepting arbitrary Python versions.
             allow_files = True,
             cfg = "exec",
         ),
+        "_coverage_flag": lambda: attrb.Label(
+            default = "//python/private:coverage_if_target_config",
+            providers = [PyInfo],
+        ),
         "_debugger_flag": lambda: attrb.Label(
             default = "//python/private:debugger_if_target_config",
             providers = [PyInfo],
@@ -329,6 +333,7 @@ def _should_create_init_files(ctx):
 def _create_executable(
         ctx,
         *,
+        coverage,
         executable,
         main_py,
         imports,
@@ -371,10 +376,12 @@ def _create_executable(
                 "1" if BootstrapImplFlag.get_value(ctx) == BootstrapImplFlag.SYSTEM_PYTHON else "0"
             ),
             extra_deps = extra_deps,
+            coverage = coverage,
         )
 
         stage2_bootstrap = _create_stage2_bootstrap(
             ctx,
+            coverage = coverage,
             output_prefix = base_executable_name,
             output_sibling = executable,
             main_py = main_py,
@@ -575,7 +582,7 @@ def _create_zip_main(ctx, *, stage2_bootstrap, runtime_details, venv):
 # * https://snarky.ca/how-virtual-environments-work/
 # * https://github.com/python/cpython/blob/main/Modules/getpath.py
 # * https://github.com/python/cpython/blob/main/Lib/site.py
-def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root_to_sys_path, extra_deps):
+def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root_to_sys_path, extra_deps, coverage):
     venv_ctx_rel_root = "_{}.venv".format(output_prefix.lstrip("_"))
     runtime = runtime_details.effective_runtime
     if runtime.interpreter:
@@ -612,6 +619,7 @@ def _create_venv(ctx, output_prefix, imports, runtime_details, add_runfiles_root
         output = site_init,
         substitutions = {
             "%add_runfiles_root_to_sys_path%": add_runfiles_root_to_sys_path,
+            "%coverage_from_deps%": "1" if coverage.from_deps else "0",
             "%coverage_tool%": _get_coverage_tool_runfiles_path(ctx, runtime),
             "%import_all%": "True" if read_possibly_native_flag(ctx, "python_import_all_repositories") else "False",
             "%interpreter_actual_path%": interpreter_actual_path,
@@ -895,6 +903,46 @@ def _venv_details(
 def _map_each_identity(v):
     return v
 
+def _get_coverage_details(ctx):
+    """Returns how the `coverage` package is provided to the executable.
+
+    The {obj}`--coverage` flag, which can also be set per target via
+    `config_settings`, takes precedence over the `coverage_tool` of the Python
+    runtime, which is handled by the bootstrap.
+
+    Args:
+        ctx: {type}`ctx` the rule ctx.
+
+    Returns:
+        {type}`struct` with attributes:
+        * dep: {type}`Target | None` the `coverage` flag target to add to the
+          dependencies of the executable.
+        * from_deps: {type}`bool` whether `coverage` is importable from the
+          flag target, so that the runtime `coverage_tool` is not needed.
+        * rcfiles: {type}`depset[File]` the files that may contain the
+          `.coveragerc` files to merge. They are filtered when the bootstrap is
+          expanded, see `_map_coverage_rcfile`.
+    """
+    if not ctx.configuration.coverage_enabled or _is_tool_config(ctx):
+        return struct(dep = None, from_deps = False, rcfiles = depset())
+
+    # The flag defaults to an empty `py_library`, which has no sources.
+    target = ctx.attr._coverage_flag
+    if target[PyInfo].transitive_sources:
+        return struct(
+            dep = target,
+            from_deps = True,
+            rcfiles = target[DefaultInfo].default_runfiles.files,
+        )
+
+    return struct(dep = None, from_deps = False, rcfiles = depset())
+
+def _map_coverage_rcfile(f):
+    # Skip any `.coveragerc` shipped inside of a wheel.
+    if f.basename != ".coveragerc" or "/site-packages/" in f.short_path:
+        return None
+    return f.short_path
+
 def _get_coverage_tool_runfiles_path(ctx, runtime):
     if (ctx.configuration.coverage_enabled and
         runtime and
@@ -906,6 +954,7 @@ def _get_coverage_tool_runfiles_path(ctx, runtime):
 def _create_stage2_bootstrap(
         ctx,
         *,
+        coverage,
         output_prefix,
         output_sibling,
         main_py,
@@ -928,6 +977,16 @@ def _create_stage2_bootstrap(
     else:
         main_py_path = ""
 
+    # Expanded at execution time to avoid flattening the runfiles of the
+    # `coverage` target during analysis.
+    computed_subs = ctx.actions.template_dict()
+    computed_subs.add_joined(
+        "%coverage_rcfiles%",
+        coverage.rcfiles,
+        join_with = ":",
+        map_each = _map_coverage_rcfile,
+    )
+
     ctx.actions.expand_template(
         template = template,
         output = output,
@@ -944,6 +1003,7 @@ def _create_stage2_bootstrap(
             "%venv_root%": venv.venv_root,
             "%workspace_name%": ctx.workspace_name,
         },
+        computed_substitutions = computed_subs,
         is_executable = True,
     )
     return output
@@ -1270,6 +1330,10 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
     if not _is_tool_config(ctx):
         extra_deps.append(ctx.attr._debugger_flag)
 
+    coverage = _get_coverage_details(ctx)
+    if coverage.dep:
+        extra_deps.append(coverage.dep)
+
     imports = collect_imports(ctx, extra_deps = extra_deps)
     runtime_details = _get_runtime_details(ctx)
     cc_details = _get_cc_details_for_binary(ctx, extra_deps = extra_deps)
@@ -1295,6 +1359,7 @@ def py_executable_base_impl(ctx, *, semantics, is_test, inherited_environment = 
     )
     exec_result = _create_executable(
         ctx,
+        coverage = coverage,
         executable = executable,
         main_py = main_py,
         imports = imports,
