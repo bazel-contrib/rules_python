@@ -1723,22 +1723,28 @@ def _write_build_data(ctx):
     )
 
     action_args = ctx.actions.args()
-    writer_file = ctx.files._build_data_writer[0]
-    if writer_file.path.endswith(".ps1"):
-        # powershell.exe is used for broader compatibility
-        # It is installed by default on most Windows versions
-        action_exe = "powershell.exe"
-        action_args.add_all([
-            # Bypass execution policy is needed because,
-            # by default, Windows blocks ps1 scripts.
-            "-ExecutionPolicy",
-            "Bypass",
-            "-File",
-            writer_file,
-        ])
-        inputs.add(writer_file)
-    else:
-        action_exe = ctx.attr._build_data_writer[DefaultInfo].files_to_run
+    writer = get_shrubbery_tool(
+        ctx,
+        "build_data_writer",
+        ctx.attr._build_data_writer,
+    )
+    action_exe = writer.executable[DefaultInfo].files_to_run
+    action_args.add_all(writer.prefix_args)
+    if not writer.from_shrubbery_toolchain:
+        writer_file = ctx.files._build_data_writer[0]
+        if writer_file.path.endswith(".ps1"):
+            # powershell.exe is used for broader compatibility
+            # It is installed by default on most Windows versions
+            action_exe = "powershell.exe"
+            action_args.add_all([
+                # Bypass execution policy is needed because,
+                # by default, Windows blocks ps1 scripts.
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                writer_file,
+            ])
+            inputs.add(writer_file)
 
     ctx.actions.run(
         executable = action_exe,
@@ -1756,7 +1762,7 @@ def _write_build_data(ctx):
         outputs = [build_data],
         mnemonic = "PyWriteBuildData",
         progress_message = "Reticulating %{label} build data",
-        toolchain = None,
+        toolchain = writer.toolchain,
     )
     return build_data
 
