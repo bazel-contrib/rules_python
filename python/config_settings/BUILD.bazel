@@ -121,7 +121,7 @@ rp_string_flag(
 
 label_flag(
     name = "coverage",
-    build_setting_default = "//python/private:empty",
+    build_setting_default = "//python/private:sentinel",
     visibility = ["//visibility:public"],
 )
 

@@ -55,16 +55,42 @@ COVERAGE_INSTRUMENTED = "%coverage_instrumented%" == "1"
 
 # Colon-delimited `File.short_path` values of the `.coveragerc` files to merge,
 # in order.
-COVERAGE_RCFILES = "%coverage_rcfiles%"
+_COVERAGE_RCFILES = "%coverage_rcfiles%"
 
 # The name of the main repository in the runfiles.
-WORKSPACE_NAME = "%workspace_name%"
+_WORKSPACE_NAME = "%workspace_name%"
 
 # runfiles-root-relative path to a file with binary-specific build information
 # It uses forward slashes, so must be converted for proper usage on Windows.
 BUILD_DATA_FILE = "%build_data_file%"
 
 # ===== Template substitutions end =====
+
+# The `(section, option)` pairs that are lists in `coverage.py` and are combined
+# when merging `.coveragerc` files instead of being overridden.
+_COVERAGE_LIST_OPTIONS = frozenset(
+    {
+        # keep-sorted start
+        ("report", "contexts"),
+        ("report", "exclude_also"),
+        ("report", "exclude_lines"),
+        ("report", "include"),
+        ("report", "omit"),
+        ("report", "partial_also"),
+        ("report", "partial_branches"),
+        ("report", "partial_branches_always"),
+        ("run", "concurrency"),
+        ("run", "debug"),
+        ("run", "disable_warnings"),
+        ("run", "include"),
+        ("run", "omit"),
+        ("run", "patch"),
+        ("run", "plugins"),
+        ("run", "source_dirs"),
+        ("run", "source_pkgs"),
+        # keep-sorted end
+    }
+)
 
 IS_WINDOWS = os.name == "nt"
 IS_VERBOSE = bool(os.environ.get("RULES_PYTHON_BOOTSTRAP_VERBOSE"))
@@ -355,24 +381,6 @@ def _run_py_module(module_name):
     runpy.run_module(module_name, alter_sys=True, run_name="__main__")
 
 
-# The options that are lists, which are combined when merging the `.coveragerc`
-# files instead of being overridden.
-_COVERAGE_LIST_OPTIONS = {
-    "concurrency",
-    "debug",
-    "disable_warnings",
-    "exclude_also",
-    "exclude_lines",
-    "include",
-    "omit",
-    "partial_also",
-    "partial_branches",
-    "plugins",
-    "source",
-    "source_pkgs",
-}
-
-
 def _write_coverage_rc(rcfile_name, *, runfiles_root, source):
     """Write the `.coveragerc` file to use for the coverage collection.
 
@@ -387,34 +395,32 @@ def _write_coverage_rc(rcfile_name, *, runfiles_root, source):
     """
     import configparser
 
-    def new_parser():
-        parser = configparser.ConfigParser(interpolation=None)
-        # Keep the case of e.g. the `[paths]` keys.
-        parser.optionxform = str
-        return parser
-
-    config = new_parser()
-    for short_path in COVERAGE_RCFILES.split(":") if COVERAGE_RCFILES else []:
-        # The `../` prefix is for files in other repos.
-        if short_path.startswith("../"):
-            rel_path = short_path[len("../") :]
-        else:
-            rel_path = os.path.join(WORKSPACE_NAME, short_path)
-        path = os.path.join(runfiles_root, rel_path)
-        print_verbose_coverage("merging coveragerc:", path)
-        user_config = new_parser()
-        user_config.read(path)
-        for user_section in user_config.sections():
-            # Also accept the `setup.cfg` and `tox.ini` style section names.
-            section = user_section
-            if section.startswith("coverage:"):
-                section = section[len("coverage:") :]
-            if not config.has_section(section):
-                config.add_section(section)
-            for key, value in user_config.items(user_section, raw=True):
-                if key in _COVERAGE_LIST_OPTIONS and config.has_option(section, key):
-                    value = config.get(section, key, raw=True) + "\n" + value
-                config.set(section, key, value)
+    config = configparser.ConfigParser(interpolation=None)
+    if _COVERAGE_RCFILES:
+        for short_path in _COVERAGE_RCFILES.split(":"):
+            # The `../` prefix is for files in other repos.
+            if short_path.startswith("../"):
+                rel_path = short_path.removeprefix("../")
+            else:
+                rel_path = os.path.join(_WORKSPACE_NAME, short_path)
+            if IS_WINDOWS:
+                rel_path = norm_slashes(rel_path)
+            path = os.path.join(runfiles_root, rel_path)
+            print_verbose_coverage("merging coveragerc:", path)
+            user_config = configparser.ConfigParser(interpolation=None)
+            with open(path, encoding="utf-8") as fp:
+                user_config.read_file(fp)
+            for user_section in user_config.sections():
+                # Also accept the `setup.cfg` and `tox.ini` style section names.
+                section = user_section.removeprefix("coverage:")
+                if not config.has_section(section):
+                    config.add_section(section)
+                for key, value in user_config.items(user_section, raw=True):
+                    if (section, key) in _COVERAGE_LIST_OPTIONS:
+                        if config.has_option(section, key):
+                            prev = config.get(section, key, raw=True)
+                            value = prev + "\n" + value
+                    config.set(section, key, value)
 
     if not config.has_section("run"):
         config.add_section("run")
@@ -428,6 +434,8 @@ def _write_coverage_rc(rcfile_name, *, runfiles_root, source):
     # using an rc file.
     config.set("run", "relative_files", "True")
     config.set("run", "source", "\n" + "\n".join(sorted(source)))
+    config.remove_option("run", "source_dirs")
+    config.remove_option("run", "source_pkgs")
     add_to_list(
         "omit",
         [
@@ -448,7 +456,7 @@ def _write_coverage_rc(rcfile_name, *, runfiles_root, source):
         add_to_list("disable_warnings", ["module-not-imported", "no-data-collected"])
 
     print_verbose_coverage("coveragerc file:", rcfile_name)
-    with open(rcfile_name, "w") as rcfile:
+    with open(rcfile_name, "w", encoding="utf-8") as rcfile:
         config.write(rcfile)
 
 

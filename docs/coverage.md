@@ -45,8 +45,9 @@ The bundled `coverage` wheel set covers CPython 3.9 through 3.14 (with
 freethreaded variants for 3.13+), and not every platform within that range.
 When the interpreter that `bazel coverage` actually selects has no bundled
 wheel, `configure_coverage_tool = True` produces no coverage tool and
-`bazel coverage` emits empty lcov data; manually configure coverage (see
-below) instead.
+`bazel coverage` emits empty lcov data unless `coverage` is provided via
+{flag}`--coverage` (see {ref}`coverage-from-pypi`) or manually configured
+(see below).
 
 {obj}`py_runtime` warns when this happens. The warning is emitted during
 analysis, for the runtime toolchain resolution selected and only when coverage
@@ -122,22 +123,22 @@ and the other options are overridden. The options that Bazel needs, such as
 ### Using a different `coverage` for some tests
 
 The {flag}`--coverage` flag can be set for a single target with the
-`config_settings` attribute:
+{attr}`py_test.config_settings` attribute:
 
 ```starlark
 py_test(
     name = "strict_test",
     srcs = ["strict_test.py"],
     config_settings = {
-        "@rules_python//python/config_settings:coverage": str(Label("//tools:coverage_strict")),
+        "@rules_python//python/config_settings:coverage": (
+            "//tools:coverage_strict"
+        ),
     },
 )
 ```
 
 :::{note}
-Use `str(Label(...))` for the value, so that the label is resolved relative to
-your repository. This builds the test and its dependencies in a separate
-configuration.
+This builds the test and its dependencies in a separate configuration.
 :::
 
 :::{versionadded} VERSION_NEXT_FEATURE

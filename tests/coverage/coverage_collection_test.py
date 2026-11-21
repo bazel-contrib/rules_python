@@ -153,15 +153,23 @@ class CoverageCollectionTest(unittest.TestCase):
         self.assertEqual(self._line_hits('return "unused method"'), 0)
 
     def test_coveragerc_exclusions(self):
-        content = 'return "excluded by coveragerc"'
-        lineno = self._lineno(content)
-        self.assertIn(_LIB, self.lcov, f"lcov: {self.lcov}")
-        lines = self.lcov[_LIB]["lines"]
-        if os.environ.get("EXPECT_COVERAGERC") == "1":
-            # The `.coveragerc` of the coverage target excludes it.
-            self.assertNotIn(lineno, lines, f"'{content}' in lcov: {lines}")
-        else:
-            self.assertEqual(lines.get(lineno), 0, f"lcov: {lines}")
+        expect_coveragerc = os.environ.get("EXPECT_COVERAGERC", "0")
+        for content in [
+            'return "excluded by coveragerc"',
+            'return "excluded by base coveragerc"',
+        ]:
+            with self.subTest(line=content):
+                if expect_coveragerc == "1":
+                    lineno = self._lineno(content)
+                    self.assertIn(_LIB, self.lcov, f"lcov: {self.lcov}")
+                    lines = self.lcov[_LIB]["lines"]
+                    msg = f"'{content}' in lcov: {lines}"
+                    self.assertNotIn(lineno, lines, msg)
+                elif expect_coveragerc == "0":
+                    self.assertEqual(self._line_hits(content), 0)
+                else:
+                    msg = f"Unexpected EXPECT_COVERAGERC={expect_coveragerc!r}"
+                    self.fail(msg)
 
     def test_partial_branch_coverage(self):
         lineno = self._lineno("if value:")

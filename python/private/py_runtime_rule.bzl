@@ -47,7 +47,8 @@ def coverage_tool_missing_message(*, coverage_enabled, coverage_tool, label):
 ======================================================================
 WARNING: Python runtime {label} has no coverage_tool.
   `bazel coverage` will produce empty lcov data for py_test targets that
-  resolve to this runtime, unless they get `coverage` from their deps.
+  resolve to this runtime, unless --@rules_python//python/config_settings:coverage
+  is set.
 
   To use the `coverage` locked in your requirements, set e.g.:
     --@rules_python//python/config_settings:coverage=@pypi//coverage

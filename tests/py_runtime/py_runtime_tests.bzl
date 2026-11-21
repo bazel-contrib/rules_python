@@ -37,6 +37,9 @@ def _test_coverage_warning_when_enabled_and_no_tool(env):
     env.expect.that_bool(msg == None).equals(False)
     env.expect.that_str(msg).contains("has no coverage_tool")
     env.expect.that_str(msg).contains("//fake:runtime")
+    env.expect.that_str(msg).contains(
+        "--@rules_python//python/config_settings:coverage",
+    )
 
 _basic_tests.append(_test_coverage_warning_when_enabled_and_no_tool)
 

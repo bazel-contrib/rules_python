@@ -3,6 +3,8 @@ load("//python:pytest_test.bzl", "pytest_test")
 load("//tests/support:py_reconfig.bzl", "py_reconfig_binary")
 load("//tests/support:support.bzl", "NOT_WINDOWS", "SUPPORTS_BZLMOD")
 
+_PYPI_PYTHON_VERSION = "3.14"
+
 py_library(
     name = "lib",
     srcs = ["lib.py"],
@@ -39,8 +41,7 @@ pytest_test(
 
 # The programs below use `coverage` from the `@dev_pip` hub (see
 # `MODULE.bazel`) and a Python version for which the toolchain has no coverage
-# tool, so the coverage collection only works if `coverage` comes from the deps.
-_PYPI_PYTHON_VERSION = "3.14"
+# tool, so coverage collection only works when `--coverage` is set.
 
 # Uses `@dev_pip//coverage` via the `coverage` flag.
 py_reconfig_binary(
@@ -96,11 +97,21 @@ pytest_test(
     deps = ["//python/runfiles"],
 )
 
-# A `coverage` target with a `.coveragerc`, used via the `coverage` flag.
+# `coverage` targets with `.coveragerc` files, used via the `coverage` flag.
+py_library(
+    name = "coverage_base_coveragerc",
+    data = ["base/.coveragerc"],
+    tags = ["manual"],
+    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    deps = ["@dev_pip//coverage"],
+)
+
 py_library(
     name = "coverage_with_coveragerc",
     data = [".coveragerc"],
-    deps = ["@dev_pip//coverage"],
+    tags = ["manual"],
+    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    deps = [":coverage_base_coveragerc"],
 )
 
 py_reconfig_binary(
@@ -108,7 +119,7 @@ py_reconfig_binary(
     srcs = ["instrumented.py"],
     collect_code_coverage = True,
     config_settings = {
-        "//python/config_settings:coverage": "//tests/coverage:coverage_with_coveragerc",
+        "//python/config_settings:coverage": ":coverage_with_coveragerc",
     },
     main = "instrumented.py",
     python_version = _PYPI_PYTHON_VERSION,

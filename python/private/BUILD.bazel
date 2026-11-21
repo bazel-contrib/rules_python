@@ -175,25 +175,19 @@ alias(
 alias(
     name = "coverage_if_target_config",
     actual = select({
-        ":is_bazel_config_mode_target": ":coverage_if_enabled",
-        "//conditions:default": "//python/private:empty",
+        ":is_target_coverage_enabled": "//python/config_settings:coverage",
+        "//conditions:default": "//python/private:sentinel",
     }),
     # Not actually public. Only public because it's an implicit dependency of
     # rules built via py_binary_rule_builder() / py_test_rule_builder().
-    visibility = ["//visibility:public"],
-)
-
-alias(
-    name = "coverage_if_enabled",
-    actual = select({
-        ":is_coverage_enabled": "//python/config_settings:coverage",
-        "//conditions:default": "//python/private:empty",
-    }),
-    visibility = ["//visibility:private"],
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 config_setting(
-    name = "is_coverage_enabled",
+    name = "is_target_coverage_enabled",
+    flag_values = {
+        "//python/private:bazel_config_mode": "target",
+    },
     values = {"collect_code_coverage": "true"},
     visibility = ["//visibility:private"],
 )
@@ -600,6 +594,7 @@ bzl_library(
         ":py_internal",
         ":reexports",
         ":rule_builders",
+        ":sentinel_impl",
         ":toolchain_types",
         ":transition_labels",
         ":venv_runfiles",
