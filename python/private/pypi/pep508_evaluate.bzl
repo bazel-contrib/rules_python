@@ -93,6 +93,9 @@ def _tokenize(marker):
     Returns:
         A tuple of the list of tokens and an error message, where one of them is None.
     """
+    if "\n" in marker or "\r" in marker:
+        return None, "Unexpected line break"
+
     tokens = []
     rest = marker
 
