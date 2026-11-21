@@ -13,33 +13,15 @@ For each issue found, provide:
 - Problem: 1-2 sentences stating what is wrong and why (or, for
   `HUMAN-SIGN-OFF`, quoting the author's justification and evaluating whether
   it holds up).
-- Proposed Fix: Concise prose fix instruction when a short description
-  suffices, or a concrete code snippet/diff for non-trivial changes. Omit
-  verbatim code snippets for:
+- Proposed Fix: Start with a high-level, direct first sentence under 20 words
+  stating the suggested fix. Add up to 50 additional words for more information
+  about the suggested fix (such as concrete diagnostic wording) only when
+  needed. Omit verbatim code snippets when prose suffices, including:
   - Formatting and line wrapping (state what formatting rule to apply).
   - Missing per-field `struct(...)` comments (state to document each field with
     a comment).
   - Splitting compound boolean or inline ternary expressions into explicit `if`
     statements.
-- Draft Comment: Ready-to-post comment in user's voice, phrased mechanically
-  with minimal prose and structured as (include `Where:` only when more than
-  just the commented location is affected):
-  ```markdown
-  <brief/concise description of issue>
-
-  Suggested fix: <fix, under 20 lines / 10 sentences>
-
-  Where: <other locations where this is applicable, if more than just the
-  commented location>
-  ```
-  Format `Draft Comment` as follows:
-  - Keep `<brief/concise description of issue>` to 1–2 short, direct sentences
-    (no multi-clause "wall of text" paragraphs, parenthetical `e.g.` scenario
-    lists, or `"conversely..."` chains).
-  - Omit verbatim code blocks from `Suggested fix:` when prose suffices.
-  - Include concrete suggested text in `Suggested fix:` inside `Draft Comment`
-    (not only in `Proposed Fix`) when proposing specific error/failure message
-    wording or a non-trivial code change.
-  - Avoid wrapping lists of visually distinct identifiers (such as
-    `UPPER_SNAKE_CASE` constants) in individual backticks, and never wrap the
-    entire comment in outer backticks.
+- Where: Other affected locations, included only when more than just the
+  primary `Location` is affected (not subject to the 50-word `Proposed Fix`
+  limit; omit for single-location issues).
