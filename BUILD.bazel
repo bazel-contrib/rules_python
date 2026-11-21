@@ -27,7 +27,8 @@ load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
 # gazelle:resolve starlark @bazel_tools//tools/build_defs/repo:http.bzl //python/private:bazel_tools
 # gazelle:resolve starlark @bazel_tools//tools/build_defs/repo:utils.bzl //python/private:bazel_tools
 
-# Prevent Gazelle from incorrectly stripping the .bzl suffix from the toml.bzl repo name
+# Prevent Gazelle from incorrectly stripping the .bzl suffix from the repo names
+# gazelle:resolve starlark @pypackaging.bzl//:pypackaging.bzl @pypackaging.bzl//:pypackaging
 # gazelle:resolve starlark @toml.bzl//:toml.bzl @toml.bzl//:toml
 
 # Override Gazelle's incorrect default resolution for platforms host constraints Starlark library
