@@ -79,6 +79,7 @@ define_uncachable_version_file(
 exports_files(
     [
         "coverage.patch",
+        "enum.bzl",
         "py_package.bzl",
         "py_wheel.bzl",
         "version.bzl",

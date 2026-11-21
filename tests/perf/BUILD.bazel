@@ -1,0 +1,62 @@
+load("@bazel_skylib//rules:common_settings.bzl", "int_flag", "string_flag")
+load("//python:py_binary.bzl", "py_binary")
+load("//python:py_library.bzl", "py_library")
+load("//python:py_test.bzl", "py_test")
+load(":bazel_benchmark.bzl", "bazel_benchmark")
+load(":workloads.bzl", "WORKLOADS")
+
+py_library(
+    name = "workloads",
+    srcs = [
+        "starlark_shim.py",
+        "workloads.py",
+    ],
+    data = [
+        "workloads.bzl",
+        "//python/private:enum.bzl",
+        "//python/private:version.bzl",
+        "//python/private/pypi:bzl",
+    ],
+    deps = ["//python/runfiles"],
+)
+
+# Print the number of steps that the workloads take:
+#
+#     bazel run //tests/perf:benchmark
+py_binary(
+    name = "benchmark",
+    srcs = ["benchmark.py"],
+    deps = [":workloads"],
+)
+
+py_test(
+    name = "steps_test",
+    srcs = ["steps_test.py"],
+    deps = [":workloads"],
+)
+
+# Measure the workloads with Bazel itself:
+#
+#     bazel run //tests/perf:bazel_benchmark
+py_binary(
+    name = "bazel_benchmark",
+    srcs = ["bazel_benchmark.py"],
+    args = ["--workloads=" + ",".join(WORKLOADS.keys())],
+)
+
+# The flags and the target that are used by the `bazel_benchmark`.
+int_flag(
+    name = "iterations",
+    build_setting_default = 0,
+)
+
+string_flag(
+    name = "workload",
+    build_setting_default = WORKLOADS.keys()[0],
+    values = WORKLOADS.keys(),
+)
+
+bazel_benchmark(
+    name = "bazel_benchmark_analysis",
+    tags = ["manual"],
+)
