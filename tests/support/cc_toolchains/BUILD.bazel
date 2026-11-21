@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:cc_import.bzl", "cc_import")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_cc//cc/toolchains:cc_toolchain.bzl", "cc_toolchain")
 load("@rules_cc//cc/toolchains:cc_toolchain_suite.bzl", "cc_toolchain_suite")
@@ -82,6 +83,87 @@ cc_library(
     name = "fake_libs",
     srcs = ["libpython3.so"],
     data = ["libdata.txt"],
+    tags = PREVENT_IMPLICIT_BUILDING_TAGS,
+)
+
+toolchain(
+    name = "fake_py_cc_toolchain_windows",
+    tags = PREVENT_IMPLICIT_BUILDING_TAGS,
+    target_compatible_with = ["@platforms//os:windows"],
+    toolchain = ":fake_py_cc_toolchain_windows_impl",
+    toolchain_type = "@rules_python//python/cc:toolchain_type",
+)
+
+py_cc_toolchain(
+    name = "fake_py_cc_toolchain_windows_impl",
+    headers = ":py_headers",
+    headers_abi3 = ":py_headers_abi3",
+    libs = ":fake_libs_windows",
+    platform_machine = "x86_64",
+    python_version = "3.12",
+    sys_platform = "win32",
+    tags = PREVENT_IMPLICIT_BUILDING_TAGS,
+)
+
+# Windows installs ship both the versioned and the stable ABI import library.
+cc_library(
+    name = "fake_libs_windows",
+    tags = PREVENT_IMPLICIT_BUILDING_TAGS,
+    deps = [
+        ":fake_python312_lib",
+        ":fake_python3_lib",
+    ],
+)
+
+toolchain(
+    name = "fake_py_cc_toolchain_windows_versioned_only",
+    tags = PREVENT_IMPLICIT_BUILDING_TAGS,
+    target_compatible_with = ["@platforms//os:windows"],
+    toolchain = ":fake_py_cc_toolchain_windows_versioned_only_impl",
+    toolchain_type = "@rules_python//python/cc:toolchain_type",
+)
+
+py_cc_toolchain(
+    name = "fake_py_cc_toolchain_windows_versioned_only_impl",
+    headers = ":py_headers",
+    headers_abi3 = ":py_headers_abi3",
+    libs = ":fake_python312_lib",
+    platform_machine = "x86_64",
+    python_version = "3.12",
+    sys_platform = "win32",
+    tags = PREVENT_IMPLICIT_BUILDING_TAGS,
+)
+
+toolchain(
+    name = "fake_py_cc_toolchain_windows_abi3_only",
+    tags = PREVENT_IMPLICIT_BUILDING_TAGS,
+    target_compatible_with = ["@platforms//os:windows"],
+    toolchain = ":fake_py_cc_toolchain_windows_abi3_only_impl",
+    toolchain_type = "@rules_python//python/cc:toolchain_type",
+)
+
+py_cc_toolchain(
+    name = "fake_py_cc_toolchain_windows_abi3_only_impl",
+    headers = ":py_headers",
+    headers_abi3 = ":py_headers_abi3",
+    libs = ":fake_python3_lib",
+    platform_machine = "x86_64",
+    python_version = "3.12",
+    sys_platform = "win32",
+    tags = PREVENT_IMPLICIT_BUILDING_TAGS,
+)
+
+cc_import(
+    name = "fake_python3_lib",
+    interface_library = "python3.lib",
+    system_provided = True,
+    tags = PREVENT_IMPLICIT_BUILDING_TAGS,
+)
+
+cc_import(
+    name = "fake_python312_lib",
+    interface_library = "python312.lib",
+    system_provided = True,
     tags = PREVENT_IMPLICIT_BUILDING_TAGS,
 )
 
