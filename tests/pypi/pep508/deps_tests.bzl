@@ -268,6 +268,23 @@ def test_extra_with_conditional_and_unconditional_markers(env):
 
 _tests.append(test_extra_with_conditional_and_unconditional_markers)
 
+def test_extra_or_platform_marker_is_unconditional(env):
+    got = deps(
+        "foo",
+        extras = ["client"],
+        requires_dist = [
+            'bar; sys_platform == "darwin" or extra == "client"',
+            'baz; (sys_platform == "darwin" or extra == "client") and os_name == "posix"',
+        ],
+    )
+
+    env.expect.that_collection(got.deps).contains_exactly(["bar"])
+    env.expect.that_dict(got.deps_select).contains_exactly({
+        "baz": 'os_name == "posix"',
+    })
+
+_tests.append(test_extra_or_platform_marker_is_unconditional)
+
 def test_span_all_python_versions(env):
     requires_dist = [
         "bar>=0.4.0; python_version >= \"3.13.0\"",
