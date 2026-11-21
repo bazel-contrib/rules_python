@@ -52,30 +52,27 @@ static COOKIE_RE: LazyLock<std::result::Result<regex::bytes::Regex, regex::Error
         regex::bytes::Regex::new(r"(?-u)^[ \t\x0c]*#.*?coding[:=][ \t]*([-_.a-zA-Z0-9]+)")
     });
 
-/// Formats the validation failure message matching `_format_error` in
-/// `python/private/py_test_main_validator.py`.
+/// Formats the validation failure message for an inert `py_test` main module.
 pub fn format_error(label: &str, src_name: &str) -> String {
     let target = if label.is_empty() { src_name } else { label };
-    let example = r#"    if __name__ == "__main__":
-        unittest.main()"#;
     format!(
-        "py_test target {target} will not run any tests.\n\
-         \n\
-         The main module '{src_name}' only contains inert top-level statements \
-         (class/function definitions, imports, assignments). Running it does \
-         nothing, so the test silently passes without executing any test \
-         code.\n\
-         \n\
-         py_test runs the main module directly; it does not automatically \
-         invoke a test runner such as unittest or pytest. Add code that runs \
-         your tests, for example:\n\
-         \n\
-         {example}\n\
-         \n\
-         or use a main module that invokes a runner (e.g. pytest.main()).\n\
-         \n\
-         This check can be disabled by setting \
-         --@rules_python//python/config_settings:validate_test_main=disabled."
+        r#"py_test target {target} will not run any tests.
+
+The main module '{src_name}' only contains inert top-level statements
+(class/function definitions, imports, assignments). Running it does
+nothing, so the test silently passes without executing any test code.
+
+py_test runs the main module directly; it does not automatically invoke
+a test runner such as unittest or pytest. Add code that runs your tests,
+for example:
+
+    if __name__ == "__main__":
+        unittest.main()
+
+or use a main module that invokes a runner (e.g. pytest.main()).
+
+This check can be disabled by setting
+--@rules_python//python/config_settings:validate_test_main=disabled."#
     )
 }
 
