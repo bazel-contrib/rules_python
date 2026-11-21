@@ -9,14 +9,14 @@ from tests.perf.workloads import workloads
 # numbers with the output of `bazel run //tests/perf:benchmark`.
 _STEPS = {
     # keep sorted
-    "evaluate_long": 1974,
-    "evaluate_long_parsed": 693,
-    "evaluate_non_strict": 286,
-    "evaluate_string": 122,
-    "evaluate_two_strings": 229,
-    "evaluate_version": 283,
-    "evaluate_version_parsed": 132,
-    "parse_long": 1284,
+    "evaluate_long": 1926,
+    "evaluate_long_parsed": 657,
+    "evaluate_non_strict": 280,
+    "evaluate_string": 119,
+    "evaluate_two_strings": 223,
+    "evaluate_version": 280,
+    "evaluate_version_parsed": 130,
+    "parse_long": 1272,
     "tokenize_long": 514,
     "tokenize_no_whitespace": 84,
     "tokenize_version": 48,
