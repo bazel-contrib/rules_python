@@ -117,17 +117,11 @@ globs: "*.bzl,BUILD,BUILD.bazel,*.bazel"
   unbuilt targets do not cause loading-time failures.
 * Prefer `ctx.actions.write` over spawning a subprocess for small content known
   at analysis time.
-* **Action Option Flags (`--arg=value`)**: For CLIs that accept `--flag=value`
-  long options (excluding external tools like `powershell.exe -File` that
-  reject `=`):
-  * Pass single-value flags via `args.add(val, format = "--flag=%s")` instead
-    of `args.add("--flag", val)` so values starting with `-` or `@` (such as
-    `@@//pkg:target` under `@flagfile` expansion) are not misparsed as flags or
-    response files.
-  * Pass repeated flags via `args.add_all(vals, format_each = "--flag=%s")`
-    instead of `before_each = "--flag"` (do not replace `args.add_all("--flag",
-    vals)` on multi-value `nargs="+"` parsers; prefer repeated
-    `action="append"` flags on internal tools).
+* **Action Option Flags (`--arg=value`)**: When a CLI accepts `--flag=value`,
+  use `args.add(val, format = "--flag=%s")` instead of
+  `args.add("--flag", val)` and `args.add_all(vals, format_each = "--flag=%s")`
+  instead of `before_each = "--flag"`. Separate tokens misparse `-` or `@`
+  values as flags or `@flagfile` paths.
 * In `genrule.cmd` or multi-line command strings, place closing triple quotes
   immediately after the last argument (`"""\n... --flag"""`) when trailing
   newlines would break chained commands.
