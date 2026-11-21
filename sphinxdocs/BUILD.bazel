@@ -11,7 +11,7 @@ filegroup(
     ],
     visibility = ["@rules_python//tests:__subpackages__"],
 )
-# LINT.ThenChange(//BUILD.bazel:synced_files)
+# LINT.ThenChange(//dev/sync_downloader_configs.py:synced_files)
 
 filegroup(
     name = "distribution",
