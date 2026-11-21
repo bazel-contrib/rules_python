@@ -13,7 +13,7 @@
 # limitations under the License.
 
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
-load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "bool_setting")
 load("//python:py_binary.bzl", "py_binary")
 load("//python:py_library.bzl", "py_library")
 load(":bazel_config_mode.bzl", "bazel_config_mode")
@@ -190,6 +190,16 @@ config_setting(
     },
     values = {"collect_code_coverage": "true"},
     visibility = ["//visibility:private"],
+)
+
+# Set by `_has_coverage_flag_transition` so `py_runtime` can detect whether
+# `--coverage` is set without configuring the `label_flag` target directly.
+bool_setting(
+    name = "has_coverage_flag",
+    build_setting_default = False,
+    # Not actually public. Only public because it's an implicit dependency of
+    # `py_runtime`.
+    visibility = NOT_ACTUALLY_PUBLIC,
 )
 
 bazel_config_mode(name = "bazel_config_mode")
