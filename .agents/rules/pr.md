@@ -91,11 +91,12 @@ Before drafting any pull request description, strictly adhere to the rules in
 ## PR Review Comments & Thread Resolution
 * End every posted PR comment or review reply with an italicized disclosure
   line:
-  * If the exact comment text was not shown to and approved by the user before
-    posting (including automatic PR disclosures and direct review replies):
+  * When posted without prior user review and approval of the comment text or
+    underlying `code-review-results.md` finding (including automatic PR
+    disclosures and direct review replies):
     `*This is an agent-generated comment unreviewed by the user.*`
-  * Only if the user was shown the exact comment text and explicitly approved
-    posting it:
+  * Only when the user reviewed and explicitly approved posting the comment
+    text or underlying `code-review-results.md` finding:
     `*This is an agent-generated comment reviewed and approved by the user.*`
 * **Reply Style (`arXiv:2610.29162v1`)**: Keep review replies to 1-3 short
   sentences (~15-60 words) leading with the commit hash or direct answer. Pair
