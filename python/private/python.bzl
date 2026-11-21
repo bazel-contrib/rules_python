@@ -15,6 +15,7 @@
 "Python toolchain module extensions for use with bzlmod."
 
 load("@bazel_features//:features.bzl", "bazel_features")
+load("@pypackaging.bzl", "pypackaging")
 load("//python:versions.bzl", "DEFAULT_RELEASE_BASE_URLS", "PLATFORMS")
 load(":auth.bzl", "AUTH_ATTRS")
 load(":full_version.bzl", "full_version")
@@ -38,7 +39,6 @@ load(
     "sorted_host_platform_names",
     "sorted_host_platforms",
 )
-load(":version.bzl", "version")
 
 def parse_modules(
         *,
@@ -332,7 +332,7 @@ def _python_impl(module_ctx):
                 all_host_compatible_impls.setdefault(full_python_version, []).append(
                     host_compat_entry,
                 )
-                parsed_version = version.parse(full_python_version)
+                parsed_version = pypackaging.version.parse(full_python_version)
                 all_host_compatible_impls.setdefault(
                     "{}.{}".format(*parsed_version.release[0:2]),
                     [],
@@ -365,7 +365,7 @@ def _python_impl(module_ctx):
             all_host_compatible_impls[key] = sorted(
                 entries,
                 reverse = True,
-                key = lambda e: version.key(version.parse(e.full_python_version)),
+                key = lambda e: pypackaging.version.parse(e.full_python_version).key,
             )
 
     for host_repo_name, info in needed_host_repos.items():
@@ -572,13 +572,13 @@ def _fail_multiple_default_toolchains_in_module(mod, toolchain_attrs):
     ))
 
 def _validate_version(version_str, *, _fail = fail):
-    v = version.parse(version_str, strict = True, _fail = _fail)
+    v = pypackaging.version.try_parse(version_str)
     if v == None:
-        # Only reachable in tests
+        _fail("The 'python_version' attribute needs to be a valid PEP 440 version, got: '{}'".format(version_str))
         return False
 
     if len(v.release) < 3:
-        _fail("The 'python_version' attribute needs to specify the full version in at least 'X.Y.Z' format, got: '{}'".format(v.string))
+        _fail("The 'python_version' attribute needs to specify the full version in at least 'X.Y.Z' format, got: '{}'".format(version_str))
         return False
 
     return True
@@ -743,12 +743,12 @@ def _process_global_overrides(*, tag, default, _fail = fail):
 
     if tag.minor_mapping:
         for minor_version, full_version in tag.minor_mapping.items():
-            parsed = version.parse(minor_version, strict = True, _fail = _fail)
+            parsed = pypackaging.version.parse(minor_version)
             if len(parsed.release) > 2 or parsed.pre or parsed.post or parsed.dev or parsed.local:
-                fail("Expected the key to be of `X.Y` format but got `{}`".format(parsed.string))
+                fail("Expected the key to be of `X.Y` format but got `{}`".format(minor_version))
 
             # Ensure that the version is valid
-            version.parse(full_version, strict = True, _fail = _fail)
+            pypackaging.version.parse(full_version)
 
         default["minor_mapping"] = tag.minor_mapping
 
@@ -967,11 +967,11 @@ def _get_toolchain_config(
 
     versions = {}
     for version_string in available_versions:
-        v = version.parse(version_string, strict = True)
+        v = pypackaging.version.parse(version_string)
         versions.setdefault(
             "{}.{}".format(v.release[0], v.release[1]),
             [],
-        ).append((version.key(v), v.string))
+        ).append((v.key, pypackaging.version.to_string(v)))
 
     minor_mapping = {
         major_minor: max(subset)[1]

@@ -351,10 +351,10 @@ bzl_library(
     deps = [
         ":common_labels",
         ":text_util",
-        ":version",
         ":visibility",
         "@bazel_skylib//lib:selects",
         "@bazel_skylib//rules:common_settings",
+        "@pypackaging.bzl//:pypackaging",
     ],
 )
 
@@ -406,10 +406,10 @@ bzl_library(
     srcs = ["hermetic_runtime_repo_setup.bzl"],
     deps = [
         ":py_exec_tools_toolchain",
-        ":version",
         "//python:py_runtime",
         "//python:py_runtime_pair",
         "//python/cc:py_cc_toolchain",
+        "@pypackaging.bzl//:pypackaging",
         "@rules_cc//cc:core_rules",
     ],
 )
@@ -627,10 +627,10 @@ bzl_library(
         ":rule_builders",
         ":toolchain_types",
         ":venv_runfiles",
-        ":version",
         "@bazel_skylib//lib:dicts",
         "@bazel_skylib//lib:paths",
         "@bazel_skylib//rules:common_settings",
+        "@pypackaging.bzl//:pypackaging",
     ],
 )
 
@@ -700,10 +700,10 @@ bzl_library(
         ":py_internal",
         ":py_runtime_info",
         ":reexports",
-        ":version",
         "@bazel_skylib//lib:dicts",
         "@bazel_skylib//lib:paths",
         "@bazel_skylib//rules:common_settings",
+        "@pypackaging.bzl//:pypackaging",
     ],
 )
 
@@ -767,9 +767,9 @@ bzl_library(
         ":repo_utils",
         ":runtimes_manifest",
         ":toolchains_repo",
-        ":version",
         "//python:versions",
         "@bazel_features//:features",
+        "@pypackaging.bzl//:pypackaging",
     ],
 )
 
@@ -940,7 +940,7 @@ bzl_library(
     name = "pyproject_utils",
     srcs = ["pyproject_utils.bzl"],
     deps = [
-        ":version",
+        "@pypackaging.bzl//:pypackaging",
         "@toml.bzl//:toml",
     ],
 )

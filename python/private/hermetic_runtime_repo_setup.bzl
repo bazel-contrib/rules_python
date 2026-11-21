@@ -13,13 +13,13 @@
 # limitations under the License.
 """Setup a python-build-standalone based toolchain."""
 
+load("@pypackaging.bzl", "pypackaging")
 load("@rules_cc//cc:cc_import.bzl", "cc_import")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("//python:py_runtime.bzl", "py_runtime")
 load("//python:py_runtime_pair.bzl", "py_runtime_pair")
 load("//python/cc:py_cc_toolchain.bzl", "py_cc_toolchain")
 load(":py_exec_tools_toolchain.bzl", "py_exec_tools_toolchain")
-load(":version.bzl", "version")
 
 _IS_FREETHREADED_YES = Label("//python/config_settings:_is_py_freethreaded_yes")
 _IS_FREETHREADED_NO = Label("//python/config_settings:_is_py_freethreaded_no")
@@ -60,7 +60,7 @@ def define_hermetic_runtime_toolchain_impl(
             use.
     """
     _ = name  # @unused
-    version_info = version.parse(python_version)
+    version_info = pypackaging.version.parse(python_version)
     version_dict = {
         "d": "d" if debug else "",
         "major": version_info.release[0],
