@@ -312,7 +312,7 @@ bzl_library(
 bzl_library(
     name = "pep508_requirement",
     srcs = ["pep508_requirement.bzl"],
-    deps = ["//python/private:normalize_name"],
+    deps = ["@pypackaging.bzl//:pypackaging"],
 )
 
 bzl_library(
