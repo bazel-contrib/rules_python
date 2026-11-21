@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+import http.server
+import json
 import os
 import stat
 import subprocess
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -371,21 +374,31 @@ detached
                 self.assertNotIn("Git worktree: /repo/worktrees/feat1", deleted)
 
     async def test_exits_nonzero_when_cleanup_fails(self) -> None:
-        """Verifies async_main exits with code 1 and skips renaming on failure."""
+        """Verifies async_main exits 1 and skips renaming/deleting on failure."""
         target = cleanup.CleanupTarget(
             worktree_path="/repo/worktrees/feat1",
             branch="feat1",
         )
-        with mock.patch("cleanup.get_main_repo", return_value="/repo/main"), mock.patch(
-            "cleanup.get_worktrees", return_value=[]
-        ), mock.patch("cleanup.build_cleanup_target", return_value=target), mock.patch(
+        env = {
+            "ANTIGRAVITY_CONVERSATION_ID": "conv-fail-1",
+            "ANTIGRAVITY_LS_ADDRESS": "127.0.0.1:5387",
+            "ANTIGRAVITY_CSRF_TOKEN": "mock_token_val",
+        }
+        with mock.patch.dict(os.environ, env, clear=False), mock.patch(
+            "cleanup.get_main_repo", return_value="/repo/main"
+        ), mock.patch("cleanup.get_worktrees", return_value=[]), mock.patch(
+            "cleanup.build_cleanup_target", return_value=target
+        ), mock.patch(
             "cleanup.execute_cleanup_target", return_value=([], False)
-        ), mock.patch("cleanup.prefix_conversation_title") as mock_rename:
+        ), mock.patch("cleanup.prefix_conversation_title") as mock_rename, mock.patch(
+            "cleanup.delete_conversation"
+        ) as mock_delete_conv:
             with self.assertRaises(SystemExit) as cm:
                 await cleanup.async_main(["--branches", "feat1", "--force"])
 
         self.assertEqual(cm.exception.code, 1)
         mock_rename.assert_not_called()
+        mock_delete_conv.assert_not_called()
 
     async def test_remove_readonly_output_base_entries(self) -> None:
         """Verifies read-only files/dirs are removed without mutating symlink targets."""
@@ -571,6 +584,210 @@ detached
         formatted = cleanup.format_done_title(long_title)
         self.assertEqual(len(formatted), 70)
         self.assertTrue(formatted.startswith("done "))
+
+    def test_parse_loopback_ls_base_url(self) -> None:
+        """Verifies loopback Language Server endpoint validation."""
+        self.assertEqual(
+            cleanup._parse_loopback_ls_base_url("127.0.0.1:5387"),
+            "http://127.0.0.1:5387",
+        )
+        self.assertEqual(
+            cleanup._parse_loopback_ls_base_url("localhost:5387"),
+            "http://localhost:5387",
+        )
+        self.assertEqual(
+            cleanup._parse_loopback_ls_base_url("[::1]:5387"),
+            "http://[::1]:5387",
+        )
+        self.assertEqual(
+            cleanup._parse_loopback_ls_base_url("https://localhost:5387"),
+            "https://localhost:5387",
+        )
+        for invalid in (
+            "",
+            "evil.example.com:5387",
+            "192.168.1.10:5387",
+            "http://evil.example.com@127.0.0.1:5387",
+            "http://127.0.0.1:5387/extra",
+            "http://127.0.0.1:5387?q=1",
+            "ftp://127.0.0.1:5387",
+            "127.0.0.1",
+            "127.0.0.1:0",
+            "127.0.0.1:99999",
+        ):
+            self.assertIsNone(cleanup._parse_loopback_ls_base_url(invalid))
+
+    def test_prefix_and_delete_conversation_loopback_rpc_and_redirect_guard(
+        self,
+    ) -> None:
+        """Verifies rename + DeleteCascadeTrajectory RPCs, loopback, and redirect guards."""
+        recorded: list[tuple[str, dict[str, str], dict[str, object]]] = []
+        mode = {"status": 200}
+
+        class FakeLsHandler(http.server.BaseHTTPRequestHandler):
+            def do_POST(self) -> None:
+                length = int(self.headers.get("Content-Length", "0"))
+                raw = self.rfile.read(length).decode("utf-8")
+                hdrs = {k.lower(): v for k, v in self.headers.items()}
+                recorded.append((self.path, hdrs, json.loads(raw)))
+                if mode["status"] == 302:
+                    self.send_response(302)
+                    self.send_header("Location", "http://evil.example.com/steal")
+                    self.end_headers()
+                    return
+                self.send_response(mode["status"])
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                if self.path.endswith("/GetAllCascadeTrajectories"):
+                    resp_payload = {
+                        "trajectorySummaries": {
+                            "conv-123": {"summary": "Clean up feature branch"}
+                        }
+                    }
+                    self.wfile.write(json.dumps(resp_payload).encode("utf-8"))
+                    return
+                self.wfile.write(b"{}")
+
+            def log_message(self, format: str, *args: object) -> None:
+                del format, args
+
+        mock_token = "csrf-test-123"
+        cleanup.prefix_conversation_title(
+            "conv-123", "evil.example.com:5387", mock_token, dry_run=False
+        )
+        self.assertFalse(
+            cleanup.delete_conversation(
+                "conv-123", "evil.example.com:5387", mock_token, dry_run=False
+            )
+        )
+
+        httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), FakeLsHandler)
+        port = httpd.server_address[1]
+        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+        thread.start()
+        try:
+            ls_addr = f"127.0.0.1:{port}"
+            cleanup.prefix_conversation_title(
+                "conv-123", ls_addr, mock_token, dry_run=True
+            )
+            self.assertTrue(
+                cleanup.delete_conversation(
+                    "conv-123", ls_addr, mock_token, dry_run=True
+                )
+            )
+            self.assertEqual(len(recorded), 1)
+            self.assertTrue(recorded[0][0].endswith("/GetAllCascadeTrajectories"))
+            recorded.clear()
+
+            cleanup.prefix_conversation_title(
+                "conv-123", ls_addr, mock_token, dry_run=False
+            )
+            self.assertTrue(
+                cleanup.delete_conversation(
+                    "conv-123", ls_addr, mock_token, dry_run=False
+                )
+            )
+            self.assertEqual(len(recorded), 3)
+            self.assertEqual(
+                recorded[0][0],
+                "/exa.language_server_pb.LanguageServerService/GetAllCascadeTrajectories",
+            )
+            self.assertEqual(
+                recorded[1][0],
+                "/exa.language_server_pb.LanguageServerService/UpdateConversationAnnotations",
+            )
+            self.assertEqual(
+                recorded[1][2],
+                {
+                    "cascadeId": "conv-123",
+                    "annotations": {"title": "done Clean up feature branch"},
+                    "mergeAnnotations": True,
+                },
+            )
+            path, hdrs, payload = recorded[2]
+            self.assertEqual(
+                path,
+                "/exa.language_server_pb.LanguageServerService/DeleteCascadeTrajectory",
+            )
+            self.assertEqual(hdrs.get("x-codeium-csrf-token"), mock_token)
+            self.assertEqual(hdrs.get("connect-protocol-version"), "1")
+            self.assertEqual(payload, {"cascadeId": "conv-123"})
+
+            mode["status"] = 302
+            self.assertFalse(
+                cleanup.delete_conversation(
+                    "conv-123", ls_addr, mock_token, dry_run=False
+                )
+            )
+        finally:
+            httpd.shutdown()
+            httpd.server_close()
+            thread.join(timeout=2)
+
+    async def test_async_main_prefixes_and_deletes_conversation_on_success(
+        self,
+    ) -> None:
+        """Verifies async_main prefixes 'done ' before deleting the conversation."""
+        target = cleanup.CleanupTarget(
+            worktree_path="/repo/worktrees/feat1",
+            branch="feat1",
+        )
+        mock_token = "csrf-ok-456"
+        env = {
+            "ANTIGRAVITY_CONVERSATION_ID": "conv-done-9",
+            "ANTIGRAVITY_LS_ADDRESS": "127.0.0.1:5387",
+            "ANTIGRAVITY_CSRF_TOKEN": mock_token,
+        }
+        order: list[str] = []
+
+        def record_prefix(**_kwargs: object) -> None:
+            order.append("prefix")
+
+        def record_delete(**_kwargs: object) -> bool:
+            order.append("delete")
+            return True
+
+        with mock.patch.dict(os.environ, env, clear=False), mock.patch(
+            "cleanup.get_main_repo", return_value="/repo/main"
+        ), mock.patch("cleanup.get_worktrees", return_value=[]), mock.patch(
+            "cleanup.build_cleanup_target", return_value=target
+        ), mock.patch(
+            "cleanup.execute_cleanup_target",
+            return_value=(["Git worktree: /repo/worktrees/feat1"], True),
+        ), mock.patch(
+            "cleanup.prefix_conversation_title", side_effect=record_prefix
+        ) as mock_prefix, mock.patch(
+            "cleanup.delete_conversation", side_effect=record_delete
+        ) as mock_delete_conv:
+            await cleanup.async_main(["--branches", "feat1", "--force"])
+
+        self.assertEqual(order, ["prefix", "delete"])
+        mock_prefix.assert_called_once_with(
+            conversation_id="conv-done-9",
+            ls_address="127.0.0.1:5387",
+            csrf_header_value=mock_token,
+            dry_run=False,
+        )
+        mock_delete_conv.assert_called_once_with(
+            conversation_id="conv-done-9",
+            ls_address="127.0.0.1:5387",
+            csrf_header_value=mock_token,
+            dry_run=False,
+        )
+
+        with mock.patch.dict(os.environ, env, clear=False), mock.patch(
+            "cleanup.get_main_repo", return_value="/repo/main"
+        ), mock.patch("cleanup.get_worktrees", return_value=[]), mock.patch(
+            "cleanup.build_cleanup_target", return_value=target
+        ), mock.patch(
+            "cleanup.execute_cleanup_target",
+            return_value=(["Git worktree: /repo/worktrees/feat1"], True),
+        ), mock.patch("cleanup.prefix_conversation_title"), mock.patch(
+            "cleanup.delete_conversation", return_value=False
+        ):
+            with self.assertRaises(SystemExit) as cm:
+                await cleanup.async_main(["--branches", "feat1", "--force"])
+        self.assertEqual(cm.exception.code, 1)
 
 
 if __name__ == "__main__":

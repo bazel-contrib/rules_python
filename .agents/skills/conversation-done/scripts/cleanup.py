@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Cleans up workspace resources created for an agent conversation.
+"""Cleans up workspace resources, prefixes 'done ', and deletes the conversation.
 
-This script cleans up files and resources that are external to the agent
-conversation itself (such as Bazel output bases, Git worktrees, and local or
-remote Git branches), while leaving the conversation history, transcripts,
-and brain state intact.
+This script cleans up workspace resources created for an agent task (such as
+Bazel output bases, Git worktrees, and local or remote Git branches) and, once
+all cleanup steps succeed without errors, prefixes the active conversation
+title with "done " and deletes the conversation via the local Language Server.
 
 Usage examples:
   # Clean up current worktree and its associated resources:
@@ -40,9 +40,20 @@ import stat
 import subprocess
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from http.client import HTTPMessage
 
+_LOOPBACK_HOSTS = frozenset(
+    {
+        # keep-sorted start
+        "127.0.0.1",
+        "::1",
+        "localhost",
+        # keep-sorted end
+    }
+)
 _PROTECTED_BRANCHES = frozenset(
     {
         # keep-sorted start
@@ -62,7 +73,7 @@ _PROTECTED_REMOTES = frozenset(
 # Maximum conversation title length displayed by the UI.
 _CONVERSATION_TITLE_MAX_LENGTH = 70
 _DONE_TITLE_PREFIX = "done "
-# Bound urllib.request.urlopen (which has no default timeout) on local loopback RPCs.
+# Bound urllib.request (which has no default timeout) on local loopback RPCs.
 _LS_RPC_TIMEOUT_SECONDS = 5
 # Cap git ls-remote so unreachable remotes do not stall cleanup.
 _GIT_LS_REMOTE_TIMEOUT_SECONDS = 10
@@ -79,6 +90,9 @@ _GET_TRAJECTORIES_METHOD = (
 )
 _UPDATE_ANNOTATIONS_METHOD = (
     "exa.language_server_pb.LanguageServerService/UpdateConversationAnnotations"
+)
+_DELETE_TRAJECTORY_METHOD = (
+    "exa.language_server_pb.LanguageServerService/DeleteCascadeTrajectory"
 )
 
 
@@ -816,6 +830,39 @@ async def execute_cleanup_target(
     return deleted, succeeded
 
 
+def _parse_loopback_ls_base_url(raw_address: str) -> str | None:
+    """Validates a loopback Language Server endpoint and formats its base URL.
+
+    Args:
+        raw_address: `host:port` or `http(s)://host:port` endpoint string.
+
+    Returns:
+        Normalized `http(s)://host:port` base URL when loopback and valid, or
+        None when malformed or non-loopback.
+    """
+    addr = raw_address.strip()
+    if not addr or any(ord(ch) <= 0x20 or ch in "@\\?#" for ch in addr):
+        return None
+    candidate = addr if "://" in addr else f"http://{addr}"
+    try:
+        parsed = urllib.parse.urlsplit(candidate)
+        port = parsed.port
+    except ValueError:
+        return None
+    scheme = parsed.scheme.lower()
+    if scheme not in ("http", "https"):
+        return None
+    if parsed.path or parsed.query or parsed.fragment:
+        return None
+    if port is None or not (1 <= port <= 65535):
+        return None
+    host = (parsed.hostname or "").strip("[]").lower()
+    if host not in _LOOPBACK_HOSTS:
+        return None
+    netloc = f"[{host}]:{port}" if ":" in host else f"{host}:{port}"
+    return f"{scheme}://{netloc}"
+
+
 def format_done_title(current_title: str) -> str:
     """Prepends 'done ' to a conversation title and truncates to max length."""
     cleaned = " ".join(current_title.splitlines()).strip()
@@ -830,34 +877,90 @@ def format_done_title(current_title: str) -> str:
     return prefixed[:_CONVERSATION_TITLE_MAX_LENGTH].rstrip()
 
 
+def _post_ls_json(
+    base_url: str,
+    method: str,
+    body: Mapping[str, object],
+    csrf_header_value: str,
+) -> dict[str, object]:
+    """Sends a JSON POST RPC to a validated loopback Language Server endpoint.
+
+    Args:
+        base_url: Validated `http(s)://host:port` loopback base URL.
+        method: Connect RPC path under the Language Server.
+        body: JSON-serializable request payload.
+        csrf_header_value: Scoped CSRF header value.
+
+    Returns:
+        Decoded JSON response object, or an empty dict for blank responses.
+    """
+    url = f"{base_url}/{method}"
+    raw_body = json.dumps(body).encode("utf-8")
+    headers = {
+        "Content-Type": "application/json",
+        "Connect-Protocol-Version": "1",
+        "x-codeium-csrf-token": csrf_header_value,
+    }
+    req = urllib.request.Request(
+        url,
+        data=raw_body,
+        headers=headers,
+        method="POST",
+    )
+    opener = urllib.request.build_opener(_NoRedirectHandler())
+    with opener.open(req, timeout=_LS_RPC_TIMEOUT_SECONDS) as resp:
+        resp_bytes = resp.read()
+    if not resp_bytes:
+        return {}
+    parsed = json.loads(resp_bytes.decode("utf-8"))
+    return parsed if isinstance(parsed, dict) else {}
+
+
 def prefix_conversation_title(
     conversation_id: str,
     ls_address: str,
     csrf_header_value: str,
     dry_run: bool,
 ) -> None:
-    """Prepends 'done ' to the active conversation title via the Language Server."""
-    headers = {
-        "Content-Type": "application/json",
-        "x-codeium-csrf-token": csrf_header_value,
-    }
-    list_url = f"http://{ls_address}/{_GET_TRAJECTORIES_METHOD}"
-    list_req = urllib.request.Request(
-        list_url,
-        data=b"{}",
-        headers=headers,
-    )
+    """Prepends 'done ' to the active conversation title via the Language Server.
+
+    Args:
+        conversation_id: Identifier of the active conversation.
+        ls_address: Loopback Language Server `host:port` or URL.
+        csrf_header_value: Scoped CSRF token for Language Server RPCs.
+        dry_run: If True, logs preview message without updating annotations.
+    """
+    base_url = _parse_loopback_ls_base_url(ls_address)
+    if base_url is None:
+        log_warn(
+            f"Refusing Language Server RPC to invalid or non-loopback address: "
+            f"{ls_address}"
+        )
+        return
+
     try:
-        with urllib.request.urlopen(list_req, timeout=_LS_RPC_TIMEOUT_SECONDS) as resp:
-            payload = json.loads(resp.read().decode("utf-8"))
-    except (urllib.error.URLError, json.JSONDecodeError, OSError) as exc:
+        payload = _post_ls_json(
+            base_url, _GET_TRAJECTORIES_METHOD, {}, csrf_header_value
+        )
+    except (
+        CleanupError,
+        urllib.error.URLError,
+        json.JSONDecodeError,
+        OSError,
+    ) as exc:
         log_warn(f"Failed to query conversation title: {exc}")
         return
 
-    summaries = payload.get("trajectorySummaries") or {}
-    entry = summaries.get(conversation_id) or {}
-    annotations = entry.get("annotations") or {}
-    current_title = annotations.get("title") or entry.get("summary") or ""
+    summaries = payload.get("trajectorySummaries")
+    if not isinstance(summaries, dict):
+        return
+    entry = summaries.get(conversation_id)
+    if not isinstance(entry, dict):
+        return
+    annotations = entry.get("annotations")
+    title_val = annotations.get("title") if isinstance(annotations, dict) else ""
+    summary_val = entry.get("summary")
+    current_title = str(title_val or summary_val or "")
     if not current_title:
         return
 
@@ -869,27 +972,75 @@ def prefix_conversation_title(
         log(f"  [Dry Run] Would rename conversation to: {new_title}")
         return
 
-    update_url = f"http://{ls_address}/{_UPDATE_ANNOTATIONS_METHOD}"
-    update_body = json.dumps(
-        {
-            "cascadeId": conversation_id,
-            "annotations": {"title": new_title},
-            "mergeAnnotations": True,
-        }
-    ).encode("utf-8")
-    update_req = urllib.request.Request(
-        update_url,
-        data=update_body,
-        headers=headers,
-    )
     try:
-        with urllib.request.urlopen(
-            update_req, timeout=_LS_RPC_TIMEOUT_SECONDS
-        ) as resp:
-            resp.read()
+        _post_ls_json(
+            base_url,
+            _UPDATE_ANNOTATIONS_METHOD,
+            {
+                "cascadeId": conversation_id,
+                "annotations": {"title": new_title},
+                "mergeAnnotations": True,
+            },
+            csrf_header_value,
+        )
         log(f"Renamed conversation to: {new_title}")
-    except (urllib.error.URLError, OSError) as exc:
+    except (
+        CleanupError,
+        urllib.error.URLError,
+        json.JSONDecodeError,
+        OSError,
+    ) as exc:
         log_warn(f"Failed to rename conversation: {exc}")
+
+
+def delete_conversation(
+    conversation_id: str,
+    ls_address: str,
+    csrf_header_value: str,
+    dry_run: bool,
+) -> bool:
+    """Deletes the active conversation via the local Language Server.
+
+    Args:
+        conversation_id: Identifier of the conversation to delete.
+        ls_address: Loopback Language Server `host:port` or URL.
+        csrf_header_value: Scoped CSRF token for Language Server RPCs.
+        dry_run: If True, logs preview message without deleting.
+
+    Returns:
+        True when deleted (or previewed in dry-run mode), False on validation
+        or RPC error.
+    """
+    base_url = _parse_loopback_ls_base_url(ls_address)
+    if base_url is None:
+        log_warn(
+            f"Refusing Language Server RPC to invalid or non-loopback address: "
+            f"{ls_address}"
+        )
+        return False
+
+    if dry_run:
+        log(f"  [Dry Run] Would delete conversation: {conversation_id}")
+        return True
+
+    try:
+        _post_ls_json(
+            base_url,
+            _DELETE_TRAJECTORY_METHOD,
+            {"cascadeId": conversation_id},
+            csrf_header_value,
+        )
+    except (
+        CleanupError,
+        urllib.error.URLError,
+        json.JSONDecodeError,
+        OSError,
+    ) as exc:
+        log_warn(f"Failed to delete conversation {conversation_id}: {exc}")
+        return False
+
+    log(f"Deleted conversation: {conversation_id}")
+    return True
 
 
 async def list_resources(main_repo: str) -> None:
@@ -911,6 +1062,21 @@ async def list_resources(main_repo: str) -> None:
 
 class CleanupError(Exception):
     """Raised when workspace or Git discovery fails."""
+
+
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Rejects HTTP redirects so CSRF credentials are never forwarded off-host."""
+
+    def redirect_request(
+        self,
+        req: urllib.request.Request,
+        fp: object,
+        code: int,
+        msg: str,
+        headers: HTTPMessage,
+        newurl: str,
+    ) -> urllib.request.Request | None:
+        raise CleanupError(f"HTTP redirect ({code}) rejected for Language Server RPC.")
 
 
 @dataclasses.dataclass
@@ -1017,6 +1183,11 @@ async def async_main(argv: Sequence[str]) -> None:
         log_error("No valid targets identified for cleanup.")
         sys.exit(1)
 
+    conversation_id = os.environ.get("ANTIGRAVITY_CONVERSATION_ID", "").strip()
+    ls_address = os.environ.get("ANTIGRAVITY_LS_ADDRESS", "").strip()
+    csrf_header_value = os.environ.get("ANTIGRAVITY_CSRF_TOKEN", "").strip()
+    has_conversation_rpc = bool(conversation_id and ls_address and csrf_header_value)
+
     # Show preview
     for target in targets:
         log("\nIdentified resources for cleanup:")
@@ -1032,6 +1203,8 @@ async def async_main(argv: Sequence[str]) -> None:
             log(f"  Remote branch:      {target.remote}/{target.branch}")
         if target.branch:
             log(f"  Local branch:       {target.branch}")
+    if has_conversation_rpc:
+        log(f"  Conversation:       {conversation_id}")
 
     if not args.force and not args.dry_run and sys.stdin.isatty():
         confirm = input("\nProceed with cleanup? [y/N]: ").strip()
@@ -1071,16 +1244,21 @@ async def async_main(argv: Sequence[str]) -> None:
         log_error("Cleanup finished with errors.")
         sys.exit(1)
 
-    conversation_id = os.environ.get("ANTIGRAVITY_CONVERSATION_ID", "").strip()
-    ls_address = os.environ.get("ANTIGRAVITY_LS_ADDRESS", "").strip()
-    csrf_header_value = os.environ.get("ANTIGRAVITY_CSRF_TOKEN", "").strip()
-    if conversation_id and ls_address and csrf_header_value:
+    if has_conversation_rpc:
         prefix_conversation_title(
             conversation_id=conversation_id,
             ls_address=ls_address,
             csrf_header_value=csrf_header_value,
             dry_run=args.dry_run,
         )
+        if not delete_conversation(
+            conversation_id=conversation_id,
+            ls_address=ls_address,
+            csrf_header_value=csrf_header_value,
+            dry_run=args.dry_run,
+        ):
+            log_error("Cleanup finished with errors.")
+            sys.exit(1)
 
     log("\nCleanup completed.")
 
