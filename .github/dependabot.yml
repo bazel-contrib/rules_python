@@ -52,6 +52,15 @@ updates:
       - "*"
     ignore:
       # keep-sorted start block=yes
+      # ruff_python_ast >= 0.0.23 requires rustc 1.98 (Option::map_or_default),
+      # whereas rules_rust 0.73.0 provides rustc 1.97.1 (see crates/Cargo.toml).
+      - dependency-name: "ruff_python_ast"
+        versions: [">= 0.0.23"]
+      # ruff_python_parser >= 0.0.23 requires rustc 1.98
+      # (Option::map_or_default), whereas rules_rust 0.73.0 provides rustc
+      # 1.97.1 (see crates/Cargo.toml).
+      - dependency-name: "ruff_python_parser"
+        versions: [">= 0.0.23"]
       # zip >= 9.1.0 fails on powerpc64le-unknown-linux-musl until rules_rust
       # defines a powerpc64le config_setting; keep below 9.1.0 (see
       # crates/Cargo.toml). Unpatched zip <= 9.0.5 advisories (reading,

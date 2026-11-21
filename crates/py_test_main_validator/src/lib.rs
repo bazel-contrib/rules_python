@@ -46,10 +46,18 @@ Options:
   @<FLAGFILE>          Read newline-delimited arguments from <FLAGFILE>
   -h, --help           Print this help";
 
+/// PEP 263 coding-cookie pattern; compiled once and shared across calls.
+static COOKIE_RE: LazyLock<std::result::Result<regex::bytes::Regex, regex::Error>> =
+    LazyLock::new(|| {
+        regex::bytes::Regex::new(r"(?-u)^[ \t\x0c]*#.*?coding[:=][ \t]*([-_.a-zA-Z0-9]+)")
+    });
+
 /// Formats the validation failure message matching `_format_error` in
 /// `python/private/py_test_main_validator.py`.
 pub fn format_error(label: &str, src_name: &str) -> String {
     let target = if label.is_empty() { src_name } else { label };
+    let example = r#"    if __name__ == "__main__":
+        unittest.main()"#;
     format!(
         "py_test target {target} will not run any tests.\n\
          \n\
@@ -62,8 +70,7 @@ pub fn format_error(label: &str, src_name: &str) -> String {
          invoke a test runner such as unittest or pytest. Add code that runs \
          your tests, for example:\n\
          \n\
-         \x20   if __name__ == \"__main__\":\n\
-         \x20       unittest.main()\n\
+         {example}\n\
          \n\
          or use a main module that invokes a runner (e.g. pytest.main()).\n\
          \n\
@@ -80,15 +87,9 @@ fn is_blank_or_comment_line(line: &[u8]) -> bool {
     matches!(first_non_ws, None | Some(b'#'))
 }
 
-/// PEP 263 coding-cookie pattern; compiled once and shared across calls.
-static COOKIE_RE: LazyLock<std::result::Result<regex::bytes::Regex, regex::Error>> =
-    LazyLock::new(|| {
-        regex::bytes::Regex::new(r"(?-u)^[ \t\x0c]*#.*?coding[:=][ \t]*([-_.a-zA-Z0-9]+)")
-    });
-
-/// Returns the encoding named by a PEP 263 coding cookie on `line`, if any.
+/// Returns the encoding named by a PEP 263 coding cookie on `line` (without trailing `\r\n`), if
+/// any.
 fn cookie_encoding<'a>(re: &regex::bytes::Regex, line: &'a [u8]) -> Option<&'a str> {
-    let line = line.strip_suffix(b"\r").unwrap_or(line);
     let caps = re.captures(line)?;
     std::str::from_utf8(caps.get(1)?.as_bytes()).ok()
 }
@@ -98,7 +99,9 @@ fn extract_pep263_encoding(body: &[u8]) -> std::result::Result<Option<&str>, Syn
         .as_ref()
         .map_err(|e| SyntaxError::new(format!("invalid PEP 263 regex: {e}")))?;
 
-    let mut lines = body.split(|&b| b == b'\n');
+    let mut lines = body
+        .split(|&b| b == b'\n')
+        .map(|line| line.strip_suffix(b"\r").unwrap_or(line));
     let Some(line1) = lines.next() else {
         return Ok(None);
     };
@@ -109,6 +112,19 @@ fn extract_pep263_encoding(body: &[u8]) -> std::result::Result<Option<&str>, Syn
         return Ok(None);
     }
     Ok(lines.next().and_then(|line2| cookie_encoding(re, line2)))
+}
+
+fn is_utf8_encoding_name(normalized: &str) -> bool {
+    normalized == "utf-8" || normalized == "utf8" || normalized.starts_with("utf-8-")
+}
+
+fn is_latin1_encoding_name(normalized: &str) -> bool {
+    matches!(
+        normalized,
+        "latin-1" | "latin1" | "iso-8859-1" | "iso8859-1" | "iso-latin-1" | "latin" | "l1"
+    ) || normalized.starts_with("latin-1-")
+        || normalized.starts_with("iso-8859-1-")
+        || normalized.starts_with("iso-latin-1-")
 }
 
 fn decode_python_source(source: &[u8]) -> std::result::Result<Cow<'_, str>, SyntaxError> {
@@ -127,8 +143,10 @@ fn decode_python_source(source: &[u8]) -> std::result::Result<Cow<'_, str>, Synt
             .map_err(|_| SyntaxError::new("invalid utf-8 encoding"));
     };
 
+    // Match CPython `get_normal_name` (Parser/tokenizer/helpers.c), including Emacs `-unix`,
+    // `-dos`, and `-mac` suffixes on `utf-8-*` and `(latin-1|iso-8859-1|iso-latin-1)-*`.
     let normalized = raw_enc.to_ascii_lowercase().replace('_', "-");
-    let is_utf8 = matches!(normalized.as_str(), "utf-8" | "utf8" | "utf-8-sig");
+    let is_utf8 = is_utf8_encoding_name(&normalized);
     if has_bom && !is_utf8 {
         return Err(SyntaxError::new("encoding problem: utf-8 with BOM"));
     }
@@ -148,7 +166,7 @@ fn decode_python_source(source: &[u8]) -> std::result::Result<Cow<'_, str>, Synt
                 .map(Cow::Borrowed)
                 .map_err(|_| SyntaxError::new("invalid ascii encoding"))
         }
-        "latin-1" | "latin1" | "iso-8859-1" | "iso8859-1" | "iso-latin-1" | "latin" | "l1" => {
+        s if is_latin1_encoding_name(s) => {
             if body.is_ascii()
                 && let Ok(ascii_str) = std::str::from_utf8(body)
             {
@@ -161,27 +179,11 @@ fn decode_python_source(source: &[u8]) -> std::result::Result<Cow<'_, str>, Synt
     }
 }
 
-#[derive(Default)]
-struct ActiveExprFinder {
-    found: bool,
-}
-
-impl<'a> Visitor<'a> for ActiveExprFinder {
-    fn visit_expr(&mut self, expr: &'a Expr) {
-        if self.found {
-            return;
-        }
-        if matches!(
-            expr,
-            Expr::Call(_) | Expr::Await(_) | Expr::Yield(_) | Expr::YieldFrom(_)
-        ) {
-            self.found = true;
-            return;
-        }
-        walk_expr(self, expr);
-    }
-}
-
+/// Returns `true` if evaluating `expr` contains a call, `await`, or `yield`.
+///
+/// Walks `expr` as written without modeling execution (for example, a call inside an uninvoked
+/// `lambda` body still counts as active); erring toward "runs code" avoids false positives on
+/// valid tests.
 fn expr_runs_code(expr: &Expr) -> bool {
     let mut finder = ActiveExprFinder::default();
     finder.visit_expr(expr);
@@ -209,6 +211,8 @@ pub fn is_inert_statement(stmt: &Stmt) -> bool {
             !expr_runs_code(&node.test) && node.msg.as_deref().is_none_or(|m| !expr_runs_code(m))
         }
         Stmt::Expr(node) => !expr_runs_code(&node.value),
+        // Inspect `if` and `try` (`try`/`except*`) blocks recursively so inert guards such as
+        // `if TYPE_CHECKING:` or `try: import foo except ImportError:` do not bypass the check.
         Stmt::If(node) => {
             !expr_runs_code(&node.test)
                 && all_inert(&node.body)
@@ -242,6 +246,10 @@ pub fn defines_test_code(body: &[Stmt]) -> bool {
 }
 
 /// Returns `true` if the module appears able to run tests (or defines no test code).
+///
+/// A module that defines no classes or functions at all (for example, one that only imports other
+/// modules) is always allowed: it is not the "defined tests but forgot to run them" pitfall this
+/// check targets, and it may legitimately rely on import side effects.
 pub fn module_runs_tests(body: &[Stmt]) -> bool {
     module_runs_something(body) || !defines_test_code(body)
 }
@@ -285,6 +293,44 @@ pub fn module_runs_tests_str(source: &str) -> std::result::Result<bool, SyntaxEr
 pub fn module_runs_something_str(source: &str) -> std::result::Result<bool, SyntaxError> {
     let module = parse_python_module(source)?;
     Ok(module_runs_something(&module.body))
+}
+
+fn write_empty_output(output: &Path) -> Result<()> {
+    fs::write(output, "").with_context(|| format!("writing {}", output.display()))
+}
+
+/// Runs validation according to `options`, writing any diagnostic messages to `stderr`.
+///
+/// # Errors
+///
+/// Returns `Err` if the source cannot be read, the output marker cannot be written, or
+/// `stderr` cannot be written to.
+pub fn validate_test_main(options: &Options, stderr: &mut dyn Write) -> Result<ExitCode> {
+    let source =
+        fs::read(&options.src).with_context(|| format!("reading {}", options.src.display()))?;
+    let src_name = &options.src_name;
+
+    match module_runs_tests_bytes(&source) {
+        Err(err) => {
+            // Syntax/encoding errors are surfaced by compilation or execution actions; warn and
+            // write the declared output marker so we do not emit duplicate build failures.
+            writeln!(
+                stderr,
+                "WARNING: py_test main validator could not parse {src_name}: {err}"
+            )?;
+            write_empty_output(&options.output)?;
+            Ok(ExitCode::SUCCESS)
+        }
+        Ok(false) => {
+            writeln!(stderr, "{}", format_error(&options.label, src_name))?;
+            Ok(ExitCode::FAILURE)
+        }
+        Ok(true) => {
+            // Validation actions must produce their declared outputs on success.
+            write_empty_output(&options.output)?;
+            Ok(ExitCode::SUCCESS)
+        }
+    }
 }
 
 /// Parses command-line arguments (excluding `argv[0]` and subcommand name) into [`ParsedArgs`].
@@ -346,41 +392,6 @@ where
     }))
 }
 
-fn write_empty_output(output: &Path) -> Result<()> {
-    fs::write(output, "").with_context(|| format!("writing {}", output.display()))
-}
-
-/// Runs validation according to `options`, writing any diagnostic messages to `stderr`.
-///
-/// # Errors
-///
-/// Returns `Err` if the source cannot be read, the output marker cannot be written, or
-/// `stderr` cannot be written to.
-pub fn validate_test_main(options: &Options, stderr: &mut dyn Write) -> Result<ExitCode> {
-    let source =
-        fs::read(&options.src).with_context(|| format!("reading {}", options.src.display()))?;
-    let src_name = &options.src_name;
-
-    match module_runs_tests_bytes(&source) {
-        Err(err) => {
-            writeln!(
-                stderr,
-                "WARNING: py_test main validator could not parse {src_name}: {err}"
-            )?;
-            write_empty_output(&options.output)?;
-            Ok(ExitCode::SUCCESS)
-        }
-        Ok(false) => {
-            writeln!(stderr, "{}", format_error(&options.label, src_name))?;
-            Ok(ExitCode::FAILURE)
-        }
-        Ok(true) => {
-            write_empty_output(&options.output)?;
-            Ok(ExitCode::SUCCESS)
-        }
-    }
-}
-
 /// Top-level CLI runner taking raw arguments (excluding `argv[0]` and subcommand name) and
 /// writing diagnostics to `stderr`.
 pub fn run<I, T>(args: I, stderr: &mut dyn Write) -> ExitCode
@@ -419,28 +430,6 @@ where
     run(args, &mut io::stderr())
 }
 
-/// Error returned when a Python source file cannot be decoded or parsed.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SyntaxError {
-    pub message: String,
-}
-
-impl SyntaxError {
-    pub fn new(message: impl Into<String>) -> Self {
-        Self {
-            message: message.into(),
-        }
-    }
-}
-
-impl fmt::Display for SyntaxError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.message)
-    }
-}
-
-impl std::error::Error for SyntaxError {}
-
 /// Result of parsing command-line arguments.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParsedArgs {
@@ -464,3 +453,48 @@ pub struct Options {
     /// directory or absolute.
     pub output: PathBuf,
 }
+
+#[derive(Default)]
+struct ActiveExprFinder {
+    found: bool,
+}
+
+impl<'a> Visitor<'a> for ActiveExprFinder {
+    fn visit_expr(&mut self, expr: &'a Expr) {
+        if self.found {
+            return;
+        }
+        // `await`/`yield` cannot appear directly at module top level, but are included for
+        // completeness when walking nested expressions.
+        if matches!(
+            expr,
+            Expr::Call(_) | Expr::Await(_) | Expr::Yield(_) | Expr::YieldFrom(_)
+        ) {
+            self.found = true;
+            return;
+        }
+        walk_expr(self, expr);
+    }
+}
+
+/// Error returned when a Python source file cannot be decoded or parsed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SyntaxError {
+    pub message: String,
+}
+
+impl SyntaxError {
+    pub fn new(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+        }
+    }
+}
+
+impl fmt::Display for SyntaxError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl std::error::Error for SyntaxError {}

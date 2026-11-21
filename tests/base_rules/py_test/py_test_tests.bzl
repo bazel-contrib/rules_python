@@ -14,6 +14,7 @@
 """Tests for py_test."""
 
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
+load("@rules_testing//lib:truth.bzl", "matching")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
 load("//python:py_test.bzl", "py_test")
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
@@ -121,6 +122,13 @@ def _test_validate_test_main_enabled(name, config):
 def _test_validate_test_main_enabled_impl(env, target):
     mnemonics = [a.mnemonic for a in target.actions]
     env.expect.that_collection(mnemonics).contains("PyValidateTestMain")
+    action = env.expect.that_target(target).action_named("PyValidateTestMain")
+    action.argv().contains_at_least_predicates([
+        matching.str_startswith("--src="),
+        matching.str_startswith("--src_name="),
+        matching.str_startswith("--label="),
+        matching.str_startswith("--output="),
+    ])
     env.expect.that_bool(
         hasattr(target[OutputGroupInfo], "_validation"),
     ).equals(True)

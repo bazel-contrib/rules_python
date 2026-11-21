@@ -19,31 +19,6 @@ fn parse_options<const N: usize>(args: [String; N]) -> Options {
     }
 }
 
-struct TempDir {
-    path: PathBuf,
-}
-
-impl TempDir {
-    fn new(prefix: &str) -> Self {
-        let id = COUNTER.fetch_add(1, Ordering::SeqCst);
-        let path = env::temp_dir().join(format!(
-            "py_test_main_validator_{}_{}_{}",
-            prefix,
-            std::process::id(),
-            id
-        ));
-        let _ = fs::remove_dir_all(&path);
-        fs::create_dir_all(&path).unwrap();
-        Self { path }
-    }
-}
-
-impl Drop for TempDir {
-    fn drop(&mut self) {
-        let _ = fs::remove_dir_all(&self.path);
-    }
-}
-
 fn runs_tests(source: &str) -> bool {
     module_runs_tests_str(&dedent(source)).expect("source should be valid Python syntax")
 }
@@ -776,7 +751,8 @@ fn test_utf8_bom_no_trailing_newline_slices_imports_and_await_yield() {
 
 #[test]
 fn test_nested_tuple_and_list_unpacking_targets() {
-    // Nested unpacking inside `def` must not raise a false SyntaxError and must be rejected as inert.
+    // Nested unpacking inside `def` must not raise a false SyntaxError and must be rejected as
+    // inert.
     assert_eq!(
         module_runs_tests_str(
             "def test_for_unpack():\n    for i, (a, b) in enumerate(items):\n        pass\n"
@@ -826,21 +802,21 @@ fn test_nested_tuple_and_list_unpacking_targets() {
     let mut stderr = Vec::new();
     let code = run(
         [
-            "--src",
-            src.to_str().unwrap(),
-            "--src_name",
-            "pkg/test_unpack.py",
-            "--label",
-            "//pkg:test_unpack",
-            "--output",
-            out.to_str().unwrap(),
+            format!("--src={}", src.display()),
+            "--src_name=pkg/test_unpack.py".to_string(),
+            "--label=@@//pkg:test_unpack".to_string(),
+            format!("--output={}", out.display()),
         ],
         &mut stderr,
     );
     assert_eq!(code, ExitCode::FAILURE);
     assert!(!out.exists());
+    assert!(
+        String::from_utf8_lossy(&stderr)
+            .starts_with("py_test target @@//pkg:test_unpack will not run any tests.\n")
+    );
 
-    // CLI exits 0 on active top-level nested unpacking.
+    // CLI exits 0 on active top-level nested unpacking with `@//`-prefixed `--label=...`.
     fs::write(
         &src,
         "def test_unpack():\n    pass\na, (b, c) = get_pair()\n",
@@ -849,14 +825,10 @@ fn test_nested_tuple_and_list_unpacking_targets() {
     stderr.clear();
     let code = run(
         [
-            "--src",
-            src.to_str().unwrap(),
-            "--src_name",
-            "pkg/test_unpack.py",
-            "--label",
-            "//pkg:test_unpack",
-            "--output",
-            out.to_str().unwrap(),
+            format!("--src={}", src.display()),
+            "--src_name=pkg/test_unpack.py".to_string(),
+            "--label=@//pkg:test_unpack".to_string(),
+            format!("--output={}", out.display()),
         ],
         &mut stderr,
     );
@@ -866,37 +838,72 @@ fn test_nested_tuple_and_list_unpacking_targets() {
 
 #[test]
 fn test_fstring_backslash_before_braces() {
-    // Raw f-string and escaped-backslash f-string inside `def` must not skip `{` and must be rejected as inert.
-    assert_eq!(
-        module_runs_tests_str("def test_win_path():\n    p = rf\"{root}\\{name}\"\n"),
-        Ok(false)
-    );
-    assert_eq!(
-        module_runs_tests_str("def test_escaped_slash():\n    p = f\"\\\\{name}\"\n"),
-        Ok(false)
-    );
-    assert_eq!(
-        module_runs_tests_str("def test_unicode_escape():\n    p = f\"\\N{SNOWMAN}{name}\"\n"),
-        Ok(false)
-    );
+    // Raw f-string and escaped-backslash f-string inside `def` must not skip `{` and must be
+    // rejected as inert.
+    assert!(!runs_tests(
+        r#"
+        def test_win_path():
+            p = rf"{root}\{name}"
+        "#
+    ));
+    assert!(!runs_tests(
+        r#"
+        def test_escaped_slash():
+            p = f"\\{name}"
+        "#
+    ));
+    assert!(!runs_tests(
+        r#"
+        def test_unicode_escape():
+            p = f"\N{SNOWMAN}{name}"
+        "#
+    ));
 
-    // Top-level raw f-string with backslash before active interpolation `{run_tests()}` is accepted as active.
-    assert_eq!(
-        module_runs_tests_str("def test_win_path():\n    pass\np = rf\"C:\\{run_tests()}\"\n"),
-        Ok(true)
-    );
+    // Top-level raw f-string with backslash before active interpolation `{run_tests()}` is
+    // accepted as active.
+    assert!(runs_tests(
+        r#"
+        def test_win_path():
+            pass
+        p = rf"C:\{run_tests()}"
+        "#
+    ));
 }
 
 #[test]
 fn test_pep263_coding_cookies_and_run_cli_exit_codes() {
-    // Line 1 & line 2 Latin-1 coding cookies with non-UTF-8 bytes.
+    // Line 1 & line 2 Latin-1 coding cookies with non-UTF-8 bytes (including CRLF blank line 1).
     assert_eq!(
         module_runs_tests_bytes(b"# -*- coding: latin-1 -*-\ndef test_f():\n    s = '\xe9'\n"),
         Ok(false)
     );
     assert_eq!(
         module_runs_tests_bytes(
+            b"\r\n# -*- coding: latin-1 -*-\r\ndef test_f():\r\n    s = '\xe9'\r\n"
+        ),
+        Ok(false)
+    );
+    assert_eq!(
+        module_runs_tests_bytes(
             b"#!/usr/bin/env python3\n# vim: set fileencoding=iso-8859-1 :\ndef test_f():\n    s = '\xe9'\nunittest.main()\n"
+        ),
+        Ok(true)
+    );
+
+    // Emacs `-unix`, `-dos`, and `-mac` PEP 263 suffixes match CPython `get_normal_name`.
+    assert_eq!(
+        module_runs_tests_bytes(b"# -*- coding: utf-8-unix -*-\ndef test_f():\n    pass\n"),
+        Ok(false)
+    );
+    assert_eq!(
+        module_runs_tests_bytes(
+            b"# -*- coding: iso-latin-1-unix -*-\ndef test_f():\n    s = '\xe9'\n"
+        ),
+        Ok(false)
+    );
+    assert_eq!(
+        module_runs_tests_bytes(
+            b"# -*- coding: latin-1-dos -*-\r\ndef test_f():\r\n    s = '\xe9'\r\nunittest.main()\r\n"
         ),
         Ok(true)
     );
@@ -940,4 +947,32 @@ fn test_parse_args_help_and_src_name_fallback() {
     assert_eq!(parsed.src_name, "pkg/test_a.py");
     assert_eq!(parsed.label, "");
     assert_eq!(parsed.output, PathBuf::from("out.txt"));
+}
+
+struct TempDir {
+    path: PathBuf,
+}
+
+impl TempDir {
+    fn new(prefix: &str) -> Self {
+        let id = COUNTER.fetch_add(1, Ordering::SeqCst);
+        let base = env::var_os("TEST_TMPDIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(env::temp_dir);
+        let path = base.join(format!(
+            "py_test_main_validator_{}_{}_{}",
+            prefix,
+            std::process::id(),
+            id
+        ));
+        let _ = fs::remove_dir_all(&path);
+        fs::create_dir_all(&path).unwrap();
+        Self { path }
+    }
+}
+
+impl Drop for TempDir {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.path);
+    }
 }
