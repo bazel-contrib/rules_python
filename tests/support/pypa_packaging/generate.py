@@ -110,6 +110,12 @@ _MARKER_ENV = {
     "sys_platform": "linux",
 }
 
+# The variables that are sets, their value in the environment and the values
+# to test the membership of.
+_SET_VARIABLES = ["extras", "dependency_groups"]
+_SET_ENV_VALUE = ["foo", "bar-baz"]
+_SET_VALUES = ["foo", "Foo", "fo", "bar-baz", "Bar_Baz", "bar.baz", "bar", ""]
+
 # The expressions that are combined with `and`, `or` and parenthesis to test
 # the precedence and the grouping.
 _MARKER_ATOMS = [
@@ -290,7 +296,7 @@ def _random_marker(rng, depth):
     return "({})".format(marker) if rng.random() < 0.5 else marker
 
 
-def _marker_table(variables, operators, values):
+def _marker_table(env, variables, operators, values):
     rows = []
     for variable, op, value in itertools.product(variables, operators, values):
         # The test builds the markers the same way.
@@ -300,7 +306,7 @@ def _marker_table(variables, operators, values):
             '{} {} "{}"'.format(variable, op, value),
             '"{}" {} {}'.format(value, op, variable),
         ]:
-            got = _evaluate_marker(marker, _MARKER_ENV)
+            got = _evaluate_marker(marker, env)
             # "E" means that it is an error to evaluate the marker.
             result += "E" if got is None else "T" if got else "F"
         rows.append((variable, op, value, result))
@@ -362,6 +368,7 @@ def marker_cases(test_markers):
             _list(
                 "MARKER_TABLE",
                 _marker_table(
+                    _MARKER_ENV,
                     ns["VARIABLES"]
                     + ns["PEP_345_VARIABLES"]
                     + ns["SETUPTOOLS_VARIABLES"],
@@ -370,6 +377,22 @@ def marker_cases(test_markers):
                 ),
                 "(variable, operator, value, results); the results are T/F/E(rror) for\n"
                 "# `<variable> <operator> <value>` and `<value> <operator> <variable>`.",
+            ),
+            _list(
+                "SET_ENV_VALUE",
+                _SET_ENV_VALUE,
+                "The value of the variables that are sets for the cases below.",
+            ),
+            _list(
+                "SET_TABLE",
+                _marker_table(
+                    _MARKER_ENV
+                    | {v: frozenset(_SET_ENV_VALUE) for v in _SET_VARIABLES},
+                    _SET_VARIABLES,
+                    ["in", "not in"],
+                    _SET_VALUES,
+                ),
+                "The same as the `MARKER_TABLE`, but for the variables that are sets.",
             ),
             _list(
                 "LOGIC_CASES",

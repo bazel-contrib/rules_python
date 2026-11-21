@@ -107,6 +107,13 @@ def _evaluate_invalid_tests(env):
         "os_name == posix",
         "'posix' == 'posix'",
         "unknown_variable == 'posix'",
+        # The variables that are sets only support the membership tests.
+        "extras == 'foo'",
+        "'foo' == extras",
+        "'foo' >= extras",
+        "extras in 'foo'",
+        "dependency_groups not in 'foo'",
+        "'foo' != dependency_groups",
         # The variables that are not in the spec are invalid even if they are in the env.
         "in_env == 'posix'",
     ]:
@@ -320,6 +327,29 @@ def _evaluate_partial_only_extra(env):
         _check_evaluate(env, input, want, {"extra": "foo"}, strict = False)
 
 _tests.append(_evaluate_partial_only_extra)
+
+def _evaluate_set_variables_tests(env):
+    values = {
+        "dependency_groups": [],
+        "extras": ["foo", "bar"],
+        "_aliases": {"extras": lambda x: x.lower()},
+    }
+    for input, want in {
+        "'foo' in extras": True,
+        "'FOO' in extras": True,
+        "'fo' in extras": False,
+        "'foo' not in extras": False,
+        "'baz' not in extras": True,
+        "'foo' in extras and 'bar' in extras": True,
+        "'foo' in extras and 'baz' in extras": False,
+        "'foo' in dependency_groups": False,
+        "'foo' not in dependency_groups": True,
+    }.items():  # buildifier: @unsorted-dict-items
+        _check_evaluate(env, input, want, values)
+
+    _check_evaluate(env, "'foo' in extras", '"foo" in extras', {}, strict = False)
+
+_tests.append(_evaluate_set_variables_tests)
 
 def _evaluate_with_aliases(env):
     # When

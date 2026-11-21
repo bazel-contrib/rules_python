@@ -219,7 +219,9 @@ def create_env():
         # Per-variable normalization functions. Each entry maps a marker
         # variable name to a function (value) -> normalized_value.
         "_aliases": {
+            "dependency_groups": normalize_name,
             "extra": normalize_name,
+            "extras": normalize_name,
             "platform_machine": lambda x: platform_machine_aliases.get(x, x),
         },
     }

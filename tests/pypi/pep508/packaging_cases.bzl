@@ -1147,6 +1147,48 @@ MARKER_TABLE = [
     ("python_implementation", "not in", "things @#4 dsfd (((", "TT"),
 ]
 
+# The value of the variables that are sets for the cases below.
+SET_ENV_VALUE = [
+    "foo",
+    "bar-baz",
+]
+
+# The same as the `MARKER_TABLE`, but for the variables that are sets.
+SET_TABLE = [
+    ("extras", "in", "foo", "ET"),
+    ("extras", "in", "Foo", "ET"),
+    ("extras", "in", "fo", "EF"),
+    ("extras", "in", "bar-baz", "ET"),
+    ("extras", "in", "Bar_Baz", "ET"),
+    ("extras", "in", "bar.baz", "ET"),
+    ("extras", "in", "bar", "EF"),
+    ("extras", "in", "", "EF"),
+    ("extras", "not in", "foo", "EF"),
+    ("extras", "not in", "Foo", "EF"),
+    ("extras", "not in", "fo", "ET"),
+    ("extras", "not in", "bar-baz", "EF"),
+    ("extras", "not in", "Bar_Baz", "EF"),
+    ("extras", "not in", "bar.baz", "EF"),
+    ("extras", "not in", "bar", "ET"),
+    ("extras", "not in", "", "ET"),
+    ("dependency_groups", "in", "foo", "ET"),
+    ("dependency_groups", "in", "Foo", "ET"),
+    ("dependency_groups", "in", "fo", "EF"),
+    ("dependency_groups", "in", "bar-baz", "ET"),
+    ("dependency_groups", "in", "Bar_Baz", "ET"),
+    ("dependency_groups", "in", "bar.baz", "ET"),
+    ("dependency_groups", "in", "bar", "EF"),
+    ("dependency_groups", "in", "", "EF"),
+    ("dependency_groups", "not in", "foo", "EF"),
+    ("dependency_groups", "not in", "Foo", "EF"),
+    ("dependency_groups", "not in", "fo", "ET"),
+    ("dependency_groups", "not in", "bar-baz", "EF"),
+    ("dependency_groups", "not in", "Bar_Baz", "EF"),
+    ("dependency_groups", "not in", "bar.baz", "EF"),
+    ("dependency_groups", "not in", "bar", "ET"),
+    ("dependency_groups", "not in", "", "ET"),
+]
+
 # (marker, expected)
 LOGIC_CASES = [
     ("\"arm\" in platform_machine and \"arm\" in platform_machine and platform_machine in \"x86_64 amd64\" and python_full_version < \"3.11.4\" or python_full_version < \"3.11.4\" and \"arm\" in platform_machine and ((python_full_version < \"3.11.4\" and \"posix\" == os_name) or os_name == \"posix\" or os_name == \"posix\" or python_version >= \"3.8\" and python_full_version < \"3.11.4\" or sys_platform != 'linux' and os_name == \"posix\" and \"arm\" in platform_machine or python_full_version < \"3.11.4\") or ((python_version >= \"3.8\" or os_name == \"posix\") or (platform_machine in \"x86_64 amd64\" and python_version >= \"3.8\" and python_full_version < \"3.11.4\" and extra == \"foo\")) and os_name == \"posix\"", True),
