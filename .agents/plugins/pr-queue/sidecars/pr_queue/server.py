@@ -33,6 +33,7 @@ import asyncio
 import contextlib
 import datetime
 import hmac
+import ipaddress
 import json
 import logging
 import os
@@ -137,6 +138,9 @@ _REVIEW_SKILL_REL_PATH = ".agents/skills/review-code/SKILL.md"
 
 _TITLE_PUNCT_STRIP_CHARS = ".,:;!?()[]{}\"'`~*"
 _HAS_ALNUM_RE = re.compile(r"[A-Za-z0-9]")
+_HOST_LABEL_RE = re.compile(
+    r"^[a-z0-9](?:[a-z0-9_-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9_-]*[a-z0-9])?)*\.?$"
+)
 _BRACKET_PREFIX_RE = re.compile(r"^(?:\[[^\]]+\]\s*)+")
 _CONVENTIONAL_COMMIT_RE = re.compile(
     r"^\s*(?P<ctype>[A-Za-z]+)(?:\((?P<scope>[^)]+)\))?!?:\s*(?P<rest>.+)$"
@@ -1618,7 +1622,9 @@ class PrQueueHttpServer:
         if not self.sidecar_token:
             return False
         provided = headers.get("x-sidecar-token", "").strip()
-        return bool(provided) and hmac.compare_digest(provided, self.sidecar_token)
+        return bool(provided) and hmac.compare_digest(
+            provided.encode("utf-8"), self.sidecar_token.encode("utf-8")
+        )
 
     def _token_valid(self, headers: Mapping[str, str]) -> bool:
         if not self.sidecar_token:
@@ -1635,16 +1641,18 @@ class PrQueueHttpServer:
 
     @staticmethod
     def _parse_http_host(raw_host: str) -> tuple[str, int | None] | None:
-        """Parses an HTTP Host header value into `(lowercase_host, port)`.
+        """Parses an HTTP Host or Origin authority into `(lowercase_host, port)`.
 
         Args:
-          raw_host: Raw `Host` header string from the HTTP request.
+          raw_host: Raw `Host` header or `Origin` netloc string.
 
         Returns:
           `(host, port)` when syntactically valid, or `None` when malformed.
         """
         cleaned = raw_host.strip()
-        if not cleaned or any(ord(ch) <= 0x20 or ch in "@/\\?#" for ch in cleaned):
+        if not cleaned or cleaned.endswith(":"):
+            return None
+        if any(not (0x21 <= ord(ch) <= 0x7E) or ch in "@/\\?#%" for ch in cleaned):
             return None
         try:
             parsed = urlsplit(f"//{cleaned}")
@@ -1653,8 +1661,15 @@ class PrQueueHttpServer:
             return None
         if port is not None and not (1 <= port <= 65535):
             return None
-        host = (parsed.hostname or "").strip("[]").lower()
-        if not host:
+        raw_hostname = parsed.hostname or ""
+        if cleaned.startswith("["):
+            try:
+                ipaddress.IPv6Address(raw_hostname)
+            except ValueError:
+                return None
+            return (raw_hostname.lower(), port)
+        host = raw_hostname.lower()
+        if not host or not _HOST_LABEL_RE.fullmatch(host):
             return None
         return (host, port)
 
@@ -1683,10 +1698,6 @@ class PrQueueHttpServer:
         Returns:
           `True` when ports match directly or via scheme default (`80`/`443`).
         """
-        if origin_port == req_port:
-            return True
-        if origin_port is not None and req_port is not None:
-            return False
         default_port = 443 if scheme == "https" else 80
         effective_origin_port = origin_port if origin_port is not None else default_port
         effective_req_port = req_port if req_port is not None else default_port
@@ -1697,31 +1708,33 @@ class PrQueueHttpServer:
         if sec_fetch == "cross-site":
             return True
         origin = headers.get("origin", "").strip()
-        if origin:
-            try:
-                parsed = urlsplit(origin)
-                origin_port = parsed.port
-            except ValueError:
-                return True
-            scheme = parsed.scheme.lower()
-            if scheme not in ("http", "https"):
-                return True
-            origin_host = (parsed.hostname or "").strip("[]").lower()
-            if not origin_host:
-                return True
-            if origin_host in self._allowed_http_hosts():
-                return False
-            if not self._has_valid_secret_token(headers):
-                return True
-            parsed_req_host = self._parse_http_host(headers.get("host", ""))
-            if parsed_req_host is None:
-                return True
-            req_host, req_port = parsed_req_host
-            if origin_host != req_host or not self._ports_match_origin(
-                scheme, origin_port, req_port
-            ):
-                return True
-        return False
+        if not origin:
+            return False
+        try:
+            parsed = urlsplit(origin)
+        except ValueError:
+            return True
+        scheme = parsed.scheme.lower()
+        if scheme not in ("http", "https"):
+            return True
+        if parsed.path or parsed.query or parsed.fragment:
+            return True
+        parsed_origin_host = self._parse_http_host(parsed.netloc)
+        if parsed_origin_host is None:
+            return True
+        parsed_req_host = self._parse_http_host(headers.get("host", ""))
+        if parsed_req_host is None:
+            return True
+        origin_host, origin_port = parsed_origin_host
+        req_host, req_port = parsed_req_host
+        allowed_hosts = self._allowed_http_hosts()
+        if origin_host in allowed_hosts and req_host in allowed_hosts:
+            return False
+        if not self._has_valid_secret_token(headers):
+            return True
+        if origin_host != req_host:
+            return True
+        return not self._ports_match_origin(scheme, origin_port, req_port)
 
     @staticmethod
     def _parse_positive_int_query_param(

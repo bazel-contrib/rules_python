@@ -1787,29 +1787,48 @@ class HttpServerTest(unittest.IsolatedAsyncioTestCase):
                 for unauth_host_hdrs in (
                     "",
                     "X-Sidecar-Token: wrong-token\r\n",
+                    "X-Sidecar-Token: \xffbad-token\r\n",
                 ):
                     rebinding_doc_req = (
                         "GET / HTTP/1.1\r\n"
                         "Host: evil.example.com:1234\r\n"
                         f"{unauth_host_hdrs}"
                         "Connection: close\r\n\r\n"
-                    ).encode("ascii")
+                    ).encode("latin-1")
                     rebind_status, _hdr, _b = await _send_raw_http(
                         port, rebinding_doc_req
                     )
                     self.assertEqual(rebind_status, 403)
 
+                non_ascii_api_tok_req = (
+                    f"GET /api/config HTTP/1.1\r\n"
+                    f"Host: 127.0.0.1:{port}\r\n"
+                    "X-Sidecar-Token: \xffbad-token\r\n"
+                    "Connection: close\r\n\r\n"
+                ).encode("latin-1")
+                non_ascii_tok_status, _hdr, _b = await _send_raw_http(
+                    port, non_ascii_api_tok_req
+                )
+                self.assertEqual(non_ascii_tok_status, 403)
+
                 # Reject syntactically invalid Host even with valid X-Sidecar-Token.
                 for malformed_host in (
                     f"evil.example.com@127.0.0.1:{port}",
                     "127.0.0.1:99999",
+                    "127.0.0.1,evil.example.com",
+                    "evil;bar.example.com",
+                    "example.com:",
+                    "[fe80::1%25eth0]:8080",
+                    "[not-ipv6]:8080",
+                    "host\x7f.example.com",
+                    "host\xff.example.com",
                 ):
                     bad_tok_host_req = (
                         "GET / HTTP/1.1\r\n"
                         f"Host: {malformed_host}\r\n"
                         f"X-Sidecar-Token: {mock_token}\r\n"
                         "Connection: close\r\n\r\n"
-                    ).encode("ascii")
+                    ).encode("latin-1")
                     malformed_status, _hdr, _b = await _send_raw_http(
                         port, bad_tok_host_req
                     )
@@ -1863,9 +1882,22 @@ class HttpServerTest(unittest.IsolatedAsyncioTestCase):
                     )
                     self.assertEqual(ppost_status, 200)
 
-                # Reject mismatched Origin host or port even through an authenticated proxy.
+                # Reject mismatched or malformed Origin even with valid X-Sidecar-Token.
                 for proxy_host, bad_origin in (
                     ("remote-proxy.example.com", "https://evil.example.com"),
+                    ("remote-proxy.example.com", "http://localhost:9999"),
+                    (
+                        "remote-proxy.example.com",
+                        "https://evil.example.com@remote-proxy.example.com",
+                    ),
+                    (
+                        f"127.0.0.1:{port}",
+                        "https://evil.example.com@127.0.0.1",
+                    ),
+                    (f"127.0.0.1:{port}", "http://127.0.0.1/extra-path"),
+                    (f"127.0.0.1:{port}", "http://127.0.0.1?query=1"),
+                    (f"127.0.0.1:{port}", "http://127.0.0.1#frag"),
+                    (f"127.0.0.1:{port}", "http://127.0.0.1:0"),
                     (
                         "remote-proxy.example.com",
                         "https://remote-proxy.example.com:9999",
