@@ -79,6 +79,12 @@ def py_repositories(transition_settings = []):
         url = "https://github.com/jvolkman/toml.bzl/releases/download/v0.4.0/toml.bzl-v0.4.0.tar.gz",
     )
     http_archive(
+        name = "pypackaging.bzl",
+        sha256 = "09570564367dfbff313950528376c9ba9ded9025cacb2c731545db19bc27e1e9",
+        strip_prefix = "pypackaging.bzl-0.3.0",
+        url = "https://github.com/jvolkman/pypackaging.bzl/releases/download/v0.3.0/pypackaging.bzl-v0.3.0.tar.gz",
+    )
+    http_archive(
         name = "package_metadata",
         sha256 = "8f27dc7393e3f3bdc793bdc4ba36d67a63c22cc9d38cc65d3204654974ea4563",
         strip_prefix = "supply-chain-0.0.7/metadata",
