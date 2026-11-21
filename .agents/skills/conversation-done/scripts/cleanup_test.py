@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import http.server
+import io
 import json
 import os
 import stat
@@ -579,6 +580,10 @@ detached
             cleanup.format_done_title("DONE   Fix flaky upload test"),
             "done Fix flaky upload test",
         )
+        self.assertEqual(
+            cleanup.format_done_title("Fix\n\x1b[31mflaky\x1b[0m\x07\x9b2J test"),
+            "done Fix flaky test",
+        )
         self.assertEqual(cleanup.format_done_title("   "), "done")
         long_title = "a" * 80
         formatted = cleanup.format_done_title(long_title)
@@ -620,19 +625,28 @@ detached
     def test_prefix_and_delete_conversation_loopback_rpc_and_redirect_guard(
         self,
     ) -> None:
-        """Verifies rename + DeleteCascadeTrajectory RPCs, loopback, and redirect guards."""
-        recorded: list[tuple[str, dict[str, str], dict[str, object]]] = []
+        """Verifies rename + DeleteCascadeTrajectory RPCs and redirect guards."""
+        recorded: list[tuple[str, str, dict[str, str], dict[str, object]]] = []
         mode = {"status": 200}
+        redirect_target = {"url": ""}
 
         class FakeLsHandler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self) -> None:
+                hdrs = {k.lower(): v for k, v in self.headers.items()}
+                recorded.append(("GET", self.path, hdrs, {}))
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b"{}")
+
             def do_POST(self) -> None:
                 length = int(self.headers.get("Content-Length", "0"))
                 raw = self.rfile.read(length).decode("utf-8")
                 hdrs = {k.lower(): v for k, v in self.headers.items()}
-                recorded.append((self.path, hdrs, json.loads(raw)))
+                recorded.append(("POST", self.path, hdrs, json.loads(raw)))
                 if mode["status"] == 302:
                     self.send_response(302)
-                    self.send_header("Location", "http://evil.example.com/steal")
+                    self.send_header("Location", redirect_target["url"])
                     self.end_headers()
                     return
                 self.send_response(mode["status"])
@@ -652,59 +666,45 @@ detached
                 del format, args
 
         mock_token = "csrf-test-123"
-        cleanup.prefix_conversation_title(
-            "conv-123", "evil.example.com:5387", mock_token, dry_run=False
-        )
-        self.assertFalse(
-            cleanup.delete_conversation(
-                "conv-123", "evil.example.com:5387", mock_token, dry_run=False
-            )
-        )
-
         httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), FakeLsHandler)
         port = httpd.server_address[1]
+        base_url = f"http://127.0.0.1:{port}"
+        redirect_target["url"] = f"{base_url}/redirected"
         thread = threading.Thread(target=httpd.serve_forever, daemon=True)
         thread.start()
         try:
-            ls_addr = f"127.0.0.1:{port}"
             cleanup.prefix_conversation_title(
-                "conv-123", ls_addr, mock_token, dry_run=True
+                "conv-123", base_url, mock_token, dry_run=True
             )
-            self.assertTrue(
-                cleanup.delete_conversation(
-                    "conv-123", ls_addr, mock_token, dry_run=True
-                )
-            )
+            cleanup.delete_conversation("conv-123", base_url, mock_token, dry_run=True)
             self.assertEqual(len(recorded), 1)
-            self.assertTrue(recorded[0][0].endswith("/GetAllCascadeTrajectories"))
+            self.assertEqual(recorded[0][0], "POST")
+            self.assertTrue(recorded[0][1].endswith("/GetAllCascadeTrajectories"))
             recorded.clear()
 
             cleanup.prefix_conversation_title(
-                "conv-123", ls_addr, mock_token, dry_run=False
+                "conv-123", base_url, mock_token, dry_run=False
             )
-            self.assertTrue(
-                cleanup.delete_conversation(
-                    "conv-123", ls_addr, mock_token, dry_run=False
-                )
-            )
+            cleanup.delete_conversation("conv-123", base_url, mock_token, dry_run=False)
             self.assertEqual(len(recorded), 3)
             self.assertEqual(
-                recorded[0][0],
+                recorded[0][1],
                 "/exa.language_server_pb.LanguageServerService/GetAllCascadeTrajectories",
             )
             self.assertEqual(
-                recorded[1][0],
+                recorded[1][1],
                 "/exa.language_server_pb.LanguageServerService/UpdateConversationAnnotations",
             )
             self.assertEqual(
-                recorded[1][2],
+                recorded[1][3],
                 {
                     "cascadeId": "conv-123",
                     "annotations": {"title": "done Clean up feature branch"},
                     "mergeAnnotations": True,
                 },
             )
-            path, hdrs, payload = recorded[2]
+            method, path, hdrs, payload = recorded[2]
+            self.assertEqual(method, "POST")
             self.assertEqual(
                 path,
                 "/exa.language_server_pb.LanguageServerService/DeleteCascadeTrajectory",
@@ -713,20 +713,30 @@ detached
             self.assertEqual(hdrs.get("connect-protocol-version"), "1")
             self.assertEqual(payload, {"cascadeId": "conv-123"})
 
+            recorded.clear()
             mode["status"] = 302
-            self.assertFalse(
+            with self.assertRaisesRegex(
+                cleanup.CleanupError, r"HTTP redirect \(302\) rejected"
+            ) as redirect_cm:
                 cleanup.delete_conversation(
-                    "conv-123", ls_addr, mock_token, dry_run=False
+                    "conv-123\x1b[31m\x07", base_url, mock_token, dry_run=False
                 )
+            self.assertIn(
+                "Failed to delete conversation conv-123",
+                redirect_cm.exception.__notes__,
+            )
+            self.assertEqual(len(recorded), 1)
+            self.assertEqual(recorded[0][0], "POST")
+            self.assertEqual(
+                recorded[0][1],
+                "/exa.language_server_pb.LanguageServerService/DeleteCascadeTrajectory",
             )
         finally:
             httpd.shutdown()
             httpd.server_close()
-            thread.join(timeout=2)
+            thread.join()
 
-    async def test_async_main_prefixes_and_deletes_conversation_on_success(
-        self,
-    ) -> None:
+    async def test_prefixes_and_deletes_conversation_on_success(self) -> None:
         """Verifies async_main prefixes 'done ' before deleting the conversation."""
         target = cleanup.CleanupTarget(
             worktree_path="/repo/worktrees/feat1",
@@ -743,9 +753,8 @@ detached
         def record_prefix(**_kwargs: object) -> None:
             order.append("prefix")
 
-        def record_delete(**_kwargs: object) -> bool:
+        def record_delete(**_kwargs: object) -> None:
             order.append("delete")
-            return True
 
         with mock.patch.dict(os.environ, env, clear=False), mock.patch(
             "cleanup.get_main_repo", return_value="/repo/main"
@@ -764,30 +773,65 @@ detached
         self.assertEqual(order, ["prefix", "delete"])
         mock_prefix.assert_called_once_with(
             conversation_id="conv-done-9",
-            ls_address="127.0.0.1:5387",
+            base_url="http://127.0.0.1:5387",
             csrf_header_value=mock_token,
             dry_run=False,
         )
         mock_delete_conv.assert_called_once_with(
             conversation_id="conv-done-9",
-            ls_address="127.0.0.1:5387",
+            base_url="http://127.0.0.1:5387",
             csrf_header_value=mock_token,
             dry_run=False,
         )
 
+        err_buf = io.StringIO()
         with mock.patch.dict(os.environ, env, clear=False), mock.patch(
-            "cleanup.get_main_repo", return_value="/repo/main"
-        ), mock.patch("cleanup.get_worktrees", return_value=[]), mock.patch(
-            "cleanup.build_cleanup_target", return_value=target
-        ), mock.patch(
+            "sys.stderr", err_buf
+        ), mock.patch("cleanup.get_main_repo", return_value="/repo/main"), mock.patch(
+            "cleanup.get_worktrees", return_value=[]
+        ), mock.patch("cleanup.build_cleanup_target", return_value=target), mock.patch(
             "cleanup.execute_cleanup_target",
             return_value=(["Git worktree: /repo/worktrees/feat1"], True),
         ), mock.patch("cleanup.prefix_conversation_title"), mock.patch(
-            "cleanup.delete_conversation", return_value=False
+            "cleanup.delete_conversation",
+            side_effect=OSError("connection refused\x1b[31m\r\ninjected"),
         ):
             with self.assertRaises(SystemExit) as cm:
                 await cleanup.async_main(["--branches", "feat1", "--force"])
         self.assertEqual(cm.exception.code, 1)
+        stderr_out = err_buf.getvalue()
+        self.assertIn("connection refused injected", stderr_out)
+        self.assertNotIn("\x1b", stderr_out)
+        self.assertNotIn("\r", stderr_out)
+
+        bad_env = dict(env)
+        bad_env["ANTIGRAVITY_LS_ADDRESS"] = "evil.example.com:5387\r\n\x1b[31mFAKE"
+        bad_err_buf = io.StringIO()
+        with mock.patch.dict(os.environ, bad_env, clear=False), mock.patch(
+            "sys.stderr", bad_err_buf
+        ), mock.patch("cleanup.get_main_repo", return_value="/repo/main"), mock.patch(
+            "cleanup.get_worktrees", return_value=[]
+        ), mock.patch("cleanup.build_cleanup_target", return_value=target), mock.patch(
+            "cleanup.execute_cleanup_target",
+            return_value=(["Git worktree: /repo/worktrees/feat1"], True),
+        ), mock.patch(
+            "cleanup.prefix_conversation_title"
+        ) as mock_bad_prefix, mock.patch(
+            "cleanup.delete_conversation"
+        ) as mock_bad_delete:
+            with self.assertRaises(SystemExit) as bad_cm:
+                await cleanup.async_main(["--branches", "feat1", "--force"])
+        self.assertEqual(bad_cm.exception.code, 1)
+        mock_bad_prefix.assert_not_called()
+        mock_bad_delete.assert_not_called()
+        bad_stderr = bad_err_buf.getvalue()
+        self.assertEqual(
+            bad_stderr.count("Refusing Language Server RPC"),
+            1,
+        )
+        self.assertIn("evil.example.com:5387 FAKE", bad_stderr)
+        self.assertNotIn("\x1b", bad_stderr)
+        self.assertNotIn("\r", bad_stderr)
 
 
 if __name__ == "__main__":

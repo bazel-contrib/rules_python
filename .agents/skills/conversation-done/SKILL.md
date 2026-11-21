@@ -12,7 +12,7 @@ active agent conversation once all cleanup steps succeed.
 
 ## Overview
 
-When agents work on tasks, several workspace and session resources are created:
+When working on tasks, agents create several workspace and session resources:
 
 1. **Bazel Output Base(s)**: Intermediate build artifacts, execroot trees,
    and running Bazel server and persistent worker processes (consuming tens of
@@ -22,15 +22,11 @@ When agents work on tasks, several workspace and session resources are created:
 3. **Local Git Branch**: The feature branch associated with the worktree.
 4. **Git Worktree**: The checked-out directory on disk (removed after build
    and branch cleanup steps succeed).
-5. **Agent Conversation**: Once all workspace cleanup steps succeed without
-   errors, the active conversation (`ANTIGRAVITY_CONVERSATION_ID`) has its
-   title prefixed with `"done "` (without duplicating an existing `"done "`
-   prefix, capped at 70 characters) and is then permanently deleted via the
-   local Language Server.
-
-This skill safely shuts down active build processes, reclaims these workspace
-resources, marks the conversation title with `"done "`, and deletes the
-finished conversation only when every workspace cleanup step succeeds.
+5. **Agent Conversation**: Once all workspace cleanup steps succeed, the script
+   prefixes the active conversation (`ANTIGRAVITY_CONVERSATION_ID`) title with
+   `"done "` (without duplicating an existing `"done "` prefix, capped at 70
+   characters) and permanently deletes the conversation via the local Language
+   Server.
 
 ## Script Location
 
@@ -104,16 +100,16 @@ Fine-tune what gets cleaned up using selective leave flags:
   directory intact on failure.
 * **Conversation Deleted Last on Success**: Prefixes the conversation title
   with `"done "` and permanently deletes the active conversation only after all
-  workspace cleanup steps succeed without errors, preserving the conversation
-  and transcripts if any cleanup step fails.
+  workspace cleanup steps succeed, preserving the conversation and transcripts
+  if any cleanup step fails.
 
 ## Reporting Results
 
 Deleting the active conversation immediately terminates and removes the
-session, so when running live cleanup from inside an active conversation, state
-what will be cleaned up beforehand (or run `--dry-run` first when previewing).
-In `--dry-run` mode or external invocations without an active conversation ID,
-report the resources deleted (or previewed), including:
+session. When running live cleanup from inside an active conversation, state
+which resources you will clean up beforehand (or run `--dry-run` first to
+preview). In `--dry-run` mode or external invocations without an active
+conversation ID, report the deleted (or previewed) resources:
 
 * **Bazel Output Base(s)**: Paths and reclaimed disk space sizes.
 * **Remote Git Branch**: Deleted remote branch (`<remote>/<branch>`).
