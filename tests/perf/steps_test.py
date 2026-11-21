@@ -9,11 +9,11 @@ from tests.perf.workloads import workloads
 # numbers with the output of `bazel run //tests/perf:benchmark`.
 _STEPS = {
     # keep sorted
-    "evaluate_long": 11056,
+    "evaluate_long": 6376,
     "evaluate_non_strict": 703,
     "evaluate_string": 362,
     "evaluate_two_strings": 750,
-    "evaluate_version": 1975,
+    "evaluate_version": 525,
     "tokenize_long": 4870,
     "tokenize_no_whitespace": 563,
     "tokenize_version": 305,
@@ -22,12 +22,12 @@ _STEPS = {
     "version_is_ge": 54,
     "version_is_lt": 48,
     "version_key": 26,
-    "version_normalize": 950,
-    "version_parse_all_segments": 1514,
-    "version_parse_invalid": 628,
-    "version_parse_pre_release": 1016,
-    "version_parse_prefix": 784,
-    "version_parse_release": 881,
+    "version_normalize": 24,
+    "version_parse_all_segments": 1518,
+    "version_parse_invalid": 632,
+    "version_parse_pre_release": 1020,
+    "version_parse_prefix": 52,
+    "version_parse_release": 53,
 }
 
 # The number of the steps slightly depends on the Python version.
