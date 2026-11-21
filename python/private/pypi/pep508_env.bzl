@@ -15,7 +15,6 @@
 """This module is for implementing PEP508 environment definition.
 """
 
-load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:version.bzl", "version")
 
 _DEFAULT = "//conditions:default"
@@ -31,15 +30,6 @@ _os_aliases = {
 }
 
 # See https://stackoverflow.com/a/45125525
-platform_machine_aliases = {
-    # These pairs mean the same hardware, but different values may be used
-    # on different host platforms.
-    "amd64": "x86_64",
-    "arm64": "aarch64",
-    "i386": "x86_32",
-    "i686": "x86_32",
-}
-
 # NOTE: There are many cpus, and unfortunately, the value isn't directly
 # accessible to Starlark. Using CcToolchain.cpu might work, though.
 # Some targets are aliases and are omitted below as their value is implied
@@ -184,8 +174,7 @@ def env(*, env = None, os, arch, python_version = "", extra = None):
     Returns:
         A dict that can be used as `env` in the marker evaluation.
     """
-    env = env or {}
-    env = env | create_env()
+    env = dict(env or {})
     if extra != None:
         env["extra"] = extra
 
@@ -213,16 +202,6 @@ def env(*, env = None, os, arch, python_version = "", extra = None):
     set_missing_env_defaults(env)
 
     return env
-
-def create_env():
-    return {
-        # Per-variable normalization functions. Each entry maps a marker
-        # variable name to a function (value) -> normalized_value.
-        "_aliases": {
-            "extra": normalize_name,
-            "platform_machine": lambda x: platform_machine_aliases.get(x, x),
-        },
-    }
 
 def set_missing_env_defaults(env):
     """Sets defaults based on existing values.

@@ -7,7 +7,6 @@ _tests = []
 
 def _test_env_defaults(env):
     got = pep508_env(os = "exotic", arch = "exotic", python_version = "3.1.1")
-    got.pop("_aliases")
     env.expect.that_dict(got).contains_exactly({
         "implementation_name": "cpython",
         "implementation_version": "3.1.1",
@@ -26,7 +25,6 @@ _tests.append(_test_env_defaults)
 
 def _test_env_freebsd(env):
     got = pep508_env(os = "freebsd", arch = "arm64", python_version = "3.1.1")
-    got.pop("_aliases")
     env.expect.that_dict(got).contains_exactly({
         "implementation_name": "cpython",
         "implementation_version": "3.1.1",
@@ -45,7 +43,6 @@ _tests.append(_test_env_freebsd)
 
 def _test_env_macos(env):
     got = pep508_env(os = "macos", arch = "arm64", python_version = "3.1.1")
-    got.pop("_aliases")
     env.expect.that_dict(got).contains_exactly({
         "implementation_name": "cpython",
         "implementation_version": "3.1.1",

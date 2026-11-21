@@ -4,7 +4,7 @@ load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("//python/private:common_labels.bzl", "labels")
 load("//python/private:toolchain_types.bzl", "TARGET_TOOLCHAIN_TYPE")
 load(":env_marker_info.bzl", "EnvMarkerInfo")
-load(":pep508_env.bzl", "create_env", "set_missing_env_defaults")
+load(":pep508_env.bzl", "set_missing_env_defaults")
 load(":pep508_evaluate.bzl", "evaluate")
 
 # Use capitals to hint its not an actual boolean type.
@@ -38,10 +38,7 @@ def env_marker_setting(*, name, expression, **kwargs):
     )
 
 def _env_marker_setting_impl(ctx):
-    env = create_env()
-    env.update(
-        ctx.attr._env_marker_config_flag[EnvMarkerInfo].env,
-    )
+    env = dict(ctx.attr._env_marker_config_flag[EnvMarkerInfo].env)
 
     runtime = ctx.toolchains[TARGET_TOOLCHAIN_TYPE].py3_runtime
 
