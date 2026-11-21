@@ -602,9 +602,9 @@ def parse(version_str, strict = False, _fail = fail):
         * `pre` {type}`tuple[str, int] | None` a tuple of a string and an int,
             e.g. ("a", 1)
         * `post` {type}`tuple[str, int] | None` a tuple of a string and an int,
-            e.g. ("~", 1)
+            e.g. ("post", 1)
         * `dev` {type}`tuple[str, int] | None` a tuple of a string and an int,
-            e.g. ("", 1)
+            e.g. ("dev", 1)
         * `local` {type}`tuple[str, int] | None` a tuple of components in the local
             version, e.g. ("abc", 123).
         * `is_prefix` {type}`bool` whether the version_str ends with `.*`.
@@ -664,10 +664,7 @@ def _parse_dev(value, fail):
 
     if not value.startswith(".dev"):
         fail("dev release identifier must start with '.dev', got: {}".format(value))
-    dev = int(value[len(".dev"):])
-
-    # Empty string goes first when comparing
-    return ("", dev)
+    return ("dev", int(value[len(".dev"):]))
 
 def _parse_pre(value):
     if not value:
@@ -686,11 +683,7 @@ def _parse_post(value, fail):
 
     if not value.startswith(".post"):
         fail("post release identifier must start with '.post', got: {}".format(value))
-    post = int(value[len(".post"):])
-
-    # We choose `~` since almost all of the ASCII characters will be before
-    # it. Use `ord` and `chr` functions to find a good value.
-    return ("~", post)
+    return ("post", int(value[len(".post"):]))
 
 def _pad_zeros(release, n):
     padding = n - len(release)
@@ -700,83 +693,78 @@ def _pad_zeros(release, n):
     release = list(release) + [0] * padding
     return tuple(release)
 
-def _prefix_err(left, op, right):
-    if left.is_prefix or right.is_prefix:
-        fail("PEP440: only '==' and '!=' operators can use prefix matching: {} {} {}".format(
+def _strip_zeros(release):
+    """Strip the trailing zeros, because `1`, `1.0` and `1.0.0` are the same release."""
+    for n in range(len(release), 0, -1):
+        if release[n - 1] != 0:
+            return release[:n]
+
+    return ()
+
+def _fail_if_prefix(left, op, right):
+    """Only the specifier of `==` and `!=` can use the `V.*` prefix matching."""
+    if left.is_prefix or (right.is_prefix and op not in ["==", "!="]):
+        fail("PEP440: only the specifiers of '==' and '!=' can use prefix matching: {}{} {} {}{}".format(
             left.string,
+            ".*" if left.is_prefix else "",
             op,
             right.string,
+            ".*" if right.is_prefix else "",
         ))
+
+def _has_prefix(self, epoch, release):
+    """Check if the version starts with the given release segments."""
+    n = len(release)
+    return self.epoch == epoch and _pad_zeros(self.release, n)[:n] == release
 
 def _version_eeq(left, right):
     """=== operator"""
-    if left.is_prefix or right.is_prefix:
-        fail(_prefix_err(left, "===", right))
+    _fail_if_prefix(left, "===", right)
 
     # https://peps.python.org/pep-0440/#arbitrary-equality
     # > simple string equality operations
     return left.string == right.string
 
 def _version_eq(left, right):
-    """== operator"""
-    is_prefix = _is_prefix(left, right)
-    if is_prefix != None:
-        return is_prefix
+    """== operator
 
-    if left.epoch != right.epoch:
-        return False
+    Args:
+        left: {type}`Version` The version to check.
+        right: {type}`Version` The version from the specifier. It may be
+            parsed from the `V.*` prefix matching syntax. If it does not have
+            a local version segment, then the local version segment of the
+            `left` is ignored.
 
-    release_len = max(len(left.release), len(right.release))
-    left_release = _pad_zeros(left.release, release_len)
-    right_release = _pad_zeros(right.release, release_len)
-
-    if left_release != right_release:
-        return False
-
-    return (
-        left.pre == right.pre and
-        left.post == right.post and
-        left.dev == right.dev
-        # local is ignored for == checks
-    )
-
-def _is_prefix(left, right):
-    if left.is_prefix and right.is_prefix:
-        fail("Invalid comparison: both versions cannot be prefix matching")
-    if left.is_prefix:
-        return _left_is_prefix(left, right)
+    Returns:
+        {type}`bool`
+    """
+    _fail_if_prefix(left, "==", right)
     if right.is_prefix:
-        return _left_is_prefix(right, left)
+        return _has_prefix(left, right.epoch, right.release)
 
-    return None
-
-def _left_is_prefix(left, right):
-    if right.string.startswith("{}.".format(left.string)):
-        return True
-
-    # There is a chance that we are comparing 1.3 ~= 1.3.0
-    #
-    # In that case the logic would be to normalize 1.3 to 1.3.0 and then
-    # the above would work, but we end up comparing 1.3 with 1.3. above
-    # and it fails.
-    return _version_key(left) == _version_key(right)
+    # https://packaging.python.org/en/latest/specifications/version-specifiers/#version-matching
+    # > If the specified version identifier is a public version identifier (no
+    # > local version label), then the local version label of any candidate
+    # > versions MUST be ignored when matching versions.
+    return _version_key(left, local = right.local != None) == _version_key(right)
 
 def _version_compatible(left, right):
     """~= operator"""
-    if left.is_prefix or right.is_prefix:
-        fail(_prefix_err(left, "~=", right))
+    _fail_if_prefix(left, "~=", right)
 
     # https://peps.python.org/pep-0440/#compatible-release
     # Note, the ~= operator can be also expressed as:
     # >= V.N, == V.*
+    #
+    # Where the pre, post and dev release segments of the specifier are
+    # ignored when determining the prefix.
+    prefix = right.release[:-1]
+    if not prefix:
+        fail("PEP440: the '~=' operator needs at least 2 release segments, got: {}".format(
+            right.string,
+        ))
 
-    right_star = ".".join([str(d) for d in right.release[:-1]])
-    if right.epoch:
-        right_star = "{}!{}.*".format(right.epoch, right_star)
-    else:
-        right_star = "{}.*".format(right_star)
-
-    return _version_ge(left, right) and _is_prefix(left, parse(right_star, strict = False))
+    return _has_prefix(left, right.epoch, prefix) and _version_ge(left, right)
 
 def _version_ne(left, right):
     """!= operator"""
@@ -784,112 +772,108 @@ def _version_ne(left, right):
 
 def _version_lt(left, right):
     """< operator"""
-    if left.is_prefix or right.is_prefix:
-        fail(_prefix_err(left, "<", right))
+    _fail_if_prefix(left, "<", right)
 
-    if left.epoch > right.epoch:
-        return False
-    elif left.epoch < right.epoch:
-        return True
-
-    release_len = max(len(left.release), len(right.release))
-    left_release = _pad_zeros(left.release, release_len)
-    right_release = _pad_zeros(right.release, release_len)
-
-    if left_release > right_release:
-        return False
-    elif left_release < right_release:
-        return True
-
-    # From PEP440, this is not a simple ordering check and we need to check the version
-    # semantically:
-    # * The exclusive ordered comparison <V MUST NOT allow a pre-release of the specified version
-    #   unless the specified version is itself a pre-release.
-    if left.pre and right.pre:
-        return left.pre < right.pre
+    # > The exclusive ordered comparison <V MUST NOT allow a pre-release of the
+    # > specified version unless the specified version is itself a pre-release.
+    #
+    # The earliest pre-release of `V` is `V.dev0`, so use that as the bound.
+    if right.pre or right.dev:
+        bound = _version_key(right, local = False)
     else:
-        return False
+        bound = _key(right.epoch, right.release, None, right.post, ("dev", 0), None)
+
+    return _version_key(left, local = False) < bound
 
 def _version_gt(left, right):
     """> operator"""
-    if left.is_prefix or right.is_prefix:
-        fail(_prefix_err(left, ">", right))
+    _fail_if_prefix(left, ">", right)
 
-    if left.epoch > right.epoch:
-        return True
-    elif left.epoch < right.epoch:
+    # > The exclusive ordered comparison >V MUST NOT match a local version of
+    # > the specified version.
+    if _version_key(left, local = False) <= _version_key(right, local = False):
         return False
 
-    release_len = max(len(left.release), len(right.release))
-    left_release = _pad_zeros(left.release, release_len)
-    right_release = _pad_zeros(right.release, release_len)
-
-    if left_release > right_release:
-        return True
-    elif left_release < right_release:
-        return False
-
-    # From PEP440, this is not a simple ordering check and we need to check the version
-    # semantically:
-    # * The exclusive ordered comparison >V MUST NOT allow a post-release of the given version
-    #   unless V itself is a post release.
+    # > The exclusive ordered comparison >V MUST NOT allow a post-release of
+    # > the given version unless V itself is a post release.
     #
-    # * The exclusive ordered comparison >V MUST NOT match a local version of the specified
-    #   version.
-
-    if left.post and right.post:
-        return left.post > right.post
-    else:
-        # ignore the left.post if right is not a post if right is a post, then this evaluates to
-        # False anyway.
-        return False
+    # Note, that `V.postM` is a post-release of `V` and not of `V.devN`.
+    is_post_release_of_right = (
+        left.post and
+        not right.post and
+        not right.dev and
+        left.epoch == right.epoch and
+        _strip_zeros(left.release) == _strip_zeros(right.release) and
+        left.pre == right.pre
+    )
+    return not is_post_release_of_right
 
 def _version_le(left, right):
     """<= operator"""
-    if left.is_prefix or right.is_prefix:
-        fail(_prefix_err(left, "<=", right))
+    _fail_if_prefix(left, "<=", right)
 
     # PEP440: simple order check
     # https://peps.python.org/pep-0440/#inclusive-ordered-comparison
-    _left = _version_key(left, local = False)
-    _right = _version_key(right, local = False)
-    return _left < _right or _version_eq(left, right)
+    return _version_key(left, local = False) <= _version_key(right, local = False)
 
 def _version_ge(left, right):
     """>= operator"""
-    if left.is_prefix or right.is_prefix:
-        fail(_prefix_err(left, ">=", right))
+    _fail_if_prefix(left, ">=", right)
 
     # PEP440: simple order check
     # https://peps.python.org/pep-0440/#inclusive-ordered-comparison
-    _left = _version_key(left, local = False)
-    _right = _version_key(right, local = False)
-    return _left > _right or _version_eq(left, right)
+    return _version_key(left, local = False) >= _version_key(right, local = False)
+
+def _key(epoch, release, pre, post, dev, local):
+    """Build a tuple that sorts the same way as the version would.
+
+    The absent segments need to sort before or after the present ones, so each
+    segment is a tuple starting with a rank.
+    """
+    if pre:
+        pre_key = (1, pre[0], pre[1])
+    elif dev and not post:
+        # `V.devN` sorts before all of the pre-releases of `V`.
+        pre_key = (0,)
+    else:
+        pre_key = (2,)
+
+    return (
+        epoch,
+        _strip_zeros(release),
+        # PEP440 release ordering: .devN, aN, bN, rcN, <no suffix>, .postN
+        pre_key,
+        # No post-release sorts before any post-release.
+        (1, post[1]) if post else (0,),
+        # A dev release sorts before the version that it is a dev release of.
+        (0, dev[1]) if dev else (1,),
+        # No local version sorts before any local version and the numeric
+        # segments sort after the lexicographically compared ones.
+        tuple([
+            (1, item) if type(item) == "int" else (0, item)
+            for item in local or []
+        ]),
+    )
 
 def _version_key(self, *, local = True):
     """This function returns a tuple that can be used in 'sorted' calls.
 
     This implements the PEP440 version sorting.
-    """
-    release_key = ("z",)
-    local = self.local if local else []
-    local = local or []
 
-    return (
+    Args:
+        self: {type}`Version` The version to return the key for.
+        local: {type}`bool` Whether to include the local version segment.
+
+    Returns:
+        A tuple that is comparable with keys of other versions.
+    """
+    return _key(
         self.epoch,
         self.release,
-        # PEP440 Within a pre-release, post-release or development release segment with
-        # a shared prefix, ordering MUST be by the value of the numeric component.
-        # PEP440 release ordering: .devN, aN, bN, rcN, <no suffix>, .postN
-        # We choose to first match the pre-release, then post release, then dev and
-        # then stable
-        self.pre or self.post or self.dev or release_key,
-        # PEP440 local versions go before post versions
-        tuple([(type(item) == "int", item) for item in local]),
-        # PEP440 - pre-release ordering: .devN, <no suffix>, .postN
-        self.post or self.dev or release_key,
-        # PEP440 - post release ordering: .devN, <no suffix>
-        self.dev or release_key,
+        self.pre,
+        self.post,
+        self.dev,
+        self.local if local else None,
     )
 
 version = struct(

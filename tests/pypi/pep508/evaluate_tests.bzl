@@ -124,7 +124,8 @@ def _evaluate_version_env_tests(env):
             "{} ~= '3.8.0'".format(var_name): False,
             "{} === '3.7.9+rc2'".format(var_name): False,
             "{} === '3.7.9'".format(var_name): True,
-            "{} == '3.7.9+rc2'".format(var_name): True,
+            # The local version of the specifier has to match
+            "{} == '3.7.9+rc2'".format(var_name): False,
         }.items():  # buildifier: @unsorted-dict-items
             _check_evaluate(env, input, want, marker_env)
 
