@@ -511,6 +511,9 @@ def _parse_requirements_from_req_files(
 
     reqs_by_name = {}
     requirements_by_platform = {}
+
+    # The same lines are used on many platforms, so parse them once.
+    names = {}
     for plat, parse_results in requirements.items():
         requirements_dict = {}
         for entry in sorted(
@@ -518,9 +521,10 @@ def _parse_requirements_from_req_files(
             key = lambda x: (len(x[1].partition("==")[0]), x),
         ):
             req_line = entry[1]
-            req = requirement(req_line)
+            if req_line not in names:
+                names[req_line] = requirement(req_line).name
 
-            requirements_dict[req.name] = entry
+            requirements_dict[names[req_line]] = entry
 
         extra_pip_args_for_plat = options[plat]
 
