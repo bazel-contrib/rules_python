@@ -39,6 +39,10 @@ _VARIABLES = {
     "sys_platform": False,
 }
 
+# The variables that are sets of names, which can only be used as
+# `<string> in <variable>` or `<string> not in <variable>`.
+_SET_VARIABLES = ["dependency_groups", "extras"]
+
 # The deprecated names that are still found in the metadata of old packages.
 _VARIABLE_ALIASES = {
     "os.name": "os_name",
@@ -253,6 +257,8 @@ def _parse_expr(tokens):
     name = _VARIABLE_ALIASES.get(name, name)
     if name not in _VARIABLES:
         return None, "Unknown variable '{}'".format(name)
+    elif name in _SET_VARIABLES and not (value_is_left and op in ["in", "not in"]):
+        return None, "Expected '<string> in {0}' or '<string> not in {0}' at '{1}'".format(name, " ".join(tokens))
 
     is_version = _VARIABLES[name]
     return struct(
@@ -273,10 +279,12 @@ def evaluate(marker, *, env, strict = True, _fail = fail):
     Args:
         marker: {type}`str` The marker to evaluate or the value returned by
             {obj}`parse`.
-        env: {type}`dict[str, str]` The values of the variables. If it has
-            the `_aliases` key, then its value is a dict of functions to
-            normalize the strings that the variables are compared with, which
-            is how e.g. `platform_machine == "arm64"` is true for `aarch64`.
+        env: {type}`dict[str, str | list[str]]` The values of the variables,
+            which are lists of normalized names for `extras` and
+            `dependency_groups`. If it has the `_aliases` key, then its value
+            is a dict of functions to normalize the strings that the
+            variables are compared with, which is how e.g.
+            `platform_machine == "arm64"` is true for `aarch64`.
         strict: {type}`bool` Whether to fail if a variable is not in the
             `env`. If it is `False`, then the expressions with such variables
             are not evaluated.

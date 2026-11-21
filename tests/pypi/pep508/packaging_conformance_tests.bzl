@@ -14,17 +14,23 @@ load(
     "LOGIC_CASES",
     "MARKER_ENV",
     "MARKER_TABLE",
+    "SET_ENV_VALUE",
+    "SET_TABLE",
 )
+
+_SET_VARIABLES = ["dependency_groups", "extras"]
 
 _tests = []
 
 def _env(overrides = {}):
     env = dict(MARKER_ENV) | overrides | {
-        "_aliases": {"extra": normalize_name},
+        "_aliases": {name: normalize_name for name in ["extra"] + _SET_VARIABLES},
     }
 
-    # The extra in the environment is expected to be already normalized.
+    # The names in the environment are expected to be already normalized.
     env["extra"] = normalize_name(env["extra"])
+    for name in _SET_VARIABLES:
+        env[name] = [normalize_name(value) for value in SET_ENV_VALUE]
     return env
 
 def _test_packaging_evaluate(env):
@@ -51,7 +57,7 @@ _tests.append(_test_packaging_invalid_markers)
 def _test_packaging_marker_table(env):
     failures = []
     marker_env = _env()
-    for variable, op, value, results in MARKER_TABLE:
+    for variable, op, value, results in MARKER_TABLE + SET_TABLE:
         for marker, result in [
             ('{} {} "{}"'.format(variable, op, value), results[0]),
             ('"{}" {} {}'.format(value, op, variable), results[1]),
