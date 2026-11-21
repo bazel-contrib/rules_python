@@ -15,7 +15,7 @@
 """This module is for implementing PEP508 environment definition.
 """
 
-load("//python/private:version.bzl", "version")
+load("@pypackaging.bzl", "pypackaging")
 
 _DEFAULT = "//conditions:default"
 
@@ -179,7 +179,7 @@ def env(*, env = None, os, arch, python_version = "", extra = None):
         env["extra"] = extra
 
     if python_version:
-        v = version.parse(python_version)
+        v = pypackaging.version.parse(python_version)
         major = v.release[0]
         minor = v.release[1]
         micro = v.release[2] if len(v.release) > 2 else 0

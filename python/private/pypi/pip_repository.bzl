@@ -15,11 +15,11 @@
 ""
 
 load("@bazel_skylib//lib:sets.bzl", "sets")
+load("@pypackaging.bzl", "pypackaging")
 load("@toml.bzl", "toml")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
 load("//python/private:text_util.bzl", "render")
-load("//python/private:version.bzl", "version")
 load(":default_platforms.bzl", "default_platforms")
 load(":hash.bzl", "hash")
 load(":parse_requirements.bzl", "host_platform", "parse_requirements", "select_requirement")
@@ -114,7 +114,7 @@ def _pip_repository_impl(rctx):
     ]
 
     marker_env = env(os = rctx.os.name, arch = rctx.os.arch, python_version = python_version)
-    parsed_python_version = version.parse(python_version, strict = True)
+    parsed_python_version = pypackaging.version.parse(python_version)
     platform_defaults = default_platforms()
     requirements_by_platform = parse_requirements(
         rctx,
