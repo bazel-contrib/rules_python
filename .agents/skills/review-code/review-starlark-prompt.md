@@ -40,6 +40,10 @@ in `git diff` against the project's Starlark coding rules and conventions:
       `list[...]` / `dict[...]` element types (never bare `list` or `dict`).
     - Prefer analysis-time validation over loading-time checks.
     - Prefer `ctx.actions.write` over subprocesses for small static strings.
+    - For CLIs accepting `--flag=value`, pass `ctx.actions.args()` flags via
+      `args.add(val, format = "--flag=%s")` instead of `args.add("--flag",
+      val)`, and repeated options via `args.add_all(vals, format_each =
+      "--flag=%s")` instead of `before_each = "--flag"`.
     - Use `$(execpath ...)` / `$(execpaths ...)` instead of `$(location)` /
       `$(locations)`.
     - Return immediately after injectable `_fail(...)` calls (`_fail = fail`)
