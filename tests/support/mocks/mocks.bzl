@@ -523,6 +523,7 @@ def _rctx_new(
         ),
         execute = lambda *a, **k: _rctx_execute(self, *a, **k),
         symlink = lambda *a, **k: _rctx_symlink(self, *a, **k),
+        watch = lambda *a, **k: None,
         report_progress = lambda *a, **k: _mrctx_report_progress(self, *a, **k),
     )
 
