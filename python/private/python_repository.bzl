@@ -23,6 +23,33 @@ load(":text_util.bzl", "render")
 
 STANDALONE_INTERPRETER_FILENAME = "STANDALONE_INTERPRETER"
 
+def fix_up_dylib_id(rctx, dylib, *, logger):
+    """Sets the LC_ID_DYLIB of `lib/<dylib>` to `@rpath/<dylib>`.
+
+    If `install_name_tool` is not on PATH, for example with a hermetic
+    `--repo_env=PATH=...`, the id is left as it is and a warning is logged
+    instead of failing the fetch. Recent python-build-standalone releases
+    already ship `libpython*.dylib` with the `@rpath/<dylib>` id.
+
+    Args:
+        rctx: {type}`repository_ctx` The repository context.
+        dylib: {type}`str` The dylib's file name, e.g. `libpython3.13.dylib`.
+        logger: The logger to use.
+    """
+    install_name_tool = repo_utils.which_unchecked(rctx, "install_name_tool").binary
+    if not install_name_tool:
+        logger.warn(lambda: (
+            "install_name_tool not found on PATH; leaving the LC_ID_DYLIB " +
+            "of lib/{} unchanged"
+        ).format(dylib))
+        return
+    repo_utils.execute_checked(
+        rctx,
+        op = "python_repository.FixUpDyldIdPath",
+        arguments = [install_name_tool, "-id", "@rpath/{}".format(dylib), "lib/{}".format(dylib)],
+        logger = logger,
+    )
+
 def is_standalone_interpreter(rctx, python_interpreter_path, *, logger = None):
     """Query a python interpreter target for whether or not it's a rules_rust provided toolchain
 
@@ -231,12 +258,7 @@ def _python_repository_impl(rctx):
             python_short_version,
             "d" if debug else "",
         )
-        repo_utils.execute_checked(
-            rctx,
-            op = "python_repository.FixUpDyldIdPath",
-            arguments = [repo_utils.which_checked(rctx, "install_name_tool"), "-id", "@rpath/{}".format(dylib), "lib/{}".format(dylib)],
-            logger = logger,
-        )
+        fix_up_dylib_id(rctx, dylib, logger = logger)
 
     _create_pycache_symlinks(rctx, logger)
     python_bin = "python.exe" if ("windows" in platform) else "bin/python3"
