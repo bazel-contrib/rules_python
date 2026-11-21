@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@package_metadata//licenses/rules:license.bzl", "license")
+load("@package_metadata//purl:purl.bzl", "purl")
+load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
+
 # Resolve rules_cc Starlark libraries to their correct targets
 # gazelle:resolve starlark @rules_cc//cc/common:cc_info.bzl @rules_cc//cc/common:common
 # gazelle:resolve starlark @rules_cc//cc/common:cc_common.bzl @rules_cc//cc/common:common
@@ -51,6 +55,24 @@ package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])
 
+package_metadata(
+    name = "package_metadata",
+    attributes = [
+        ":license",
+    ],
+    purl = purl.bazel(
+        module_name() or "rules_python",
+        module_version(),
+    ),
+    visibility = ["//visibility:public"],
+)
+
+license(
+    name = "license",
+    kind = "@package_metadata//licenses/spdx:Apache-2.0",
+    text = ":LICENSE",
+)
+
 exports_files([
     ".clippy.toml",
     "LICENSE",
@@ -68,7 +90,11 @@ exports_files(
 )
 
 exports_files(
-    glob(["*.md"]),
+    glob(
+        ["*.md"],
+        # Not all files are present when used as an integration test fixture
+        allow_empty = True,
+    ),
     visibility = ["//docs:__subpackages__"],
 )
 
@@ -88,10 +114,14 @@ filegroup(
 # gazelle/BUILD.bazel and treats gazelle/* as part of //.
 filegroup(
     name = "gazelle_downloader_configs",
-    srcs = [
-        "gazelle/downloader_cfg.bazelrc",
-        "gazelle/downloader_config.cfg",
-    ],
+    # Use a glob because //gazelle is a real subpackage (so these labels would
+    # be invalid and fail loading of the root package, which every target now
+    # depends on through the default package_metadata) when rules_python is used
+    # as an external repository, e.g. in the gazelle integration tests.
+    srcs = glob(
+        ["gazelle/downloader_*"],
+        allow_empty = True,
+    ),
     visibility = ["//tests:__subpackages__"],
 )
 # LINT.ThenChange(//dev/sync_downloader_configs.py:synced_files)
@@ -100,7 +130,9 @@ filegroup(
     name = "distribution",
     srcs = [
         "BUILD.bazel",
+        "LICENSE",
         "MODULE.bazel",
+        "REPO.bazel",
         "WORKSPACE",
         "WORKSPACE.bzlmod",
         "internal_dev_deps.bzl",
