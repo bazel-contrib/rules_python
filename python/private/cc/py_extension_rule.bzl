@@ -124,10 +124,19 @@ def _py_extension_libs_impl(ctx):
             elif lib.dynamic_library:
                 files.append(lib.dynamic_library)
     link_files = [f for f in files if not f.path.endswith(".dll")]
+
+    # link.exe and lld-link get all the files as one argument, so keep one:
+    # the stable ABI library for limited API modules, else the versioned one.
+    abi3_files = [f for f in link_files if f.basename in ("python3.lib", "python3t.lib")]
+    if ctx.attr.py_limited_api:
+        link_files = abi3_files or link_files
+    else:
+        link_files = [f for f in link_files if f not in abi3_files] or link_files
     return [DefaultInfo(files = depset(link_files))]
 
 py_extension_libs = rule(
     implementation = _py_extension_libs_impl,
+    attrs = {"py_limited_api": attr.string()},
     toolchains = [PY_CC_TOOLCHAIN_TYPE],
     doc = """\
 Private internal helper rule for extracting Windows C/C++ library files from toolchain.
