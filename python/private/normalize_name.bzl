@@ -38,6 +38,8 @@ Also see Python spec on normalizing package names:
 https://packaging.python.org/en/latest/specifications/name-normalization/
 """
 
+load("@pypackaging.bzl", "pypackaging")
+
 def normalize_name(name):
     """normalize a PyPI package name and return a valid bazel label.
 
@@ -47,14 +49,4 @@ def normalize_name(name):
     Returns:
         a normalized name as a string.
     """
-    name = name.replace("-", "_").replace(".", "_").lower()
-    if "__" not in name:
-        return name
-
-    # Handle the edge-case where there are consecutive `-`, `_` or `.` characters,
-    # which is a valid Python package name.
-    return "_".join([
-        part
-        for part in name.split("_")
-        if part
-    ])
+    return pypackaging.utils.canonicalize_name(name).replace("-", "_")
