@@ -35,7 +35,8 @@ from dev.update_deps.update_file import update_file
 class Whl:
     url: str
     sha256: str
-    marker: str
+    min_python: tuple[int, int] | None
+    max_python: tuple[int, int] | None
 
     def __repr__(self):
         return "\n".join(
@@ -43,7 +44,8 @@ class Whl:
                 "struct(",
                 f'    url = "{self.url}",',
                 f'    hash = "sha256:{self.sha256}",',
-                f"    marker = {json.dumps(self.marker)},",
+                f"    min_python = {self.min_python!r},",
+                f"    max_python = {self.max_python!r},",
                 "),",
             ]
         )
@@ -61,30 +63,46 @@ class Whls:
         return "[\n{}\n]".format(inner)
 
 
-def _whl(url: str, digests: dict[str, str], marker: str, **kwargs: Any) -> Whl:
+def _whl(
+    url: str,
+    digests: dict[str, str],
+    min_python: tuple[int, int] | None,
+    max_python: tuple[int, int] | None,
+    **kwargs: Any,
+) -> Whl:
     return Whl(
         url=url,
         sha256=digests["sha256"],
-        marker=marker,
+        min_python=min_python,
+        max_python=max_python,
     )
 
 
 @dataclass
 class VersionSpec:
-    """A package version and the PEP 508 marker for when to use it."""
+    """A package version and the first Python version to use it with."""
 
     version: str
-    marker: str
+    min_python: tuple[int, int] | None
 
 
 def _parse_version_spec(value: str) -> VersionSpec:
-    version, _, marker = value.partition(";")
+    error = argparse.ArgumentTypeError(
+        f"Expected '<version>[@<major>.<minor>]', got '{value}'"
+    )
+    version, at, python = value.partition("@")
     version = version.strip()
     if not version:
-        raise argparse.ArgumentTypeError(
-            f"Expected '<version>[; <marker>]', got '{value}'"
-        )
-    return VersionSpec(version=version, marker=marker.strip())
+        raise error
+
+    if not at:
+        return VersionSpec(version=version, min_python=None)
+
+    major, _, minor = python.strip().partition(".")
+    if not major.isdigit() or not minor.isdigit():
+        raise error
+
+    return VersionSpec(version=version, min_python=(int(major), int(minor)))
 
 
 def _parse_args() -> argparse.Namespace:
@@ -100,10 +118,10 @@ def _parse_args() -> argparse.Namespace:
         nargs="+",
         type=_parse_version_spec,
         help=(
-            "The versions of the package to download, each optionally with a "
-            "PEP 508 environment marker for when the version should be used, "
-            "e.g. \"7.10.7; python_full_version < '3.15'\". The markers should not "
-            "overlap."
+            "The versions of the package to download, each optionally with "
+            "the first Python version that it should be used with, e.g. "
+            "'7.10.7 7.17.0@3.15' uses 7.17.0 with Python 3.15 and newer and "
+            "7.10.7 with the older Python versions."
         ),
     )
     parser.add_argument(
@@ -131,8 +149,12 @@ def _get_urls(name: str, version: str) -> list[dict[str, Any]]:
 def main():
     args = _parse_args()
 
+    # Each version is used until the first Python version of the next one.
+    specs = sorted(args.versions, key=lambda x: x.min_python or (0, 0))
+    max_pythons = [s.min_python for s in specs[1:]] + [None]
+
     whls = []
-    for spec in args.versions:
+    for spec, max_python in zip(specs, max_pythons):
         for u in _get_urls(args.name, spec.version):
             if u["yanked"]:
                 continue
@@ -140,7 +162,7 @@ def main():
             if not u["filename"].endswith(".whl"):
                 continue
 
-            whls.append(_whl(marker=spec.marker, **u))
+            whls.append(_whl(min_python=spec.min_python, max_python=max_python, **u))
 
     whls.sort(key=lambda x: x.url.rpartition("/")[2])
 

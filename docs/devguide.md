@@ -103,9 +103,9 @@ integration test.
    ```
 1. Bump the coverage dependencies using the script using:
    ```
-   bazel run //dev/update_deps:update_coverage_deps <VERSION>
-   # for example:
-   # bazel run //dev/update_deps:update_coverage_deps 7.10.7
+   bazel run //dev/update_deps:update_coverage_deps -- <VERSION>[@<MIN_PYTHON>]...
+   # for example, to use 7.17.0 with Python 3.15 and newer and 7.10.7 otherwise:
+   # bazel run //dev/update_deps:update_coverage_deps -- 7.10.7 7.17.0@3.15
    ```
 
 ## Updating tool dependencies
