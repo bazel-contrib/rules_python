@@ -1714,6 +1714,8 @@ class HttpServerTest(unittest.IsolatedAsyncioTestCase):
                 self.assertIn("sanitizeExternalUrl", html_body)
                 self.assertIn("Number.isInteger", html_body)
                 self.assertIn("resolveDaysSinceUpdate", html_body)
+                self.assertIn("formatFetchedAt", html_body)
+                self.assertIn("toLocaleDateString", html_body)
                 self.assertIn("replaceChildren", html_body)
                 self.assertIn("<script nonce=", html_body)
                 self.assertIn("<style nonce=", html_body)
@@ -1780,6 +1782,112 @@ class HttpServerTest(unittest.IsolatedAsyncioTestCase):
                 ).encode("ascii")
                 doc_status, _hdr, _b = await _send_raw_http(port, cross_site_doc_req)
                 self.assertEqual(doc_status, 200)
+
+                # Reject unauthenticated/bad-token non-loopback Host (DNS rebinding).
+                for unauth_host_hdrs in (
+                    "",
+                    "X-Sidecar-Token: wrong-token\r\n",
+                ):
+                    rebinding_doc_req = (
+                        "GET / HTTP/1.1\r\n"
+                        "Host: evil.example.com:1234\r\n"
+                        f"{unauth_host_hdrs}"
+                        "Connection: close\r\n\r\n"
+                    ).encode("ascii")
+                    rebind_status, _hdr, _b = await _send_raw_http(
+                        port, rebinding_doc_req
+                    )
+                    self.assertEqual(rebind_status, 403)
+
+                # Reject syntactically invalid Host even with valid X-Sidecar-Token.
+                for malformed_host in (
+                    f"evil.example.com@127.0.0.1:{port}",
+                    "127.0.0.1:99999",
+                ):
+                    bad_tok_host_req = (
+                        "GET / HTTP/1.1\r\n"
+                        f"Host: {malformed_host}\r\n"
+                        f"X-Sidecar-Token: {mock_token}\r\n"
+                        "Connection: close\r\n\r\n"
+                    ).encode("ascii")
+                    malformed_status, _hdr, _b = await _send_raw_http(
+                        port, bad_tok_host_req
+                    )
+                    self.assertEqual(malformed_status, 403)
+
+                # Allow gateway-proxied external Host when X-Sidecar-Token matches.
+                proxied_doc_req = (
+                    "GET / HTTP/1.1\r\n"
+                    "Host: remote-proxy.example.com\r\n"
+                    f"X-Sidecar-Token: {mock_token}\r\n"
+                    "Sec-Fetch-Site: cross-site\r\n"
+                    "Connection: close\r\n\r\n"
+                ).encode("ascii")
+                pdoc_status, _hdr, _b = await _send_raw_http(port, proxied_doc_req)
+                self.assertEqual(pdoc_status, 200)
+
+                proxied_get_req = (
+                    "GET /api/config HTTP/1.1\r\n"
+                    "Host: remote-proxy.example.com\r\n"
+                    "Origin: https://remote-proxy.example.com\r\n"
+                    "Sec-Fetch-Site: same-origin\r\n"
+                    f"X-Sidecar-Token: {mock_token}\r\n"
+                    "Connection: close\r\n\r\n"
+                ).encode("ascii")
+                pget_status, _hdr, _b = await _send_raw_http(port, proxied_get_req)
+                self.assertEqual(pget_status, 200)
+
+                for proxy_host, proxy_origin in (
+                    ("remote-proxy.example.com", "https://remote-proxy.example.com"),
+                    (
+                        "remote-proxy.example.com:443",
+                        "https://remote-proxy.example.com",
+                    ),
+                    (
+                        "workstation.example.com:45678",
+                        "https://workstation.example.com:45678",
+                    ),
+                ):
+                    proxied_post_req = (
+                        "POST /api/config HTTP/1.1\r\n"
+                        f"Host: {proxy_host}\r\n"
+                        f"Origin: {proxy_origin}\r\n"
+                        "Sec-Fetch-Site: same-origin\r\n"
+                        f"X-Sidecar-Token: {mock_token}\r\n"
+                        "Content-Type: application/json\r\n"
+                        "Content-Length: 2\r\n"
+                        "Connection: close\r\n\r\n{}"
+                    ).encode("ascii")
+                    ppost_status, _hdr, _b = await _send_raw_http(
+                        port, proxied_post_req
+                    )
+                    self.assertEqual(ppost_status, 200)
+
+                # Reject mismatched Origin host or port even through an authenticated proxy.
+                for proxy_host, bad_origin in (
+                    ("remote-proxy.example.com", "https://evil.example.com"),
+                    (
+                        "remote-proxy.example.com",
+                        "https://remote-proxy.example.com:9999",
+                    ),
+                    (
+                        "workstation.example.com:45678",
+                        "https://workstation.example.com:9999",
+                    ),
+                ):
+                    mismatched_origin_req = (
+                        "POST /api/config HTTP/1.1\r\n"
+                        f"Host: {proxy_host}\r\n"
+                        f"Origin: {bad_origin}\r\n"
+                        f"X-Sidecar-Token: {mock_token}\r\n"
+                        "Content-Type: application/json\r\n"
+                        "Content-Length: 2\r\n"
+                        "Connection: close\r\n\r\n{}"
+                    ).encode("ascii")
+                    morig_status, _hdr, _b = await _send_raw_http(
+                        port, mismatched_origin_req
+                    )
+                    self.assertEqual(morig_status, 403)
 
                 # Wildcard binds must allow loopback Host headers while rejecting external ones.
                 for wildcard_bind in ("0.0.0.0", "::", "[::]", ""):
@@ -2057,6 +2165,25 @@ class HttpServerTest(unittest.IsolatedAsyncioTestCase):
                 ).encode("ascii")
                 status_big, _hdr, _body = await _send_raw_http(port, oversized_req)
                 self.assertEqual(status_big, 413)
+
+                # Unauthenticated dev mode must keep rejecting non-loopback Host headers.
+                for hdr_extra in ("", "X-Sidecar-Token: arbitrary\r\n"):
+                    unauth_ext_req = (
+                        "GET / HTTP/1.1\r\n"
+                        "Host: evil.example.com\r\n"
+                        f"{hdr_extra}"
+                        "Connection: close\r\n\r\n"
+                    ).encode("ascii")
+                    status_ext, _hdr, _body = await _send_raw_http(port, unauth_ext_req)
+                    self.assertEqual(status_ext, 403)
+                self.assertTrue(
+                    httpd._is_cross_site_browser_request(
+                        {
+                            "host": "evil.example.com",
+                            "origin": "https://evil.example.com",
+                        }
+                    )
+                )
             finally:
                 await httpd.close()
 

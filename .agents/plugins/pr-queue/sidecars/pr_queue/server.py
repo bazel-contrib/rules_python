@@ -1606,11 +1606,24 @@ class PrQueueHttpServer:
             raise PrQueueError("Expected JSON object request body.")
         return {str(k): v for k, v in parsed.items()}
 
+    def _has_valid_secret_token(self, headers: Mapping[str, str]) -> bool:
+        """Checks whether request headers carry a matching secret token.
+
+        Args:
+          headers: Lowercase HTTP request header mapping.
+
+        Returns:
+          `True` when `self.sidecar_token` is set and matches `x-sidecar-token`.
+        """
+        if not self.sidecar_token:
+            return False
+        provided = headers.get("x-sidecar-token", "").strip()
+        return bool(provided) and hmac.compare_digest(provided, self.sidecar_token)
+
     def _token_valid(self, headers: Mapping[str, str]) -> bool:
         if not self.sidecar_token:
             return self._allow_unauthenticated
-        provided = headers.get("x-sidecar-token", "").strip()
-        return bool(provided) and hmac.compare_digest(provided, self.sidecar_token)
+        return self._has_valid_secret_token(headers)
 
     def _allowed_http_hosts(self) -> frozenset[str]:
         bound = self._host.strip("[]").lower()
@@ -1620,19 +1633,64 @@ class PrQueueHttpServer:
             return LOOPBACK_HOSTS | frozenset({bound})
         return frozenset({bound})
 
-    def _is_allowed_host(self, headers: Mapping[str, str]) -> bool:
-        raw_host = headers.get("host", "").strip()
-        if not raw_host or any(ch in raw_host for ch in "@/\\?# \t"):
-            return False
+    @staticmethod
+    def _parse_http_host(raw_host: str) -> tuple[str, int | None] | None:
+        """Parses an HTTP Host header value into `(lowercase_host, port)`.
+
+        Args:
+          raw_host: Raw `Host` header string from the HTTP request.
+
+        Returns:
+          `(host, port)` when syntactically valid, or `None` when malformed.
+        """
+        cleaned = raw_host.strip()
+        if not cleaned or any(ord(ch) <= 0x20 or ch in "@/\\?#" for ch in cleaned):
+            return None
         try:
-            parsed = urlsplit(f"//{raw_host}")
+            parsed = urlsplit(f"//{cleaned}")
             port = parsed.port
         except ValueError:
-            return False
+            return None
         if port is not None and not (1 <= port <= 65535):
-            return False
+            return None
         host = (parsed.hostname or "").strip("[]").lower()
-        return bool(host) and host in self._allowed_http_hosts()
+        if not host:
+            return None
+        return (host, port)
+
+    def _is_allowed_host(self, headers: Mapping[str, str]) -> bool:
+        parsed_host = self._parse_http_host(headers.get("host", ""))
+        if parsed_host is None:
+            return False
+        host, _port = parsed_host
+        if host in self._allowed_http_hosts():
+            return True
+        # Authenticated IDE gateways reverse-proxy remote browser traffic to
+        # loopback while preserving the external Host and injecting the UI token.
+        return self._has_valid_secret_token(headers)
+
+    @staticmethod
+    def _ports_match_origin(
+        scheme: str, origin_port: int | None, req_port: int | None
+    ) -> bool:
+        """Checks whether Origin and Host ports represent the same endpoint.
+
+        Args:
+          scheme: Validated lowercase Origin scheme (`http` or `https`).
+          origin_port: Explicit TCP port from Origin, or `None` if omitted.
+          req_port: Explicit TCP port from Host, or `None` if omitted.
+
+        Returns:
+          `True` when ports match directly or via scheme default (`80`/`443`).
+        """
+        if origin_port == req_port:
+            return True
+        if origin_port is not None and req_port is not None:
+            return False
+        default_port = 443 if scheme == "https" else 80
+        effective_origin_port = origin_port if origin_port is not None else default_port
+        effective_req_port = req_port if req_port is not None else default_port
+        return effective_origin_port == effective_req_port
 
     def _is_cross_site_browser_request(self, headers: Mapping[str, str]) -> bool:
         sec_fetch = headers.get("sec-fetch-site", "").strip().lower()
@@ -1642,13 +1700,26 @@ class PrQueueHttpServer:
         if origin:
             try:
                 parsed = urlsplit(origin)
-                _ = parsed.port
+                origin_port = parsed.port
             except ValueError:
                 return True
-            if parsed.scheme.lower() not in ("http", "https"):
+            scheme = parsed.scheme.lower()
+            if scheme not in ("http", "https"):
                 return True
             origin_host = (parsed.hostname or "").strip("[]").lower()
-            if origin_host not in self._allowed_http_hosts():
+            if not origin_host:
+                return True
+            if origin_host in self._allowed_http_hosts():
+                return False
+            if not self._has_valid_secret_token(headers):
+                return True
+            parsed_req_host = self._parse_http_host(headers.get("host", ""))
+            if parsed_req_host is None:
+                return True
+            req_host, req_port = parsed_req_host
+            if origin_host != req_host or not self._ports_match_origin(
+                scheme, origin_port, req_port
+            ):
                 return True
         return False
 
