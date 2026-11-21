@@ -11,7 +11,7 @@ test per Python version with `python_versions`.
 ## Setup
 
 `pytest_test` depends on `@pypi//pytest` and `@pypi//pytest_bazel` by
-default. Add `pytest` and `pytest-bazel` to the requirements that
+default. Add `pytest` and `pytest-bazel>=1.0` to the requirements that
 {obj}`pip.parse` reads for the {ref}`unified @pypi hub <unified-pypi-hub>`,
 or pass other targets with the `pytest` and `pytest_bazel` arguments.
 

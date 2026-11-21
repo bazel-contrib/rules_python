@@ -786,7 +786,7 @@ requires-dist = [
     { name = "pefile" },
     { name = "pyelftools" },
     { name = "pytest" },
-    { name = "pytest-bazel", specifier = "==1.0.0" },
+    { name = "pytest-bazel", specifier = ">=1.0.0" },
     { name = "pytest-mock" },
     { name = "readthedocs-sphinx-ext" },
     { name = "sphinx" },

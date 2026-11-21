@@ -24,20 +24,26 @@ pytest_test(
     shard_count = 2,
     target_compatible_with = SUPPORTS_BZLMOD,
     # Verify that pytest_test handles select() expressions in deps when
-    # appending default and sharding dependencies.
+    # appending default dependencies.
     deps = select({
         "//conditions:default": [],
     }),
 )
 
 pytest_test(
-    name = "pytest_no_randomly_test",
+    name = "pytest_optional_deps_test",
     srcs = [
         "basic_test.py",
     ],
-    # Kept for compatibility, an empty target adds nothing.
+    # Verify explicit plugin target args work with select() in deps without
+    # duplicating labels when both use //python:none.
     pytest_randomly = "//python:none",
+    pytest_shard = "//python:none",
+    shard_count = 2,
     target_compatible_with = SUPPORTS_BZLMOD,
+    deps = select({
+        "//conditions:default": [],
+    }),
 )
 
 pytest_test(
