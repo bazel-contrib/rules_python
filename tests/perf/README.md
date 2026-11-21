@@ -80,14 +80,14 @@ The time is of Bazel 9.1.1 on a laptop, only the ratios are meaningful.
 
 | Workload | Steps | Bazel, µs |
 |---|---:|---:|
-| `evaluate_long` | 1974 | 383.6 |
-| `evaluate_long_parsed` | 693 | 114.1 |
-| `evaluate_non_strict` | 286 | 58.4 |
-| `evaluate_string` | 122 | 24.5 |
-| `evaluate_two_strings` | 229 | 43.0 |
-| `evaluate_version` | 283 | 56.4 |
-| `evaluate_version_parsed` | 132 | 21.3 |
-| `parse_long` | 1284 | 231.5 |
+| `evaluate_long` | 1926 | 383.6 |
+| `evaluate_long_parsed` | 657 | 114.1 |
+| `evaluate_non_strict` | 280 | 58.4 |
+| `evaluate_string` | 119 | 24.5 |
+| `evaluate_two_strings` | 223 | 43.0 |
+| `evaluate_version` | 280 | 56.4 |
+| `evaluate_version_parsed` | 130 | 21.3 |
+| `parse_long` | 1272 | 231.5 |
 | `tokenize_long` | 514 | 112.9 |
 | `tokenize_no_whitespace` | 84 | 23.0 |
 | `tokenize_version` | 48 | 10.8 |

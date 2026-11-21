@@ -32,15 +32,14 @@ def _tokenize_tests(env):
         "'x' not in os_name": ['"x"', "not in", "os_name"],
         "('arm' in platform_machine)": ["(", '"arm"', "in", "platform_machine", ")"],
         "()": ["(", ")"],
-        "(os_name == 'osx' and not os_name == 'posix') or os_name == \"win\"": [
+        "(os_name == 'osx' and os_name != 'posix') or os_name == \"win\"": [
             "(",
             "os_name",
             "==",
             '"osx"',
             "and",
-            "not",
             "os_name",
-            "==",
+            "!=",
             '"posix"',
             ")",
             "or",
@@ -86,6 +85,10 @@ def _evaluate_invalid_tests(env):
         "os_name == 'posix')",
         "and os_name == 'posix'",
         "not",
+        # The `not` operator is not in the spec.
+        "not os_name == 'posix'",
+        "not (os_name == 'posix')",
+        "os_name == 'posix' and not os_name == 'nt'",
         "os_name",
         "os_name 'posix'",
         "os_name <> 'posix'",
@@ -268,19 +271,12 @@ def _logical_expression_tests(env):
         "(os_name == 'fo')": False,
         "((os_name == 'fo'))": False,
         "((os_name == 'foo'))": True,
-        "not (os_name == 'fo')": True,
 
         # and
         "os_name == 'fo' and os_name == 'foo'": False,
 
-        # and not
-        "os_name == 'fo' and not os_name == 'foo'": False,
-
         # or
         "os_name == 'oo' or os_name == 'foo'": True,
-
-        # or not
-        "os_name == 'foo' or not os_name == 'foo'": True,
 
         # multiple or
         "os_name == 'oo' or os_name == 'fo' or os_name == 'foo'": True,
@@ -289,19 +285,11 @@ def _logical_expression_tests(env):
         # multiple and
         "os_name == 'foo' and os_name == 'foo' and os_name == 'fo'": False,
 
-        # x or not y and z != (x or not y), but is instead evaluated as x or (not y and z)
-        "os_name == 'foo' or not os_name == 'fo' and os_name == 'fo'": True,
-
         # x or y and z != (x or y) and z, but is instead evaluated as x or (y and z)
         "os_name == 'foo' or os_name == 'fo' and os_name == 'fo'": True,
-        "not (os_name == 'foo' or os_name == 'fo' and os_name == 'fo')": False,
 
         # x or y and z and w != (x or y and z) and w, but is instead evaluated as x or (y and z and w)
         "os_name == 'foo' or os_name == 'fo' and os_name == 'fo' and os_name == 'fo'": True,
-
-        # not not True
-        "not not os_name == 'foo'": True,
-        "not not not os_name == 'foo'": False,
     }.items():  # buildifier: @unsorted-dict-items
         _check_evaluate(env, input, want, {"os_name": "foo"})
 
@@ -404,8 +392,8 @@ def _evaluate_partial_roundtrip_tests(env):
         "(extra == 'foo' or os_name == 'nt') and sys_platform == 'linux'",
         "(extra == 'bar' or os_name == 'posix') and python_version < '3.11'",
         "extra == 'foo' and (os_name == 'nt' or python_version >= '3.8')",
-        "not (extra == 'foo' or os_name == 'nt') or sys_platform == 'linux'",
-        "not extra == 'bar' and not os_name == 'nt'",
+        "(extra != 'foo' and os_name != 'nt') or sys_platform == 'linux'",
+        "extra != 'bar' and os_name != 'nt'",
         "platform_version == 'a \"b\" c' and extra == 'foo'",
         "platform_version == \"it's\" or python_version >= '3.8' and os_name == 'posix'",
     ]:

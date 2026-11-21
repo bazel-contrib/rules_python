@@ -62,7 +62,6 @@ _OPERATORS = ["!=", "<", "<=", "==", "===", ">", ">=", "in", "not in", "~="]
 _OPERATOR_CHARS = "<>!=~"
 _AND = "and"
 _OR = "or"
-_NOT = "not"
 
 # The key of the `env` that has the functions to normalize the strings that
 # the variables are compared with, e.g. `{"platform_machine": lambda x: ...}`.
@@ -143,7 +142,7 @@ def _tokenize_unquoted(text, tokens):
     for word in text.replace("(", " ( ").replace(")", " ) ").replace("\t", " ").split(" "):
         if not word:
             continue
-        elif word == "in" and tokens and tokens[-1] == _NOT:
+        elif word == "in" and tokens and tokens[-1] == "not":
             tokens[-1] = "not in"
         elif word in ["(", ")"] or not word.strip(_OPERATOR_CHARS) or _is_name(word):
             tokens.append(word)
@@ -210,9 +209,6 @@ def _parse(marker):
                 return None, "Expected 'and', 'or' or ')', but got '{}'".format(token)
         elif token == "(":
             depth += 1
-        elif token == _NOT:
-            # NOTE: the spec does not have the `not` operator, it is our extension.
-            pass
         else:
             token, err = _parse_expr(tokens[i:i + 3])
             if err:
@@ -297,12 +293,11 @@ def evaluate(marker, *, env, strict = True, _fail = fail):
         parsed = marker
 
     # Starlark does not have recursion, hence there is a stack with a frame
-    # for each open parenthesis. Because `not` binds tighter than `and`, which
-    # binds tighter than `or`, a frame is:
+    # for each open parenthesis. Because `and` binds tighter than `or`, a
+    # frame is:
     # * The value of the `or` operands that we have seen so far.
     # * The value of the `and` operands that we have seen since the last `or`.
-    # * The number of `not` to apply to the next operand.
-    frame = [False, True, 0]
+    frame = [False, True]
     stack = [frame]
     for token in parsed:
         if token == _AND:
@@ -313,11 +308,8 @@ def evaluate(marker, *, env, strict = True, _fail = fail):
             frame[0] = _or(frame[0], frame[1])
             frame[1] = True
             continue
-        elif token == _NOT:
-            frame[2] += 1
-            continue
         elif token == "(":
-            frame = [False, True, 0]
+            frame = [False, True]
             stack.append(frame)
             continue
         else:  # token == ")"
@@ -327,9 +319,6 @@ def evaluate(marker, *, env, strict = True, _fail = fail):
                 value = "({})".format(value)
             frame = stack[-1]
 
-        for _ in range(frame[2]):
-            value = "not {}".format(value) if type(value) == "string" else not value
-        frame[2] = 0
         frame[1] = _and(frame[1], value)
 
     return _or(frame[0], frame[1])
