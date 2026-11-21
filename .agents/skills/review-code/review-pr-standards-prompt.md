@@ -35,9 +35,8 @@ Your sole task is to audit PR titles and PR descriptions against
    `--repo=bazel-contrib/rules_python -- "<pr>"` first. When it reports
    `status=would_update`, report `Severity: NIT`, `Location: PR Description`,
    and `Proposed Fix:` instructing the orchestrator to run
-   `.agents/skills/review-code/scripts/wrap_pr_body.py` (and post the brief
-   notice comment only when modifying another contributor's PR), and a
-   1-sentence fallback `Draft Comment` requesting 72-column prose wrapping
-   (used only if `gh pr edit` lacks permissions).
+   `.agents/skills/review-code/scripts/wrap_pr_body.py` (posting a brief notice
+   only on another contributor's PR, or requesting 72-column wrapping if
+   `gh pr edit` lacks permissions).
 
 @.agents/skills/review-code/review-report-format.md
