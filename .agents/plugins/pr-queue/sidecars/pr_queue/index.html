@@ -818,6 +818,23 @@
         return `updated ${days}d ago`;
       }
 
+      function formatFetchedAt(rawTimestamp) {
+        const dt = new Date(rawTimestamp);
+        if (Number.isNaN(dt.getTime())) {
+          return String(rawTimestamp);
+        }
+        const dateOptions = { month: "short", day: "numeric" };
+        if (dt.getFullYear() !== new Date().getFullYear()) {
+          dateOptions.year = "numeric";
+        }
+        const datePart = dt.toLocaleDateString([], dateOptions);
+        const timePart = dt.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        return `${datePart}, ${timePart}`;
+      }
+
       function renderCardActions(pr, isStaleCard) {
         const actions = document.createElement("div");
         actions.className = "pr-actions";
@@ -1074,19 +1091,18 @@
         el.countPill.textContent = `${prs.length} PR${prs.length === 1 ? "" : "s"}`;
 
         if (data.fetched_at) {
-          const dt = new Date(data.fetched_at);
-          const hhmm = Number.isNaN(dt.getTime())
-            ? data.fetched_at
-            : dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          const stamp = formatFetchedAt(data.fetched_at);
           let prefix = "Fetched";
           if (data.stale_cache) {
             prefix = "Offline cache";
           } else if (data.from_cache) {
             prefix = "Cached";
           }
-          el.cacheNote.textContent = `${prefix} ${hhmm}`;
+          el.cacheNote.textContent = `${prefix} ${stamp}`;
+          el.cacheNote.title = String(data.fetched_at);
         } else {
           el.cacheNote.textContent = "";
+          el.cacheNote.title = "";
         }
 
         if (data.error) {

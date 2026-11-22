@@ -636,6 +636,31 @@ def _test_coverage_flag_does_not_cycle_impl(env, target):
 
 _tests.append(_test_coverage_flag_does_not_cycle)
 
+def _test_version_info_from_flag_with_prerelease(name):
+    py_runtime(
+        name = name + "_subject",
+        interpreter_version_info = None,
+        interpreter_path = "/bogus",
+    )
+    analysis_test(
+        name = name,
+        target = name + "_subject",
+        impl = _test_version_info_from_flag_with_prerelease_impl,
+        config_settings = {
+            labels.PYTHON_VERSION: "3.15.0rc1",
+        },
+    )
+
+def _test_version_info_from_flag_with_prerelease_impl(env, target):
+    version_info = env.expect.that_target(target).provider(PyRuntimeInfo, factory = py_runtime_info_subject).interpreter_version_info()
+    version_info.major().equals(3)
+    version_info.minor().equals(15)
+    version_info.micro().equals(0)
+    version_info.releaselevel().equals(None)
+    version_info.serial().equals(None)
+
+_tests.append(_test_version_info_from_flag_with_prerelease)
+
 def py_runtime_test_suite(name):
     test_suite(
         name = name,

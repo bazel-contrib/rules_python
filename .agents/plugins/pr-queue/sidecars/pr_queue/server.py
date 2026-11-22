@@ -33,6 +33,7 @@ import asyncio
 import contextlib
 import datetime
 import hmac
+import ipaddress
 import json
 import logging
 import os
@@ -137,6 +138,9 @@ _REVIEW_SKILL_REL_PATH = ".agents/skills/review-code/SKILL.md"
 
 _TITLE_PUNCT_STRIP_CHARS = ".,:;!?()[]{}\"'`~*"
 _HAS_ALNUM_RE = re.compile(r"[A-Za-z0-9]")
+_HOST_LABEL_RE = re.compile(
+    r"^[a-z0-9](?:[a-z0-9_-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9_-]*[a-z0-9])?)*\.?$"
+)
 _BRACKET_PREFIX_RE = re.compile(r"^(?:\[[^\]]+\]\s*)+")
 _CONVENTIONAL_COMMIT_RE = re.compile(
     r"^\s*(?P<ctype>[A-Za-z]+)(?:\((?P<scope>[^)]+)\))?!?:\s*(?P<rest>.+)$"
@@ -1606,11 +1610,26 @@ class PrQueueHttpServer:
             raise PrQueueError("Expected JSON object request body.")
         return {str(k): v for k, v in parsed.items()}
 
+    def _has_valid_secret_token(self, headers: Mapping[str, str]) -> bool:
+        """Checks whether request headers carry a matching secret token.
+
+        Args:
+          headers: Lowercase HTTP request header mapping.
+
+        Returns:
+          `True` when `self.sidecar_token` is set and matches `x-sidecar-token`.
+        """
+        if not self.sidecar_token:
+            return False
+        provided = headers.get("x-sidecar-token", "").strip()
+        return bool(provided) and hmac.compare_digest(
+            provided.encode("utf-8"), self.sidecar_token.encode("utf-8")
+        )
+
     def _token_valid(self, headers: Mapping[str, str]) -> bool:
         if not self.sidecar_token:
             return self._allow_unauthenticated
-        provided = headers.get("x-sidecar-token", "").strip()
-        return bool(provided) and hmac.compare_digest(provided, self.sidecar_token)
+        return self._has_valid_secret_token(headers)
 
     def _allowed_http_hosts(self) -> frozenset[str]:
         bound = self._host.strip("[]").lower()
@@ -1620,37 +1639,102 @@ class PrQueueHttpServer:
             return LOOPBACK_HOSTS | frozenset({bound})
         return frozenset({bound})
 
-    def _is_allowed_host(self, headers: Mapping[str, str]) -> bool:
-        raw_host = headers.get("host", "").strip()
-        if not raw_host or any(ch in raw_host for ch in "@/\\?# \t"):
-            return False
+    @staticmethod
+    def _parse_http_host(raw_host: str) -> tuple[str, int | None] | None:
+        """Parses an HTTP Host or Origin authority into `(lowercase_host, port)`.
+
+        Args:
+          raw_host: Raw `Host` header or `Origin` netloc string.
+
+        Returns:
+          `(host, port)` when syntactically valid, or `None` when malformed.
+        """
+        cleaned = raw_host.strip()
+        if not cleaned or cleaned.endswith(":"):
+            return None
+        if any(not (0x21 <= ord(ch) <= 0x7E) or ch in "@/\\?#%" for ch in cleaned):
+            return None
         try:
-            parsed = urlsplit(f"//{raw_host}")
+            parsed = urlsplit(f"//{cleaned}")
             port = parsed.port
         except ValueError:
-            return False
+            return None
         if port is not None and not (1 <= port <= 65535):
+            return None
+        raw_hostname = parsed.hostname or ""
+        if cleaned.startswith("["):
+            try:
+                ipaddress.IPv6Address(raw_hostname)
+            except ValueError:
+                return None
+            return (raw_hostname.lower(), port)
+        host = raw_hostname.lower()
+        if not host or not _HOST_LABEL_RE.fullmatch(host):
+            return None
+        return (host, port)
+
+    def _is_allowed_host(self, headers: Mapping[str, str]) -> bool:
+        parsed_host = self._parse_http_host(headers.get("host", ""))
+        if parsed_host is None:
             return False
-        host = (parsed.hostname or "").strip("[]").lower()
-        return bool(host) and host in self._allowed_http_hosts()
+        host, _port = parsed_host
+        if host in self._allowed_http_hosts():
+            return True
+        # Authenticated IDE gateways reverse-proxy remote browser traffic to
+        # loopback while preserving the external Host and injecting the UI token.
+        return self._has_valid_secret_token(headers)
+
+    @staticmethod
+    def _ports_match_origin(
+        scheme: str, origin_port: int | None, req_port: int | None
+    ) -> bool:
+        """Checks whether Origin and Host ports represent the same endpoint.
+
+        Args:
+          scheme: Validated lowercase Origin scheme (`http` or `https`).
+          origin_port: Explicit TCP port from Origin, or `None` if omitted.
+          req_port: Explicit TCP port from Host, or `None` if omitted.
+
+        Returns:
+          `True` when ports match directly or via scheme default (`80`/`443`).
+        """
+        default_port = 443 if scheme == "https" else 80
+        effective_origin_port = origin_port if origin_port is not None else default_port
+        effective_req_port = req_port if req_port is not None else default_port
+        return effective_origin_port == effective_req_port
 
     def _is_cross_site_browser_request(self, headers: Mapping[str, str]) -> bool:
         sec_fetch = headers.get("sec-fetch-site", "").strip().lower()
         if sec_fetch == "cross-site":
             return True
         origin = headers.get("origin", "").strip()
-        if origin:
-            try:
-                parsed = urlsplit(origin)
-                _ = parsed.port
-            except ValueError:
-                return True
-            if parsed.scheme.lower() not in ("http", "https"):
-                return True
-            origin_host = (parsed.hostname or "").strip("[]").lower()
-            if origin_host not in self._allowed_http_hosts():
-                return True
-        return False
+        if not origin:
+            return False
+        try:
+            parsed = urlsplit(origin)
+        except ValueError:
+            return True
+        scheme = parsed.scheme.lower()
+        if scheme not in ("http", "https"):
+            return True
+        if parsed.path or parsed.query or parsed.fragment:
+            return True
+        parsed_origin_host = self._parse_http_host(parsed.netloc)
+        if parsed_origin_host is None:
+            return True
+        parsed_req_host = self._parse_http_host(headers.get("host", ""))
+        if parsed_req_host is None:
+            return True
+        origin_host, origin_port = parsed_origin_host
+        req_host, req_port = parsed_req_host
+        allowed_hosts = self._allowed_http_hosts()
+        if origin_host in allowed_hosts and req_host in allowed_hosts:
+            return False
+        if not self._has_valid_secret_token(headers):
+            return True
+        if origin_host != req_host:
+            return True
+        return not self._ports_match_origin(scheme, origin_port, req_port)
 
     @staticmethod
     def _parse_positive_int_query_param(

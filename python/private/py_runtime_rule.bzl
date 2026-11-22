@@ -21,7 +21,6 @@ load(":flags.bzl", "FreeThreadedFlag")
 load(":py_internal.bzl", "py_internal")
 load(":py_runtime_info.bzl", "DEFAULT_STUB_SHEBANG", "PyRuntimeInfo")
 load(":reexports.bzl", "BuiltinPyRuntimeInfo")
-load(":version.bzl", "version")
 
 _py_builtins = py_internal
 _HAS_COVERAGE_FLAG = "//python/private:has_coverage_flag"
@@ -507,11 +506,15 @@ def _is_singleton_depset(files):
     return _py_builtins.is_singleton_depset(files)
 
 def _interpreter_version_info_from_version_str(version_str):
-    v = version.parse(version_str)
+    # We only need the release numbers, e.g. `3.15.0` from `3.15.0rc1`.
     version_info = {}
-    parts = list(v.release)
-    for key in ("major", "minor", "micro"):
-        if not parts:
-            break
-        version_info[key] = parts.pop(0)
+    for key, part in zip(("major", "minor", "micro"), version_str.split(".")):
+        digits = ""
+        for c in part.elems():
+            if not c.isdigit():
+                break
+            digits += c
+        if not digits:
+            fail("Expected the Python version to be '<major>[.<minor>[.<micro>]]', got: '{}'".format(version_str))
+        version_info[key] = int(digits)
     return version_info

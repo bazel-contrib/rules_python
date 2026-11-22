@@ -126,16 +126,15 @@ file from `.agents/skills/review-code/`:
 14. Comment Readability Sub-Agent (`Role: "Comment Readability Editor"`):
     - Prompt file:
       `.agents/skills/review-code/review-comment-readability-prompt.md`
-    - Focus: Polishes `Problem`, `Proposed Fix`, `Draft Comment`, and
+    - Focus: Polishes `Problem`, `Proposed Fix`, optional `Where`, and
       `Draft Reply` text for rendered readability:
-      - Enforce the mechanical `Draft Comment` structure (`<brief/concise
-        description of issue>`, bounded `Suggested fix:`, and optional `Where:`
-        when multiple locations are affected).
+      - Enforce the `Proposed Fix` budget: a high-level, direct first sentence
+        under 20 words stating the suggested fix, plus up to 50 additional
+        words for more information on the fix (`Where` is not subject to this
+        limit).
       - Cut dense "wall of text" paragraphs down to 1–2 short, direct
         sentences.
       - Omit verbatim code snippets when a concise prose instruction suffices.
-      - Include concrete suggested error/message wording in `Draft Comment`
-        (not left only in `Proposed Fix`).
       - Remove excessive inline backticks across identifier lists (such as
         `UPPER_SNAKE_CASE` constants) and strip outer backtick wrappers.
 
@@ -173,17 +172,11 @@ file from `.agents/skills/review-code/`:
   ### <ID>. [<SEVERITY>] <Short title> — [<file>:<line>](file:///...)
   * Action: <Post comment | Fix directly and push to PR>
   * Problem: <1-2 sentences stating what is wrong and why.>
-  * Proposed Fix: <concise prose fix instruction, or replacement snippet/diff
-    when non-trivial>
-  * Draft Comment (in user's voice):
-    ```markdown
-    <brief/concise description of issue>
-
-    Suggested fix: <fix, under 20 lines / 10 sentences>
-
-    Where: <other locations where this is applicable, if more than just the
-    commented location>
-    ```
+  * Proposed Fix: <First sentence under 20 words, high-level, direct, and to the
+    point, stating the suggested fix. Up to 50 additional words for more
+    information on the fix.>
+  * Where: <Other locations where this applies, included only when more than
+    just the primary location is affected; not subject to the 50-word limit.>
   * Author Response: <If the author replied to this comment thread, quote or
     summarize their response here, bolding any question to answer.>
   * Draft Reply: <proposed reply in user's voice, if applicable>
@@ -197,8 +190,8 @@ file from `.agents/skills/review-code/`:
   ## Passing Domains
   <Comma-separated list of audited domains with 0 issues>
   ````
-- Omit verbatim code snippets from `Proposed Fix` and `Draft Comment` when a
-  concise prose instruction suffices:
+- Omit verbatim code snippets from `Proposed Fix` when a concise prose
+  instruction suffices:
   - Formatting and line wrapping: state what formatting rule to apply (e.g.,
     wrap lines and `doc` strings to 80 columns) instead of pasting re-wrapped
     code.
@@ -246,7 +239,7 @@ file from `.agents/skills/review-code/`:
     `.agents/skills/review-code/scripts/wrap_pr_body.py` with
     `--repo=bazel-contrib/rules_python -- "<pr>"` directly during synthesis.
     Do not pull raw PR descriptions into LLM context to re-wrap manually or
-    propose a long `Draft Comment`; the script re-fetches via `gh pr view`,
+    propose a long formatting comment; the script re-fetches via `gh pr view`,
     strips control characters, wraps prose deterministically, verifies
     non-whitespace token equivalence, and applies `gh pr edit`.
   - Only after `wrap_pr_body.py` exits `0` with `status=updated`:
@@ -263,8 +256,8 @@ file from `.agents/skills/review-code/`:
     omit the notice comment and drop the finding (or move it to
     `## Resolved Issues` if previously recorded).
   - If `wrap_pr_body.py` fails (e.g., `gh pr edit` lacks permissions), keep
-    the finding under `## Open Issues` in `code-review-results.md` with a
-    1-sentence `Draft Comment` requesting 72-column prose wrapping.
+    the finding under `## Open Issues` in `code-review-results.md` requesting
+    72-column prose wrapping.
 - Once all sub-agents finish, finalize `code-review-results.md` and provide a
   concise summary with the overall verdict and a clickable markdown link to
   `code-review-results.md` in the response.
@@ -305,8 +298,23 @@ file from `.agents/skills/review-code/`:
   the latest PR description, commits, and review comments (`gh pr view`), move
   any issues addressed in the interim to `## Resolved Issues` in
   `code-review-results.md`, and drop their candidate comments.
-- When posting comments or replies to a PR, append an italicized disclosure line
-  at the end of each comment:
+- When posting review comments to a PR, phrase them mechanically in the user's
+  voice from `Problem`, `Proposed Fix`, and (when multiple locations are
+  affected) `Where` without storing the verbatim comment in
+  `code-review-results.md`:
+
+  ```markdown
+  <brief/concise description of issue>
+
+  Suggested fix: <fix, under 10 lines / 50 words>
+
+  Where: <other locations where this is applicable, if more than just the
+  commented location>
+  ```
+
+  Include `Where:` only when more than just the commented location is affected
+  (omit `Where:` for single-location issues). Append an italicized disclosure
+  line at the end of every posted comment or reply:
   `*This is an agent-generated comment reviewed and approved by the user.*` if
   the user reviewed and approved posting the comment, or
   `*This is an agent-generated comment unreviewed by the user.*` if posted

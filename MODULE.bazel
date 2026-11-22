@@ -95,8 +95,6 @@ pip.parse(
 )
 pip.dep(name = "pytest")
 pip.dep(name = "pytest-bazel")
-pip.dep(name = "pytest-randomly")
-pip.dep(name = "pytest-shard")
 use_repo(pip, "pypi", "rules_python_publish_deps")
 
 bazel_dep(
