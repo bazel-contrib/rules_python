@@ -117,6 +117,11 @@ globs: "*.bzl,BUILD,BUILD.bazel,*.bazel"
   unbuilt targets do not cause loading-time failures.
 * Prefer `ctx.actions.write` over spawning a subprocess for small content known
   at analysis time.
+* **Action Option Flags (`--arg=value`)**: When a CLI accepts `--flag=value`,
+  use `args.add(val, format = "--flag=%s")` instead of
+  `args.add("--flag", val)` and `args.add_all(vals, format_each = "--flag=%s")`
+  instead of `before_each = "--flag"`. Separate tokens misparse `-` or `@`
+  values as flags or `@flagfile` paths.
 * In `genrule.cmd` or multi-line command strings, place closing triple quotes
   immediately after the last argument (`"""\n... --flag"""`) when trailing
   newlines would break chained commands.
