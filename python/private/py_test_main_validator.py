@@ -24,7 +24,15 @@ import argparse
 import ast
 import sys
 
+# LINT.IfChange(active_expr_nodes)
+# Expression node types whose evaluation runs code (and thus may run tests).
+# `await`/`yield` can't appear at the module top level, but are included for
+# completeness when walking nested expressions.
+_ACTIVE_EXPR_NODE_TYPES = (ast.Call, ast.Await, ast.Yield, ast.YieldFrom)
+# LINT.ThenChange(//crates/py_test_main_validator/src/lib.rs:active_expr_nodes)
 
+
+# LINT.IfChange(ast_rules)
 def _compute_inert_node_types() -> tuple[type[ast.AST], ...]:
     # Statement node types that never run any code on their own, regardless of
     # their contents. A module whose top-level body consists solely of these (and
@@ -49,11 +57,6 @@ _INERT_NODE_TYPES = _compute_inert_node_types()
 
 # `ast.TryStar` (PEP 654, `try/except*`) only exists on Python 3.11+.
 _TRY_NODE_TYPES = (ast.Try, ast.TryStar) if hasattr(ast, "TryStar") else (ast.Try,)
-
-# Expression node types whose evaluation runs code (and thus may run tests).
-# `await`/`yield` can't appear at the module top level, but are included for
-# completeness when walking nested expressions.
-_ACTIVE_EXPR_NODE_TYPES = (ast.Call, ast.Await, ast.Yield, ast.YieldFrom)
 
 
 def _expression_runs_code(value) -> bool:
@@ -145,32 +148,39 @@ def module_runs_tests(tree: ast.Module) -> bool:
     return not _defines_test_code(tree)
 
 
+# LINT.ThenChange(//crates/py_test_main_validator/src/lib.rs:ast_rules)
+
+
+# LINT.IfChange(error_message)
 def _format_error(label: str, src_name: str) -> str:
     target = label or src_name
     return (
         "py_test target {target} will not run any tests.\n"
         "\n"
-        "The main module '{src_name}' only contains inert top-level statements "
-        "(class/function definitions, imports, assignments). Running it does "
-        "nothing, so the test silently passes without executing any test "
-        "code.\n"
+        "The main module '{src_name}' only contains inert top-level statements\n"
+        "(class/function definitions, imports, assignments). Running it does\n"
+        "nothing, so the test silently passes without executing any test code.\n"
         "\n"
-        "py_test runs the main module directly; it does not automatically "
-        "invoke a test runner such as unittest or pytest. Add code that runs "
-        "your tests, for example:\n"
+        "py_test runs the main module directly; it does not automatically invoke\n"
+        "a test runner such as unittest or pytest. Add code that runs your tests,\n"
+        "for example:\n"
         "\n"
         '    if __name__ == "__main__":\n'
         "        unittest.main()\n"
         "\n"
         "or use a main module that invokes a runner (e.g. pytest.main()).\n"
         "\n"
-        "This check can be disabled by setting "
+        "This check can be disabled by setting\n"
         "--@rules_python//python/config_settings:validate_test_main=disabled."
     ).format(target=target, src_name=src_name)
 
 
+# LINT.ThenChange(//crates/py_test_main_validator/src/lib.rs:error_message)
+
+
 def main(args) -> int:
     parser = argparse.ArgumentParser()
+    # LINT.IfChange(cli_flags)
     parser.add_argument(
         "--src",
         required=True,
@@ -191,6 +201,7 @@ def main(args) -> int:
         required=True,
         help="Path to the validation marker file to write on success.",
     )
+    # LINT.ThenChange(//crates/py_test_main_validator/src/lib.rs:cli_flags)
     options = parser.parse_args(args)
 
     src_name = options.src_name or options.src
