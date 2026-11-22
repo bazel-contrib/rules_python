@@ -2,7 +2,6 @@
 
 load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "repo_utils")
 load(":generate_whl_library_build_bazel.bzl", "generate_whl_library_build_bazel")
-load(":pep508_requirement.bzl", "requirement")
 
 # Reusable common attributes for generating BUILD.bazel from Requires-Dist in the wheel METADATA.
 whl_deps_attrs = {
@@ -25,10 +24,6 @@ For example if your whl depends on `numpy` and your Python package repo is named
     ),
     "group_name": attr.string(
         doc = "Name of the group, if any.",
-    ),
-    "requirement": attr.string(
-        mandatory = True,
-        doc = "Python requirement string describing the package to make available, if 'urls' or 'whl_file' is given, then this only needs to include foo[any_extras] as a bare minimum.",
     ),
 }
 
@@ -62,7 +57,7 @@ def _whl_deps_repo_impl(rctx):
         repo = rctx.attr.repo or (
             str(rctx.attr.metadata_file) if rctx.attr.metadata_file else None
         ),
-        extras = requirement(rctx.attr.requirement).extras,
+        provides_extra = getattr(metadata, "provides_extra", []),
     )
     rctx.file("BUILD.bazel", build_file_contents)
 
