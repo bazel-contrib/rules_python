@@ -18,12 +18,12 @@ py_reconfig_binary(
     srcs = ["instrumented.py"],
     collect_code_coverage = True,
     main = "instrumented.py",
-    # The bundled coverage tool is configured only for this version, see the
-    # `MODULE.bazel` file.
+    # The coverage tool of the toolchain is configured only for this version,
+    # see the `MODULE.bazel` file.
     python_version = "3.12.16",
     tags = ["manual"],
-    # The bundled coverage tool is not supported on Windows and it is only
-    # configured with bzlmod.
+    # The coverage collection is not supported on Windows and the coverage tool
+    # of the toolchain is only configured with bzlmod.
     target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
     deps = [":lib"],
 )
@@ -34,6 +34,57 @@ pytest_test(
     data = [":instrumented"],
     env = {
         "INSTRUMENTED": "$(rlocationpath :instrumented)",
+    },
+    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    deps = ["//python/runfiles"],
+)
+
+# Like `instrumented`, but the `coverage` package of the toolchain is
+# materialized in the binary's venv site-packages instead of being added to
+# `sys.path`.
+py_reconfig_binary(
+    name = "instrumented_venv",
+    srcs = ["instrumented.py"],
+    collect_code_coverage = True,
+    main = "instrumented.py",
+    python_version = "3.12.16",
+    tags = ["manual"],
+    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    venvs_site_packages = "yes",
+    deps = [":lib"],
+)
+
+pytest_test(
+    name = "coverage_collection_venvs_site_packages_test",
+    srcs = ["coverage_collection_test.py"],
+    data = [":instrumented_venv"],
+    env = {
+        "INSTRUMENTED": "$(rlocationpath :instrumented_venv)",
+    },
+    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    deps = ["//python/runfiles"],
+)
+
+# Like `instrumented`, but with a toolchain that is not the default one for the
+# `3.12` version. The `coverage` package is locked per `X.Y` version, so it is
+# used for all of the `X.Y.Z` versions.
+py_reconfig_binary(
+    name = "instrumented_patch_version",
+    srcs = ["instrumented.py"],
+    collect_code_coverage = True,
+    main = "instrumented.py",
+    python_version = "3.12.13",
+    tags = ["manual"],
+    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    deps = [":lib"],
+)
+
+pytest_test(
+    name = "coverage_collection_patch_version_test",
+    srcs = ["coverage_collection_test.py"],
+    data = [":instrumented_patch_version"],
+    env = {
+        "INSTRUMENTED": "$(rlocationpath :instrumented_patch_version)",
     },
     target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
     deps = ["//python/runfiles"],
