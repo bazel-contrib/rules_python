@@ -141,6 +141,47 @@ Requires-Dist: this will be ignored
 
 _tests.append(_test_parse_metadata_all)
 
+def _test_parse_metadata_without_provides_extra(env):
+    got = _parse_whl_metadata(
+        env,
+        contents = """\
+Name: foo
+Version: 0.0.1
+Requires-Dist: plain
+Requires-Dist: no-extra; python_version < "3.11"
+Requires-Dist: bar; extra == "all"
+Requires-Dist: baz>=1; python_version < "3.11" and extra == 'toml'
+Requires-Dist: qux; (os_name == "nt" or "Rev_Ersed"==extra) and extra != "not-this"
+Requires-Dist: other; some_extra == "not-a-var" or "nope" == extra_var
+Requires-Dist: again; extra == "all"
+""",
+    )
+
+    # The extras are from the markers, because there is no `Provides-Extra`.
+    got.provides_extra().contains_exactly([
+        "Rev_Ersed",
+        "all",
+        "toml",
+    ]).in_order()
+
+_tests.append(_test_parse_metadata_without_provides_extra)
+
+def _test_parse_metadata_provides_extra_and_markers(env):
+    got = _parse_whl_metadata(
+        env,
+        contents = """\
+Name: foo
+Version: 0.0.1
+Requires-Dist: bar; extra == "all"
+Requires-Dist: baz; extra == "undeclared"
+Requires-Dist: qux; extra == "all"
+Provides-Extra: all
+""",
+    )
+    got.provides_extra().contains_exactly(["all", "undeclared"]).in_order()
+
+_tests.append(_test_parse_metadata_provides_extra_and_markers)
+
 def _test_parse_metadata_multiline_license(env):
     got = _parse_whl_metadata(
         env,
