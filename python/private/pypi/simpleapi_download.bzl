@@ -296,4 +296,6 @@ def _with_index_url(index_url, values):
         whls = values.whls,
         hashes_by_version = values.hashes_by_version,
         index_url = index_url,
+        # Set by `pypi_cache` if the facts left out the wheels that no platform can select.
+        **({"wheels_filtered": True} if getattr(values, "wheels_filtered", False) else {})
     )

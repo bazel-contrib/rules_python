@@ -819,6 +819,90 @@ simple==0.0.1 \
 
 _tests.append(_test_default_index_setting)
 
+def _test_wheel_filter(env):
+    """Verifies that the wheel filter has all platforms of the hubs that read the index."""
+
+    def mock_simpleapi_download(_ctx, *, attr, cache, **_kwargs):
+        index_url = attr.index_url + "/simple/"
+        whl = struct(
+            version = "0.0.1",
+            yanked = None,
+            filename = "simple-0.0.1-py3-none-any.whl",
+            digest = "sha256:deadbeef",
+            url = "https://example.org/simple-0.0.1-py3-none-any.whl",
+        )
+        result = struct(
+            whls = {whl.digest: whl},
+            sdists = {},
+            hashes_by_version = {whl.version: [whl.digest]},
+        )
+        cache.setdefault((index_url, index_url, [whl.version]), result)
+        return {"simple": struct(
+            whls = result.whls,
+            sdists = result.sdists,
+            hashes_by_version = result.hashes_by_version,
+            index_url = index_url,
+        )}
+
+    mods = parse_modules(
+        module_ctx = mocks.mctx(
+            _mod(
+                name = "my_module",
+                parse = [
+                    _parse(
+                        hub_name = "pypi_a",
+                        python_version = "3.15",
+                        requirements_lock = "requirements.txt",
+                    ),
+                    # A hub with a `uv_lock` does not read the index.
+                    _parse(
+                        hub_name = "pypi_b",
+                        python_version = "3.14",
+                        uv_lock = "uv.lock",
+                    ),
+                    # A Python version without a toolchain is ignored.
+                    _parse(
+                        hub_name = "pypi_c",
+                        python_version = "3.99",
+                        requirements_lock = "requirements.txt",
+                    ),
+                ],
+            ),
+            os_name = "osx",
+            arch_name = "aarch64",
+            facts = {},
+            mock_files = {
+                "requirements.txt": "simple==0.0.1 --hash=sha256:deadbeef",
+                "uv.lock": """\
+[[package]]
+name = "simple"
+version = "0.0.1"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://example.org/simple-0.0.1-py3-none-any.whl", hash = "sha256:deadbeef" },
+]
+""",
+            },
+        ),
+        available_interpreters = {
+            "python_3_14_host": "unit_test_interpreter_target",
+            "python_3_15_host": "unit_test_interpreter_target",
+        },
+        minor_mapping = {"3.14": "3.14.1", "3.15": "3.15.19"},
+        simpleapi_download = mock_simpleapi_download,
+    )
+
+    wheel_filter = mods.facts["wheel_filter"]
+    env.expect.that_collection({k.split("|")[1]: None for k in wheel_filter}.keys()).contains_exactly(["3.15"])
+
+    # The filter has the platforms that the host does not run.
+    env.expect.that_collection(wheel_filter).contains_at_least([
+        "cpython|3.15|none,abi3,cp315|any,linux_x86_64,manylinux_*_x86_64",
+        "cpython|3.15|none,abi3,cp315|any,win_amd64",
+    ])
+
+_tests.append(_test_wheel_filter)
+
 def extension_test_suite(name):
     """Create the test suite.
 
