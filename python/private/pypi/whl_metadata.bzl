@@ -77,10 +77,46 @@ def parse_whl_metadata(contents):
 
     return struct(
         name = parsed["name"],
-        provides_extra = parsed["provides_extra"],
+        # The old metadata versions do not have `Provides-Extra`, so also use
+        # the extras that the requirements are using in their markers.
+        provides_extra = parsed["provides_extra"] + [
+            extra
+            for extra in _extras_in_markers(parsed["requires_dist"])
+            if extra not in parsed["provides_extra"]
+        ],
         requires_dist = parsed["requires_dist"],
         version = parsed["version"],
     )
+
+def _extras_in_markers(requires_dist):
+    """Return the extras that are used as `extra == "<name>"` in the markers."""
+    extras = {}
+    for line in requires_dist:
+        _, _, marker = line.partition(";")
+        if "extra" not in marker:
+            continue
+
+        # The odd items are the string literals of the marker.
+        parts = marker.replace("'", "\"").split("\"")
+        for i in range(1, len(parts) - 1, 2):
+            before = parts[i - 1].rstrip()
+            after = parts[i + 1].lstrip()
+            if before.endswith("==") and _is_var(before.removesuffix("==").rstrip(), suffix = True):
+                extras[parts[i]] = None
+            elif after.startswith("==") and _is_var(after.removeprefix("==").lstrip(), suffix = False):
+                extras[parts[i]] = None
+
+    return sorted(extras)
+
+def _is_var(text, *, suffix):
+    """Tell if the text ends or starts with the `extra` marker variable."""
+    if suffix:
+        rest = text.removesuffix("extra")
+        boundary = rest[-1:]
+    else:
+        rest = text.removeprefix("extra")
+        boundary = rest[:1]
+    return rest != text and not (boundary.isalnum() or boundary == "_")
 
 def find_whl_metadata(*, install_dir, logger):
     """Find the whl METADATA file in the install_dir.
