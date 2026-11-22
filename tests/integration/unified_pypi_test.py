@@ -7,6 +7,32 @@ from tests.integration import runner
 
 
 class UnifiedPypiTest(runner.TestCase):
+    def test_configure_hides_unexposed_packages(self):
+        self.run_bazel("test", "//:test_filtered_direct")
+        result = self.run_bazel("build", "//:bin_filtered_six", check=False)
+        self.assertNotEqual(
+            result.exit_code,
+            0,
+            "Expected the alias of the unexposed package to be hidden",
+        )
+        self.assert_result_matches(
+            result,
+            r"alias '[^']*//six:six'.*is not visible from",
+        )
+
+    def test_configure_hides_unexposed_packages_in_unified_hub(self):
+        self.run_bazel("cquery", "//:bin_filtered_six_unified")
+        result = self.run_bazel("build", "//:bin_filtered_six_unified", check=False)
+        self.assertNotEqual(
+            result.exit_code,
+            0,
+            "Expected build to fail during execution phase",
+        )
+        self.assert_result_matches(
+            result,
+            'ERROR: PyPI package "six" is not available when building under PyPI hub "pypi_filtered"\\. Try adding it to the requirements of this hub',
+        )
+
     def test_default_fallback_hub(self):
         self.run_bazel("test", "//:test_default")
 
