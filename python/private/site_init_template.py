@@ -68,10 +68,16 @@ def _find_runfiles_root():
 
     # Be defensive: the runfiles dir should contain ourselves. If it doesn't,
     # then it must not be our runfiles directory.
-    if runfiles_dir and os.path.exists(
-        os.path.join(runfiles_dir, _SELF_RUNFILES_RELATIVE_PATH)
-    ):
-        return runfiles_dir
+    if runfiles_dir:
+        self_path = os.path.abspath(
+            os.path.join(runfiles_dir, _SELF_RUNFILES_RELATIVE_PATH)
+        )
+        # Without the \\?\ prefix, exists() is False for paths that are too
+        # long, unless LongPathsEnabled is set.
+        if os.name == "nt" and not self_path.startswith("\\\\"):
+            self_path = "\\\\?\\" + self_path
+        if os.path.exists(self_path):
+            return runfiles_dir
 
     num_dirs_to_runfiles_root = _SELF_RUNFILES_RELATIVE_PATH.count("/") + 1
     runfiles_root = os.path.dirname(__file__)

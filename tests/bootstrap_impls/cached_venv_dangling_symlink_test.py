@@ -4,41 +4,10 @@ from __future__ import annotations
 
 import os
 import pathlib
-import sys
 import tempfile
 import unittest
 
-from python.runfiles import runfiles
-
-
-def _load_bootstrap() -> dict:
-    r = runfiles.Create()
-    if r:
-        template_path = r.Rlocation(
-            "rules_python/python/private/python_bootstrap_template.txt"
-        )
-        assert template_path is not None
-        template = pathlib.Path(template_path)
-    else:
-        template = (
-            pathlib.Path(__file__).resolve().parents[2]
-            / "python/private/python_bootstrap_template.txt"
-        )
-    source = template.read_text(encoding="utf-8")
-    for placeholder, value in [
-        ("%shebang%", "#!/usr/bin/env python3"),
-        ("%stage2_bootstrap%", "unused.py"),
-        ("%runtime_venv_symlinks%", ""),
-    ]:
-        source = source.replace(placeholder, value)
-
-    bootstrap = {"__name__": "bootstrap_test"}
-    saved_path = sys.path[:]
-    try:
-        exec(compile(source, str(template), "exec"), bootstrap)
-    finally:
-        sys.path[:] = saved_path
-    return bootstrap
+from tests.bootstrap_impls.bootstrap_template_loader import load_bootstrap
 
 
 def _can_create_symlinks() -> bool:
@@ -82,7 +51,7 @@ class CachedVenvDanglingSymlinkTest(unittest.TestCase):
             self.assertFalse(os.path.lexists(junction))
 
     def _test_replaces_dangling_package_link(self, *, symlinks_supported) -> None:
-        bootstrap = _load_bootstrap()
+        bootstrap = load_bootstrap()
         # False uses the fallback for when symlinks can't be created, which
         # creates a junction for a directory.
         bootstrap["_symlinks_supported"] = symlinks_supported

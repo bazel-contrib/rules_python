@@ -114,34 +114,26 @@ def get_windows_path_with_unc_prefix(path):
     if not IS_WINDOWS or sys.version_info[0] < 3:
         return path
 
-    # Starting in Windows 10, version 1607(OS build 14393), MAX_PATH limitations have been
-    # removed from common Win32 file and directory functions.
-    # Related doc: https://docs.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=cmd#enable-long-paths-in-windows-10-version-1607-and-later
-    import platform
-
-    win32_version = None
-    # Windows 2022 with Python 3.12.8 gives flakey errors, so try a couple times.
-    for _ in range(3):
-        try:
-            win32_version = platform.win32_ver()[1]
-            break
-        except (ValueError, KeyError):
-            pass
-    if win32_version and win32_version >= "10.0.14393":
-        return path
-
     # import sysconfig only now to maintain python 2.6 compatibility
     import sysconfig
 
     if sysconfig.get_platform() == "mingw":
         return path
 
-    # Lets start the unicode fun
-    if path.startswith(unicode_prefix):  # noqa: F821
+    unicode_prefix = "\\\\?\\"
+    if path.startswith(unicode_prefix):
         return path
 
     # os.path.abspath returns a normalized absolute path
-    return unicode_prefix + os.path.abspath(path)  # noqa: F821
+    path = os.path.abspath(path)
+    # Long paths only work without the prefix if LongPathsEnabled is set, which
+    # is off by default. Only add the prefix when it's needed, so that short
+    # paths, e.g. __file__, are unchanged. 248 is the limit for directories.
+    if len(path) < 248:
+        return path
+    if path.startswith("\\\\"):
+        return unicode_prefix + "UNC\\" + path[2:]
+    return unicode_prefix + path
 
 
 def print_verbose(*args, mapping=None, values=None):
@@ -196,7 +188,9 @@ def find_runfiles_root(main_rel_path):
             runfiles_dir = runfiles_manifest_file[:-9]
     # Be defensive: the runfiles dir should contain our main entry point. If
     # it doesn't, then it must not be our runfiles directory.
-    if runfiles_dir and os.path.exists(os.path.join(runfiles_dir, main_rel_path)):
+    if runfiles_dir and os.path.exists(
+        get_windows_path_with_unc_prefix(os.path.join(runfiles_dir, main_rel_path))
+    ):
         return runfiles_dir
 
     # Clear RUNFILES_DIR & RUNFILES_MANIFEST_FILE since the runfiles dir was

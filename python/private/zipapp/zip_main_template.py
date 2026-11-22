@@ -104,27 +104,26 @@ def get_windows_path_with_unc_prefix(path):
     if not IS_WINDOWS or sys.version_info[0] < 3:
         return path
 
-    # Starting in Windows 10, version 1607(OS build 14393), MAX_PATH limitations have been
-    # removed from common Win32 file and directory functions.
-    # Related doc: https://docs.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=cmd#enable-long-paths-in-windows-10-version-1607-and-later
-    import platform
-
-    if platform.win32_ver()[1] >= "10.0.14393":
-        return path
-
     # import sysconfig only now to maintain python 2.6 compatibility
     import sysconfig
 
     if sysconfig.get_platform() == "mingw":
         return path
 
-    # Lets start the unicode fun
     unicode_prefix = "\\\\?\\"
     if path.startswith(unicode_prefix):
         return path
 
     # os.path.abspath returns a normalized absolute path
-    return unicode_prefix + os.path.abspath(path)
+    path = os.path.abspath(path)
+    # Long paths only work without the prefix if LongPathsEnabled is set, which
+    # is off by default. Only add the prefix when it's needed, so that short
+    # paths, e.g. __file__, are unchanged. 248 is the limit for directories.
+    if len(path) < 248:
+        return path
+    if path.startswith("\\\\"):
+        return unicode_prefix + "UNC\\" + path[2:]
+    return unicode_prefix + path
 
 
 def search_path(name):

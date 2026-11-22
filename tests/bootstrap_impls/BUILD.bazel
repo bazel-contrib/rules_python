@@ -13,6 +13,7 @@
 # limitations under the License.
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
+load("//python:py_library.bzl", "py_library")
 load("//python:py_test.bzl", "py_test")
 load("//python:pytest_test.bzl", "pytest_test")
 load("//tests/support:py_reconfig.bzl", "py_reconfig_binary", "py_reconfig_test")
@@ -149,12 +150,25 @@ pytest_test(
     ],
 )
 
+py_library(
+    name = "bootstrap_template_loader",
+    srcs = ["bootstrap_template_loader.py"],
+    data = ["//python/private:python_bootstrap_template.txt"],
+    deps = ["//python/runfiles"],
+)
+
 py_test(
     name = "cached_venv_replaces_dangling_package_symlink_test",
     srcs = ["cached_venv_dangling_symlink_test.py"],
-    data = ["//python/private:python_bootstrap_template.txt"],
     main = "cached_venv_dangling_symlink_test.py",
-    deps = ["//python/runfiles"],
+    deps = [":bootstrap_template_loader"],
+)
+
+py_test(
+    name = "windows_long_paths_test",
+    srcs = ["windows_long_paths_test.py"],
+    target_compatible_with = ["@platforms//os:windows"],
+    deps = [":bootstrap_template_loader"],
 )
 
 py_reconfig_test(
