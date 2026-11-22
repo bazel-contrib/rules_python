@@ -10,6 +10,7 @@ labels = struct(
     BUILD_PYTHON_ZIP = str(Label("//python/config_settings:build_python_zip")),
     # NOTE: Special target; see definition for details.
     BUILD_RUNFILE_LINKS = str(Label("//command_line_option:build_runfile_links")),
+    COVERAGE = str(Label("//python/config_settings:coverage")),
     DEBUGGER = str(Label("//python/config_settings:debugger")),
     # NOTE: Special target; see definition for details.
     ENABLE_RUNFILES = str(Label("//command_line_option:enable_runfiles")),

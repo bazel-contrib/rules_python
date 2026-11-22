@@ -21,11 +21,38 @@ load(":flags.bzl", "FreeThreadedFlag")
 load(":py_internal.bzl", "py_internal")
 load(":py_runtime_info.bzl", "DEFAULT_STUB_SHEBANG", "PyRuntimeInfo")
 load(":reexports.bzl", "BuiltinPyRuntimeInfo")
-load(":version.bzl", "version")
 
 _py_builtins = py_internal
+_HAS_COVERAGE_FLAG = "//python/private:has_coverage_flag"
+_UNSET_COVERAGE_LABELS = (
+    # keep-sorted start
+    Label("//python/private:sentinel"),
+    Label("//python:none"),
+    # keep-sorted end
+)
 
-def coverage_tool_missing_message(*, coverage_enabled, coverage_tool, label):
+# Inspects `settings[labels.COVERAGE]` via raw BuildOptions onto a bool_setting
+# so `py_runtime` can suppress `coverage_tool_missing_message` when `--coverage`
+# is set. Depending on `//python/config_settings:coverage` directly (or via
+# `config_setting`) from `py_runtime` would configure the `py_library` target,
+# resolving the Python toolchain and creating a dependency cycle.
+def _has_coverage_flag_transition_impl(settings, _attr):
+    return {
+        _HAS_COVERAGE_FLAG: settings[labels.COVERAGE] not in _UNSET_COVERAGE_LABELS,
+    }
+
+_has_coverage_flag_transition = transition(
+    implementation = _has_coverage_flag_transition_impl,
+    inputs = [labels.COVERAGE],
+    outputs = [_HAS_COVERAGE_FLAG],
+)
+
+def coverage_tool_missing_message(
+        *,
+        coverage_enabled,
+        coverage_tool,
+        has_coverage_flag = False,
+        label):
     """Build the warning for a selected runtime that cannot produce coverage.
 
     Kept separate from the rule implementation so the decision is unit testable
@@ -34,20 +61,25 @@ def coverage_tool_missing_message(*, coverage_enabled, coverage_tool, label):
     Args:
         coverage_enabled: {type}`bool` whether the build is collecting coverage.
         coverage_tool: {type}`File | None` the runtime's coverage entry point.
+        has_coverage_flag: {type}`bool` whether `--coverage` is set to a target.
         label: {type}`Label` the `py_runtime` being analyzed.
 
     Returns:
         {type}`str | None` the message to print, or `None` when no warning is
         warranted.
     """
-    if not coverage_enabled or coverage_tool:
+    if not coverage_enabled or coverage_tool or has_coverage_flag:
         return None
 
     return """
 ======================================================================
 WARNING: Python runtime {label} has no coverage_tool.
   `bazel coverage` will produce empty lcov data for py_test targets that
-  resolve to this runtime.
+  resolve to this runtime, unless --@rules_python//python/config_settings:coverage
+  is set.
+
+  To use the `coverage` locked in your requirements, set e.g.:
+    --@rules_python//python/config_settings:coverage=@pypi//coverage
 
   For rules_python's hermetic toolchains, enable the bundled coverage.py:
     python.toolchain(configure_coverage_tool = True)           # bzlmod
@@ -150,6 +182,9 @@ def _py_runtime_impl(ctx):
     coverage_warning = coverage_tool_missing_message(
         coverage_enabled = ctx.configuration.coverage_enabled,
         coverage_tool = coverage_tool,
+        has_coverage_flag = (
+            ctx.attr._has_coverage_flag[0][BuildSettingInfo].value
+        ),
         label = ctx.label,
     )
     if coverage_warning:
@@ -453,6 +488,10 @@ The {obj}`PyRuntimeInfo.zip_main_template` field.
 :::
 """,
             ),
+            "_has_coverage_flag": attr.label(
+                cfg = _has_coverage_flag_transition,
+                default = _HAS_COVERAGE_FLAG,
+            ),
             "_py_freethreaded_flag": attr.label(
                 default = labels.PY_FREETHREADED,
             ),
@@ -467,11 +506,15 @@ def _is_singleton_depset(files):
     return _py_builtins.is_singleton_depset(files)
 
 def _interpreter_version_info_from_version_str(version_str):
-    v = version.parse(version_str)
+    # We only need the release numbers, e.g. `3.15.0` from `3.15.0rc1`.
     version_info = {}
-    parts = list(v.release)
-    for key in ("major", "minor", "micro"):
-        if not parts:
-            break
-        version_info[key] = parts.pop(0)
+    for key, part in zip(("major", "minor", "micro"), version_str.split(".")):
+        digits = ""
+        for c in part.elems():
+            if not c.isdigit():
+                break
+            digits += c
+        if not digits:
+            fail("Expected the Python version to be '<major>[.<minor>[.<micro>]]', got: '{}'".format(version_str))
+        version_info[key] = int(digits)
     return version_info

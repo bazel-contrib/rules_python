@@ -12,6 +12,8 @@ dependencies = [
     "sphinx_rtd_theme >=2.0", # uv insists on downgrading for some reason
     "readthedocs-sphinx-ext",
     "absl-py",
+    # Used to test the coverage collection with coverage from a PyPI hub.
+    "coverage",
     "typing-extensions",
     "sphinx-reredirects",
     "pefile",
@@ -19,8 +21,7 @@ dependencies = [
     "macholib",
     "markupsafe",
     "pytest",
-    "pytest-bazel",
+    # >=1.0.0 for built-in test sharding and non-sandbox rootdir fixes.
+    "pytest-bazel>=1.0.0",
     "pytest-mock",
-    "pytest-randomly",
-    "pytest-shard",
 ]

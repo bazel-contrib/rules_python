@@ -86,6 +86,7 @@ def run(
     console_script: str | None,
     console_script_guess: str,
     shebang: str,
+    template: pathlib.Path | None = None,
 ):
     """Run the generator
 
@@ -95,6 +96,8 @@ def run(
         console_script: The console_script entry in the entry_points.txt file.
         console_script_guess: The string used for guessing the console_script if it is not provided.
         shebang: The shebang to use for the entry point python file. Defaults to empty string (no shebang).
+        template: Optional path to the template file using `%shebang%`, `%module%`, `%attr%`, and
+            `%entry_point%` placeholders.
     """
     config = EntryPointsParser()
     config.read(entry_points)
@@ -134,19 +137,34 @@ def run(
     # See https://github.com/bazel-contrib/rules_python/issues/1383
     # See https://packaging.python.org/en/latest/specifications/entry-points/
 
-    with open(out, "w") as f:
-        f.write(
-            _TEMPLATE.format(
-                shebang=f"{shebang}\n" if shebang else "",
-                module=module,
-                attr=attr,
-                entry_point=entry_point,
-            ),
+    shebang_prefix = f"{shebang}\n" if shebang else ""
+    if template is not None:
+        rendered = (
+            template.read_text(encoding="utf-8")
+            .replace("%shebang%", shebang_prefix)
+            .replace("%module%", module)
+            .replace("%attr%", attr)
+            .replace("%entry_point%", entry_point)
         )
+    else:
+        rendered = _TEMPLATE.format(
+            shebang=shebang_prefix,
+            module=module,
+            attr=attr,
+            entry_point=entry_point,
+        )
+    with open(out, "w", encoding="utf-8") as f:
+        f.write(rendered)
 
 
 def main():
     parser = argparse.ArgumentParser(description="console_script generator")
+    parser.add_argument(
+        "--template",
+        type=pathlib.Path,
+        default=None,
+        help="Path to the Python entrypoint template file.",
+    )
     parser.add_argument(
         "--console-script",
         help="The console_script to generate the entry_point template for.",
@@ -180,6 +198,7 @@ def main():
         console_script=args.console_script,
         console_script_guess=args.console_script_guess,
         shebang=args.shebang,
+        template=args.template,
     )
 
 

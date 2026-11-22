@@ -17,6 +17,7 @@ path = "shrubbery/src/lib.rs"
 anyhow = "1.0.104"
 argfile = "1.0.0"
 base64 = "0.23.1"
+configparser = "3.3.0"
 csv = "1.4.0"
 # Transitive dep of zip: disable default features (`rust_backend` pulls in
 # unused `miniz_oxide`) and enable `runtime_detection` so `zlib-rs` enables
