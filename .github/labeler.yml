@@ -3,3 +3,6 @@
 gazelle:
   - changed-files:
       - any-glob-to-any-file: "gazelle/**"
+sphinxdocs:
+  - changed-files:
+      - any-glob-to-any-file: "sphinxdocs/**"
