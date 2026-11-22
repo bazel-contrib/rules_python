@@ -120,6 +120,12 @@ rp_string_flag(
 )
 
 label_flag(
+    name = "coverage",
+    build_setting_default = "//python/private:sentinel",
+    visibility = ["//visibility:public"],
+)
+
+label_flag(
     name = "debugger",
     build_setting_default = "//python/private:empty",
     visibility = ["//visibility:public"],
