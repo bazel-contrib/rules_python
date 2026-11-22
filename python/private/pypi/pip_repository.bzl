@@ -25,7 +25,7 @@ load(":hash.bzl", "hash")
 load(":labels.bzl", "group_member")
 load(":parse_requirements.bzl", "host_platform", "parse_requirements", "select_requirement")
 load(":pep508_env.bzl", "env")
-load(":pep508_requirement.bzl", "strip_extras", parse_requirement = "requirement")
+load(":pep508_requirement.bzl", parse_requirement = "requirement")
 load(":pip_repository_attrs.bzl", "ATTRS")
 load(":pypi_repo_utils.bzl", "pypi_repo_utils")
 load(":render_pkg_aliases.bzl", "render_pkg_aliases")
@@ -165,9 +165,10 @@ def _pip_repository_impl(rctx):
             continue
         options = options or requirement.extra_pip_args
 
-        # The whl repositories have targets for all of the extras that a
-        # package provides, so the extras are exposed only via the hub.
-        selected_requirements[whl.name] = strip_extras(requirement.requirement_line)
+        # The extras are kept in the requirement, so that the `pkg` targets of
+        # the whl repositories include them when `requirements.bzl` is vendored
+        # and there is no hub to select the extras.
+        selected_requirements[whl.name] = requirement.requirement_line
         selected_extras[whl.name] = parse_requirement(requirement.requirement_line).extras
 
         if not requirement.url:
@@ -190,7 +191,7 @@ def _pip_repository_impl(rctx):
             # ensure that only the locked distributions can be used.
             digests = sorted({src.digest: None for src in whl.srcs})
             if all(digests):
-                selected_requirements[whl.name] = " ".join([selected_requirements[whl.name]] + [
+                selected_requirements[whl.name] = " ".join([requirement.requirement_line] + [
                     "--hash={}".format(d)
                     for d in digests
                 ])
@@ -285,10 +286,13 @@ def _pip_repository_impl(rctx):
             "config.bzl",
             rctx.attr._config_template,
             substitutions = {
+                # The available extras of each package for the spoke
+                # repositories to check if the extras of their dependencies
+                # are available.
                 "%%PACKAGES%%": render.dict({
-                    pkg: None
+                    pkg: sorted(selected_extras.get(pkg, []))
                     for pkg in bzl_packages
-                }, value_repr = lambda x: "None"),
+                }, value_repr = render.list),
             },
         )
         config_repo_template = repr(rctx.attr.name)

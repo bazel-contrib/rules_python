@@ -27,6 +27,7 @@ def whl_library_targets(
         metadata_name = "",
         requires_dist = [],
         provides_extra = [],
+        extras = [],
         entry_points = {},
         include = [],
         group_deps = [],
@@ -56,6 +57,8 @@ def whl_library_targets(
         requires_dist: {type}`list[str]` The list of `Requires-Dist` values from
             the whl `METADATA`.
         provides_extra: {type}`list[str]` The list of extras that the package provides.
+        extras: {type}`list[str]` The list of requested extras, see
+            {obj}`whl_library_deps_targets`.
         entry_points: {type}`list[dict]` A list of parsed entry point definitions.
         include: {type}`list[str]` The list of packages to include.
         group_name: {type}`str | None` name of the dependency group (if any).
@@ -98,6 +101,7 @@ def whl_library_targets(
             group_deps = group_deps,  # only needed if group_name is present
             group_name = group_name,  # must specify group_deps together
             provides_extra = provides_extra,
+            extras = extras,
             include = include,  # only needed if requires_dist is present
             repo = None,  # set aliases in the same repo
             aliases = {},

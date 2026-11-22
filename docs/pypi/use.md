@@ -71,7 +71,7 @@ For example, if the lock file has `google-api-core[async_rest,grpc]`, then the
 hub has:
 
 ```
-@pypi//google_api_core               # The package with all of the extras
+@pypi//google_api_core               # The package with the requested extras
 @pypi//google_api_core:[]            # The package without any extras
 @pypi//google_api_core:[async_rest]  # The package with the async_rest extra
 @pypi//google_api_core:[grpc]        # The package with the grpc extra
@@ -119,13 +119,27 @@ platforms, for example `foo[bar]` on Linux and `foo[baz]` on macOS, then
 `@pypi//foo:[bar]` on macOS is the same as `@pypi//foo:[]`.
 
 The dependencies of the packages use the extras written in the wheel
-`METADATA`, so if `foo` depends on `bar[socks]`, then `@pypi//foo` includes
-`bar` and the dependencies of its `socks` extra. The extras of the
-dependencies are resolved by the repository of `bar` from its own `METADATA`,
-so they do not need to be in the lock file, e.g. when the requirements are
-compiled with the extras stripped, but the packages that the extra depends on
-need to be in the lock file. If `bar` does not provide the `socks` extra, then
-only `bar` is used, like `pip` does.
+`METADATA`, so if `foo` depends on `bar[socks]`, then `@pypi//foo` depends on
+`@pypi//bar:[socks]`. If the extra is not in the lock file, then building
+`@pypi//foo` fails with a message asking you to add `bar[socks]` to the
+requirements or the lock file. For example, when compiling the requirements
+with `uv pip compile`, pass `--no-strip-extras` to keep the extras in the
+output.
+
+If the lock file requests an extra that the package does not provide, e.g.
+`foo[nope]`, then `@pypi//foo:[nope]` is the same as `@pypi//foo:[]`, because
+an unknown extra does not have any dependencies. A warning is printed when the
+package is loaded, e.g. `WARNING: foo 1.0 does not provide the extra 'nope'`,
+which is how `pip` handles the unknown extras.
+
+In bzlmod the extras are not passed to the repositories of the wheels, so
+changing the extras in the lock file does not refetch them.
+
+When the `requirements.bzl` file is vendored, there is no hub repo and the
+labels returned by the `requirement` helper point to the repositories of the
+wheels. Their `pkg` targets include the extras from the lock file and they
+have the `[]` target and the `[extra]` targets for the extras used in the lock
+file and for all of the extras that the package provides.
 
 The `whl` targets, e.g. `@pypi//foo:whl`, do not use the extras and include
 only the wheels of the package and its dependencies without extras.

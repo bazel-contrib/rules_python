@@ -16,6 +16,7 @@
 """
 
 load("//python/private:normalize_name.bzl", "normalize_name")
+load(":labels.bzl", "group_member")
 load(":pep508_env.bzl", "create_env")
 load(":pep508_evaluate.bzl", "evaluate")
 load(":pep508_requirement.bzl", "requirement")
@@ -68,6 +69,7 @@ def deps(
     name = normalize_name(name)
     want_extras = _resolve_extras(name, reqs, extras)
     include = [normalize_name(n) for n in include]
+    excludes = {group_member(x): None for x in excludes}
 
     reqs_by_dep = {}
 
@@ -135,7 +137,7 @@ def _resolve_extras(self_name, reqs, extras):
 
     self_reqs = []
     for req in reqs:
-        if req.name != self_name:
+        if req.name_ != self_name:
             continue
 
         if req.marker == None:

@@ -140,6 +140,25 @@ def test_self_extras_chain_is_fully_resolved(env):
 
 _tests.append(test_self_extras_chain_is_fully_resolved)
 
+def test_self_extras_of_multi_word_package_are_resolved(env):
+    # The name of the package is normalized, so the self edges have to be
+    # matched using the normalized names.
+    got = deps(
+        "foo-bar",
+        requires_dist = [
+            "baz",
+            "Foo.Bar[a,b]; extra == 'all'",
+            "a_dep; extra == 'a'",
+            "b_dep; extra == 'b'",
+        ],
+        extras = ["all"],
+    )
+
+    env.expect.that_collection(got.deps).contains_exactly(["a_dep", "b_dep", "baz"])
+    env.expect.that_dict(got.deps_select).contains_exactly({})
+
+_tests.append(test_self_extras_of_multi_word_package_are_resolved)
+
 def test_self_extras_chain_with_multiple_requested_extras(env):
     # Two requested extras, and the first round discovers exactly two new ones
     # ('a' and 'b'), so the count of newly found extras again matches the number
@@ -348,7 +367,7 @@ def test_deps_with_extras_excludes_and_includes(env):
         "foo",
         requires_dist = ["bar", "bar[socks]", "baz[a]", "baz[b]", "qux[b]"],
         # The excludes are dependencies and the includes are packages
-        excludes = ["bar", "baz[a]"],
+        excludes = ["Bar", "baz[A]"],
         include = ["bar", "baz"],
         keep_extras = True,
     )
