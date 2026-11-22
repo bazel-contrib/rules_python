@@ -22,6 +22,8 @@ def _test_requirement_line_parsing(env):
     want = {
         " name1[ foo ] ": ("name1", ["foo"], ""),
         "Name[foo]": ("name", ["foo"], ""),
+        # No whitespace between the URL and the marker
+        "foo @ https://example.org/foo-1.0-py3-none-any.whl; os_name == 'a'": ("foo", [], "os_name == 'a'"),
         "name [fred,bar] @ http://foo.com ; python_version=='2.7'": ("name", ["bar", "fred"], "python_version=='2.7'"),
         "name; (os_name=='a' or os_name=='b') and os_name=='c'": ("name", [], "(os_name=='a' or os_name=='b') and os_name=='c'"),
         "name@http://foo.com": ("name", [], ""),
@@ -30,6 +32,9 @@ def _test_requirement_line_parsing(env):
         "name[extra]@http://foo.com": ("name", ["extra"], ""),
         "name[foo]": ("name", ["foo"], ""),
         "name[quux, strange];python_version<'2.7' and platform_version=='2'": ("name", ["quux", "strange"], "python_version<'2.7' and platform_version=='2'"),
+        "name_foo==0.25\t--hash=sha256:deadbeef": ("name-foo", [], ""),
+        # The options may be indented with tabs in the requirements files
+        "name_foo==0.25 \t--hash=sha256:deadbeef": ("name-foo", [], ""),
         "name_foo==0.25 ; os_name=='a' --hash=sha256:deadbeef": ("name-foo", [], "os_name=='a'"),
         "name_foo[bar]": ("name-foo", ["bar"], ""),
         "name_foo[bar]==0.25": ("name-foo", ["bar"], ""),
