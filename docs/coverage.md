@@ -35,7 +35,8 @@ This uses the same `coverage` wheels as bzlmod, without any extra setup in the
 `WORKSPACE` file. The WORKSPACE macros cannot read the `uv.lock` file, so the
 selected wheels are stored in a `.bzl` file generated from it, and the
 `@rules_python_coverage` repository has a coverage tool for each Python version,
-e.g. `@rules_python_coverage//coverage:3.13`.
+e.g. `@rules_python_coverage//coverage:3.13`, which is set as the
+{attr}`py_runtime.coverage_tool` of the toolchains.
 
 :::{note}
 This will implicitly add the version of `coverage` bundled with `rules_python`
