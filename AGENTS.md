@@ -17,6 +17,53 @@ Ask for user input and provide a justificaiton if trying to violate them.
 * Once a PR is created, do not amend or rebase.
 * Do not add Bazel copyright to new or existing files.
 
+## Skills, scripts, and rules in `.agents/`
+
+Not every agent harness discovers `.agents/` automatically. Before writing a
+helper script or doing a multi-step task by hand, check for an existing skill
+and use it. Read the skill's `SKILL.md` before running its scripts.
+
+* `.agents/skills/analyze-ci-failure`: download a CI failure log and extract
+  the errors.
+* `.agents/skills/buildkite-get-results`: get Buildkite build results and job
+  logs.
+* `.agents/skills/conversation-done`: clean up the worktree, branches, and
+  Bazel output base when the work is done.
+* `.agents/skills/create-news`: create or update a news entry in `news/`.
+* `.agents/skills/create-pr`: propose, draft, or create a pull request.
+* `.agents/skills/merge-pr`: merge a pull request and watch the merge queue.
+* `.agents/skills/monitor-ci-results`: monitor the CI results of a pull
+  request.
+* `.agents/skills/process-dependabot-prs`: evaluate and merge Dependabot pull
+  requests.
+* `.agents/skills/retry-ci-job`: retry failed Buildkite or GitHub Actions jobs
+  and unblock approval steps.
+* `.agents/skills/review-code`: review local changes before sending a pull
+  request.
+* `.agents/skills/rule-creator`: create a rule in `.agents/rules/`.
+* `.agents/skills/sync-git-branch-continuously`: keep a Git branch pulled and
+  pushed in the background.
+* `.agents/scripts/`: shared scripts, e.g. `gh_pr_stack.py` for stacked pull
+  requests.
+* `.agents/rules/`: rules per topic. Read the ones that match the files being
+  changed, e.g. `pr.md`, `news.md`, `starlark.md`, and `testing.md`.
+
+When adding a skill, add it to this list.
+
+### Skills that do not work in the current harness
+
+A skill may name tools, commands, or CLIs that the current harness does not
+have, e.g. a tool to run background commands or to message a conversation.
+
+* Do the task with the equivalent tools of the harness and reuse the scripts of
+  the skill where they work.
+* Do not write a replacement script without telling the user why the skill
+  could not be used.
+* Tell the user what is incompatible and propose to fix the skill in a
+  separate pull request, so that it works in both harnesses. Keep the fix out
+  of the pull request of the current task.
+* If a CLI that the skill needs is not installed, ask the user to install it.
+
 ## Style and conventions
 
 Read `.editorconfig` for line length wrapping. Do not line-break long string
