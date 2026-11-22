@@ -1,16 +1,22 @@
 """The coverage tool for the WORKSPACE toolchains.
 
-The bzlmod toolchains use the `@rules_python_coverage` pip hub, which is
-created from the `uv.lock` file. The WORKSPACE macros cannot read the
-`uv.lock` file, so it is vendored to the `uv_lock.bzl` file by the
-`vendor_uv_lock` macro and this creates an equivalent hub repository from it
-with the same wheel selection as the `pip.parse` extension.
+With bzlmod the `coverage` package from the `@rules_python_coverage` pip hub,
+which is created from the `uv.lock` file, is added to the dependencies of the
+executables. The WORKSPACE macros cannot read the `uv.lock` file, so it is
+vendored to the `uv_lock.bzl` file by the `vendor_uv_lock` macro and this
+creates a hub repository from it with the same wheel selection as the
+`pip.parse` extension.
 
-The WORKSPACE builds do not set the Python version flag by default, so there
-is a target for each Python version in the hub, which only selects the wheel
-based on the target platform.
+The WORKSPACE builds do not set the Python version flag by default, so the
+executables cannot select the `coverage` package of the toolchain that is used.
+Instead, there is a target for each Python version in the hub, which only
+selects the wheel based on the target platform, and it is used as the
+`py_runtime.coverage_tool` of the toolchains. A `py_library` cannot be used
+there, because it would be a dependency cycle, so the wheels are extracted as
+plain files.
 """
 
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("//python:versions.bzl", "MINOR_MAPPING")
 load("//python/private:text_util.bzl", "render")
@@ -21,11 +27,22 @@ load("//python/private/pypi:parse_requirements.bzl", "parse_requirements")
 load("//python/private/pypi:pep508_env.bzl", "env")
 load("//python/private/pypi:pep508_evaluate.bzl", "evaluate")
 load("//python/private/pypi:platform.bzl", "platform")
-load("//python/private/pypi:whl_library.bzl", "whl_library")
 load("//python/private/pypi:whl_repo_name.bzl", "whl_repo_name")
 load(":uv_lock.bzl", "UV_LOCK_JSON")
 
 _HUB_NAME = "rules_python_coverage"
+
+_COVERAGE_PATCH = Label("//python/private:coverage.patch")
+
+# The BUILD file for the extracted wheel, see `py_runtime.coverage_tool`.
+_WHL_BUILD_FILE = """\
+filegroup(
+    name = "coverage",
+    srcs = ["coverage/__main__.py"],
+    data = glob(["coverage/*.py", "coverage/**/*.py", "coverage/*.so"]),
+    visibility = ["//visibility:public"],
+)
+"""
 
 def _noop(*_args, **_kwargs):
     return None
@@ -56,8 +73,6 @@ def _coverage_hub_repo_impl(rctx):
         "",
         """package(default_visibility = ["//visibility:public"])""",
         "",
-        """exports_files(["config.bzl"])""",
-        "",
     ] + [
         render.call(
             "selects.config_setting_group",
@@ -67,9 +82,6 @@ def _coverage_hub_repo_impl(rctx):
         for p in used_platforms
     ]))
 
-    # The `whl_library` repositories load the packages from the hub.
-    rctx.file("config.bzl", "packages = {\"coverage\": None}\n")
-
     rctx.file("coverage/BUILD.bazel", "\n".join([
         """package(default_visibility = ["//visibility:public"])""",
         "",
@@ -78,7 +90,7 @@ def _coverage_hub_repo_impl(rctx):
             name = python_version,
             actual = render.select(
                 {
-                    "//:is_" + p: "@{}_{}//:pkg".format(rctx.attr.name, name)
+                    "//:is_" + p: "@{}_{}//:coverage".format(rctx.attr.name, name)
                     for p, name in sorted(by_platform.items())
                 },
                 no_match_error = repr((
@@ -153,8 +165,7 @@ def select_wheels(*, uv_lock, minor_mapping, platforms, package = "coverage"):
 
     Returns:
         {type}`struct` with `wheels`, a dict of repository name suffixes to
-        the wheel `filename`, `integrity`, `requirement` and `url`, and
-        `tools`, a dict of
+        the wheel `filename`, `integrity` and `url`, and `tools`, a dict of
         `major.minor` versions to platform names to the repository name
         suffixes.
     """
@@ -184,7 +195,6 @@ def select_wheels(*, uv_lock, minor_mapping, platforms, package = "coverage"):
                 wheels[name] = {
                     "filename": src.filename,
                     "integrity": hash.integrity(src.digest),
-                    "requirement": src.requirement_line,
                     "url": src.url,
                 }
                 for p in src.target_platforms:
@@ -225,14 +235,14 @@ def coverage_repositories(*, name, uv_lock, python_version, minor_mapping = MINO
         tools = selected.tools
         for repo, whl in selected.wheels.items():
             maybe(
-                whl_library,
+                http_archive,
                 name = "{}_{}".format(name, repo),
-                requirement = whl["requirement"],
-                urls = [whl["url"]],
-                filename = whl["filename"],
+                build_file_content = _WHL_BUILD_FILE,
                 integrity = whl["integrity"],
-                dep_template = "@{}//{{name}}:{{target}}".format(name),
-                config_load = "@{}//:config.bzl".format(name),
+                patch_args = ["-p1"],
+                patches = [_COVERAGE_PATCH],
+                type = "zip",
+                urls = [whl["url"]],
             )
 
         coverage_hub_repo(
