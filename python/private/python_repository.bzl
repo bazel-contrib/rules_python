@@ -23,19 +23,44 @@ load(":text_util.bzl", "render")
 
 STANDALONE_INTERPRETER_FILENAME = "STANDALONE_INTERPRETER"
 
-def fix_up_dylib_id(rctx, dylib, *, logger):
+# First python-build-standalone release that ships `libpython*.dylib` with the
+# `@rpath/<dylib>` LC_ID_DYLIB already set, see
+# https://github.com/astral-sh/python-build-standalone/pull/914
+_DYLIB_ID_FIXED_RELEASE = 20251209
+
+def release_from_urls(urls):
+    """Returns the python-build-standalone release of the download.
+
+    Args:
+        urls: {type}`list[str]` The interpreter download URLs.
+
+    Returns:
+        {type}`int | None` The release date, e.g. `20251209`, taken from the
+        `.../<release>/<file>` part of the first URL, or `None` if it is not a
+        python-build-standalone style URL (for example a custom toolchain).
+    """
+    head_and_release, _, _ = urls[0].rpartition("/")
+    _, _, release = head_and_release.rpartition("/")
+    return int(release) if release.isdigit() else None
+
+def fix_up_dylib_id(rctx, dylib, *, release, logger):
     """Sets the LC_ID_DYLIB of `lib/<dylib>` to `@rpath/<dylib>`.
 
-    If `install_name_tool` is not on PATH, for example with a hermetic
+    python-build-standalone releases from `20251209` on already have that id, so
+    nothing is done for them. For older or unknown releases, if
+    `install_name_tool` is not on PATH, for example with a hermetic
     `--repo_env=PATH=...`, the id is left as it is and a warning is logged
-    instead of failing the fetch. Recent python-build-standalone releases
-    already ship `libpython*.dylib` with the `@rpath/<dylib>` id.
+    instead of failing the fetch.
 
     Args:
         rctx: {type}`repository_ctx` The repository context.
         dylib: {type}`str` The dylib's file name, e.g. `libpython3.13.dylib`.
+        release: {type}`int | None` The python-build-standalone release, see
+            {obj}`release_from_urls`.
         logger: The logger to use.
     """
+    if release and release >= _DYLIB_ID_FIXED_RELEASE:
+        return
     install_name_tool = repo_utils.which_unchecked(rctx, "install_name_tool").binary
     if not install_name_tool:
         logger.warn(lambda: (
@@ -258,31 +283,25 @@ def _python_repository_impl(rctx):
             python_short_version,
             "d" if debug else "",
         )
-        fix_up_dylib_id(rctx, dylib, logger = logger)
+        fix_up_dylib_id(rctx, dylib, release = release_from_urls(urls), logger = logger)
 
     _create_pycache_symlinks(rctx, logger)
     python_bin = "python.exe" if ("windows" in platform) else "bin/python3"
 
     if "linux" in platform:
         # Workaround around https://github.com/astral-sh/python-build-standalone/issues/231
-        for url in urls:
-            head_and_release, _, _ = url.rpartition("/")
-            _, _, release = head_and_release.rpartition("/")
-            if not release.isdigit():
-                # Maybe this is some custom toolchain, so skip this
-                break
-
-            if int(release) >= 20240224:
-                # Starting with this release the Linux toolchains have infinite symlink loop
-                # on host platforms that are not Linux. Delete the files no
-                # matter the host platform so that the cross-built artifacts
-                # are the same irrespective of the host platform we are
-                # building on.
-                #
-                # Link to the first affected release:
-                # https://github.com/astral-sh/python-build-standalone/releases/tag/20240224
-                rctx.delete("share/terminfo")
-                break
+        # A release of None is some custom toolchain, so skip this.
+        release = release_from_urls(urls)
+        if release and release >= 20240224:
+            # Starting with this release the Linux toolchains have infinite symlink loop
+            # on host platforms that are not Linux. Delete the files no
+            # matter the host platform so that the cross-built artifacts
+            # are the same irrespective of the host platform we are
+            # building on.
+            #
+            # Link to the first affected release:
+            # https://github.com/astral-sh/python-build-standalone/releases/tag/20240224
+            rctx.delete("share/terminfo")
 
     glob_include = []
     glob_exclude = [
