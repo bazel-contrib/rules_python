@@ -243,6 +243,29 @@ the `pyproject.toml` selects the optional dependencies of the project. The
 packages that are not part of the hub are ignored, so a single `pyproject.toml`
 can list tools that are missing from the lock file.
 
+The extras requested in the selected groups are added to the hub even if the
+lock file does not request them, for example because the lock file was
+generated with `--strip-extras`. With the following `pyproject.toml`:
+
+```toml
+[project]
+dependencies = [
+    "requests[socks]",
+    "keyring[completion]; sys_platform == 'win32'",
+]
+```
+
+the hub has the `@pypi_hub//requests:[socks]` target and
+`@pypi_hub//requests` includes the `socks` extra. The environment markers of
+the requirements are evaluated for each target platform of the hub, so
+`@pypi_hub//keyring` only includes the `completion` extra on Windows and
+`@pypi_hub//keyring:[completion]` is the same as `@pypi_hub//keyring:[]` on
+the other platforms. With `["*", "transitive"]` the extras of all of the
+groups are added. The dependencies of the extras, such as `pysocks`, still
+have to be in the lock file, and an extra that the package does not provide is
+ignored with a warning. See [extras](./use.md#extras) for the targets of the
+extras.
+
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
 
