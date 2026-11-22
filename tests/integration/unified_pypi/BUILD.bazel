@@ -133,6 +133,14 @@ py_test(
     deps = ["@pypi_testonly//iniconfig"],
 )
 
+# A testonly package can depend on another testonly package.
+py_test(
+    name = "test_testonly_dep",
+    srcs = ["test_dateutil.py"],
+    main = "test_dateutil.py",
+    deps = ["@pypi_testonly//python_dateutil"],
+)
+
 py_test(
     name = "test_testonly_unified",
     srcs = ["test_iniconfig.py"],

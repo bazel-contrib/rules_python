@@ -267,9 +267,9 @@ The testonly packages are left out of the `all_requirements`,
 the [Unified @pypi Hub](unified-pypi-hub), a package is testonly if it is
 testonly in any of the hubs.
 
-The other packages of the hub depend on the testonly packages through the same
-targets, so a package that a non-testonly package depends on can't be
-testonly.
+Only the targets of the hub are testonly. The other packages of the hub can
+depend on the testonly packages, so a testonly package is still a transitive
+dependency of the packages that need it, even if they are not testonly.
 
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
