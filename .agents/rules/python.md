@@ -117,6 +117,34 @@ globs: "*.py,*.sh"
   servers that print mock tokens, avoid sensitive variable names (`password`,
   `secret`, `token`); use `mock_token` and annotate intentional log lines with
   `# codeql[py/clear-text-logging-sensitive-data]`.
+* **Repo Slugs, Git Refs, and `--` Separators**: Reject `.` / `..`, leading
+  `-`, and control characters in `owner/name` repository slugs before building
+  URLs, API paths, or search queries. Validate untrusted Git branch/remote
+  refs passed to `git` against strict ref rules, pass `--` before positional
+  CLI args when supported, and quote shell examples with `shlex.quote`.
+* **Search DSL Queries**: Reject control characters, unclosed quotes, and
+  unbalanced parentheses in user search queries before CLI or GraphQL use, and
+  pass them via `--flag=value`.
+* **Loopback Credentials & No Redirects**: Reject non-loopback hosts in local
+  RPC clients for both `http` and `https` schemes before attaching CSRF or auth
+  tokens, and disable HTTP redirects.
+* **Local HTTP Server Hardening**: Emit `X-Content-Type-Options: nosniff`,
+  `Referrer-Policy: no-referrer`, and a strict `Content-Security-Policy`
+  (using cryptographic nonces rather than `'unsafe-inline'` for scripts).
+  Validate incoming `Host` headers against allowed bind/loopback hosts
+  (including loopback hosts for wildcard binds, rejecting userinfo `@` or path
+  chars; non-loopback reverse-proxy `Host` and matching `Origin` endpoints may
+  be accepted only when a configured secret `X-Sidecar-Token` matches via
+  `hmac.compare_digest`) and reject `Sec-Fetch-Site: cross-site` and untrusted
+  `Origin` headers on `/api/*` and `/_sidecar/*` routes.
+* **SQLite `file:` URIs & `LIKE` Wildcards**: Build file-backed SQLite URIs via
+  `Path.resolve().as_uri()`, and escape `\`, `%`, and `_` with `ESCAPE '\'` in
+  parameterized `LIKE` clauses, plus re-verify exact repo/slug boundaries.
+* **Agent Prompt Injection Boundaries**: Never interpolate raw external metadata
+  (such as PR titles, authors, branches, or URLs) directly into agent
+  instructions; strip control characters and newlines, neutralize fences, wrap
+  fields in explicit untrusted-data delimiters, and instruct agents to treat
+  fenced values strictly as data.
 
 ## Runfiles
 * **Fail-fast creation**: Prefer `runfiles.CreateOrRaise()` over

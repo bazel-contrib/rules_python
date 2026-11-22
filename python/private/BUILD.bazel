@@ -120,6 +120,14 @@ filegroup(
     visibility = NOT_ACTUALLY_PUBLIC,
 )
 
+filegroup(
+    name = "console_script_template",
+    srcs = ["console_script_template.txt"],
+    # Not actually public. Only public because it's an implicit dependency of
+    # py_console_script_gen.
+    visibility = NOT_ACTUALLY_PUBLIC,
+)
+
 # NOTE: Windows builds don't use this bootstrap. Instead, a native Windows
 # program locates some Python exe and runs `python.exe foo.zip` which
 # runs the __main__.py in the zip file.
@@ -619,7 +627,6 @@ bzl_library(
         ":rule_builders",
         ":toolchain_types",
         ":venv_runfiles",
-        ":version",
         "@bazel_skylib//lib:dicts",
         "@bazel_skylib//lib:paths",
         "@bazel_skylib//rules:common_settings",
@@ -692,7 +699,6 @@ bzl_library(
         ":py_internal",
         ":py_runtime_info",
         ":reexports",
-        ":version",
         "@bazel_skylib//lib:dicts",
         "@bazel_skylib//lib:paths",
         "@bazel_skylib//rules:common_settings",
@@ -950,6 +956,15 @@ bzl_library(
 )
 
 bzl_library(
+    name = "py_console_script_gen",
+    srcs = ["py_console_script_gen.bzl"],
+    deps = [
+        ":toolchain_types",
+        "//python/private/toolchains:shrubbery_toolchain",
+    ],
+)
+
+bzl_library(
     name = "artifacts_manifest",
     srcs = ["artifacts_manifest.bzl"],
 )
@@ -1002,11 +1017,6 @@ bzl_library(
 bzl_library(
     name = "py_cc_toolchain_info",
     srcs = ["py_cc_toolchain_info.bzl"],
-)
-
-bzl_library(
-    name = "py_console_script_gen",
-    srcs = ["py_console_script_gen.bzl"],
 )
 
 bzl_library(
