@@ -51,7 +51,6 @@ load(
     TOOLCHAIN_TYPE = "TARGET_TOOLCHAIN_TYPE",
 )
 load(":venv_runfiles.bzl", "get_venv_symlinks")
-load(":version.bzl", "version")
 
 LIBRARY_ATTRS = dicts.add(
     COMMON_ATTRS,
@@ -236,8 +235,8 @@ def get_package_and_version(data_files):
     Returns:
         {type}`tuple[str | None, str | None]` the distribution name, lowercased
         with runs of `-`, `_` and `.` turned into `_` (e.g. `google_cloud_storage`),
-        and the normalized version; `(None, None)` without a
-        `.dist-info/METADATA` file.
+        and the version as it is spelled in the name of the `.dist-info`
+        directory; `(None, None)` without a `.dist-info/METADATA` file.
     """
     dist_info_metadata = None
     for d in data_files:
@@ -260,7 +259,7 @@ def get_package_and_version(data_files):
     package, _, version_str = package.rpartition("-")
     return (
         normalize_name(package),  # will have no dashes
-        version.normalize(version_str),  # will have no dashes either
+        version_str,  # will have no dashes either
     )
 
 def _get_imports_and_venv_symlinks(ctx):
