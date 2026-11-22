@@ -31,15 +31,18 @@ _STANDARD_ALIASES = [
     EXTRACTED_WHEEL_FILES,
 ]
 
-def define_pypi_package_targets(name, pkg_hubs, extra_aliases, hubs, default_hub = None):
+def define_pypi_package_targets(name, pkg_hubs, extra_aliases, hubs, default_hub = None, testonly = False, venvs = {}):
     """Define the targets for a PyPI package in the unified PyPI hub.
 
     Args:
         name: normalized PyPI package name, serving as the main target name.
         pkg_hubs: list of hubs that contain this package.
         extra_aliases: dict mapping extra alias names to lists of hubs that support them.
-        hubs: list of all concrete hub names.
+        hubs: list of all concrete hub and venv names.
         default_hub: the hub to use by default.
+        testonly: whether all targets should be marked as testonly.
+        venvs: dict mapping the venv names to the hubs that provide their
+            packages.
     """
     pkg_name = name
 
@@ -47,6 +50,7 @@ def define_pypi_package_targets(name, pkg_hubs, extra_aliases, hubs, default_hub
     native.alias(
         name = pkg_name,
         actual = ":pkg",
+        testonly = testonly,
     )
 
     all_aliases = _STANDARD_ALIASES + sorted(extra_aliases.keys())
@@ -62,7 +66,7 @@ def define_pypi_package_targets(name, pkg_hubs, extra_aliases, hubs, default_hub
 
             if is_supported:
                 select_map["//:_is_venv_" + hub] = "@{hub}//{pkg}:{alias}".format(
-                    hub = hub,
+                    hub = venvs.get(hub, hub),
                     pkg = pkg_name,
                     alias = alias_name,
                 )
@@ -100,6 +104,7 @@ def define_pypi_package_targets(name, pkg_hubs, extra_aliases, hubs, default_hub
         native.alias(
             name = alias_name,
             actual = select(select_map),
+            testonly = testonly,
         )
 
     # Generate missing package error targets

@@ -25,6 +25,8 @@ define_pypi_package_targets(
     extra_aliases = {extra_aliases},
     hubs = {hubs},
     pkg_hubs = {pkg_hubs},
+    testonly = {testonly},
+    venvs = {venvs},
 )
 """
 
@@ -58,7 +60,9 @@ def dist_info_requirement(name):
 '''
 
 def _unified_hub_repo_impl(rctx):
-    hubs = rctx.attr.hubs
+    # The venvs are selected with the same flag as the hubs.
+    venvs = rctx.attr.venvs
+    hubs = rctx.attr.hubs + sorted(venvs)
     default_hub = rctx.attr.default_hub or None
 
     # 1. Generate Root BUILD.bazel with shared config settings
@@ -79,6 +83,10 @@ def _unified_hub_repo_impl(rctx):
         extra_aliases_by_pkg.setdefault(pkg, {})[alias] = alias_hubs
 
     # 3. Generate package subpackages
+    testonly_packages = {
+        pkg_name: None
+        for pkg_name in rctx.attr.testonly_packages
+    }
     for pkg_name, pkg_hubs in rctx.attr.packages.items():
         extra_aliases = extra_aliases_by_pkg.get(pkg_name, {})
         rctx.file(
@@ -89,6 +97,8 @@ def _unified_hub_repo_impl(rctx):
                 hubs = hubs,
                 pkg_hubs = pkg_hubs,
                 pkg_name = pkg_name,
+                testonly = pkg_name in testonly_packages,
+                venvs = dict(sorted(venvs.items())),
             ),
         )
 
@@ -129,6 +139,14 @@ unified_hub_repo = repository_rule(
         "requirements_bzl": attr.bool(
             default = False,
             doc = "Whether to generate a requirements.bzl with the per-package `requirement` macros.",
+        ),
+        "testonly_packages": attr.string_list(
+            default = [],
+            doc = "Packages that are testonly in at least one hub.",
+        ),
+        "venvs": attr.string_dict(
+            default = {},
+            doc = "The venvs mapped to the hubs that provide their packages.",
         ),
     },
     doc = "Private repository rule creating the automatic Unified PyPI Hub.",

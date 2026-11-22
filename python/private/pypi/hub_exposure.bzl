@@ -18,10 +18,22 @@ def hub_exposure(module_ctx, *, hubs, default_pyproject = None, _fail = fail):
         _fail: {type}`callable` the failure function, mainly for testing.
 
     Returns:
-        {type}`dict[str, list[str]] | None` the configured hubs mapped to the
-        sorted packages that they expose. The hubs that are not configured or
-        that expose all of their packages are not included, so that they
-        behave the same. Returns `None` on failure.
+        {type}`dict[str, struct] | None` the configured hubs and venvs mapped
+        to a struct with:
+          * `hub`: {type}`str` the hub that provides the packages. For a venv
+            this is different from the key.
+          * `packages`: {type}`list[str]` the sorted packages that the hub
+            exposes.
+          * `testonly_packages`: {type}`list[str]` the sorted packages whose
+            aliases are testonly. A package is testonly only if all of the
+            tags that select it are testonly.
+
+        The hubs that are not configured or that expose all of their packages
+        are not included, so that they behave the same. Returns `None` on
+        failure.
+
+        A venv is a named selection of the packages of a hub that is used
+        through the unified `@pypi` hub.
     """
 
     # The root module wins over the owner of the hub when both configure it.
@@ -30,7 +42,7 @@ def hub_exposure(module_ctx, *, hubs, default_pyproject = None, _fail = fail):
     root_configured = {}
     for mod in root_modules:
         for tag in mod.tags.configure:
-            if tag.dependency_groups:
+            if tag.venv in ("", tag.hub_name) and tag.dependency_groups:
                 root_configured[tag.hub_name] = None
 
     configured = {}
@@ -49,17 +61,29 @@ def hub_exposure(module_ctx, *, hubs, default_pyproject = None, _fail = fail):
                 return None
 
             info = hubs[hub]
+            venv = tag.venv or hub
             if not mod.is_root and mod.name != info.module_name:
                 # Only the root module and the module that created the hub can
                 # configure it.
                 continue
-            if not mod.is_root and hub in root_configured:
+            if venv == hub and not mod.is_root and hub in root_configured:
                 continue
+            if venv != hub:
+                err = _venv_error(venv, hub, hubs = hubs, configured = configured, testonly = tag.testonly)
+                if err:
+                    _fail(err)
+                    return None
 
             if tag.pyproject_toml:
                 last_pyproject[hub] = tag.pyproject_toml
             if not tag.dependency_groups:
                 # The tag does not select any packages.
+                if tag.testonly:
+                    _fail("pip.configure() for hub '{}' uses `testonly`, which needs the `dependency_groups` of the testonly packages".format(hub))
+                    return None
+                if venv != hub:
+                    _fail("pip.configure() venv '{}' needs the `dependency_groups` of its packages".format(venv))
+                    return None
                 continue
 
             pyproject = last_pyproject.get(hub) or info.pyproject
@@ -79,19 +103,52 @@ def hub_exposure(module_ctx, *, hubs, default_pyproject = None, _fail = fail):
             )
             if selection == None:
                 return None
-            if selection.all:
+            packages = selection.packages
+            if selection.all and venv != hub:
+                packages = info.packages
+            elif selection.all:
+                if tag.testonly:
+                    _fail("pip.configure() for hub '{}' cannot use `testonly` when exposing all of the packages with {}".format(hub, tag.dependency_groups))
+                    return None
                 exposes_all[hub] = None
 
-            # Multiple tags for the same hub are combined.
-            exposed = configured.setdefault(hub, {})
-            for name in selection.packages:
+            # Multiple tags for the same hub or venv are combined.
+            exposed = configured.setdefault(venv, struct(hub = hub, packages = {})).packages
+            for name in packages:
                 # The pyproject.toml may list packages that are not in the hub,
                 # e.g. tools that are not locked.
                 if name in info.packages:
-                    exposed[name] = None
+                    exposed[name] = exposed.get(name, True) and tag.testonly
 
     return {
-        hub: sorted(packages)
-        for hub, packages in configured.items()
-        if hub not in exposes_all
+        name: struct(
+            hub = info.hub,
+            packages = sorted(info.packages),
+            testonly_packages = sorted([pkg for pkg, testonly in info.packages.items() if testonly]),
+        )
+        for name, info in configured.items()
+        if name not in exposes_all
     }
+
+def _venv_error(venv, hub, *, hubs, configured, testonly):
+    if venv in hubs:
+        return "pip.configure() venv '{}' conflicts with the hub of the same name".format(venv)
+
+    # `pypi` is the unified hub and `auto` is the default value of the
+    # `//python/config_settings:venv` flag.
+    if venv in ("pypi", "auto"):
+        return "pip.configure() venv name '{}' is reserved".format(venv)
+
+    # A hub named `pypi` takes the place of the unified hub, so there would be
+    # nothing to select the venv with.
+    if "pypi" in hubs:
+        return "pip.configure() venv '{}' needs the unified `@pypi` hub, which is not created when a hub is named 'pypi'. Rename the hub or set RULES_PYTHON_PYPI_HUB_RESERVED=1 to rename it automatically".format(venv)
+    if venv in configured and configured[venv].hub != hub:
+        return "pip.configure() venv '{}' is used with both hub '{}' and hub '{}'".format(
+            venv,
+            configured[venv].hub,
+            hub,
+        )
+    if testonly:
+        return "pip.configure() does not support `testonly` for the venv '{}', the packages are testonly only if they are testonly in the hub '{}'".format(venv, hub)
+    return None

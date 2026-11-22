@@ -7,6 +7,8 @@ load("@rules_python//python:pip.bzl", "pip_utils")
 
 all_requirements = %%ALL_REQUIREMENTS%%
 
+all_testonly_requirements = %%ALL_TESTONLY_REQUIREMENTS%%
+
 all_whl_requirements_by_package = %%ALL_WHL_REQUIREMENTS_BY_PACKAGE%%
 
 all_whl_requirements = all_whl_requirements_by_package.values()

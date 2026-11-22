@@ -20,6 +20,10 @@ WHEEL_FILE_IMPL_LABEL = "_whl"
 WHEEL_FILE = "whl_file"
 PY_LIBRARY_PUBLIC_LABEL = "pkg"
 PY_LIBRARY_IMPL_LABEL = "_pkg"
+
+# The prefix of the hub targets that the `testonly` public targets wrap. The
+# whl repositories depend on them, because they are not `testonly`.
+TESTONLY_IMPL_PREFIX = "_testonly_"
 PY_SRCS_LABEL = "srcs"
 DATA_LABEL = "data"
 DIST_INFO_LABEL = "dist_info"

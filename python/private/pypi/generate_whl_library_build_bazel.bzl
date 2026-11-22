@@ -29,6 +29,7 @@ _RENDER = {
     "requires_dist": render.list,
     "srcs_exclude": render.list,
     "tags": render.list,
+    "testonly_deps": str,
 }
 
 # NOTE @aignas 2024-10-25: We have to keep this so that files in
@@ -94,8 +95,9 @@ def generate_whl_library_build_bazel(
         # no deps, we can leave the extra loads out
         pass
     elif config_load:
-        loads.append("""load("{}", "{}")""".format(config_load, "packages"))
+        loads.append("""load("{}", "packages", "testonly_packages")""".format(config_load))
         kwargs["include"] = "packages"
+        kwargs["testonly_deps"] = "testonly_packages"
         kwargs["requires_dist"] = requires_dist
     else:
         kwargs["requires_dist"] = requires_dist

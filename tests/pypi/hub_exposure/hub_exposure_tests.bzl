@@ -28,11 +28,15 @@ def _hub(*, module_name = "root", pyproject = None):
 def _configure(
         hub_name = "hub",
         dependency_groups = [],
-        pyproject_toml = None):
+        pyproject_toml = None,
+        testonly = False,
+        venv = ""):
     return mocks.tag(
         hub_name = hub_name,
         dependency_groups = dependency_groups,
         pyproject_toml = pyproject_toml,
+        testonly = testonly,
+        venv = venv,
     )
 
 def _module(name = "root", is_root = True, configure = []):
@@ -53,6 +57,9 @@ def _exposure(*modules, hubs = None, default_pyproject = None):
         _fail = failures.append,
     )
     return got, failures
+
+def _packages(got):
+    return {hub: info.packages for hub, info in got.items()}
 
 def _test_not_configured(env):
     got, failures = _exposure(_module())
@@ -75,9 +82,9 @@ def _test_configure(env):
         env.expect.where(groups = groups).that_collection(
             failures,
         ).contains_exactly([])
-        env.expect.where(groups = groups).that_dict(got).contains_exactly(
-            {"hub": want},
-        )
+        env.expect.where(groups = groups).that_dict(
+            _packages(got),
+        ).contains_exactly({"hub": want})
 
 _tests.append(_test_configure)
 
@@ -99,7 +106,7 @@ def _test_configure_combines_tags(env):
         _configure(dependency_groups = ["dev"]),
     ]))
     env.expect.that_collection(failures).contains_exactly([])
-    env.expect.that_dict(got).contains_exactly(
+    env.expect.that_dict(_packages(got)).contains_exactly(
         {"hub": ["other_pkg", "simple"]},
     )
 
@@ -110,7 +117,7 @@ def _test_configure_pyproject_precedence(env):
     got, _ = _exposure(_module(configure = [
         _configure(pyproject_toml = "other.toml", dependency_groups = ["*"]),
     ]))
-    env.expect.that_dict(got).contains_exactly({"hub": ["other_pkg"]})
+    env.expect.that_dict(_packages(got)).contains_exactly({"hub": ["other_pkg"]})
 
     # The `pip.default` value is used for the hubs of the root module.
     got, failures = _exposure(
@@ -119,7 +126,7 @@ def _test_configure_pyproject_precedence(env):
         default_pyproject = "pyproject.toml",
     )
     env.expect.that_collection(failures).contains_exactly([])
-    env.expect.that_dict(got).contains_exactly({"hub": ["simple"]})
+    env.expect.that_dict(_packages(got)).contains_exactly({"hub": ["simple"]})
 
 _tests.append(_test_configure_pyproject_precedence)
 
@@ -145,7 +152,7 @@ def _test_configure_builder(env):
         hubs = {"hub": _hub(pyproject = "pyproject.toml")},
     )
     env.expect.that_collection(failures).contains_exactly([])
-    env.expect.that_dict(got).contains_exactly({"hub": ["other_pkg"]})
+    env.expect.that_dict(_packages(got)).contains_exactly({"hub": ["other_pkg"]})
 
     # The tags before it use the `pip.parse` value.
     got, failures = _exposure(
@@ -156,7 +163,7 @@ def _test_configure_builder(env):
         hubs = {"hub": _hub(pyproject = "pyproject.toml")},
     )
     env.expect.that_collection(failures).contains_exactly([])
-    env.expect.that_dict(got).contains_exactly({"hub": ["other_pkg", "simple"]})
+    env.expect.that_dict(_packages(got)).contains_exactly({"hub": ["other_pkg", "simple"]})
 
     # It is not used by the other modules.
     hubs = {"hub": _hub(module_name = "dep")}
@@ -189,7 +196,7 @@ def _test_configure_module_precedence(env):
         ),
         hubs = hubs,
     )
-    env.expect.that_dict(got).contains_exactly({"hub": ["other_pkg"]})
+    env.expect.that_dict(_packages(got)).contains_exactly({"hub": ["other_pkg"]})
 
     # The root module wins over the owner.
     got, _ = _exposure(
@@ -201,7 +208,7 @@ def _test_configure_module_precedence(env):
         ),
         hubs = hubs,
     )
-    env.expect.that_dict(got).contains_exactly({"hub": ["simple"]})
+    env.expect.that_dict(_packages(got)).contains_exactly({"hub": ["simple"]})
 
     # Other modules are ignored.
     got, _ = _exposure(
@@ -244,6 +251,110 @@ def _test_configure_errors(env):
     ])
 
 _tests.append(_test_configure_errors)
+
+def _test_configure_testonly(env):
+    got, failures = _exposure(_module(configure = [
+        _configure(dependency_groups = ["default"]),
+        _configure(dependency_groups = ["dev", "test"], testonly = True),
+    ]))
+    env.expect.that_collection(failures).contains_exactly([])
+    env.expect.that_dict(_packages(got)).contains_exactly({"hub": ["other_pkg", "simple"]})
+
+    # `simple` is also selected by the non-testonly tag.
+    env.expect.that_collection(got["hub"].testonly_packages).contains_exactly(["other_pkg"])
+
+    got, _ = _exposure(_module(configure = [
+        _configure(dependency_groups = ["*"], testonly = True),
+    ]))
+    env.expect.that_collection(got["hub"].testonly_packages).contains_exactly(["other_pkg", "simple"])
+
+    # The hub that exposes all of the packages behaves as if it was not
+    # configured, so the packages can't be made testonly.
+    got, failures = _exposure(_module(configure = [
+        _configure(dependency_groups = ["*", "transitive"], testonly = True),
+    ]))
+    env.expect.that_collection(failures).contains_exactly([
+        "pip.configure() for hub 'hub' cannot use `testonly` when exposing all of the packages with [\"*\", \"transitive\"]",
+    ])
+
+    # The testonly packages need to be selected.
+    got, failures = _exposure(_module(configure = [_configure(testonly = True)]))
+    env.expect.that_str(got).equals(None)
+    env.expect.that_collection(failures).contains_exactly([
+        "pip.configure() for hub 'hub' uses `testonly`, which needs the `dependency_groups` of the testonly packages",
+    ])
+
+_tests.append(_test_configure_testonly)
+
+def _test_configure_venvs(env):
+    got, failures = _exposure(_module(configure = [
+        _configure(venv = "dev", dependency_groups = ["dev"]),
+        _configure(venv = "dev", dependency_groups = ["default"]),
+        _configure(venv = "main", dependency_groups = ["default"]),
+        _configure(venv = "all", dependency_groups = ["*", "transitive"]),
+    ]))
+    env.expect.that_collection(failures).contains_exactly([])
+
+    # The hub itself is not configured.
+    env.expect.that_dict(_packages(got)).contains_exactly({
+        # A venv with all of the packages includes the transitive ones.
+        "all": ["other_pkg", "simple", "transitive_pkg"],
+        "dev": ["other_pkg", "simple"],
+        "main": ["simple"],
+    })
+    env.expect.that_str(got["dev"].hub).equals("hub")
+    env.expect.that_str(got["main"].hub).equals("hub")
+
+_tests.append(_test_configure_venvs)
+
+def _test_configure_venv_errors(env):
+    hubs = {
+        "hub": _hub(pyproject = "pyproject.toml"),
+        "other": _hub(pyproject = "pyproject.toml"),
+    }
+    for configure, want in [
+        ([_configure(venv = "other")], "pip.configure() venv 'other' conflicts with the hub of the same name"),
+        ([_configure(venv = "pypi")], "pip.configure() venv name 'pypi' is reserved"),
+        ([_configure(venv = "auto")], "pip.configure() venv name 'auto' is reserved"),
+        ([_configure(venv = "dev", dependency_groups = ["*"]), _configure(hub_name = "other", venv = "dev")], "pip.configure() venv 'dev' is used with both hub 'hub' and hub 'other'"),
+        ([_configure(venv = "dev")], "pip.configure() venv 'dev' needs the `dependency_groups` of its packages"),
+        ([_configure(venv = "dev", testonly = True)], "pip.configure() does not support `testonly` for the venv 'dev', the packages are testonly only if they are testonly in the hub 'hub'"),
+    ]:
+        _, failures = _exposure(_module(configure = configure), hubs = hubs)
+        env.expect.that_collection(failures).contains_exactly([want])
+
+_tests.append(_test_configure_venv_errors)
+
+def _test_configure_venv_with_pypi_hub(env):
+    # A hub named `pypi` replaces the unified hub, which the venvs need. It
+    # does not matter which hub the venv is for.
+    hubs = {
+        "hub": _hub(pyproject = "pyproject.toml"),
+        "pypi": _hub(pyproject = "pyproject.toml"),
+    }
+    for hub_name in ["hub", "pypi"]:
+        got, failures = _exposure(
+            _module(configure = [
+                _configure(hub_name = hub_name, venv = "dev", dependency_groups = ["dev"]),
+            ]),
+            hubs = hubs,
+        )
+        env.expect.where(hub_name = hub_name).that_str(got).equals(None)
+        env.expect.where(hub_name = hub_name).that_collection(failures).contains_exactly([
+            "pip.configure() venv 'dev' needs the unified `@pypi` hub, which is not created when a hub is named 'pypi'. Rename the hub or set RULES_PYTHON_PYPI_HUB_RESERVED=1 to rename it automatically",
+        ])
+
+    # The hub named `pypi` can still be configured itself.
+    got, failures = _exposure(
+        _module(configure = [
+            _configure(hub_name = "pypi", dependency_groups = ["dev"]),
+        ]),
+        hubs = hubs,
+    )
+    env.expect.that_collection(failures).contains_exactly([])
+    env.expect.that_dict(_packages(got)).contains_exactly({"pypi": ["other_pkg"]})
+
+_tests.append(_test_configure_venv_with_pypi_hub)
 
 def hub_exposure_test_suite(name):
     """Create the test suite.

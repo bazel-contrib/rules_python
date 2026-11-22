@@ -94,6 +94,8 @@ def render_pkg_aliases(
         requirement_cycles = None,
         extra_hub_aliases = {},
         exposed_packages = None,
+        testonly_packages = [],
+        extra_internal_visibility = [],
         **kwargs):
     """Create alias declarations for each PyPI package.
 
@@ -110,6 +112,9 @@ def render_pkg_aliases(
         exposed_packages: The packages that should be public. When set, the
             aliases of the other packages are only visible to the wheel
             repositories.
+        testonly_packages: The packages whose aliases should be testonly.
+        extra_internal_visibility: The extra visibility of the packages that
+            are not exposed.
         **kwargs: Extra kwargs to pass to the rules.
 
     Returns:
@@ -134,6 +139,11 @@ def render_pkg_aliases(
             for whl_name in group_whls
         }
 
+    testonly_packages = {
+        normalize_name(name): None
+        for name in testonly_packages
+    }
+
     public = ["//visibility:public"]
     if exposed_packages != None:
         exposed_packages = {
@@ -143,7 +153,7 @@ def render_pkg_aliases(
     internal_visibility = _internal_visibility(
         aliases,
         has_groups = bool(requirement_cycles),
-    )
+    ) + extra_internal_visibility
 
     files = {}
     for name, pkg_aliases in aliases.items():
@@ -157,6 +167,7 @@ def render_pkg_aliases(
             extra_aliases = extra_hub_aliases.get(name, []),
             group_name = whl_group_mapping.get(name),
             visibility = visibility,
+            testonly = name in testonly_packages,
             **kwargs
         ).strip()
 

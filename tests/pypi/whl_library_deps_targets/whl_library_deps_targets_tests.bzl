@@ -91,6 +91,52 @@ def _test_whl_library_deps_targets(env):
 
 _tests.append(_test_whl_library_deps_targets)
 
+def _test_whl_library_deps_targets_testonly_deps(env):
+    filegroup_calls = []
+    py_library_calls = []
+
+    whl_library_deps_targets(
+        name = "foo-0-py3-none-any.whl",
+        metadata_name = "Foo",
+        dep_template = "@pypi//{name}:{target}",
+        requires_dist = [
+            "bar",
+            "bar-baz; python_version < \"8.2\"",
+            "qux",
+        ],
+        include = ["foo", "bar", "bar_baz", "qux"],
+        testonly_deps = ["bar", "bar_baz"],
+        # Overrides for testing
+        repo = None,
+        aliases = None,
+        extras = [],
+        native = struct(
+            filegroup = lambda **kwargs: filegroup_calls.append(kwargs),
+            alias = lambda **kwargs: None,
+        ),
+        rules = struct(
+            py_library = lambda **kwargs: py_library_calls.append(kwargs),
+            env_marker_setting = lambda **kwargs: None,
+        ),
+    )
+
+    # The targets are not testonly, so they can't depend on the testonly
+    # targets of the hub.
+    env.expect.that_collection([c["data"] for c in filegroup_calls]).contains_exactly([
+        ["@pypi//bar:_testonly_whl", "@pypi//qux:whl"] + select({
+            ":is_include_bar_baz_true": ["@pypi//bar_baz:_testonly_whl"],
+            "//conditions:default": [],
+        }),
+    ])
+    env.expect.that_collection([c["deps"] for c in py_library_calls]).contains_exactly([
+        ["srcs", "@pypi//bar:_testonly_pkg", "@pypi//qux:pkg"] + select({
+            ":is_include_bar_baz_true": ["@pypi//bar_baz:_testonly_pkg"],
+            "//conditions:default": [],
+        }),
+    ])
+
+_tests.append(_test_whl_library_deps_targets_testonly_deps)
+
 def _test_whl_library_deps_targets_no_deps(env):
     alias_calls = []
     filegroup_calls = []

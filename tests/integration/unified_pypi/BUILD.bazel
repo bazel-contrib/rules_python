@@ -1,4 +1,5 @@
 load("@pypi//:requirements.bzl", "requirement")
+load("@pypi_testonly//:requirements.bzl", "all_requirements", "all_testonly_requirements")
 load("@rules_python//python:py_binary.bzl", "py_binary")
 load("@rules_python//python:py_test.bzl", "py_test")
 
@@ -122,4 +123,86 @@ py_binary(
     main = "bin_six_a.py",
     tags = ["manual"],
     deps = ["@pypi_filtered//six"],
+)
+
+# The pypi_testonly hub only exposes testonly packages.
+py_test(
+    name = "test_testonly",
+    srcs = ["test_iniconfig.py"],
+    main = "test_iniconfig.py",
+    deps = ["@pypi_testonly//iniconfig"],
+)
+
+# A testonly package can depend on another testonly package.
+py_test(
+    name = "test_testonly_dep",
+    srcs = ["test_dateutil.py"],
+    main = "test_dateutil.py",
+    deps = ["@pypi_testonly//python_dateutil"],
+)
+
+py_test(
+    name = "test_testonly_unified",
+    srcs = ["test_iniconfig.py"],
+    config_settings = {
+        "@rules_python//python/config_settings:venv": "pypi_testonly",
+    },
+    main = "test_iniconfig.py",
+    deps = ["@pypi//iniconfig"],
+)
+
+py_test(
+    name = "test_all_testonly_requirements",
+    srcs = ["test_iniconfig.py"],
+    main = "test_iniconfig.py",
+    deps = all_testonly_requirements,
+)
+
+# The testonly packages are not in `all_requirements`.
+py_binary(
+    name = "bin_all_requirements",
+    srcs = ["test_default.py"],
+    main = "test_default.py",
+    deps = ["@pypi//colorama"] + all_requirements,
+)
+
+py_binary(
+    name = "bin_testonly",
+    srcs = ["test_iniconfig.py"],
+    main = "test_iniconfig.py",
+    tags = ["manual"],
+    deps = ["@pypi_testonly//iniconfig"],
+)
+
+# The venvs of pypi_b resolve to the pypi_b packages.
+py_test(
+    name = "test_venv_colorama",
+    srcs = ["test_default.py"],
+    config_settings = {
+        "@rules_python//python/config_settings:venv": "pypi_b_colorama",
+    },
+    main = "test_default.py",
+    deps = ["@pypi//colorama"],
+)
+
+py_test(
+    name = "test_venv_dev",
+    srcs = ["test_default.py"],
+    config_settings = {
+        "@rules_python//python/config_settings:venv": "pypi_b_dev",
+    },
+    main = "test_default.py",
+    deps = ["@pypi//colorama"],
+)
+
+# six is not selected by the pypi_b_colorama venv:
+py_binary(
+    name = "bin_venv_six",
+    srcs = ["bin_six_a.py"],
+    config_settings = {
+        "@rules_python//python/config_settings:venv": "pypi_b_colorama",
+    },
+    main = "bin_six_a.py",
+    tags = ["manual"],
+    deps = ["@pypi//six"],
 )

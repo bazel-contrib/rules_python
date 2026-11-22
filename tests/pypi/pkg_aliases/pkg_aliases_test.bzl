@@ -55,6 +55,76 @@ def _test_legacy_aliases(env):
 
 _tests.append(_test_legacy_aliases)
 
+def _testonly_mocks():
+    got = {}
+
+    def _add(kind):
+        return lambda name, **kwargs: got.setdefault(name, (kind, kwargs.get("testonly", False)))
+
+    return got, struct(
+        native = struct(
+            alias = _add("alias"),
+            filegroup = _add("filegroup"),
+        ),
+        rules = struct(
+            py_library = _add("py_library"),
+        ),
+    )
+
+def _test_testonly_aliases(env):
+    got, mocks = _testonly_mocks()
+    pkg_aliases(
+        name = "foo",
+        actual = "repo",
+        testonly = True,
+        native = mocks.native,
+        rules = mocks.rules,
+    )
+
+    # Bazel does not enforce `testonly` on aliases, so the public targets are
+    # wrapped.
+    env.expect.that_dict(got).contains_exactly({
+        "data": ("filegroup", True),
+        "dist_info": ("filegroup", True),
+        "extracted_whl_files": ("filegroup", True),
+        "foo": ("alias", True),
+        "pkg": ("py_library", True),
+        "srcs": ("alias", True),
+        "whl": ("filegroup", True),
+        "whl_file": ("alias", True),
+        "_testonly_data": ("alias", False),
+        "_testonly_dist_info": ("alias", False),
+        "_testonly_extracted_whl_files": ("alias", False),
+        "_testonly_pkg": ("alias", False),
+        "_testonly_whl": ("alias", False),
+    })
+
+_tests.append(_test_testonly_aliases)
+
+def _test_testonly_group_aliases(env):
+    got, mocks = _testonly_mocks()
+    pkg_aliases(
+        name = "foo",
+        actual = "repo",
+        group_name = "my_group",
+        testonly = True,
+        native = mocks.native,
+        rules = mocks.rules,
+    )
+
+    # The private targets are used by the non-testonly group libraries.
+    env.expect.that_dict(got).contains_at_least({
+        "foo": ("alias", True),
+        "pkg": ("py_library", True),
+        "whl": ("filegroup", True),
+        "_pkg": ("alias", False),
+        "_testonly_pkg": ("alias", False),
+        "_testonly_whl": ("alias", False),
+        "_whl": ("alias", False),
+    })
+
+_tests.append(_test_testonly_group_aliases)
+
 def _test_config_setting_aliases(env):
     # Use this function as it is used in pip_repository
     got = {}

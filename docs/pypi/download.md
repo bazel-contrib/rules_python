@@ -243,6 +243,58 @@ the `pyproject.toml` selects the optional dependencies of the project. The
 packages that are not part of the hub are ignored, so a single `pyproject.toml`
 can list tools that are missing from the lock file.
 
+### Testonly Packages
+
+Set {attr}`pip.configure.testonly` to make the selected packages testonly, so
+that they can only be used by tests and other testonly targets:
+
+```starlark
+pip.configure(
+    hub_name = "pypi_hub",
+    dependency_groups = ["default"],
+)
+pip.configure(
+    hub_name = "pypi_hub",
+    dependency_groups = ["group:test"],
+    testonly = True,
+)
+```
+
+A package that is also selected by a tag without `testonly` is not testonly.
+The testonly packages are left out of the `all_requirements`,
+`all_whl_requirements` and `all_data_requirements` lists in the hub's
+`requirements.bzl` and are listed in `all_testonly_requirements` instead. In
+the [Unified @pypi Hub](unified-pypi-hub), a package is testonly if it is
+testonly in any of the hubs.
+
+Only the targets of the hub are testonly. The other packages of the hub can
+depend on the testonly packages, so a testonly package is still a transitive
+dependency of the packages that need it, even if they are not testonly.
+
+#### Venvs
+
+Set {attr}`pip.configure.venv` to create a venv, a named selection of the
+packages of a hub, instead of changing the hub:
+
+```starlark
+pip.configure(
+    hub_name = "pypi_hub",
+    venv = "pypi_hub_docs",
+    dependency_groups = ["default", "group:docs"],
+)
+```
+
+The venv is used through the [Unified @pypi Hub](unified-pypi-hub) by setting
+`--@rules_python//python/config_settings:venv=pypi_hub_docs`. It resolves the
+`@pypi//<pkg>` labels to the packages of `pypi_hub`, so nothing is downloaded
+twice, and the packages that are not selected are reported as missing. A venv
+does not create a new repository and does not change the hub.
+
+A venv name must not collide with a hub and a venv can't be used with two
+different hubs. The packages of a venv are testonly if they are testonly in
+the hub. The venvs can't be used when a hub is named `pypi`, because such a hub
+replaces the unified hub.
+
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
 
