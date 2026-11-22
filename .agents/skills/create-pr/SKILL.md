@@ -18,13 +18,15 @@ to a subagent. NEVER create or draft PRs directly in the main conversation.
    - Follow `CONTRIBUTING.md` and `@/.agents/rules/pr.md`.
    - **PR Title**: Conventional commits format (`agents:` prefix for agent
      rules/skills).
-   - **PR Body**: Explain *why* and conceptual *how*. Wrap strictly at 72
-     columns max. Use concise, active phrasing (Strunk & White).
+   - **PR Body**: Explain *why* and conceptual *how*. Wrap body prose strictly
+     at 72 columns max (excluding long URLs, Markdown links, fenced code
+     blocks, and Markdown tables). Use concise, active phrasing (Strunk &
+     White).
    - **AI Disclosure Comment**: Draft (and post via `gh pr comment` if creating
      the PR) the AI disclosure comment explaining how PR comments will be
      handled. When posted automatically during `create pr` without prior user
      review of the comment text, end it with:
-     `*This is an automatically generated agent comment.*`
+     `*This is an agent-generated comment unreviewed by the user.*`
      Only use `*This is an agent-generated comment reviewed and approved by the
      user.*` if the user previously reviewed `pr_info.md` and approved the
      draft text.

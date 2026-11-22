@@ -1,15 +1,15 @@
-"""
-A public entrypoint for `pytest_test` rule.
+"""Public entrypoint for the {obj}`pytest_test` macro.
 
 Use this to create test targets using [pytest](https://pypi.org/project/pytest)
-instead of having to declare the main entrypoint for your {obj}`py_test` rules.
-
-In order to use this rule you'll have to have the following packages:
-* `pytest` and `pytest-bazel` - used to invoke pytest.
-* `pytest-randomly` - used to have consistent random number usage.
-* `pytest-shard` - optional, used only if tests need to be sharded.
+instead of declaring a `main` entrypoint for {obj}`py_test` rules. See
+{doc}`/pytest` for setup (`pytest` and `pytest-bazel >= 1.0`) and usage.
 
 :::{versionadded} 2.5.0
+:::
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+`pytest-randomly` and `pytest-shard` are no longer required by default;
+sharding requires `pytest-bazel >= 0.3.0`.
 :::
 """
 

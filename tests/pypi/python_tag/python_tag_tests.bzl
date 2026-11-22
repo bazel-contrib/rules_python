@@ -20,8 +20,15 @@ def _test_without_version(env):
 _tests.append(_test_without_version)
 
 def _test_with_version(env):
-    got = python_tag("cpython", "3.1.15")
-    env.expect.that_str(got).equals("cp31")
+    for give, expect in {
+        "3": "cp3",
+        "3.1.15": "cp31",
+        "3.15": "cp315",
+        "3.15.0rc1": "cp315",
+        "3.15rc1": "cp315",
+    }.items():
+        got = python_tag("cpython", give)
+        env.expect.that_str(got).equals(expect)
 
 _tests.append(_test_with_version)
 

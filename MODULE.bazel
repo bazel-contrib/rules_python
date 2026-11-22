@@ -6,7 +6,7 @@ module(
 
 bazel_dep(name = "bazel_features", version = "1.55.0")
 bazel_dep(name = "bazel_skylib", version = "1.8.2")
-bazel_dep(name = "package_metadata", version = "0.0.7")
+bazel_dep(name = "package_metadata", version = "0.0.13")
 bazel_dep(name = "platforms", version = "0.0.11")
 bazel_dep(name = "rules_cc", version = "0.2.17")
 bazel_dep(name = "toml.bzl", version = "0.4.1")
@@ -95,8 +95,6 @@ pip.parse(
 )
 pip.dep(name = "pytest")
 pip.dep(name = "pytest-bazel")
-pip.dep(name = "pytest-randomly")
-pip.dep(name = "pytest-shard")
 use_repo(pip, "pypi", "rules_python_publish_deps")
 
 bazel_dep(
@@ -137,7 +135,7 @@ rust_crates.from_cargo(
 # rules_rust has no @rules_rust//rust/platform config_setting for Linux ppc64le,
 # so don't mark the crates as incompatible with platforms that don't match one
 # of the triples above. Such platforms get only the unconditional dependencies,
-# which suffice for anyhow, flate2, lexopt, sha2, and zip.
+# which suffice for every crate in //crates:Cargo.toml.
 rust_crates.render_config(
     generate_target_compatible_with = False,
 )
@@ -494,7 +492,7 @@ use_repo(
     # "build_bazel_bazel_rolling",
     "build_bazel_bazel_self",
 )
-# LINT.ThenChange(//version.bzl:supported_bazel_versions)
+# LINT.ThenChange(//internal_dev_setup.bzl:workspace_bazel_binaries)
 
 # TODO @aignas 2025-01-27: should this be moved to `//python/extensions:uv.bzl` or should
 # it stay as it is? I think I may prefer to move it.

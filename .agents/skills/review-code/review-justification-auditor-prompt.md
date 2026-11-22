@@ -10,9 +10,11 @@ thresholds across `git diff`, comments, PR descriptions, and review replies:
      `sys.path` manipulation to run a script via raw `python3` outside Bazel
      when a binary target exists).
    - Lint, type, or formatter suppressions (`# buildifier: disable=...` outside
-     test `/private/` loads, `# pyrefly: ignore[...]`, `# ruff: noqa`,
-     `# type: ignore`).
-   - Custom timeouts or retry counts.
+     authorized `/private/` loads in `tests/` or internal non-`python/` packages
+     such as `crates/` and `tools/` loading `distribution_filegroup.bzl`,
+     `# pyrefly: ignore[...]`, `# ruff: noqa`, `# type: ignore`).
+   - Custom timeouts, retry counts, or payload/UI caps outside the conservative
+     self-approvable criteria in `.agents/rules/code-style.md`.
    - Review thread replies claiming a rule or convention does not apply.
 3. Classify every exception into one of three outcomes:
    - Missing Justification (`Severity: SHOULD-FIX`): A rule permits justified

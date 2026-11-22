@@ -132,6 +132,87 @@ def _test_config_settings_extra_toolchains_impl(env, target):
 
 _tests.append(_test_config_settings_extra_toolchains)
 
+def _test_config_settings_label_value_relative_to_caller(name, config):
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject",
+        srcs = ["main.py"],
+        main = "main.py",
+        config_settings = {
+            # The values are relative to the package of the caller.
+            "@rules_python//python/config_settings:coverage": (
+                ":" + name + "_coverage"
+            ),
+            "@rules_python//python/config_settings:debugger": (
+                ":" + name + "_debugger"
+            ),
+        },
+    )
+    rt_util.helper_target(
+        py_library,
+        name = name + "_coverage",
+        srcs = [name + "_coverage.py"],
+    )
+    rt_util.helper_target(
+        py_library,
+        name = name + "_debugger",
+        srcs = [name + "_debugger.py"],
+    )
+    analysis_test(
+        name = name,
+        impl = _test_config_settings_label_value_relative_to_caller_impl,
+        target = name + "_subject",
+        config_settings = {
+            "//command_line_option:collect_code_coverage": True,
+        },
+    )
+
+def _test_config_settings_label_value_relative_to_caller_impl(env, target):
+    env.expect.that_target(target).runfiles().contains_at_least([
+        "{workspace}/{package}/{test_name}_coverage.py",
+        "{workspace}/{package}/{test_name}_debugger.py",
+    ])
+
+_tests.append(_test_config_settings_label_value_relative_to_caller)
+
+def _test_config_settings_label_value_select(name, config):
+    # The values of a select() can't be resolved by the macro, so canonical
+    # label strings are used.
+    coverage = str(native.package_relative_label(":" + name + "_coverage"))
+    debugger = str(native.package_relative_label(":" + name + "_debugger"))
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject",
+        srcs = ["main.py"],
+        main = "main.py",
+        config_settings = select({
+            "//conditions:default": {
+                "@rules_python//python/config_settings:coverage": coverage,
+                "@rules_python//python/config_settings:debugger": debugger,
+            },
+        }),
+    )
+    rt_util.helper_target(
+        py_library,
+        name = name + "_coverage",
+        srcs = [name + "_coverage.py"],
+    )
+    rt_util.helper_target(
+        py_library,
+        name = name + "_debugger",
+        srcs = [name + "_debugger.py"],
+    )
+    analysis_test(
+        name = name,
+        impl = _test_config_settings_label_value_relative_to_caller_impl,
+        target = name + "_subject",
+        config_settings = {
+            "//command_line_option:collect_code_coverage": True,
+        },
+    )
+
+_tests.append(_test_config_settings_label_value_select)
+
 def _test_cross_compile_to_unix(name, config):
     rt_util.helper_target(
         config.rule,
@@ -271,6 +352,112 @@ def _test_debugger_impl(env, targets):
     # Ensure that tools don't inherit debugger.
     env.expect.that_target(targets.exec_target).runfiles().not_contains(
         "{workspace}/{package}/{test_name}_debugger.py",
+    )
+
+def _test_coverage_flag(name, config):
+    rt_util.helper_target(
+        py_library,
+        name = name + "_coverage",
+        imports = ["."],
+        srcs = [rt_util.empty_file(name + "_coverage.py")],
+    )
+
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject",
+        srcs = [rt_util.empty_file(name + "_subject.py")],
+        config_settings = {
+            labels.COVERAGE: ":" + name + "_coverage",
+        },
+    )
+
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject_omit_source",
+        srcs = [rt_util.empty_file(name + "_subject_omit_source.py")],
+        config_settings = {
+            labels.COVERAGE: ":" + name + "_coverage",
+            labels.PRECOMPILE: "force_enabled",
+            labels.PRECOMPILE_SOURCE_RETENTION: "omit_source",
+        },
+    )
+
+    analysis_test(
+        name = name,
+        impl = _test_coverage_flag_impl,
+        targets = {
+            "exec_target": name + "_subject",
+            "target": name + "_subject",
+            "target_omit_source": name + "_subject_omit_source",
+        },
+        attrs = {
+            "exec_target": attr.label(cfg = "exec"),
+        },
+        config_settings = {
+            "//command_line_option:collect_code_coverage": True,
+            labels.PYTHON_VERSION: "3.13",
+        },
+    )
+
+_tests.append(_test_coverage_flag)
+
+def _test_coverage_flag_impl(env, targets):
+    meta = env.expect.meta.derive(
+        format_str_kwargs = {"package": targets.target.label.package},
+    )
+    expected_import = meta.format_str("{workspace}/{package}")
+
+    # 1. Coverage-enabled target gets the coverage dep and its imports.
+    env.expect.that_target(targets.target).runfiles().contains_at_least([
+        "{workspace}/{package}/{test_name}_coverage.py",
+    ])
+    env.expect.that_collection(
+        targets.target[PyInfo].imports.to_list(),
+    ).contains(expected_import)
+
+    # 2. Sourceless precompilation retains the coverage dep and its imports.
+    env.expect.that_target(targets.target_omit_source).runfiles().contains_predicate(
+        matching.str_matches("*_coverage.py*"),
+    )
+    env.expect.that_collection(
+        targets.target_omit_source[PyInfo].imports.to_list(),
+    ).contains(expected_import)
+
+    # 3. Exec-config tools do not inherit the coverage dep.
+    env.expect.that_target(targets.exec_target).runfiles().not_contains(
+        "{workspace}/{package}/{test_name}_coverage.py",
+    )
+
+def _test_coverage_flag_disabled(name, config):
+    rt_util.helper_target(
+        py_library,
+        name = name + "_coverage",
+        srcs = [rt_util.empty_file(name + "_coverage.py")],
+    )
+
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject",
+        srcs = [rt_util.empty_file(name + "_subject.py")],
+        config_settings = {
+            labels.COVERAGE: ":" + name + "_coverage",
+        },
+    )
+
+    analysis_test(
+        name = name,
+        impl = _test_coverage_flag_disabled_impl,
+        target = name + "_subject",
+        config_settings = {
+            "//command_line_option:collect_code_coverage": False,
+        },
+    )
+
+_tests.append(_test_coverage_flag_disabled)
+
+def _test_coverage_flag_disabled_impl(env, target):
+    env.expect.that_target(target).runfiles().not_contains(
+        "{workspace}/{package}/{test_name}_coverage.py",
     )
 
 def _test_default_main_can_be_generated(name, config):
@@ -653,6 +840,66 @@ def _test_pyi_deps_not_in_runfiles_when_flag_disabled(name, config):
     )
 
 _tests.append(_test_pyi_deps_not_in_runfiles_when_flag_disabled)
+
+def _stamp_test_subject(name, config, *, stamp):
+    native.config_setting(
+        name = name + "_stamp_enabled",
+        values = {"stamp": "1"},
+    )
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject",
+        srcs = [rt_util.empty_file(name + "_subject.py")],
+        data = select({
+            ":" + name + "_stamp_enabled": [rt_util.empty_file(name + "_stamp_on.txt")],
+            "//conditions:default": [rt_util.empty_file(name + "_stamp_off.txt")],
+        }),
+        stamp = stamp,
+    )
+
+def _test_stamp_disabled_keeps_deps_config(name, config):
+    _stamp_test_subject(name, config, stamp = 0)
+    analysis_test(
+        name = name,
+        impl = _test_stamp_disabled_keeps_deps_config_impl,
+        target = name + "_subject",
+        config_settings = {
+            "//command_line_option:stamp": True,
+        },
+    )
+
+def _test_stamp_disabled_keeps_deps_config_impl(env, target):
+    env.expect.that_collection(
+        [action.mnemonic for action in target.actions],
+    ).not_contains("PyWriteBuildData")
+    target = env.expect.that_target(target)
+    target.runfiles().contains_predicate(
+        matching.str_endswith(target.meta.format_str("/{test_name}_stamp_on.txt")),
+    )
+
+_tests.append(_test_stamp_disabled_keeps_deps_config)
+
+def _test_stamp_enabled_keeps_deps_config(name, config):
+    _stamp_test_subject(name, config, stamp = 1)
+    analysis_test(
+        name = name,
+        impl = _test_stamp_enabled_keeps_deps_config_impl,
+        target = name + "_subject",
+        config_settings = {
+            "//command_line_option:stamp": False,
+        },
+    )
+
+def _test_stamp_enabled_keeps_deps_config_impl(env, target):
+    target = env.expect.that_target(target)
+    target.runfiles().contains_predicate(
+        matching.str_endswith(target.meta.format_str("/{test_name}_stamp_off.txt")),
+    )
+    target.action_named("PyWriteBuildData").inputs().contains_predicate(
+        matching.file_basename_equals("uncachable_version_file.txt"),
+    )
+
+_tests.append(_test_stamp_enabled_keeps_deps_config)
 
 def _test_venv_output_prefix_with_path_separators(name, config):
     rt_util.helper_target(

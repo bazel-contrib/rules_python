@@ -17,10 +17,11 @@ description: rules_python-specific Bzlmod, PyPI, and rule usage invariants
   to the same name).
 
 ## Minimum Supported Bazel Version
-* `//:version.bzl` defines `MINIMUM_BAZEL_VERSION`. Do not add compatibility
-  logic, feature guards, or comments for older Bazel versions.
-* When guarding a feature added after `MINIMUM_BAZEL_VERSION`, verify and
-  comment the exact Bazel version that introduced it.
+* The minimum supported Bazel version is the `bazel` version of
+  `.minimum_supported_version` in `.bazelci/presubmit.yml`. Do not add
+  compatibility logic, feature guards, or comments for older Bazel versions.
+* When guarding a feature added after the minimum supported Bazel version,
+  verify and comment the exact Bazel version that introduced it.
 
 ## Internal Labels & Helpers
 * **Toolchain Type Labels**: Define toolchain type constants in
@@ -37,6 +38,11 @@ description: rules_python-specific Bzlmod, PyPI, and rule usage invariants
   `repr()` for Starlark calls; use `json.encode_indent()` for data constants.
 * **`@bazel_tools` `bzl_library` Deps**: Use `"//python/private:bazel_tools"` in
   `bzl_library` `deps` for files loading `@bazel_tools//...`.
+* **`# buildifier: disable=bzl-visibility` on Internal `/private/` Loads**:
+  Add trailing `# buildifier: disable=bzl-visibility` comments when `tests/` or
+  internal non-`python/` packages (such as `crates/**` and `tools/**`) load
+  repo-internal `/private/` helpers like
+  `//python/private:distribution_filegroup.bzl`.
 
 ## WORKSPACE & Bzlmod Parity
 * **Extend Existing Rules Over Adding Parallel Rules**: When bringing a Bzlmod

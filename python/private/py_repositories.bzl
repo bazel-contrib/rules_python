@@ -80,9 +80,9 @@ def py_repositories(transition_settings = []):
     )
     http_archive(
         name = "package_metadata",
-        sha256 = "8f27dc7393e3f3bdc793bdc4ba36d67a63c22cc9d38cc65d3204654974ea4563",
-        strip_prefix = "supply-chain-0.0.7/metadata",
-        url = "https://github.com/bazel-contrib/supply-chain/releases/download/v0.0.7/supply-chain-v0.0.7.tar.gz",
+        sha256 = "755bd6c8a3751982e2555d96c913ec070954ca9d01f935563392255da4ebad72",
+        strip_prefix = "package_metadata-0.0.13/metadata",
+        url = "https://github.com/bazel-contrib/supply-chain/releases/download/package_metadata-0.0.13/package_metadata-0.0.13.tar.gz",
     )
 
     # Needed by rules_cc, triggered by @rules_java_prebuilt in Bazel by using @rules_cc//cc:defs.bzl

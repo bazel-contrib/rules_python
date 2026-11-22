@@ -64,8 +64,14 @@ def whl_target_platforms(platform_tag, abi_tag = ""):
     cpus = _cpu_from_tag(platform_tag)
 
     abi = None
-    if abi_tag not in ["", "none", "abi3"]:
-        abi = abi_tag
+
+    # Stable ABI tags (`abi3`, `abi3t`, and `abi3.abi3t`; see
+    # https://peps.python.org/pep-0803/) do not identify a single
+    # interpreter ABI.
+    for tag in abi_tag.split("."):
+        if tag not in ["", "none", "abi3", "abi3t"]:
+            abi = abi_tag
+            break
 
     # TODO @aignas 2024-05-29: this code is present in many places, I think
     _, _, tail = platform_tag.partition("_")

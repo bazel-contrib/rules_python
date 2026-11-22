@@ -1,3 +1,4 @@
+import shlex
 import sys
 from difflib import unified_diff
 from os import environ
@@ -6,9 +7,30 @@ from pathlib import Path
 _LINE = "=" * 80
 
 
+def _quote(arg):
+    """Quotes arg for pasting into the user's shell."""
+    quoted = shlex.quote(arg)
+    if sys.platform == "win32" and quoted != arg:
+        # CMD recognizes only double quotes.
+        return f'"{arg}"'
+    return quoted
+
+
 def main():
     src = "{{src}}"
     dst = "{{dst}}"
+    update_target = "{{update_target}}"
+
+    if len(sys.argv) > 1:
+        # This copies what the lock build action produced, and no argument can
+        # reach that action; the `.run` target passes them to uv instead.
+        run_target = update_target.removesuffix(".update") + ".run"
+        print(
+            f"{update_target} takes no arguments. To pass them to uv, run:\n\n"
+            f"    bazel run {run_target} -- {' '.join(map(_quote, sys.argv[1:]))}",
+            file=sys.stderr,
+        )
+        return 2
 
     src = Path(src)
     if not src.exists():

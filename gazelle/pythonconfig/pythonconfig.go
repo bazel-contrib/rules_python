@@ -125,6 +125,10 @@ const (
 	// https://github.com/bazel-contrib/rules_python/issues/3595 which requested
 	// that the behavior be configurable.
 	PythonIncludeAncestorConftest = "python_include_ancestor_conftest"
+	// PythonResolvePytestPlugins represents the directive that controls
+	// whether module-level pytest_plugins declarations are resolved into
+	// dependencies. Defaults to true.
+	PythonResolvePytestPlugins = "python_resolve_pytest_plugins"
 )
 
 // GenerationModeType represents one of the generation modes for the Python
@@ -195,6 +199,7 @@ type Config struct {
 	pythonProjectRoot   string
 	gazelleManifestPath string
 	gazelleManifest     *manifest.Manifest
+	noGazelleManifest   bool // gazelleManifestPath doesn't exist
 
 	excludedPatterns                          *singlylinkedlist.List
 	ignoreFiles                               map[string]struct{}
@@ -219,6 +224,7 @@ type Config struct {
 	generateProto                             bool
 	resolveSiblingImports                     bool
 	includeAncestorConftest                   bool
+	resolvePytestPlugins                      bool
 }
 
 type LabelNormalizationType int
@@ -261,6 +267,7 @@ func New(
 		generateProto:                             false,
 		resolveSiblingImports:                     false,
 		includeAncestorConftest:                   true,
+		resolvePytestPlugins:                      true,
 	}
 }
 
@@ -300,6 +307,7 @@ func (c *Config) NewChild() *Config {
 		generateProto:                             c.generateProto,
 		resolveSiblingImports:                     c.resolveSiblingImports,
 		includeAncestorConftest:                   c.includeAncestorConftest,
+		resolvePytestPlugins:                      c.resolvePytestPlugins,
 	}
 }
 
@@ -344,6 +352,7 @@ func (c *Config) SetGazelleManifest(gazelleManifest *manifest.Manifest) {
 // for the current configuration.
 func (c *Config) SetGazelleManifestPath(gazelleManifestPath string) {
 	c.gazelleManifestPath = gazelleManifestPath
+	c.noGazelleManifest = false
 }
 
 // FindThirdPartyDependency scans the gazelle manifests for the current config
@@ -352,12 +361,13 @@ func (c *Config) SetGazelleManifestPath(gazelleManifestPath string) {
 func (c *Config) FindThirdPartyDependency(modName string) (string, string, bool) {
 	for currentCfg := c; currentCfg != nil; currentCfg = currentCfg.parent {
 		// Attempt to load the manifest if needed.
-		if currentCfg.gazelleManifestPath != "" && currentCfg.gazelleManifest == nil {
+		if currentCfg.gazelleManifestPath != "" && currentCfg.gazelleManifest == nil && !currentCfg.noGazelleManifest {
 			currentCfgManifest, err := loadGazelleManifest(currentCfg.gazelleManifestPath)
 			if err != nil {
 				log.Fatal(err)
 			}
 			currentCfg.SetGazelleManifest(currentCfgManifest)
+			currentCfg.noGazelleManifest = currentCfgManifest == nil // don't look again for every import
 		}
 
 		if currentCfg.gazelleManifest != nil {
@@ -649,6 +659,16 @@ func (c *Config) SetIncludeAncestorConftest(includeAncestorConftest bool) {
 // IncludeAncestorConftest returns whether ancestor conftest files are added to py_test targets.
 func (c *Config) IncludeAncestorConftest() bool {
 	return c.includeAncestorConftest
+}
+
+// SetResolvePytestPlugins sets whether pytest_plugins declarations are resolved into dependencies.
+func (c *Config) SetResolvePytestPlugins(resolvePytestPlugins bool) {
+	c.resolvePytestPlugins = resolvePytestPlugins
+}
+
+// ResolvePytestPlugins returns whether pytest_plugins declarations are resolved into dependencies.
+func (c *Config) ResolvePytestPlugins() bool {
+	return c.resolvePytestPlugins
 }
 
 // FormatThirdPartyDependency returns a label to a third-party dependency performing all formating and normalization.

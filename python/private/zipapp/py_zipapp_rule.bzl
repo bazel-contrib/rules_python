@@ -67,10 +67,16 @@ def _create_zipapp_main_py(ctx, py_runtime, py_executable, stage2_bootstrap, run
     inputs.add(py_runtime.zip_main_template)
     _build_manifest(ctx, hash_files_manifest, runfiles, explicit_symlinks, inputs)
 
+    zip_main_maker = get_shrubbery_tool(
+        ctx,
+        "zip_main_maker",
+        ctx.attr._zip_main_maker,
+    )
     actions_run(
         ctx,
-        executable = ctx.attr._zip_main_maker,
-        arguments = [args, hash_files_manifest],
+        executable = zip_main_maker.executable,
+        toolchain = zip_main_maker.toolchain,
+        arguments = zip_main_maker.prefix_args + [args, hash_files_manifest],
         inputs = inputs.build(),
         outputs = [zip_main_py],
         mnemonic = "PyZipAppCreateMainPy",

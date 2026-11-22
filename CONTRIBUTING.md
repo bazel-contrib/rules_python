@@ -149,6 +149,9 @@ For the body, follow this guidance:
   not a verbatim description of what changed.
 * List unrelated or notable dev-only changes at the end. e.g. formatting an
   old file, cleaning up testing, adding test support code, etc.
+* Wrap body prose at 72 columns (excluding long URLs, Markdown links,
+  fenced code blocks, and Markdown tables), as PR descriptions become
+  the merge commit message.
 
 For the full details of types, see
 [Conventional Commits](https://www.conventionalcommits.org/).
@@ -390,9 +393,10 @@ had written it entirely themselves. This means:
 *   **Avoiding bot comment spam:** Do not post comments for every CI run or
     commit push, and do not narrate build IDs, commit SHAs, line counts, or
     trivial diff details (such as noting a push is "comment-only"). Only post
-    a comment to ask or answer a substantive question, or reply `PTAL`
-    ("Please take another look") once CI is passing and the code is ready for
-    review again.
+    a comment to ask or answer a substantive question, briefly note direct
+    PR description wrapping fixes on another contributor's PR, or reply
+    `PTAL` ("Please take another look") once CI is passing and the code is
+    ready for review again.
 
 If the human PR author cannot fulfill these responsibilities, the
 `rules_python` maintainers will not spend time reviewing or merging the PR. The

@@ -246,6 +246,27 @@ FOOBAR = guimod:main
 
 _tests.append(_test_parse_entry_points_deduplicate)
 
+def _test_parse_metadata_crlf(env):
+    got = _parse_whl_metadata(
+        env,
+        contents = "\r\n".join([
+            "Name: foo",
+            "Version: 0.0.1",
+            "Requires-Dist: bar; extra == \"all\"",
+            "Provides-Extra: all",
+            "",
+            "Requires-Dist: this will be ignored",
+        ]),
+    )
+    got.name().equals("foo")
+    got.version().equals("0.0.1")
+    got.requires_dist().contains_exactly([
+        "bar; extra == \"all\"",
+    ])
+    got.provides_extra().contains_exactly(["all"])
+
+_tests.append(_test_parse_metadata_crlf)
+
 def whl_metadata_test_suite(name):  # buildifier: disable=function-docstring
     test_suite(
         name = name,

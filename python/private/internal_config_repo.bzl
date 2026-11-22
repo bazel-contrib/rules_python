@@ -27,10 +27,8 @@ _ENABLE_DEPRECATION_WARNINGS_DEFAULT = "0"
 _CONFIG_TEMPLATE = """
 config = struct(
   build_python_zip_default = {build_python_zip_default},
-  supports_whl_extraction = {supports_whl_extraction},
   enable_pystar = True,
   enable_deprecation_warnings = {enable_deprecation_warnings},
-  extract_needs_chmod = {extract_needs_chmod},
   bazel_8_or_later = {bazel_8_or_later},
   bazel_9_or_later = {bazel_9_or_later},
   bazel_10_or_later = {bazel_10_or_later},
@@ -82,20 +80,11 @@ def _internal_config_repo_impl(rctx):
     # An empty version signifies a development build, which is treated as
     # the latest version.
     if native.bazel_version:
-        version_parts = native.bazel_version.split(".")
-        bazel_major_version = int(version_parts[0])
-        bazel_minor_version = int(version_parts[1])
+        bazel_major_version = int(native.bazel_version.split(".")[0])
     else:
         bazel_major_version = 99999
-        bazel_minor_version = 99999
 
-    supports_whl_extraction = False
-    extract_needs_chmod = bazel_major_version < 8 or (bazel_major_version == 8 and bazel_minor_version < 6)
     if bazel_major_version >= 8:
-        # Extracting .whl files requires Bazel 8.3.0 or later.
-        if bazel_major_version > 8 or bazel_minor_version >= 3:
-            supports_whl_extraction = True
-
         builtin_py_info_symbol = "None"
         builtin_py_runtime_info_symbol = "None"
         builtin_py_cc_link_params_provider = "None"
@@ -110,8 +99,6 @@ def _internal_config_repo_impl(rctx):
         enable_deprecation_warnings = _bool_from_environ(rctx, _ENABLE_DEPRECATION_WARNINGS_ENVVAR_NAME, _ENABLE_DEPRECATION_WARNINGS_DEFAULT),
         builtin_py_info_symbol = builtin_py_info_symbol,
         builtin_py_runtime_info_symbol = builtin_py_runtime_info_symbol,
-        supports_whl_extraction = str(supports_whl_extraction),
-        extract_needs_chmod = str(extract_needs_chmod),
         builtin_py_cc_link_params_provider = builtin_py_cc_link_params_provider,
         modules_using_explicit_initpy = str(explicit_init_py_modules),
         tool_deps_dev_only = str(rctx.attr.tool_deps_dev_only),

@@ -17,6 +17,7 @@
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "subjects")
 load("//python/private:repo_utils.bzl", "REPO_DEBUG_ENV_VAR", "REPO_VERBOSITY_ENV_VAR", "repo_utils")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:default_platforms.bzl", "default_platforms")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:hub_builder.bzl", _hub_builder = "hub_builder")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:parse_simpleapi_html.bzl", "parse_simpleapi_html")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:platform.bzl", _plat = "platform")  # buildifier: disable=bzl-visibility
@@ -39,6 +40,10 @@ simple==0.0.1 \
     --hash=sha256:deadbaaf""",
         },
     )
+
+def _default_whl_abi_tags(os, cpu, freethreaded):
+    platform = "{}_{}{}".format(os, cpu, freethreaded)
+    return default_platforms()[platform]["whl_abi_tags"]
 
 def hub_builder(
         env,
@@ -66,7 +71,7 @@ def hub_builder(
                         "@platforms//os:{}".format(os),
                         "@platforms//cpu:{}".format(cpu),
                     ],
-                    whl_abi_tags = ["cp{major}{minor}t"] if freethreaded else ["abi3", "cp{major}{minor}"],
+                    whl_abi_tags = _default_whl_abi_tags(os, cpu, freethreaded),
                     whl_platform_tags = whl_platform_tags,
                 )
                 for (os, cpu, freethreaded), whl_platform_tags in {
@@ -175,6 +180,154 @@ def _test_uv_lock_only(env):
     pypi.group_map().contains_exactly({})
 
 _tests.append(_test_uv_lock_only)
+
+def _test_target_platforms_all(env):
+    builder = hub_builder(env)
+    builder.pip_parse(
+        _mock_mctx(
+            os_name = "osx",
+            arch_name = "aarch64",
+            mock_files = {
+                "uv.lock": json.encode({
+                    "package": [
+                        {
+                            "name": "simple",
+                            "source": {"registry": "https://pypi.org/simple"},
+                            "version": "0.0.1",
+                            "wheels": [
+                                {
+                                    "hash": "sha256:deadbeef",
+                                    "url": "https://files.pythonhosted.org/packages/simple-0.0.1-py3-none-any.whl",
+                                },
+                            ],
+                        },
+                    ],
+                }),
+            },
+        ),
+        _parse(
+            hub_name = "pypi",
+            python_version = "3.15",
+            requirements_lock = None,
+            target_platforms = ["*"],
+            uv_lock = "uv.lock",
+        ),
+    )
+    pypi = builder.build()
+
+    pypi.exposed_packages().contains_exactly(["simple"])
+    pypi.whl_map().contains_exactly({
+        "simple": {
+            "pypi_315_simple_py3_none_any_deadbeef": [
+                whl_config_setting(
+                    target_platforms = (
+                        "cp315_linux_aarch64",
+                        "cp315_linux_x86_64",
+                        "cp315_linux_x86_64_freethreaded",
+                        "cp315_osx_aarch64",
+                        "cp315_windows_aarch64",
+                    ),
+                    version = "3.15",
+                ),
+            ],
+        },
+    })
+
+_tests.append(_test_target_platforms_all)
+
+def _test_target_platforms_all_platform_wheels(env):
+    builder = hub_builder(env)
+    builder.pip_parse(
+        _mock_mctx(
+            os_name = "osx",
+            arch_name = "aarch64",
+            mock_files = {
+                "uv.lock": json.encode({
+                    "package": [
+                        {
+                            "name": "plat",
+                            "source": {"registry": "https://pypi.org/simple"},
+                            "version": "0.0.1",
+                            "wheels": [
+                                {
+                                    "hash": "sha256:deadb001",
+                                    "url": "https://files.pythonhosted.org/packages/plat-0.0.1-cp315-cp315-manylinux_2_17_x86_64.whl",
+                                },
+                                {
+                                    "hash": "sha256:deadb002",
+                                    "url": "https://files.pythonhosted.org/packages/plat-0.0.1-cp315-cp315t-manylinux_2_17_x86_64.whl",
+                                },
+                                {
+                                    "hash": "sha256:deadb003",
+                                    "url": "https://files.pythonhosted.org/packages/plat-0.0.1-cp315-cp315-manylinux_2_17_aarch64.whl",
+                                },
+                                {
+                                    "hash": "sha256:deadb004",
+                                    "url": "https://files.pythonhosted.org/packages/plat-0.0.1-cp315-cp315-macosx_11_0_arm64.whl",
+                                },
+                                {
+                                    "hash": "sha256:deadb005",
+                                    "url": "https://files.pythonhosted.org/packages/plat-0.0.1-cp315-cp315-win_arm64.whl",
+                                },
+                                {
+                                    "hash": "sha256:deadb006",
+                                    "url": "https://files.pythonhosted.org/packages/plat-0.0.1-py3-none-any.whl",
+                                },
+                            ],
+                        },
+                    ],
+                }),
+            },
+        ),
+        _parse(
+            hub_name = "pypi",
+            python_version = "3.15",
+            requirements_lock = None,
+            target_platforms = ["*"],
+            uv_lock = "uv.lock",
+        ),
+    )
+    pypi = builder.build()
+
+    pypi.exposed_packages().contains_exactly(["plat"])
+
+    # Each of the platforms selects its own platform specific wheel.
+    pypi.whl_map().contains_exactly({
+        "plat": {
+            "pypi_315_plat_cp315_cp315_macosx_11_0_arm64_deadb004": [
+                whl_config_setting(
+                    target_platforms = ("cp315_osx_aarch64",),
+                    version = "3.15",
+                ),
+            ],
+            "pypi_315_plat_cp315_cp315_manylinux_2_17_aarch64_deadb003": [
+                whl_config_setting(
+                    target_platforms = ("cp315_linux_aarch64",),
+                    version = "3.15",
+                ),
+            ],
+            "pypi_315_plat_cp315_cp315_manylinux_2_17_x86_64_deadb001": [
+                whl_config_setting(
+                    target_platforms = ("cp315_linux_x86_64",),
+                    version = "3.15",
+                ),
+            ],
+            "pypi_315_plat_cp315_cp315_win_arm64_deadb005": [
+                whl_config_setting(
+                    target_platforms = ("cp315_windows_aarch64",),
+                    version = "3.15",
+                ),
+            ],
+            "pypi_315_plat_cp315_cp315t_manylinux_2_17_x86_64_deadb002": [
+                whl_config_setting(
+                    target_platforms = ("cp315_linux_x86_64_freethreaded",),
+                    version = "3.15",
+                ),
+            ],
+        },
+    })
+
+_tests.append(_test_target_platforms_all_platform_wheels)
 
 def _test_simple_multiple_requirements(env):
     sub_tests = {
