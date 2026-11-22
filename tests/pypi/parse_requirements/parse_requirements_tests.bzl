@@ -860,6 +860,45 @@ def _test_non_sha256_hash_matching(env):
 
 _tests.append(_test_non_sha256_hash_matching)
 
+def _test_no_warning_for_filtered_wheels(env):
+    """Verifies that a digest missing from filtered facts is not reported."""
+    for wheels_filtered, want_warnings in [(False, 1), (True, 0)]:
+        warnings = []
+        noop = lambda *_args, **_kwargs: None
+        _parse_requirements(
+            ctx = _mock_ctx(),
+            requirements_by_platform = {
+                "requirements_linux": ["cp311_linux_x86_64"],
+            },
+            platforms = _make_platforms(["cp311_linux_x86_64"]),
+            get_index_urls = lambda _, __, **kwargs: {
+                "foo": struct(
+                    index_url = "https://example.com",
+                    sdists = {},
+                    whls = {
+                        "sha256:deadbaaf": struct(
+                            url = "https://example.com/foo-0.0.3-py3-none-any.whl",
+                            digest = "sha256:deadbaaf",
+                            filename = "foo-0.0.3-py3-none-any.whl",
+                            yanked = None,
+                        ),
+                    },
+                    # The digest `sha256:5d15t` is missing, as if the facts left it out.
+                    **({"wheels_filtered": True} if wheels_filtered else {})
+                ),
+            },
+            logger = struct(
+                trace = noop,
+                debug = noop,
+                info = noop,
+                warn = lambda message: warnings.append(message()),
+            ),
+        )
+
+        env.expect.that_collection(warnings).has_size(want_warnings)
+
+_tests.append(_test_no_warning_for_filtered_wheels)
+
 def _test_get_index_urls_different_versions(env):
     """Test that different versions from index URLs are matched correctly per platform."""
     got = parse_requirements(
