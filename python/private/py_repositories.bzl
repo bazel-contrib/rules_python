@@ -80,9 +80,9 @@ def py_repositories(transition_settings = []):
     )
     http_archive(
         name = "pypackaging.bzl",
-        sha256 = "09570564367dfbff313950528376c9ba9ded9025cacb2c731545db19bc27e1e9",
-        strip_prefix = "pypackaging.bzl-0.3.0",
-        url = "https://github.com/jvolkman/pypackaging.bzl/releases/download/v0.3.0/pypackaging.bzl-v0.3.0.tar.gz",
+        sha256 = "d234430a5425e8b090c0071944036516a3516b41f9c9d005113fff0533f591b3",
+        strip_prefix = "pypackaging.bzl-0.4.0",
+        url = "https://github.com/jvolkman/pypackaging.bzl/releases/download/v0.4.0/pypackaging.bzl-v0.4.0.tar.gz",
     )
     http_archive(
         name = "package_metadata",
