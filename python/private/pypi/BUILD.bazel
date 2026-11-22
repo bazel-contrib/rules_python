@@ -125,6 +125,7 @@ bzl_library(
         "//python/private:py_cc_link_params_info",
         "//python/private:py_info",
         "//python/private:reexports",
+        "@bazel_skylib//rules:common_settings",
     ],
 )
 

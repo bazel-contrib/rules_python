@@ -2,9 +2,9 @@
 
 The dependencies of an extra, e.g. `bar[socks]`, are only known by reading the
 `METADATA` of `bar`, which is only available in the whl repository of `bar`.
-Instead of creating the targets for the extras in the hub, which would require
-the hub to know the extras that each package provides, the dependency on an
-extra is wired as follows:
+The hub cannot create the `[socks]` target for every extra that `bar`
+provides without fetching the wheels, so the dependency on an extra is wired
+as follows:
 
 1. The package that depends on `bar[socks]` creates an {obj}`extra_dep`
    target, which depends on the `_extras` target of `bar` with the
@@ -16,8 +16,13 @@ extra is wired as follows:
 
 The hub only needs to forward the `_extras` target of each package to the
 right whl repository for the target platform.
+
+Both rules forward the providers of their only dependency, which is in the
+`deps` attribute so that the aspects propagating along `deps` reach the
+package.
 """
 
+load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("//python/private:py_cc_link_params_info.bzl", "PyCcLinkParamsInfo")
 load("//python/private:py_info.bzl", "PyInfo")
 load("//python/private:reexports.bzl", "BuiltinPyInfo")
@@ -29,8 +34,22 @@ EXTRAS_SELECT_TARGET = "_extras"
 # {obj}`extra_select` target.
 REQUESTED_EXTRA = str(Label("//python/private/pypi:requested_extra"))
 
-def _requested_extra_impl(_ctx):
-    return []
+# All of the providers of the targets in the whl and hub repositories, i.e.
+# `py_library` and `missing_package_error`. `DefaultInfo` is always present.
+_FORWARDED_PROVIDERS = [
+    p
+    for p in [
+        PyInfo,
+        BuiltinPyInfo,
+        PyCcLinkParamsInfo,
+        InstrumentedFilesInfo,
+        OutputGroupInfo,
+    ]
+    if p != None
+]
+
+def _requested_extra_impl(ctx):
+    return [BuildSettingInfo(value = ctx.build_setting_value)]
 
 requested_extra = rule(
     implementation = _requested_extra_impl,
@@ -61,50 +80,38 @@ _reset_requested_extra = transition(
     outputs = [REQUESTED_EXTRA],
 )
 
-def _forward(ctx, target, attr_name):
-    if type(target) == type([]):
-        target = target[0]
+def _forward(ctx):
+    if len(ctx.attr.deps) != 1:
+        fail("Expected exactly one target in 'deps', got: {}".format(ctx.attr.deps))
 
-    default_info = target[DefaultInfo]
-    providers = [
-        DefaultInfo(
-            files = default_info.files,
-            default_runfiles = default_info.default_runfiles,
-            data_runfiles = default_info.data_runfiles,
-        ),
-        coverage_common.instrumented_files_info(
-            ctx,
-            dependency_attributes = [attr_name],
-        ),
+    target = ctx.attr.deps[0]
+    return [target[DefaultInfo]] + [
+        target[provider]
+        for provider in _FORWARDED_PROVIDERS
+        if provider in target
     ]
-    for provider in [PyInfo, BuiltinPyInfo, PyCcLinkParamsInfo]:
-        if provider != None and provider in target:
-            providers.append(target[provider])
-
-    return providers
 
 def _extra_dep_impl(ctx):
-    return _forward(ctx, ctx.attr.pkg, "pkg")
+    return _forward(ctx)
 
 extra_dep = rule(
     implementation = _extra_dep_impl,
     doc = """\
 Depend on an extra of a PyPI package.
 
-The `pkg` is the {obj}`extra_select` target of the package, which resolves the
-`extra` to the target that includes the package and the dependencies of the
-extra.
-
+The only target in `deps` is the {obj}`extra_select` target of the package,
+which resolves the `extra` to the target that includes the package and the
+dependencies of the extra. All of its providers are forwarded.
 """,
     attrs = {
-        "extra": attr.string(
-            mandatory = True,
-            doc = "The normalized name of the extra.",
-        ),
-        "pkg": attr.label(
+        "deps": attr.label_list(
             mandatory = True,
             cfg = _set_requested_extra,
             doc = "The {obj}`extra_select` target of the package.",
+        ),
+        "extra": attr.string(
+            mandatory = True,
+            doc = "The normalized name of the extra.",
         ),
         "_allowlist_function_transition": attr.label(
             default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
@@ -113,32 +120,58 @@ extra.
 )
 
 def _extra_select_impl(ctx):
-    return _forward(ctx, ctx.attr.actual, "actual")
+    extra = ctx.attr._requested_extra[BuildSettingInfo].value
+    if extra and extra not in ctx.attr.extras:
+        # This is how `pip` handles the unknown extras.
+        # buildifier: disable=print
+        print("WARNING: {} does not provide the extra '{}'".format(
+            ctx.attr.distribution,
+            extra,
+        ))
+
+    return _forward(ctx)
 
 extra_select = rule(
     implementation = _extra_select_impl,
     doc = """\
 Forward the target of the extra that is requested by an {obj}`extra_dep`.
 
-The `actual` is expected to be a `select` on the {obj}`REQUESTED_EXTRA`
-setting. The setting is reset on the edge to `actual` so that the targets of
-the extras are analyzed in the same configuration regardless of how they are
-reached.
-
+The `deps` is expected to be a `select` on the {obj}`REQUESTED_EXTRA`
+setting that results in a single target. The setting is reset on the edge to
+`deps` so that the targets of the extras are analyzed in the same
+configuration regardless of how they are reached. All of the providers of
+the target are forwarded.
 """,
     attrs = {
-        "actual": attr.label(
+        "deps": attr.label_list(
             mandatory = True,
             cfg = _reset_requested_extra,
             doc = "The target for the requested extra.",
         ),
+        "distribution": attr.string(
+            doc = "The name and the version of the package for the warning about the unknown extras.",
+        ),
+        "extras": attr.string_list(
+            doc = "The normalized extras that have a target, a warning is printed if any other extra is requested.",
+        ),
         "_allowlist_function_transition": attr.label(
             default = "@bazel_tools//tools/allowlists/function_transition_allowlist",
+        ),
+        "_requested_extra": attr.label(
+            default = REQUESTED_EXTRA,
         ),
     },
 )
 
-def extra_select_targets(*, name, targets, default, native = native, rules = None, visibility = None):
+def extra_select_targets(
+        *,
+        name,
+        targets,
+        default,
+        distribution = "",
+        native = native,
+        rules = None,
+        visibility = None):
     """Create the {obj}`extra_select` target and the config settings for the extras.
 
     Args:
@@ -148,12 +181,14 @@ def extra_select_targets(*, name, targets, default, native = native, rules = Non
         default: {type}`str` the label used when the requested extra is not
             provided by the package, which follows `pip` that only warns about
             unknown extras.
+        distribution: {type}`str` the name and the version of the package
+            used in the warning about the unknown extras.
         native: the native struct for overriding in tests.
         rules: a struct with the `extra_select` rule for overriding in tests.
         visibility: {type}`list[str]` the visibility of the target.
     """
     rules = rules or struct(extra_select = extra_select)
-    actual = {}
+    deps = {}
     for extra, label in sorted(targets.items()):
         setting = "{}_{}".format(name, extra)
         native.config_setting(
@@ -161,10 +196,12 @@ def extra_select_targets(*, name, targets, default, native = native, rules = Non
             flag_values = {REQUESTED_EXTRA: extra},
             visibility = ["//visibility:private"],
         )
-        actual[":" + setting] = label
+        deps[":" + setting] = [label]
 
     rules.extra_select(
         name = name,
-        actual = select(actual | {"//conditions:default": default}) if actual else default,
+        deps = select(deps | {"//conditions:default": [default]}) if deps else [default],
+        distribution = distribution,
+        extras = sorted(targets),
         visibility = visibility,
     )
