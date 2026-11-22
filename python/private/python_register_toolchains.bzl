@@ -23,7 +23,7 @@ load(
     "TOOL_VERSIONS",
     "get_release_info",
 )
-load(":coverage_deps.bzl", "coverage_dep")
+load("//python/private/coverage:coverage_workspace.bzl", workspace_coverage_tool = "coverage_tool")
 load(":full_version.bzl", "full_version")
 load(":pbs_manifest.bzl", "split_pbs_distribution")
 load(":python_repository.bzl", "python_repository")
@@ -173,19 +173,16 @@ def python_register_toolchains(
         # NOTE: With bzlmod the `coverage` package from the
         # `rules_python_coverage` pip hub is added to the dependencies of the
         # executables instead, see `python.toolchain.configure_coverage_tool`.
-        if register_coverage_tool and coverage_tool == None and not bzlmod_toolchain_call:
-            coverage_tool = coverage_dep(
-                name = "{name}_{platform}_coverage".format(
-                    name = name,
-                    platform = platform,
-                ),
-                python_version = python_version,
-                platform = base_platform,
-                visibility = ["@{name}_{platform}//:__subpackages__".format(
-                    name = name,
-                    platform = platform,
-                )],
-            )
+        #
+        # NOTE @aignas 2023-01-19: The coverage tool is not supported on
+        # Windows, because the upstream coverage wrapper is written in shell.
+        if (
+            register_coverage_tool and
+            coverage_tool == None and
+            not bzlmod_toolchain_call and
+            "windows" not in base_platform
+        ):
+            coverage_tool = workspace_coverage_tool(python_version)
 
         impl_repo_name = "{}_{}".format(name, platform)
         impl_repos[impl_repo_name] = (platform, platform_info)

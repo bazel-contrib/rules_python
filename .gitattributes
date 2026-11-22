@@ -1,5 +1,6 @@
 python/features.bzl export-subst
 tests/uv/lock/testdata/requirements.txt text eol=lf
 python/private/runtimes_manifest.bzl text eol=lf
+python/private/coverage/uv_lock.bzl text eol=lf
 
 *.bat text eol=crlf

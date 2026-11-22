@@ -2,6 +2,7 @@ load("//python:py_library.bzl", "py_library")
 load("//python:pytest_test.bzl", "pytest_test")
 load("//tests/support:py_reconfig.bzl", "py_reconfig_binary")
 load("//tests/support:support.bzl", "NOT_WINDOWS", "SUPPORTS_BZLMOD")
+load(":coverage_workspace_tests.bzl", "coverage_workspace_test_suite")
 
 _PYPI_PYTHON_VERSION = "3.14"
 
@@ -18,13 +19,12 @@ py_reconfig_binary(
     srcs = ["instrumented.py"],
     collect_code_coverage = True,
     main = "instrumented.py",
-    # The coverage tool of the toolchain is configured only for this version,
-    # see the `MODULE.bazel` file.
+    # The coverage tool of the toolchain is configured for this version, see
+    # the `MODULE.bazel` and `WORKSPACE` files.
     python_version = "3.12.16",
     tags = ["manual"],
-    # The coverage collection is not supported on Windows and the coverage tool
-    # of the toolchain is only configured with bzlmod.
-    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    # The coverage collection is not supported on Windows.
+    target_compatible_with = NOT_WINDOWS,
     deps = [":lib"],
 )
 
@@ -35,7 +35,7 @@ pytest_test(
     env = {
         "INSTRUMENTED": "$(rlocationpath :instrumented)",
     },
-    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    target_compatible_with = NOT_WINDOWS,
     deps = ["//python/runfiles"],
 )
 
@@ -49,7 +49,7 @@ py_reconfig_binary(
     main = "instrumented.py",
     python_version = "3.12.16",
     tags = ["manual"],
-    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    target_compatible_with = NOT_WINDOWS,
     venvs_site_packages = "yes",
     deps = [":lib"],
 )
@@ -61,13 +61,14 @@ pytest_test(
     env = {
         "INSTRUMENTED": "$(rlocationpath :instrumented_venv)",
     },
-    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    target_compatible_with = NOT_WINDOWS,
     deps = ["//python/runfiles"],
 )
 
 # Like `instrumented`, but with a toolchain that is not the default one for the
 # `3.12` version. The `coverage` package is locked per `X.Y` version, so it is
-# used for all of the `X.Y.Z` versions.
+# used for all of the `X.Y.Z` versions. With WORKSPACE all of the versions are
+# registered with the coverage tool, see the `WORKSPACE` file.
 py_reconfig_binary(
     name = "instrumented_patch_version",
     srcs = ["instrumented.py"],
@@ -75,7 +76,7 @@ py_reconfig_binary(
     main = "instrumented.py",
     python_version = "3.12.13",
     tags = ["manual"],
-    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    target_compatible_with = NOT_WINDOWS,
     deps = [":lib"],
 )
 
@@ -86,7 +87,7 @@ pytest_test(
     env = {
         "INSTRUMENTED": "$(rlocationpath :instrumented_patch_version)",
     },
-    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    target_compatible_with = NOT_WINDOWS,
     deps = ["//python/runfiles"],
 )
 
@@ -190,3 +191,5 @@ pytest_test(
     target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
     deps = ["//python/runfiles"],
 )
+
+coverage_workspace_test_suite(name = "coverage_workspace_tests")

@@ -31,6 +31,13 @@ python_register_toolchains(
 )
 ```
 
+This uses the same `coverage` wheels as bzlmod, without any extra setup in the
+`WORKSPACE` file. The WORKSPACE macros cannot read the `uv.lock` file, so the
+selected wheels are stored in a `.bzl` file generated from it, and the
+`@rules_python_coverage` repository has a coverage tool for each Python version,
+e.g. `@rules_python_coverage//coverage:3.13`, which is set as the
+{attr}`py_runtime.coverage_tool` of the toolchains.
+
 :::{note}
 This will implicitly add the version of `coverage` bundled with `rules_python`
 to the dependencies of {obj}`py_test` rules when `bazel coverage` is run. If a
@@ -51,12 +58,9 @@ for all of the toolchains of the same `X.Y` version. The {flag}`--coverage` flag
 and the {attr}`py_runtime.coverage_tool` attribute take precedence over it.
 
 :::{note}
-With WORKSPACE, the bundled `coverage` wheel set covers CPython 3.9 through 3.14
-(with freethreaded variants for 3.13+), and not every platform within that
-range. When the interpreter that `bazel coverage` actually selects has no
-bundled wheel, `register_coverage_tool = True` produces no coverage tool and
-`bazel coverage` emits empty lcov data unless `coverage` is provided via
-{flag}`--coverage` (see {ref}`coverage-from-pypi`) or manually configured
+With WORKSPACE, the coverage tool is not configured for the Windows toolchains,
+so `bazel coverage` emits empty lcov data for them unless `coverage` is provided
+via {flag}`--coverage` (see {ref}`coverage-from-pypi`) or manually configured
 (see below).
 
 {obj}`py_runtime` warns when this happens. The warning is emitted during
