@@ -40,11 +40,21 @@ import path. If you find yourself in this situation, then set the
 {flag}`--coverage` flag to the same `coverage` (see {ref}`coverage-from-pypi`).
 :::
 
+With Bzlmod, the bundled `coverage` is a regular dependency of the
+{obj}`py_test` and {obj}`py_binary` targets, like the {flag}`--coverage` flag
+target, and it is only fetched when coverage is collected. It comes from a pip
+hub that `rules_python` locks with a `uv.lock` file, which has the latest
+`coverage` version for each Python version starting from 3.9 and the wheels for
+all of the platforms of the toolchains. It is locked per `X.Y` Python version,
+so setting `configure_coverage_tool = True` for any `X.Y.Z` toolchain enables it
+for all of the toolchains of the same `X.Y` version. The {flag}`--coverage` flag
+and the {attr}`py_runtime.coverage_tool` attribute take precedence over it.
+
 :::{note}
-The bundled `coverage` wheel set covers CPython 3.9 through 3.14 (with
-freethreaded variants for 3.13+), and not every platform within that range.
-When the interpreter that `bazel coverage` actually selects has no bundled
-wheel, `configure_coverage_tool = True` produces no coverage tool and
+With WORKSPACE, the bundled `coverage` wheel set covers CPython 3.9 through 3.14
+(with freethreaded variants for 3.13+), and not every platform within that
+range. When the interpreter that `bazel coverage` actually selects has no
+bundled wheel, `register_coverage_tool = True` produces no coverage tool and
 `bazel coverage` emits empty lcov data unless `coverage` is provided via
 {flag}`--coverage` (see {ref}`coverage-from-pypi`) or manually configured
 (see below).
@@ -53,6 +63,12 @@ wheel, `configure_coverage_tool = True` produces no coverage tool and
 analysis, for the runtime toolchain resolution selected and only when coverage
 is being collected, so it does not fire for the many platforms toolchains are
 registered for but a given build never uses.
+:::
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+With Bzlmod, the bundled `coverage` comes from a `uv.lock` based pip hub and it
+is added to the dependencies of the executables instead of being the
+{attr}`py_runtime.coverage_tool` of the toolchains.
 :::
 
 ## Manually configuring coverage
