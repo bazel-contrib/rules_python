@@ -3,6 +3,7 @@
 load("//python:py_library.bzl", "py_library")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load(":env_marker_setting.bzl", "env_marker_setting")
+load(":extra_dep.bzl", "EXTRAS_SELECT_TARGET", "extra_dep", "extra_select", "extra_select_targets")
 load(
     ":labels.bzl",
     "DATA_LABEL",
@@ -15,7 +16,6 @@ load(
     "extra_label",
     "group_member",
 )
-load(":missing_package.bzl", "missing_extra_error")
 load(":pep508_deps.bzl", "deps")
 
 def whl_library_deps_targets(
@@ -37,7 +37,8 @@ def whl_library_deps_targets(
         rules = struct(
             py_library = py_library,
             env_marker_setting = env_marker_setting,
-            missing_extra_error = missing_extra_error,
+            extra_dep = extra_dep,
+            extra_select = extra_select,
         )):
     """Create all of the whl_library targets.
 
@@ -54,6 +55,9 @@ def whl_library_deps_targets(
         provides_extra: {type}`list[str]` The list of extras that the package
             provides. For each extra the `[<extra>]` target is created
             that includes the package and the dependencies of that extra.
+            The `_extras` target selects one of them for the
+            {obj}`extra_dep` targets of the packages that depend on an extra
+            of this package.
         extras: {type}`list[str]` The list of requested extras. The `pkg`
             target includes them, which is how the extras are used when there
             is no hub repository to select them, e.g. when using a vendored
@@ -64,11 +68,9 @@ def whl_library_deps_targets(
             `pip` does.
         include: {type}`list[str] | dict[str, list[str] | None]` The list
             of packages to include. If it is a dict, then the values are the
-            extras of each package that are available in the hub and the
-            dependencies on the extras that are not available will fail the
-            build with a helpful message. The `[<extra>]` targets are also
-            created for the extras of this package that are available in
-            the hub, see `extras` for the ones that the package does not
+            extras of each package that are requested in the hub. The
+            `[<extra>]` targets are also created for the requested extras of
+            this package, see `extras` for the ones that the package does not
             provide.
         group_name: {type}`str | None` name of the dependency group (if any).
         dep_template: {type}`str | None` The dep_template to use.
@@ -156,13 +158,14 @@ def whl_library_deps_targets(
         if normalize_name(e) not in provided_extras
     })
     extras_targets = sorted(provided_extras.keys() + unknown_extras)
+    distribution = " ".join([metadata_name] + [
+        t.partition("=")[2]
+        for t in tags
+        if t.startswith("pypi_version=")
+    ])
     for extra in unknown_extras:
         getattr(rules, "warn", _warn)("WARNING: {} does not provide the extra '{}'".format(
-            " ".join([metadata_name] + [
-                t.partition("=")[2]
-                for t in tags
-                if t.startswith("pypi_version=")
-            ]),
+            distribution,
             extra,
         ))
     whl_file_label = _name("", WHEEL_FILE_PUBLIC_LABEL)
@@ -210,6 +213,28 @@ def whl_library_deps_targets(
             visibility = visibility if group_label or not requires_dist else impl_vis,
         )
 
+    def _extra_target(extra):
+        if group_name and not group_label and is_member(extra):
+            # The group library of the members is in the hub.
+            return dep_template.format(name = self_name, target = extra_label(extra))
+
+        return ":" + extra_label(extra)
+
+    # The packages that depend on an extra of this package use this target
+    # with the requested extra, because the hub does not know which extras
+    # this package provides. An extra without a target is the same as the
+    # package without extras and a warning is printed when it is requested.
+    if hasattr(rules, "extra_select"):
+        extra_select_targets(
+            name = EXTRAS_SELECT_TARGET,
+            targets = {extra: _extra_target(extra) for extra in extras_targets},
+            default = _extra_target(""),
+            distribution = distribution,
+            native = native,
+            rules = rules,
+            visibility = visibility,
+        )
+
     if not requires_dist:
         # If there are extras, then they will be visible in requires_dist.
         return
@@ -218,21 +243,18 @@ def whl_library_deps_targets(
     # dep and the expression.
     settings = {}
 
-    # The dependencies on extras that are not available in the hub.
-    missing_extras = {}
+    # The dependencies on the extras of other packages.
+    extra_deps = {}
 
     def _pkg_label(dep):
         dep_name, _, extra = dep.partition("[")
         if not extra:
             return dep_template.format(name = dep_name, target = PY_LIBRARY_PUBLIC_LABEL)
 
-        extra = extra.rstrip("]")
-        available = include.get(dep_name) if type(include) == type({}) else None
-        if available != None and extra not in available:
-            missing_extras[dep] = (dep_name, extra)
-            return ":_missing_" + dep
-
-        return dep_template.format(name = dep_name, target = extra_label(extra))
+        # The extra does not need to be requested in the hub, so it is
+        # resolved by the package that provides it.
+        extra_deps[dep] = (dep_name, extra.rstrip("]"))
+        return ":_" + dep
 
     whl_label = lambda dep: dep_template.format(name = dep, target = WHEEL_FILE_PUBLIC_LABEL)
 
@@ -295,12 +317,11 @@ def whl_library_deps_targets(
             visibility = ["//visibility:private"],
         )
 
-    for dep, (dep_name, extra) in sorted(missing_extras.items()):
-        rules.missing_extra_error(
-            name = "_missing_" + dep,
-            package_name = dep_name,
+    for dep, (dep_name, extra) in sorted(extra_deps.items()):
+        rules.extra_dep(
+            name = "_" + dep,
+            deps = [dep_template.format(name = dep_name, target = EXTRAS_SELECT_TARGET)],
             extra = extra,
-            required_by = metadata_name,
             visibility = ["//visibility:private"],
         )
 

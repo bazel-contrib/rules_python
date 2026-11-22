@@ -43,6 +43,7 @@ def _test_legacy_aliases(env):
         "foo": ":pkg",
         "pkg": ":[]",
         "[]": "@repo//:[]",
+        "_extras": "@repo//:_extras",
         "srcs": "@repo//:srcs",
         "whl_file": "@repo//:whl_file",
         "whl": "@repo//:whl",
@@ -55,6 +56,36 @@ def _test_legacy_aliases(env):
     env.expect.that_dict(got).contains_exactly(want)
 
 _tests.append(_test_legacy_aliases)
+
+def _test_extras_select_aliases(env):
+    got = {}
+    pkg_aliases(
+        name = "coverage",
+        actual = {
+            whl_config_setting(version = "3.10"): "coverage_310",
+            whl_config_setting(version = "3.12"): "coverage_312",
+        },
+        native = struct(
+            alias = lambda *, name, actual, visibility = None, tags = None: got.update({name: (actual, visibility)}),
+        ),
+        select = lambda value, no_match_error = None: value,
+    )
+
+    # The hub does not know the extras that the package provides, so the
+    # packages that depend on an extra use the `_extras` target of the whl
+    # repository for the target platform.
+    env.expect.that_dict(got).contains_at_least({
+        "_extras": (
+            {
+                "//_config:is_cp310": "@coverage_310//:_extras",
+                "//_config:is_cp312": "@coverage_312//:_extras",
+                "//conditions:default": "_no_matching_repository",
+            },
+            None,
+        ),
+    })
+
+_tests.append(_test_extras_select_aliases)
 
 def _test_config_setting_aliases(env):
     # Use this function as it is used in pip_repository
@@ -220,6 +251,10 @@ def _test_group_aliases(env):
         {
             "name": "foo",
             "actual": ":pkg",
+        },
+        {
+            "name": "_extras",
+            "actual": "@repo//:_extras",
         },
         {
             "name": "_pkg",

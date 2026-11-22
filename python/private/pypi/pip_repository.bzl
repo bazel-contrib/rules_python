@@ -286,9 +286,9 @@ def _pip_repository_impl(rctx):
             "config.bzl",
             rctx.attr._config_template,
             substitutions = {
-                # The available extras of each package for the spoke
-                # repositories to check if the extras of their dependencies
-                # are available.
+                # The requested extras of each package for the spoke
+                # repositories to create the targets of the extras that the
+                # package does not provide.
                 "%%PACKAGES%%": render.dict({
                     pkg: sorted(selected_extras.get(pkg, []))
                     for pkg in bzl_packages

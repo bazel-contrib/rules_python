@@ -35,6 +35,7 @@ load("@bazel_skylib//lib:selects.bzl", "selects")
 load("//python:py_library.bzl", "py_library")
 load("//python/private:common_labels.bzl", "labels")
 load("//python/private:text_util.bzl", "render")
+load(":extra_dep.bzl", "EXTRAS_SELECT_TARGET", "extra_dep", "extra_select")
 load(
     ":labels.bzl",
     "DATA_LABEL",
@@ -124,6 +125,8 @@ def pkg_aliases(
 
     _native = kwargs.pop("native", native)
     rules = kwargs.pop("rules", struct(
+        extra_dep = extra_dep,
+        extra_select = extra_select,
         py_library = py_library,
         whl_library_deps_targets = whl_library_deps_targets,
     ))
@@ -157,6 +160,10 @@ def pkg_aliases(
         # targets do not use the extras, so only the package without extras
         # can be a member of the group.
         target_names = {
+            # The whl repositories resolve the extras requested by the
+            # packages that depend on them, so the hub only needs to forward
+            # to the whl repository of the target platform.
+            EXTRAS_SELECT_TARGET: EXTRAS_SELECT_TARGET,
             WHEEL_FILE_PUBLIC_LABEL: WHEEL_FILE_IMPL_LABEL if "" in group_extras else WHEEL_FILE_PUBLIC_LABEL,
         }
 
@@ -214,7 +221,10 @@ def pkg_aliases(
             fail("The `actual` arg must be a dictionary or a string")
 
         kwargs = {}
-        if target_name.startswith("_"):
+        if target_name == EXTRAS_SELECT_TARGET:
+            # Used by the whl repositories that depend on the extras.
+            pass
+        elif target_name.startswith("_"):
             kwargs["visibility"] = ["//_groups:__subpackages__"]
         elif target_name in (WHEEL_FILE, PY_SRCS_LABEL):
             kwargs["visibility"] = ["//visibility:private"]
