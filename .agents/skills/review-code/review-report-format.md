@@ -15,8 +15,9 @@ For each issue found, provide:
   it holds up).
 - Proposed Fix: Start with a high-level, direct first sentence under 20 words
   stating the suggested fix. Add up to 50 additional words for more information
-  about the suggested fix (such as concrete diagnostic wording) only when
-  needed. Omit verbatim code snippets when prose suffices, including:
+  about the suggested fix (such as concrete diagnostic wording or a ~20-word
+  news entry rewrite) only when needed. Omit verbatim code snippets when prose
+  suffices, including:
   - Formatting and line wrapping (state what formatting rule to apply).
   - Missing per-field `struct(...)` comments (state to document each field with
     a comment).
