@@ -16,12 +16,12 @@
 load("@bazel_skylib//lib:dicts.bzl", "dicts")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
-load("@pypackaging.bzl", "pypackaging")
 load(":common_labels.bzl", "labels")
 load(":flags.bzl", "FreeThreadedFlag")
 load(":py_internal.bzl", "py_internal")
 load(":py_runtime_info.bzl", "DEFAULT_STUB_SHEBANG", "PyRuntimeInfo")
 load(":reexports.bzl", "BuiltinPyRuntimeInfo")
+load(":version.bzl", "version")
 
 _py_builtins = py_internal
 
@@ -467,7 +467,7 @@ def _is_singleton_depset(files):
     return _py_builtins.is_singleton_depset(files)
 
 def _interpreter_version_info_from_version_str(version_str):
-    v = pypackaging.version.parse(version_str)
+    v = version.parse(version_str)
     version_info = {}
     parts = list(v.release)
     for key in ("major", "minor", "micro"):
