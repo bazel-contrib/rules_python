@@ -3,7 +3,7 @@
 // Errors must be returned, not panicked; see the `rust-lint` config in .bazelrc.
 #![deny(clippy::expect_used, clippy::unwrap_used)]
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
 use std::fs::{self, File, Metadata};
 use std::io::{self, BufWriter, Seek, Write};
@@ -39,6 +39,9 @@ Options:
   --legacy-external-runfiles <0|1>   Whether to use legacy external runfiles behavior [default: 0]
   --runfiles-dir <DIR>               Name of the runfiles directory [default: runfiles]
   --target-platform-pathsep <SEP>    Path separator for the target platform [default: host separator]
+  --link-packed-runfiles-symlinks <0|1>
+                                     Store runfiles symlinks to packed files as symlinks to the
+                                     packed copy [default: 0]
   -h, --help                         Print this help";
 
 /// Joins path components with `/`.
@@ -169,10 +172,12 @@ fn parse_entry(
         } => ManifestEntry {
             zip_path: zip_path.to_string(),
             kind: file(content_path, symlink_mode),
+            source: EntrySource::Other,
         },
         RawManifestEntry::RfEmpty { runfile_path } => ManifestEntry {
             zip_path: rf_path(runfile_path),
             kind: EntryKind::Empty,
+            source: EntrySource::Other,
         },
         RawManifestEntry::RfFile {
             symlink_mode,
@@ -181,6 +186,7 @@ fn parse_entry(
         } => ManifestEntry {
             zip_path: rf_path(runfile_path),
             kind: file(content_path, symlink_mode),
+            source: EntrySource::RunfilesFile,
         },
         RawManifestEntry::RfSymlink {
             symlink_mode,
@@ -189,6 +195,7 @@ fn parse_entry(
         } => ManifestEntry {
             zip_path: unix_join(&[runfiles_dir, workspace_name, runfile_symlink_path]),
             kind: file(content_path, symlink_mode),
+            source: EntrySource::RunfilesSymlink,
         },
         RawManifestEntry::RfRootSymlink {
             symlink_mode,
@@ -197,6 +204,7 @@ fn parse_entry(
         } => ManifestEntry {
             zip_path: unix_join(&[runfiles_dir, runfile_root_path]),
             kind: file(content_path, symlink_mode),
+            source: EntrySource::RunfilesSymlink,
         },
         RawManifestEntry::Symlink {
             runfile_root_path,
@@ -209,11 +217,50 @@ fn parse_entry(
             ManifestEntry {
                 zip_path,
                 kind: EntryKind::Symlink { target },
+                source: EntrySource::Other,
             }
         }
     };
 
     Ok(Some(entry))
+}
+
+/// Turns runfiles symlinks to packed files into symlinks to the packed copy.
+///
+/// An `rf-symlink` or `rf-root-symlink` entry whose content is also stored by an `rf-file` entry
+/// (e.g. a venv site-packages entry that points into a pip repo) becomes a relative symlink to
+/// that `rf-file`'s zip path, instead of a second copy of the content. It keeps the precedence of
+/// a regular entry, so a file at the same zip path still wins over it.
+fn link_packed_runfiles_symlinks(entries: &mut [ManifestEntry]) {
+    let mut packed: HashMap<PathBuf, String> = HashMap::new();
+    for entry in entries.iter() {
+        if let (EntrySource::RunfilesFile, EntryKind::File { content_path, .. }) =
+            (entry.source, &entry.kind)
+        {
+            packed
+                .entry(content_path.clone())
+                .or_insert_with(|| normalize_components(&entry.zip_path).join("/"));
+        }
+    }
+    for entry in entries.iter_mut() {
+        if entry.source != EntrySource::RunfilesSymlink {
+            continue;
+        }
+        let EntryKind::File { content_path, .. } = &entry.kind else {
+            continue;
+        };
+        let Some(target) = packed.get(content_path) else {
+            continue;
+        };
+        // A link at the target's own path would point to itself.
+        if *target == normalize_components(&entry.zip_path).join("/") {
+            continue;
+        }
+        let parent = entry.zip_path.rsplit_once('/').map_or("", |(dir, _)| dir);
+        entry.kind = EntryKind::PackedSymlink {
+            target: relative_path(target, parent),
+        };
+    }
 }
 
 fn sort_key(entry: &ManifestEntry) -> (&str, bool) {
@@ -240,6 +287,9 @@ fn read_manifest(options: &ZipOptions) -> Result<Vec<ManifestEntry>> {
         if let Some(entry) = parsed {
             entries.push(entry);
         }
+    }
+    if options.link_packed_runfiles_symlinks {
+        link_packed_runfiles_symlinks(&mut entries);
     }
     entries.sort_by(|a, b| sort_key(a).cmp(&sort_key(b)));
     Ok(entries)
@@ -376,7 +426,7 @@ fn write_entry<W: Write + Seek>(
                 .with_context(adding)?;
             return Ok(());
         }
-        EntryKind::Symlink { target } => {
+        EntryKind::Symlink { target } | EntryKind::PackedSymlink { target } => {
             let target = convert_symlink_target(target, &options.platform_pathsep);
             zf.add_symlink(&zip_path, target, symlink_options())
                 .with_context(adding)?;
@@ -465,6 +515,7 @@ where
     let mut legacy_external_runfiles = false;
     let mut runfiles_dir = "runfiles".to_string();
     let mut platform_pathsep = std::path::MAIN_SEPARATOR_STR.to_string();
+    let mut link_packed_runfiles_symlinks = false;
 
     let mut parser = lexopt::Parser::from_args(args);
     while let Some(arg) = parser.next()? {
@@ -492,6 +543,12 @@ where
             Long("target-platform-pathsep") => {
                 platform_pathsep = parser.value()?.string()?;
             }
+            Long("link-packed-runfiles-symlinks") => {
+                link_packed_runfiles_symlinks = parse_bool_flag(
+                    "--link-packed-runfiles-symlinks",
+                    &parser.value()?.string()?,
+                )?;
+            }
             Value(val) => {
                 positional.push(PathBuf::from(val));
             }
@@ -515,6 +572,7 @@ where
         legacy_external_runfiles,
         runfiles_dir,
         platform_pathsep,
+        link_packed_runfiles_symlinks,
     }))
 }
 
@@ -560,6 +618,10 @@ enum EntryKind {
     /// A symlink whose `target` is relative to the parent directory of `zip_path` inside the
     /// zip archive (`symlink`). Takes precedence over other kinds at the same `zip_path`.
     Symlink { target: String },
+    /// A runfiles symlink to a file that is also packed, stored as a symlink whose `target` is
+    /// relative to the parent directory of `zip_path`. Unlike `Symlink`, it has the precedence of
+    /// a regular entry. See [`link_packed_runfiles_symlinks`].
+    PackedSymlink { target: String },
     /// Content read from `content_path` on disk (relative to the current working directory or
     /// absolute), stored as a file or symlink according to `symlink_mode`.
     File {
@@ -574,6 +636,20 @@ struct ManifestEntry {
     /// Destination path inside the zip archive, relative to the zip root.
     zip_path: String,
     kind: EntryKind,
+    /// Which kind of manifest line the entry came from.
+    source: EntrySource,
+}
+
+/// The kind of manifest line an entry came from, as far as [`link_packed_runfiles_symlinks`]
+/// needs to know.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum EntrySource {
+    /// `rf-file`.
+    RunfilesFile,
+    /// `rf-symlink` or `rf-root-symlink`.
+    RunfilesSymlink,
+    /// Any other line.
+    Other,
 }
 
 /// Configuration options for creating a zip archive.
@@ -597,4 +673,7 @@ pub struct ZipOptions {
     /// Path separator for the target platform (`"/"` on Unix, `"\\"` on Windows), used to
     /// normalize symlink target paths stored in the zip archive.
     pub platform_pathsep: String,
+    /// Whether to store `rf-symlink` and `rf-root-symlink` entries whose content is also stored
+    /// by an `rf-file` entry as relative symlinks to that entry.
+    pub link_packed_runfiles_symlinks: bool,
 }

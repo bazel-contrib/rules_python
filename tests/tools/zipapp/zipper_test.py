@@ -389,3 +389,73 @@ def test_symlink_extraction(tmp_path):
     assert link2_path.is_symlink(), f"{link2_path} should be a symlink"
     assert os.readlink(link2_path) == "same_dir_target"
     assert link2_path.read_text() == "target content"
+
+
+def _write_packed_runfiles_symlinks_manifest(tmp_path):
+    def write(name, content):
+        path = tmp_path / name
+        path.write_text(content)
+        return path
+
+    lib = write("lib.so", "lib")
+    other = write("other.txt", "other")
+    own = write("own.txt", "own")
+    unpacked = write("unpacked.txt", "unpacked")
+
+    manifest_path = tmp_path / "manifest.txt"
+    manifest_path.write_text(
+        "\n".join(
+            [
+                # A pip repo file and venv links to it.
+                f"rf-file|0|../pip/lib.so|{lib}",
+                f"rf-root-symlink|0|my_ws/venv/site-packages/lib.so|{lib}",
+                f"rf-symlink|0|venv2/lib.so|{lib}",
+                # A link at the path of a different packed file: the file wins.
+                f"rf-file|0|other.txt|{other}",
+                f"rf-root-symlink|0|my_ws/other.txt|{lib}",
+                # A link at its own target's path is stored as the file.
+                f"rf-file|0|own.txt|{own}",
+                f"rf-root-symlink|0|my_ws/own.txt|{own}",
+                # A link to a file that isn't packed is stored as a copy.
+                f"rf-root-symlink|0|my_ws/unpacked.txt|{unpacked}",
+            ]
+        )
+    )
+    return manifest_path
+
+
+def test_link_packed_runfiles_symlinks(tmp_path):
+    manifest_path = _write_packed_runfiles_symlinks_manifest(tmp_path)
+    output_zip = tmp_path / "output.zip"
+
+    create_zip(manifest_path, output_zip, link_packed_runfiles_symlinks=True)
+
+    with zipfile.ZipFile(output_zip, "r") as zf:
+        assert len(zf.namelist()) == 6
+        assert_zip_file_content(zf, "runfiles/pip/lib.so", content="lib")
+        assert_zip_file_content(
+            zf,
+            "runfiles/my_ws/venv/site-packages/lib.so",
+            is_symlink_file=True,
+            target=symlink_target_path("../../../pip/lib.so"),
+        )
+        assert_zip_file_content(
+            zf,
+            "runfiles/my_ws/venv2/lib.so",
+            is_symlink_file=True,
+            target=symlink_target_path("../../pip/lib.so"),
+        )
+        assert_zip_file_content(zf, "runfiles/my_ws/other.txt", content="other")
+        assert_zip_file_content(zf, "runfiles/my_ws/own.txt", content="own")
+        assert_zip_file_content(zf, "runfiles/my_ws/unpacked.txt", content="unpacked")
+
+
+def test_link_packed_runfiles_symlinks_disabled(tmp_path):
+    manifest_path = _write_packed_runfiles_symlinks_manifest(tmp_path)
+    output_zip = tmp_path / "output.zip"
+
+    create_zip(manifest_path, output_zip)
+
+    with zipfile.ZipFile(output_zip, "r") as zf:
+        for info in zf.infolist():
+            assert not is_symlink(info), f"{info.filename} should NOT be a symlink"
