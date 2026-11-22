@@ -424,7 +424,11 @@ def _normalize_version(version_str):
                 break
 
     normalized = pypackaging.version.to_string(pypackaging.version.parse(version_str))
-    for placeholder, digits in placeholders.items():
+
+    # Restore in the reverse order, because the digits of a later placeholder
+    # together with the digits next to them may look like the digits of an
+    # earlier one.
+    for placeholder, digits in reversed(placeholders.items()):
         normalized = normalized.replace(digits, placeholder)
 
     return normalized
