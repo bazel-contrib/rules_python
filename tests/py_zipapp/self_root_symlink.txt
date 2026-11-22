@@ -1,1 +1,0 @@
-A file whose runfiles root symlink is at its own path.
