@@ -16,7 +16,6 @@
 load("@bazel_skylib//lib:dicts.bzl", "dicts")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
-load("@pypackaging.bzl", "pypackaging")
 load(":attr_builders.bzl", "attrb")
 load(
     ":attributes.bzl",
@@ -52,6 +51,7 @@ load(
     TOOLCHAIN_TYPE = "TARGET_TOOLCHAIN_TYPE",
 )
 load(":venv_runfiles.bzl", "get_venv_symlinks")
+load(":version.bzl", "version")
 
 LIBRARY_ATTRS = dicts.add(
     COMMON_ATTRS,
@@ -260,10 +260,7 @@ def get_package_and_version(data_files):
     package, _, version_str = package.rpartition("-")
     return (
         normalize_name(package),  # will have no dashes
-        pypackaging.utils.canonicalize_version(
-            version_str,
-            strip_trailing_zero = False,
-        ),  # will have no dashes either
+        version.normalize(version_str),  # will have no dashes either
     )
 
 def _get_imports_and_venv_symlinks(ctx):
