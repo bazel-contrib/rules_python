@@ -24,7 +24,7 @@ load("//python/private:pyproject_utils.bzl", "read_pyproject", "version_from_req
 load("//python/private:repo_utils.bzl", "repo_utils")
 load(":default_platforms.bzl", "default_platforms")
 load(":hub_builder.bzl", "hub_builder")
-load(":hub_exposure.bzl", "hub_exposure")
+load(":hub_exposure.bzl", "add_extras", "hub_exposure")
 load(":hub_repository.bzl", "hub_repository", "whl_config_settings_to_json")
 load(":labels.bzl", "extra_label")
 load(":parse_whl_name.bzl", "parse_whl_name")
@@ -357,6 +357,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
     extra_aliases = {}
     whl_libraries = {}
     hubs = {}
+    hub_platforms = {}
     for hub in pip_hub_map.values():
         out = hub.build()
 
@@ -370,6 +371,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
         extra_aliases[hub.name] = out.extra_aliases
         hub_group_map[hub.name] = out.group_map
         hub_whl_map[hub.name] = out.whl_map
+        hub_platforms[hub.name] = out.platforms
         hubs[hub.name] = struct(
             # str: module that created the hub.
             module_name = hub.module_name,
@@ -379,14 +381,24 @@ You cannot use both the additive_build_content and additive_build_content_file a
             packages = out.whl_map.keys(),
         )
 
-    configured_hubs = hub_exposure(
+    exposure = hub_exposure(
         module_ctx,
         hubs = hubs,
         default_pyproject = config.pyproject_toml,
         _fail = _fail,
     )
-    if configured_hubs == None:
+    if exposure == None:
         return None
+    configured_hubs = exposure.packages
+
+    # The extras requested in the `pyproject.toml`, e.g. `requests[socks]`,
+    # are added to the hub even if the lock file does not have them.
+    for hub_name, extras in exposure.extras.items():
+        hub_whl_map[hub_name] = add_extras(
+            hub_whl_map[hub_name],
+            extras,
+            platforms = hub_platforms[hub_name],
+        )
 
     # The `all_*requirements` only list the selected packages that are
     # available on all of the platforms, while all of the selected packages
@@ -1176,6 +1188,11 @@ Each item is one of:
   packages of the hub including the transitive dependencies, i.e. all of the
   packages from the requirements files or the `uv.lock` file.
 
+The extras of the selected requirements, e.g. `requests[socks]`, are also
+added to the hub for the target platforms that match the environment markers
+of the requirements. With `"transitive"` the extras of all of the groups are
+added.
+
 See {ref}`Configuring the Exposed Packages <pip-configure>` for examples.
 
 :::{versionadded} VERSION_NEXT_FEATURE
@@ -1213,7 +1230,9 @@ The packages are selected from a `pyproject.toml` file using the
 `[project] dependencies`, `[project.optional-dependencies]` and PEP 735
 `[dependency-groups]` tables. The other packages of the hub, e.g. the
 transitive dependencies, are still used by the packages that need them, but
-they are not public.
+they are not public. The extras requested by the selected requirements, e.g.
+`requests[socks]`, are added to the hub even if the lock file does not request
+them.
 
 The tags work like a builder: they are applied in order and multiple tags for
 the same hub are combined, so each tag can configure a different part of the
