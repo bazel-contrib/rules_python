@@ -30,10 +30,6 @@ def select_dependency_groups(pyproject, specs, _fail = fail):
           * `all`: {type}`bool` whether all of the packages including the
             transitive dependencies should be selected, i.e. `"*"` and
             `"transitive"` were given.
-          * `extras`: {type}`dict[str, list[str]]` the normalized package
-            names mapped to the sorted normalized extras that the selected
-            requirements request, e.g. `requests[socks]`. When `all` is set,
-            the extras of all of the groups are returned.
         Returns `None` on failure.
     """
     groups = {"default": pyproject.dependencies}
@@ -45,19 +41,25 @@ def select_dependency_groups(pyproject, specs, _fail = fail):
     for name, reqs in expanded.items():
         groups["group:" + name] = reqs
 
-    select_all = "transitive" in specs
-    if select_all:
+    if "transitive" in specs:
         if "*" not in specs:
             _fail("The 'transitive' dependency group specifier is only supported together with '*', which selects all of the packages, got: {}".format(
                 specs,
             ))
             return None
-        specs = ["*"]
+        return struct(
+            # list[str]: sorted normalized package names selected by `specs`.
+            packages = [],
+            # bool: True when all hub packages are selected.
+            all = True,
+        )
 
     selected = {}
     for spec in specs:
         keys = _match(spec, groups)
-        if not keys:
+
+        # A wildcard matches nothing when its table is empty or missing.
+        if not keys and spec not in ("*", "optional:*", "group:*"):
             _fail("Unknown dependency group '{}'. Available groups: {}".format(
                 spec,
                 ", ".join(sorted(groups)),
@@ -69,7 +71,7 @@ def select_dependency_groups(pyproject, specs, _fail = fail):
     # A self reference like `my-project[test]` selects the optional
     # dependencies, including nested composite extras.
     project = normalize_name(pyproject.name or "")
-    reqs = []
+    packages = {}
     queue = list(selected)
     for _ in range(len(groups)):
         if not queue:
@@ -77,7 +79,7 @@ def select_dependency_groups(pyproject, specs, _fail = fail):
         for req in groups[queue.pop(0)]:
             req = requirement(req)
             if req.name_ != project:
-                reqs.append(req)
+                packages[req.name_] = None
                 continue
             for extra in req.extras:
                 opt_key = "optional:" + extra
@@ -85,22 +87,11 @@ def select_dependency_groups(pyproject, specs, _fail = fail):
                     selected[opt_key] = None
                     queue.append(opt_key)
 
-    packages = {}
-    extras = {}
-    for req in reqs:
-        packages[req.name_] = None
-        if req.extras:
-            pkg_extras = extras.setdefault(req.name_, {})
-            for extra in req.extras:
-                pkg_extras[extra] = None
-
     return struct(
         # list[str]: sorted normalized package names selected by `specs`.
-        packages = [] if select_all else sorted(packages),
+        packages = sorted(packages),
         # bool: True when all packages including transitive ones are selected.
-        all = select_all,
-        # dict[str, list[str]]: the extras requested for the packages.
-        extras = {name: sorted(pkg_extras) for name, pkg_extras in extras.items()},
+        all = False,
     )
 
 def _match(spec, groups):

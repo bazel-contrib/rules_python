@@ -133,8 +133,10 @@ globs: "*.py,*.sh"
   (using cryptographic nonces rather than `'unsafe-inline'` for scripts).
   Validate incoming `Host` headers against allowed bind/loopback hosts
   (including loopback hosts for wildcard binds, rejecting userinfo `@` or path
-  chars) and reject `Sec-Fetch-Site: cross-site` and untrusted `Origin` headers
-  on `/api/*` and `/_sidecar/*` routes.
+  chars; non-loopback reverse-proxy `Host` and matching `Origin` endpoints may
+  be accepted only when a configured secret `X-Sidecar-Token` matches via
+  `hmac.compare_digest`) and reject `Sec-Fetch-Site: cross-site` and untrusted
+  `Origin` headers on `/api/*` and `/_sidecar/*` routes.
 * **SQLite `file:` URIs & `LIKE` Wildcards**: Build file-backed SQLite URIs via
   `Path.resolve().as_uri()`, and escape `\`, `%`, and `_` with `ESCAPE '\'` in
   parameterized `LIKE` clauses, plus re-verify exact repo/slug boundaries.

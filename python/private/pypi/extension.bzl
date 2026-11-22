@@ -24,8 +24,9 @@ load("//python/private:pyproject_utils.bzl", "read_pyproject", "version_from_req
 load("//python/private:repo_utils.bzl", "repo_utils")
 load(":default_platforms.bzl", "default_platforms")
 load(":hub_builder.bzl", "hub_builder")
-load(":hub_exposure.bzl", "add_extras", "hub_exposure")
+load(":hub_exposure.bzl", "hub_exposure")
 load(":hub_repository.bzl", "hub_repository", "whl_config_settings_to_json")
+load(":labels.bzl", "extra_label")
 load(":parse_whl_name.bzl", "parse_whl_name")
 load(":pep508_env.bzl", "env")
 load(":pip_repository_attrs.bzl", "ATTRS")
@@ -378,21 +379,25 @@ You cannot use both the additive_build_content and additive_build_content_file a
             packages = out.whl_map.keys(),
         )
 
-    exposure = hub_exposure(
+    configured_hubs = hub_exposure(
         module_ctx,
         hubs = hubs,
         default_pyproject = config.pyproject_toml,
         _fail = _fail,
     )
-    if exposure == None:
+    if configured_hubs == None:
         return None
-    configured_hubs = exposure.packages
-    exposed_packages.update(configured_hubs)
 
-    # The extras requested in the `pyproject.toml`, e.g. `requests[socks]`,
-    # are exposed by the hub even if the lock file does not have them.
-    for hub_name, extras in exposure.extras.items():
-        hub_whl_map[hub_name] = add_extras(hub_whl_map[hub_name], extras)
+    # The `all_*requirements` only list the selected packages that are
+    # available on all of the platforms, while all of the selected packages
+    # stay public.
+    for hub_name, packages in configured_hubs.items():
+        selected = {name: None for name in packages}
+        exposed_packages[hub_name] = [
+            name
+            for name in exposed_packages[hub_name]
+            if name in selected
+        ]
 
     return struct(
         # dict[str, list[str]]: configured hubs and exposed packages.
@@ -417,9 +422,18 @@ You cannot use both the additive_build_content and additive_build_content_file a
         },
     )
 
-def _create_unified_hub_repo(mods):
+def unified_hub_args(mods):
+    """Return the args of the unified hub repository.
+
+    Args:
+        mods: {type}`struct` the value returned by {obj}`parse_modules`.
+
+    Returns:
+        {type}`dict | None` the args for {obj}`unified_hub_repo` or `None` if
+        a concrete hub uses the name of the unified hub.
+    """
     if "pypi" in mods.hub_whl_map:
-        return
+        return None
 
     hubs = sorted(mods.hub_whl_map.keys())
     if mods.default_hub and mods.default_hub not in hubs:
@@ -441,8 +455,16 @@ def _create_unified_hub_repo(mods):
             if hub_name not in packages[norm_pkg]:
                 packages[norm_pkg].append(hub_name)
 
+            # The `[<extra>]` targets only exist in the hubs that request
+            # the extra.
+            extras = {
+                extra_label(extra): None
+                for settings in mods.hub_whl_map[hub_name].get(pkg_name, {}).values()
+                for setting in settings
+                for extra in setting.extras or []
+            }
             extra = mods.extra_aliases.get(hub_name, {}).get(norm_pkg, [])
-            for alias_name in extra:
+            for alias_name in sorted(extras) + extra:
                 qual_alias = "%s:%s" % (norm_pkg, alias_name)
                 if qual_alias not in extra_aliases:
                     extra_aliases[qual_alias] = []
@@ -458,7 +480,7 @@ def _create_unified_hub_repo(mods):
             if qual_alias not in extra_aliases:
                 extra_aliases[qual_alias] = []
 
-    unified_hub_repo(
+    return dict(
         name = "pypi",
         default_hub = mods.default_hub or (hubs[0] if hubs else ""),
         extra_aliases = extra_aliases,
@@ -466,6 +488,11 @@ def _create_unified_hub_repo(mods):
         packages = packages,
         requirements_bzl = mods.unified_hub_requirements_bzl,
     )
+
+def _create_unified_hub_repo(mods):
+    args = unified_hub_args(mods)
+    if args != None:
+        unified_hub_repo(**args)
 
 def _pip_impl(module_ctx):
     """Implementation of a class tag that creates the pip hub and corresponding pip spoke whl repositories.
@@ -558,6 +585,7 @@ def _pip_impl(module_ctx):
             groups = mods.hub_group_map.get(hub_name),
             # The hubs configured with `pip.configure` hide the other packages.
             hide_unexposed_packages = hub_name in mods.configured_hubs,
+            public_packages = mods.configured_hubs.get(hub_name, []),
         )
 
     _create_unified_hub_repo(mods)
@@ -1148,10 +1176,6 @@ Each item is one of:
   packages of the hub including the transitive dependencies, i.e. all of the
   packages from the requirements files or the `uv.lock` file.
 
-The extras of the selected requirements, e.g. `requests[socks]`, are also
-exposed by the hub, see {ref}`Configuring the Exposed Packages <pip-configure>`.
-With `"transitive"` the extras of all of the groups are exposed.
-
 See {ref}`Configuring the Exposed Packages <pip-configure>` for examples.
 
 :::{versionadded} VERSION_NEXT_FEATURE
@@ -1189,8 +1213,7 @@ The packages are selected from a `pyproject.toml` file using the
 `[project] dependencies`, `[project.optional-dependencies]` and PEP 735
 `[dependency-groups]` tables. The other packages of the hub, e.g. the
 transitive dependencies, are still used by the packages that need them, but
-they are not public. The extras requested by the selected requirements, e.g.
-`requests[socks]`, are exposed even if the lock file does not request them.
+they are not public.
 
 The tags work like a builder: they are applied in order and multiple tags for
 the same hub are combined, so each tag can configure a different part of the

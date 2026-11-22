@@ -11,7 +11,7 @@ import sqlite3
 import subprocess
 import tempfile
 import unittest
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 from pathlib import Path
 from unittest import mock
 from urllib.request import Request
@@ -32,6 +32,9 @@ def _make_service(
     fetcher: Callable[..., Awaitable[fetch_pr_queue.PrQueueResult]] = (
         fetch_pr_queue.fetch_pr_queue_async
     ),
+    gh_runner: Callable[[Sequence[str], int], Awaitable[str]] = (
+        fetch_pr_queue.run_gh_command_async
+    ),
     conversations_db: Path | None = None,
 ) -> server.PrQueueService:
     return server.PrQueueService(
@@ -44,6 +47,7 @@ def _make_service(
         projects_file=root / "projects.json",
         daemon_dir=root / "daemon",
         fetcher=fetcher,
+        gh_runner=gh_runner,
     )
 
 
@@ -478,7 +482,18 @@ class PrQueueServiceTest(unittest.IsolatedAsyncioTestCase):
                     triggered_at=100.0,
                 )
             )
-            svc = _make_service(root, store, conversations_db=db_path)
+
+            async def offline_gh_runner(_args: Sequence[str], _timeout: int) -> str:
+                raise fetch_pr_queue.FetchError(
+                    "`gh` CLI executable was not found on PATH; install GitHub CLI."
+                )
+
+            svc = _make_service(
+                root,
+                store,
+                gh_runner=offline_gh_runner,
+                conversations_db=db_path,
+            )
             found = await svc.lookup_pr(44)
             conversations = found["conversations"]
             assert isinstance(conversations, list)  # type assert
@@ -486,6 +501,320 @@ class PrQueueServiceTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(
                 ids,
                 ["cid-tracked", "cid-caveman", "cid-old", "cid-url", "cid-summary"],
+            )
+            self.assertEqual(found["item_kind"], "error")
+            self.assertIsNone(found["pr"])
+            self.assertNotIn("issue", found)
+            self.assertIn("not found on PATH", str(found["pr_error"]))
+
+    async def test_lookup_pr_returns_live_pr_metadata_and_cached_membership(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            store = state_store.StateStore(root / "state")
+            cached_summary = fetch_pr_queue.PrSummary(
+                repo="bazel-contrib/rules_python",
+                number=4487,
+                title="Cached stale title",
+                url="https://github.com/bazel-contrib/rules_python/pull/4487",
+                author="aignas",
+                author_association="MEMBER",
+                is_project_member=True,
+                is_bot=False,
+                created_at="2026-11-10T00:00:00Z",
+                updated_at="2026-11-11T00:00:00Z",
+                age_days=2,
+                days_since_update=1,
+                head_ref_name="old-branch",
+                head_ref_oid="oldsha",
+                base_ref_name="main",
+                is_draft=False,
+                review_decision="REVIEW_REQUIRED",
+                review_requested_from_me=False,
+                requested_reviewers=(),
+                my_review_state="",
+                approved_by=(),
+                changes_requested_by=(),
+                additions=1,
+                deletions=1,
+                changed_files=1,
+                labels=(),
+                checks_state="pending",
+                checks_passed=0,
+                checks_failed=0,
+                checks_pending=1,
+                checks_total=1,
+                action_needed="needs_review",
+                is_stale=False,
+            )
+
+            async def fake_fetcher(**_kw: object) -> fetch_pr_queue.PrQueueResult:
+                return fetch_pr_queue.PrQueueResult(
+                    repo="bazel-contrib/rules_python",
+                    viewer="rickeylev",
+                    prs=[cached_summary],
+                    stale_prs=[],
+                    skipped_drafts=0,
+                    skipped_authored=0,
+                    skipped_approved=0,
+                    max_age_days=30,
+                )
+
+            async def fake_gh_runner(args: Sequence[str], _timeout: int) -> str:
+                if list(args[:2]) == ["api", "user"]:
+                    return "rickeylev\n"
+                if list(args[:2]) == ["pr", "view"] and args[-2:] == ["--", "4487"]:
+                    return json.dumps(
+                        {
+                            "number": 4487,
+                            "title": "feat: add lookup PR card",
+                            "url": "https://github.com/bazel-contrib/rules_python/pull/4487",
+                            "state": "MERGED",
+                            "author": {"login": "aignas", "is_bot": False},
+                            "createdAt": "2026-11-10T00:00:00Z",
+                            "updatedAt": "2026-11-16T00:00:00Z",
+                            "headRefName": "feat-lookup",
+                            "headRefOid": "newsha",
+                            "baseRefName": "main",
+                            "isDraft": False,
+                            "reviewDecision": "APPROVED",
+                            "reviewRequests": [],
+                            "latestReviews": [
+                                {
+                                    "author": {"login": "rickeylev"},
+                                    "state": "APPROVED",
+                                }
+                            ],
+                            "additions": 42,
+                            "deletions": 7,
+                            "changedFiles": 3,
+                            "labels": [{"name": "enhancement"}],
+                            "statusCheckRollup": [
+                                {
+                                    "__typename": "CheckRun",
+                                    "status": "COMPLETED",
+                                    "conclusion": "SUCCESS",
+                                }
+                            ],
+                        }
+                    )
+                raise AssertionError(f"Unexpected gh command: {args}")
+
+            store.record_triggered_pr(
+                state_store.TriggeredPrRecord(
+                    pr_number=4487,
+                    repo="bazel-contrib/rules_python",
+                    conversation_id="cid-4487",
+                    title="pr-4487: add lookup card",
+                    url="https://github.com/bazel-contrib/rules_python/pull/4487",
+                    head_sha="oldsha",
+                    head_ref="feat-lookup",
+                    author="aignas",
+                    worktree_path="/tmp/wt-4487",
+                    project_id="proj-1",
+                    environment_id="env-1",
+                    triggered_at=100.0,
+                )
+            )
+            svc = _make_service(
+                root,
+                store,
+                fetcher=fake_fetcher,
+                gh_runner=fake_gh_runner,
+            )
+            await svc.get_queue(refresh=True)
+
+            found = await svc.lookup_pr(4487)
+            self.assertEqual(found["item_kind"], "pull_request")
+            self.assertFalse(found["from_cache"])
+            self.assertEqual(found["pr_error"], "")
+            pr_info = found["pr"]
+            assert isinstance(pr_info, dict)  # type assert
+            self.assertEqual(pr_info["title"], "feat: add lookup PR card")
+            self.assertEqual(pr_info["state"], "MERGED")
+            self.assertEqual(pr_info["additions"], 42)
+            self.assertEqual(pr_info["approved_by"], ["rickeylev"])
+            self.assertEqual(pr_info["checks_state"], "passing")
+            self.assertTrue(pr_info["is_project_member"])
+            chat = pr_info["triggered_chat"]
+            assert isinstance(chat, dict)  # type assert
+            self.assertEqual(chat["conversation_id"], "cid-4487")
+            self.assertTrue(chat["stale_commit"])
+
+    async def test_lookup_pr_detects_issue_and_not_found_and_cached_fallback(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            store = state_store.StateStore(root / "state")
+            recorded_cmds: list[list[str]] = []
+
+            async def fake_fetcher(**_kw: object) -> fetch_pr_queue.PrQueueResult:
+                return fetch_pr_queue.PrQueueResult(
+                    repo="bazel-contrib/rules_python",
+                    viewer="alice",
+                    prs=[_make_summary(77)],
+                    stale_prs=[],
+                    skipped_drafts=0,
+                    skipped_authored=0,
+                    skipped_approved=0,
+                    max_age_days=30,
+                )
+
+            async def fake_gh_runner(args: Sequence[str], _timeout: int) -> str:
+                recorded_cmds.append(list(args))
+                if list(args[:2]) == ["api", "user"]:
+                    return "alice\n"
+                if list(args[:2]) == ["pr", "view"] and args[-2:] == ["--", "4472"]:
+                    raise fetch_pr_queue.FetchError(
+                        "GraphQL: Could not resolve to a PullRequest with the "
+                        "number of 4472. (repository.pullRequest)"
+                    )
+                if list(args[:2]) == [
+                    "api",
+                    "repos/bazel-contrib/rules_python/issues/4472",
+                ]:
+                    return json.dumps(
+                        {
+                            "number": 4472,
+                            "title": "Alias bug in platform override",
+                            "html_url": "https://github.com/bazel-contrib/rules_python/issues/4472",
+                            "state": "open",
+                            "state_reason": None,
+                            "created_at": "2026-11-10T22:51:20Z",
+                            "updated_at": "2026-11-11T10:00:00Z",
+                            "user": {"login": "vadikmironov", "type": "User"},
+                            "labels": [{"name": "type: bug"}],
+                        }
+                    )
+                if list(args[:2]) == [
+                    "api",
+                    "repos/bazel-contrib/rules_python/issues/4473",
+                ]:
+                    return json.dumps(
+                        {
+                            "number": 4473,
+                            "title": "Closed bot issue",
+                            "html_url": "https://github.com/bazel-contrib/rules_python/issues/4473",
+                            "state": "closed",
+                            "state_reason": "completed",
+                            "created_at": "2026-11-10T22:51:20Z",
+                            "updated_at": "2026-11-11T10:00:00Z",
+                            "user": {"login": "renovate[bot]", "type": "Bot"},
+                            "labels": [],
+                        }
+                    )
+                if list(args[:2]) == [
+                    "api",
+                    "repos/bazel-contrib/rules_python/issues/4474",
+                ]:
+                    return json.dumps(
+                        {
+                            "number": 4474,
+                            "title": "Actually a PR",
+                            "pull_request": {"url": "https://example.com/pr/4474"},
+                        }
+                    )
+                if list(args[:2]) == [
+                    "api",
+                    "repos/bazel-contrib/rules_python/issues/4475",
+                ]:
+                    raise fetch_pr_queue.FetchError("HTTP 502: Bad Gateway")
+                if list(args[:2]) == ["pr", "view"] and args[-2:] == ["--", "999999"]:
+                    raise fetch_pr_queue.FetchError(
+                        "GraphQL: Could not resolve to a PullRequest with the "
+                        "number of 999999. (repository.pullRequest)"
+                    )
+                if list(args[:2]) == [
+                    "api",
+                    "repos/bazel-contrib/rules_python/issues/999999",
+                ]:
+                    raise fetch_pr_queue.FetchError("gh: Not Found (HTTP 404)")
+                if list(args[:2]) == ["pr", "view"] and args[-2:] == ["--", "77"]:
+                    raise fetch_pr_queue.FetchError("network down")
+                raise AssertionError(f"Unexpected gh command: {args}")
+
+            svc = _make_service(
+                root,
+                store,
+                fetcher=fake_fetcher,
+                gh_runner=fake_gh_runner,
+            )
+            await svc.get_queue(refresh=True)
+
+            pr_4472_res = await svc.lookup_pr(4472)
+            self.assertEqual(pr_4472_res["item_kind"], "not_found")
+            self.assertIsNone(pr_4472_res["pr"])
+            self.assertIn("not found", str(pr_4472_res["pr_error"]))
+            # `lookup_pr` reports PR-not-found immediately without blocking on issue probe.
+            self.assertFalse(
+                any(
+                    cmd == ["api", "repos/bazel-contrib/rules_python/issues/4472"]
+                    for cmd in recorded_cmds
+                )
+            )
+
+            issue_res = await svc.lookup_issue(4472)
+            self.assertEqual(issue_res["item_kind"], "issue")
+            self.assertEqual(issue_res["error"], "")
+            issue_info = issue_res["issue"]
+            assert isinstance(issue_info, dict)  # type assert
+            self.assertEqual(issue_info["number"], 4472)
+            self.assertEqual(issue_info["title"], "Alias bug in platform override")
+            self.assertEqual(issue_info["author"], "vadikmironov")
+            self.assertEqual(issue_info["state"], "OPEN")
+            self.assertEqual(issue_info["labels"], ["type: bug"])
+
+            with self.assertRaisesRegex(
+                state_store.PrQueueError, "is an issue.*not a pull request"
+            ):
+                await svc.launch_review(4472)
+
+            missing_pr_res = await svc.lookup_pr(999999)
+            self.assertEqual(missing_pr_res["item_kind"], "not_found")
+            self.assertIsNone(missing_pr_res["pr"])
+            self.assertIn("not found", str(missing_pr_res["pr_error"]))
+
+            missing_issue_res = await svc.lookup_issue(999999)
+            self.assertEqual(missing_issue_res["item_kind"], "not_found")
+            self.assertIsNone(missing_issue_res["issue"])
+            self.assertIn("not found", str(missing_issue_res["error"]))
+
+            closed_bot_res = await svc.lookup_issue(4473)
+            self.assertEqual(closed_bot_res["item_kind"], "issue")
+            closed_bot_info = closed_bot_res["issue"]
+            assert isinstance(closed_bot_info, dict)  # type assert
+            self.assertEqual(closed_bot_info["state"], "CLOSED")
+            self.assertTrue(closed_bot_info["is_bot"])
+
+            pr_guard_res = await svc.lookup_issue(4474)
+            self.assertEqual(pr_guard_res["item_kind"], "error")
+            self.assertIsNone(pr_guard_res["issue"])
+
+            issue_err_res = await svc.lookup_issue(4475)
+            self.assertEqual(issue_err_res["item_kind"], "error")
+            self.assertIn("502", str(issue_err_res["error"]))
+
+            for bad_num in (0, -1, True):
+                with self.assertRaises(state_store.PrQueueError):
+                    await svc.lookup_pr(bad_num)
+                with self.assertRaises(state_store.PrQueueError):
+                    await svc.lookup_issue(bad_num)
+
+            cached_res = await svc.lookup_pr(77)
+            self.assertEqual(cached_res["item_kind"], "pull_request")
+            self.assertTrue(cached_res["from_cache"])
+            self.assertIn("network down", str(cached_res["pr_error"]))
+            cached_pr = cached_res["pr"]
+            assert isinstance(cached_pr, dict)  # type assert
+            self.assertEqual(cached_pr["number"], 77)
+            # Transient/offline PR view error must not probe issues endpoint.
+            self.assertFalse(
+                any(
+                    cmd == ["api", "repos/bazel-contrib/rules_python/issues/77"]
+                    for cmd in recorded_cmds
+                )
             )
 
     async def test_launch_review_reuses_and_forces_rerun(self) -> None:
@@ -1286,7 +1615,60 @@ class HttpServerTest(unittest.IsolatedAsyncioTestCase):
                     max_age_days=30,
                 )
 
-            svc = _make_service(root, store, fetcher=fake_fetcher)
+            async def fake_gh_runner(args: Sequence[str], _timeout: int) -> str:
+                if list(args[:2]) == ["api", "user"]:
+                    return "alice\n"
+                if list(args[:2]) == ["pr", "view"] and args[-2:] == ["--", "55"]:
+                    return json.dumps(
+                        {
+                            "number": 55,
+                            "title": "Fix issue #55",
+                            "url": "https://github.com/bazel-contrib/rules_python/pull/55",
+                            "state": "OPEN",
+                            "author": {"login": "contributor", "is_bot": False},
+                            "createdAt": "2026-11-10T00:00:00Z",
+                            "updatedAt": "2026-11-11T00:00:00Z",
+                            "headRefName": "feat-55",
+                            "headRefOid": "abc123",
+                            "baseRefName": "main",
+                            "isDraft": False,
+                            "reviewDecision": "REVIEW_REQUIRED",
+                            "reviewRequests": [],
+                            "latestReviews": [],
+                            "additions": 3,
+                            "deletions": 1,
+                            "changedFiles": 1,
+                            "labels": [],
+                            "statusCheckRollup": [],
+                        }
+                    )
+                if list(args[:2]) == ["pr", "view"] and args[-2:] == ["--", "4472"]:
+                    raise fetch_pr_queue.FetchError(
+                        "GraphQL: Could not resolve to a PullRequest with the "
+                        "number of 4472. (repository.pullRequest)"
+                    )
+                if list(args[:2]) == [
+                    "api",
+                    "repos/bazel-contrib/rules_python/issues/4472",
+                ]:
+                    return json.dumps(
+                        {
+                            "number": 4472,
+                            "title": "Sample issue",
+                            "html_url": "https://github.com/bazel-contrib/rules_python/issues/4472",
+                            "state": "open",
+                            "user": {"login": "reporter", "type": "User"},
+                            "labels": [],
+                        }
+                    )
+                raise AssertionError(f"Unexpected gh command: {args}")
+
+            svc = _make_service(
+                root,
+                store,
+                fetcher=fake_fetcher,
+                gh_runner=fake_gh_runner,
+            )
             with self.assertRaises(state_store.PrQueueError):
                 server.PrQueueHttpServer(
                     ("127.0.0.1", 0),
@@ -1321,9 +1703,19 @@ class HttpServerTest(unittest.IsolatedAsyncioTestCase):
                 html_body = html_bytes.decode("utf-8")
                 self.assertIn("/preload.js", html_body)
                 self.assertIn("Project member", html_body)
+                self.assertIn("renderPrCard", html_body)
+                self.assertIn("renderIssueCard", html_body)
+                self.assertIn("checkIssueInBackground", html_body)
+                self.assertIn("api/lookup-issue", html_body)
+                self.assertIn("syncLookupLaunchButton", html_body)
+                self.assertIn("Checking in the background", html_body)
+                self.assertIn("prStateOrActionBadge", html_body)
+                self.assertIn("is an issue, not a pull request", html_body)
                 self.assertIn("sanitizeExternalUrl", html_body)
                 self.assertIn("Number.isInteger", html_body)
                 self.assertIn("resolveDaysSinceUpdate", html_body)
+                self.assertIn("formatFetchedAt", html_body)
+                self.assertIn("toLocaleDateString", html_body)
                 self.assertIn("replaceChildren", html_body)
                 self.assertIn("<script nonce=", html_body)
                 self.assertIn("<style nonce=", html_body)
@@ -1376,6 +1768,7 @@ class HttpServerTest(unittest.IsolatedAsyncioTestCase):
                     "/api/config",
                     "/api/queue?refresh=0",
                     "/api/lookup-pr?pr=1",
+                    "/api/lookup-issue?number=1",
                 ):
                     unauth_status, _ = await _http_get(port, unauth_path)
                     self.assertEqual(unauth_status, 403)
@@ -1389,6 +1782,144 @@ class HttpServerTest(unittest.IsolatedAsyncioTestCase):
                 ).encode("ascii")
                 doc_status, _hdr, _b = await _send_raw_http(port, cross_site_doc_req)
                 self.assertEqual(doc_status, 200)
+
+                # Reject unauthenticated/bad-token non-loopback Host (DNS rebinding).
+                for unauth_host_hdrs in (
+                    "",
+                    "X-Sidecar-Token: wrong-token\r\n",
+                    "X-Sidecar-Token: \xffbad-token\r\n",
+                ):
+                    rebinding_doc_req = (
+                        "GET / HTTP/1.1\r\n"
+                        "Host: evil.example.com:1234\r\n"
+                        f"{unauth_host_hdrs}"
+                        "Connection: close\r\n\r\n"
+                    ).encode("latin-1")
+                    rebind_status, _hdr, _b = await _send_raw_http(
+                        port, rebinding_doc_req
+                    )
+                    self.assertEqual(rebind_status, 403)
+
+                non_ascii_api_tok_req = (
+                    f"GET /api/config HTTP/1.1\r\n"
+                    f"Host: 127.0.0.1:{port}\r\n"
+                    "X-Sidecar-Token: \xffbad-token\r\n"
+                    "Connection: close\r\n\r\n"
+                ).encode("latin-1")
+                non_ascii_tok_status, _hdr, _b = await _send_raw_http(
+                    port, non_ascii_api_tok_req
+                )
+                self.assertEqual(non_ascii_tok_status, 403)
+
+                # Reject syntactically invalid Host even with valid X-Sidecar-Token.
+                for malformed_host in (
+                    f"evil.example.com@127.0.0.1:{port}",
+                    "127.0.0.1:99999",
+                    "127.0.0.1,evil.example.com",
+                    "evil;bar.example.com",
+                    "example.com:",
+                    "[fe80::1%25eth0]:8080",
+                    "[not-ipv6]:8080",
+                    "host\x7f.example.com",
+                    "host\xff.example.com",
+                ):
+                    bad_tok_host_req = (
+                        "GET / HTTP/1.1\r\n"
+                        f"Host: {malformed_host}\r\n"
+                        f"X-Sidecar-Token: {mock_token}\r\n"
+                        "Connection: close\r\n\r\n"
+                    ).encode("latin-1")
+                    malformed_status, _hdr, _b = await _send_raw_http(
+                        port, bad_tok_host_req
+                    )
+                    self.assertEqual(malformed_status, 403)
+
+                # Allow gateway-proxied external Host when X-Sidecar-Token matches.
+                proxied_doc_req = (
+                    "GET / HTTP/1.1\r\n"
+                    "Host: remote-proxy.example.com\r\n"
+                    f"X-Sidecar-Token: {mock_token}\r\n"
+                    "Sec-Fetch-Site: cross-site\r\n"
+                    "Connection: close\r\n\r\n"
+                ).encode("ascii")
+                pdoc_status, _hdr, _b = await _send_raw_http(port, proxied_doc_req)
+                self.assertEqual(pdoc_status, 200)
+
+                proxied_get_req = (
+                    "GET /api/config HTTP/1.1\r\n"
+                    "Host: remote-proxy.example.com\r\n"
+                    "Origin: https://remote-proxy.example.com\r\n"
+                    "Sec-Fetch-Site: same-origin\r\n"
+                    f"X-Sidecar-Token: {mock_token}\r\n"
+                    "Connection: close\r\n\r\n"
+                ).encode("ascii")
+                pget_status, _hdr, _b = await _send_raw_http(port, proxied_get_req)
+                self.assertEqual(pget_status, 200)
+
+                for proxy_host, proxy_origin in (
+                    ("remote-proxy.example.com", "https://remote-proxy.example.com"),
+                    (
+                        "remote-proxy.example.com:443",
+                        "https://remote-proxy.example.com",
+                    ),
+                    (
+                        "workstation.example.com:45678",
+                        "https://workstation.example.com:45678",
+                    ),
+                ):
+                    proxied_post_req = (
+                        "POST /api/config HTTP/1.1\r\n"
+                        f"Host: {proxy_host}\r\n"
+                        f"Origin: {proxy_origin}\r\n"
+                        "Sec-Fetch-Site: same-origin\r\n"
+                        f"X-Sidecar-Token: {mock_token}\r\n"
+                        "Content-Type: application/json\r\n"
+                        "Content-Length: 2\r\n"
+                        "Connection: close\r\n\r\n{}"
+                    ).encode("ascii")
+                    ppost_status, _hdr, _b = await _send_raw_http(
+                        port, proxied_post_req
+                    )
+                    self.assertEqual(ppost_status, 200)
+
+                # Reject mismatched or malformed Origin even with valid X-Sidecar-Token.
+                for proxy_host, bad_origin in (
+                    ("remote-proxy.example.com", "https://evil.example.com"),
+                    ("remote-proxy.example.com", "http://localhost:9999"),
+                    (
+                        "remote-proxy.example.com",
+                        "https://evil.example.com@remote-proxy.example.com",
+                    ),
+                    (
+                        f"127.0.0.1:{port}",
+                        "https://evil.example.com@127.0.0.1",
+                    ),
+                    (f"127.0.0.1:{port}", "http://127.0.0.1/extra-path"),
+                    (f"127.0.0.1:{port}", "http://127.0.0.1?query=1"),
+                    (f"127.0.0.1:{port}", "http://127.0.0.1#frag"),
+                    (f"127.0.0.1:{port}", "http://127.0.0.1:0"),
+                    (
+                        "remote-proxy.example.com",
+                        "https://remote-proxy.example.com:9999",
+                    ),
+                    (
+                        "workstation.example.com:45678",
+                        "https://workstation.example.com:9999",
+                    ),
+                ):
+                    mismatched_origin_req = (
+                        "POST /api/config HTTP/1.1\r\n"
+                        f"Host: {proxy_host}\r\n"
+                        f"Origin: {bad_origin}\r\n"
+                        f"X-Sidecar-Token: {mock_token}\r\n"
+                        "Content-Type: application/json\r\n"
+                        "Content-Length: 2\r\n"
+                        "Connection: close\r\n\r\n{}"
+                    ).encode("ascii")
+                    morig_status, _hdr, _b = await _send_raw_http(
+                        port, mismatched_origin_req
+                    )
+                    self.assertEqual(morig_status, 403)
 
                 # Wildcard binds must allow loopback Host headers while rejecting external ones.
                 for wildcard_bind in ("0.0.0.0", "::", "[::]", ""):
@@ -1435,6 +1966,30 @@ class HttpServerTest(unittest.IsolatedAsyncioTestCase):
                 q2 = json.loads(body_q2.decode("utf-8"))
                 self.assertTrue(q2["from_cache"])
                 self.assertEqual(calls, 1)
+
+                status_l_pr, body_l_pr = await _http_get(
+                    port, "/api/lookup-pr?pr=55", header_token=mock_token
+                )
+                self.assertEqual(status_l_pr, 200)
+                l_pr = json.loads(body_l_pr.decode("utf-8"))
+                self.assertEqual(l_pr["item_kind"], "pull_request")
+                self.assertEqual(l_pr["pr"]["title"], "Fix issue #55")
+
+                status_l_nf, body_l_nf = await _http_get(
+                    port, "/api/lookup-pr?pr=4472", header_token=mock_token
+                )
+                self.assertEqual(status_l_nf, 200)
+                l_nf = json.loads(body_l_nf.decode("utf-8"))
+                self.assertEqual(l_nf["item_kind"], "not_found")
+                self.assertIsNone(l_nf["pr"])
+
+                status_l_iss, body_l_iss = await _http_get(
+                    port, "/api/lookup-issue?number=4472", header_token=mock_token
+                )
+                self.assertEqual(status_l_iss, 200)
+                l_iss = json.loads(body_l_iss.decode("utf-8"))
+                self.assertEqual(l_iss["item_kind"], "issue")
+                self.assertEqual(l_iss["issue"]["title"], "Sample issue")
 
                 # POST without token must return 403.
                 status_no_tok, _ = await _http_post(port, "/api/config", {})
@@ -1600,6 +2155,10 @@ class HttpServerTest(unittest.IsolatedAsyncioTestCase):
                     port, "/api/lookup-pr?pr=12_3"
                 )
                 self.assertEqual(status_underscore_pr, 400)
+                status_underscore_issue, _ = await _http_get(
+                    port, "/api/lookup-issue?number=12_3"
+                )
+                self.assertEqual(status_underscore_issue, 400)
 
                 unicode_len_req = (
                     f"POST /api/config HTTP/1.1\r\n"
@@ -1638,6 +2197,25 @@ class HttpServerTest(unittest.IsolatedAsyncioTestCase):
                 ).encode("ascii")
                 status_big, _hdr, _body = await _send_raw_http(port, oversized_req)
                 self.assertEqual(status_big, 413)
+
+                # Unauthenticated dev mode must keep rejecting non-loopback Host headers.
+                for hdr_extra in ("", "X-Sidecar-Token: arbitrary\r\n"):
+                    unauth_ext_req = (
+                        "GET / HTTP/1.1\r\n"
+                        "Host: evil.example.com\r\n"
+                        f"{hdr_extra}"
+                        "Connection: close\r\n\r\n"
+                    ).encode("ascii")
+                    status_ext, _hdr, _body = await _send_raw_http(port, unauth_ext_req)
+                    self.assertEqual(status_ext, 403)
+                self.assertTrue(
+                    httpd._is_cross_site_browser_request(
+                        {
+                            "host": "evil.example.com",
+                            "origin": "https://evil.example.com",
+                        }
+                    )
+                )
             finally:
                 await httpd.close()
 

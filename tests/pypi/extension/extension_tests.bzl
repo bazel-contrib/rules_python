@@ -17,7 +17,7 @@
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "subjects")
 load("//python/private/pypi:default_platforms.bzl", "default_platforms")  # buildifier: disable=bzl-visibility
-load("//python/private/pypi:extension.bzl", "build_config", "parse_modules")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:extension.bzl", "build_config", "parse_modules", "unified_hub_args")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:platform.bzl", _plat = "platform")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:whl_config_setting.bzl", "whl_config_setting")  # buildifier: disable=bzl-visibility
 load("//tests/support/mocks:mocks.bzl", "mocks")
@@ -226,6 +226,54 @@ def _test_simple(env):
     pypi.whl_mods().contains_exactly({})
 
 _tests.append(_test_simple)
+
+def _test_unified_hub_extras(env):
+    mods = parse_modules(
+        module_ctx = _pypi_mock_mctx(
+            _mod(
+                name = "rules_python",
+                parse = [
+                    _parse(
+                        hub_name = "pypi_a",
+                        python_version = "3.15",
+                        simpleapi_skip = ["simple"],
+                        requirements_lock = "requirements_extras.txt",
+                    ),
+                    _parse(
+                        hub_name = "pypi_b",
+                        python_version = "3.15",
+                        simpleapi_skip = ["simple"],
+                        requirements_lock = "requirements.txt",
+                    ),
+                ],
+            ),
+            os_name = "linux",
+            arch_name = "x86_64",
+            mock_files = {
+                "requirements_extras.txt": "simple[foo,bar]==0.0.1 --hash=sha256:deadbeef",
+            },
+        ),
+        available_interpreters = {
+            "python_3_15_host": "unit_test_interpreter_target",
+        },
+        minor_mapping = {"3.15": "3.15.19"},
+    )
+
+    # The targets for the extras are only in the hubs that request them, the
+    # `[]` target is in all of the hubs.
+    env.expect.that_dict(unified_hub_args(mods)).contains_exactly({
+        "default_hub": "pypi_a",
+        "extra_aliases": {
+            "simple:[bar]": ["pypi_a"],
+            "simple:[foo]": ["pypi_a"],
+        },
+        "hubs": ["pypi_a", "pypi_b"],
+        "name": "pypi",
+        "packages": {"simple": ["pypi_a", "pypi_b"]},
+        "requirements_bzl": False,
+    })
+
+_tests.append(_test_unified_hub_extras)
 
 def _test_pip_parse_pyproject_toml(env):
     # pip.parse() reads the version from pyproject.toml's requires-python when
@@ -895,6 +943,43 @@ def _test_configure(env):
 
 _tests.append(_test_configure)
 
+def _test_configure_platform_specific(env):
+    # A selected package that is not available on all of the platforms is
+    # public, but it is not in the `all_*requirements`.
+    pypi = _parse_modules(
+        env,
+        module_ctx = _pypi_mock_mctx(
+            _mod(
+                name = "rules_python",
+                parse = [_configure_parse(
+                    pyproject_toml = "pyproject.toml",
+                    target_platforms = ["linux_x86_64", "windows_aarch64"],
+                )],
+                configure = [
+                    _configure(hub_name = "pypi_a", dependency_groups = ["default", "dev"]),
+                ],
+            ),
+            os_name = "linux",
+            arch_name = "x86_64",
+            mock_files = {
+                "pyproject.toml": _CONFIGURE_PYPROJECT,
+                "requirements.txt": _CONFIGURE_REQUIREMENTS.replace(
+                    "other-pkg==0.0.2",
+                    "other-pkg==0.0.2 ; sys_platform == 'win32'",
+                ),
+            },
+        ),
+        available_interpreters = {
+            "python_3_15_host": "unit_test_interpreter_target",
+        },
+        minor_mapping = {"3.15": "3.15.19"},
+    )
+
+    pypi.exposed_packages().contains_exactly({"pypi_a": ["simple"]})
+    pypi.configured_hubs().contains_exactly({"pypi_a": ["other_pkg", "simple"]})
+
+_tests.append(_test_configure_platform_specific)
+
 def _test_configure_default_pyproject(env):
     # The `pip.default` pyproject.toml is used for the hubs of the root module.
     pypi = _configure_parse_modules(
@@ -914,48 +999,6 @@ def _test_configure_default_pyproject(env):
     pypi.configured_hubs().contains_exactly({"pypi_a": ["other_pkg"]})
 
 _tests.append(_test_configure_default_pyproject)
-
-def _test_configure_extras(env):
-    # The extras requested in the pyproject.toml are added to the hub even if
-    # the lock file does not request them.
-    pypi = _parse_modules(
-        env,
-        module_ctx = _pypi_mock_mctx(
-            _mod(
-                name = "rules_python",
-                parse = [_configure_parse(pyproject_toml = "pyproject.toml")],
-                configure = [_configure(hub_name = "pypi_a", dependency_groups = ["default"])],
-            ),
-            os_name = "linux",
-            arch_name = "x86_64",
-            mock_files = {
-                "pyproject.toml": """\
-[project]
-dependencies = ["simple[foo]", "other-pkg"]
-""",
-                "requirements.txt": _CONFIGURE_REQUIREMENTS,
-            },
-        ),
-        available_interpreters = {
-            "python_3_15_host": "unit_test_interpreter_target",
-        },
-        minor_mapping = {"3.15": "3.15.19"},
-    )
-
-    pypi.configured_hubs().contains_exactly({"pypi_a": ["other_pkg", "simple"]})
-    pypi.hub_whl_map().contains_exactly({"pypi_a": {
-        "other_pkg": {
-            "pypi_a_315_other_pkg": [whl_config_setting(version = "3.15")],
-        },
-        "simple": {
-            "pypi_a_315_simple": [whl_config_setting(version = "3.15", extras = ["foo"])],
-        },
-        "transitive_pkg": {
-            "pypi_a_315_transitive_pkg": [whl_config_setting(version = "3.15")],
-        },
-    }})
-
-_tests.append(_test_configure_extras)
 
 def _test_not_configured_exposes_all(env):
     # The pyproject.toml does not filter the hub without `pip.configure`.

@@ -429,6 +429,50 @@
       margin-top: 8px;
     }
 
+    .lookup-card-wrap {
+      margin-top: 8px;
+    }
+
+    .lookup-notice {
+      margin-top: 8px;
+    }
+
+    .lookup-pr-extra {
+      font-size: 11.5px;
+      color: var(--fg-muted);
+    }
+
+    .lookup-bg-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      font-size: 11.5px;
+      color: var(--fg-muted);
+    }
+
+    .spinner {
+      width: 12px;
+      height: 12px;
+      border: 2px solid var(--line);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: lookup-spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes lookup-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .spinner {
+        animation: none;
+      }
+    }
+
     .lookup-result-list {
       display: flex;
       flex-direction: column;
@@ -467,10 +511,10 @@
       <input
         id="lookup-input"
         type="text"
-        placeholder="Find or launch PR # (e.g. 4487)..."
+        placeholder="Lookup PR # (e.g. 4487)..."
         aria-label="Pull request number lookup"
       />
-      <button id="lookup-btn" type="button">Find Chat</button>
+      <button id="lookup-btn" type="button">Lookup PR</button>
     </div>
 
     <section id="lookup-panel" class="panel hidden" aria-live="polite"></section>
@@ -633,6 +677,7 @@
         queue: null,
         loading: false,
         launchingPr: null,
+        lookupSeq: 0,
       };
 
       const el = {
@@ -773,6 +818,23 @@
         return `updated ${days}d ago`;
       }
 
+      function formatFetchedAt(rawTimestamp) {
+        const dt = new Date(rawTimestamp);
+        if (Number.isNaN(dt.getTime())) {
+          return String(rawTimestamp);
+        }
+        const dateOptions = { month: "short", day: "numeric" };
+        if (dt.getFullYear() !== new Date().getFullYear()) {
+          dateOptions.year = "numeric";
+        }
+        const datePart = dt.toLocaleDateString([], dateOptions);
+        const timePart = dt.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        return `${datePart}, ${timePart}`;
+      }
+
       function renderCardActions(pr, isStaleCard) {
         const actions = document.createElement("div");
         actions.className = "pr-actions";
@@ -828,34 +890,100 @@
         return actions;
       }
 
-      function renderPrCard(pr, isStaleCard) {
+      function prStateOrActionBadge(pr) {
+        const prState = typeof pr.state === "string" ? pr.state.toUpperCase() : "";
+        if (prState === "MERGED") {
+          return makePill("Merged", "pill-member");
+        }
+        if (prState === "CLOSED") {
+          return makePill("Closed", "pill-err");
+        }
+        return actionBadge(pr);
+      }
+
+      function createItemNumberLink(itemNum, rawUrl) {
+        const safeUrl = sanitizeExternalUrl(rawUrl);
+        const anchor = document.createElement(safeUrl ? "a" : "span");
+        anchor.className = "pr-link";
+        anchor.textContent = `#${itemNum}`;
+        if (safeUrl) {
+          anchor.href = safeUrl;
+          anchor.target = "_blank";
+          anchor.rel = "noopener noreferrer";
+          anchor.addEventListener("click", (evt) => {
+            evt.preventDefault();
+            openExternalUrl(safeUrl);
+          });
+        }
+        return anchor;
+      }
+
+      function appendAuthorAndLabels(metaEl, item, extraNodes = []) {
+        const authorEl = document.createElement("span");
+        authorEl.textContent = `@${item.author || ""}`;
+        metaEl.appendChild(authorEl);
+
+        if (item.is_project_member) {
+          const memberPill = document.createElement("span");
+          memberPill.className = "pill pill-member";
+          memberPill.title = `Repository role: ${item.author_association || "MEMBER"}`;
+          memberPill.textContent = "Project member";
+          metaEl.appendChild(memberPill);
+        }
+
+        if (item.is_bot) {
+          metaEl.appendChild(makePill("bot"));
+        }
+
+        for (const node of extraNodes) {
+          if (node) metaEl.appendChild(node);
+        }
+
+        // Cap per-card label pills at 4 to keep card headers compact.
+        for (const label of (item.labels || []).slice(0, 4)) {
+          metaEl.appendChild(makePill(String(label)));
+        }
+      }
+
+      function buildReviewDetailsLine(pr) {
+        const bits = [];
+        if (Array.isArray(pr.approved_by) && pr.approved_by.length) {
+          bits.push(`Approved by: ${pr.approved_by.join(", ")}`);
+        }
+        if (Array.isArray(pr.changes_requested_by) && pr.changes_requested_by.length) {
+          bits.push(`Changes requested by: ${pr.changes_requested_by.join(", ")}`);
+        }
+        if (Array.isArray(pr.requested_reviewers) && pr.requested_reviewers.length) {
+          bits.push(`Reviewers requested: ${pr.requested_reviewers.join(", ")}`);
+        }
+        if (!bits.length && pr.review_decision && pr.review_decision !== "NONE") {
+          bits.push(`Review status: ${pr.review_decision}`);
+        }
+        if (!bits.length) return null;
+        const row = document.createElement("div");
+        row.className = "lookup-pr-extra";
+        row.textContent = bits.join(" · ");
+        return row;
+      }
+
+      function renderPrCard(pr, isStaleCard, options = {}) {
         const card = document.createElement("article");
         card.className = "pr-card";
         const prNum = asSafeInt(pr.number);
-        const safeUrl = sanitizeExternalUrl(pr.url);
 
         const cardTop = document.createElement("div");
         cardTop.className = "pr-card-top";
 
         const badges = document.createElement("div");
         badges.className = "pr-badges";
-        const prAnchor = document.createElement(safeUrl ? "a" : "span");
-        prAnchor.className = "pr-link";
-        prAnchor.textContent = `#${prNum}`;
-        if (safeUrl) {
-          prAnchor.href = safeUrl;
-          prAnchor.target = "_blank";
-          prAnchor.rel = "noopener noreferrer";
-          prAnchor.addEventListener("click", (evt) => {
-            evt.preventDefault();
-            openExternalUrl(safeUrl);
-          });
-        }
-        badges.appendChild(prAnchor);
-        badges.appendChild(actionBadge(pr));
+        badges.appendChild(createItemNumberLink(prNum, pr.url));
+        badges.appendChild(prStateOrActionBadge(pr));
         const checksPill = checksBadge(pr);
         if (checksPill) {
           badges.appendChild(checksPill);
+        }
+        if (options.fromCache) {
+          badges.appendChild(makePill("Cached"));
         }
 
         const stats = document.createElement("div");
@@ -875,43 +1003,67 @@
 
         const metaEl = document.createElement("div");
         metaEl.className = "pr-meta";
-        const authorEl = document.createElement("span");
-        authorEl.textContent = `@${pr.author || ""}`;
-        metaEl.appendChild(authorEl);
-
-        if (pr.is_project_member) {
-          const memberPill = document.createElement("span");
-          memberPill.className = "pill pill-member";
-          memberPill.title = `Repository role: ${pr.author_association || "MEMBER"}`;
-          memberPill.textContent = "Project member";
-          metaEl.appendChild(memberPill);
+        let branchEl = null;
+        if (pr.head_ref_name || pr.base_ref_name) {
+          branchEl = document.createElement("span");
+          branchEl.className = "mono";
+          branchEl.textContent =
+            `${pr.head_ref_name || ""} → ${pr.base_ref_name || ""}`;
         }
-
-        if (pr.is_bot) {
-          const botPill = document.createElement("span");
-          botPill.className = "pill";
-          botPill.textContent = "bot";
-          metaEl.appendChild(botPill);
-        }
-
-        const branchEl = document.createElement("span");
-        branchEl.className = "mono";
-        branchEl.textContent =
-          `${pr.head_ref_name || ""} → ${pr.base_ref_name || ""}`;
-        metaEl.appendChild(branchEl);
-
-        // Cap per-card label pills at 4 to keep card headers compact.
-        for (const label of (pr.labels || []).slice(0, 4)) {
-          const labelPill = document.createElement("span");
-          labelPill.className = "pill";
-          labelPill.textContent = String(label);
-          metaEl.appendChild(labelPill);
-        }
+        appendAuthorAndLabels(metaEl, pr, branchEl ? [branchEl] : []);
 
         card.appendChild(cardTop);
         card.appendChild(titleEl);
         card.appendChild(metaEl);
-        card.appendChild(renderCardActions(pr, isStaleCard));
+        if (options.showReviewDetails) {
+          const extraRow = buildReviewDetailsLine(pr);
+          if (extraRow) card.appendChild(extraRow);
+        }
+        if (options.showActions !== false) {
+          card.appendChild(renderCardActions(pr, isStaleCard));
+        }
+        return card;
+      }
+
+      function renderIssueCard(issue) {
+        const card = document.createElement("article");
+        card.className = "pr-card";
+        const issueNum = asSafeInt(issue.number);
+        const issueState =
+          typeof issue.state === "string" ? issue.state.toUpperCase() : "OPEN";
+
+        const cardTop = document.createElement("div");
+        cardTop.className = "pr-card-top";
+
+        const badges = document.createElement("div");
+        badges.className = "pr-badges";
+        badges.appendChild(createItemNumberLink(issueNum, issue.url));
+        badges.appendChild(makePill("Issue", "pill-info"));
+        badges.appendChild(
+          makePill(
+            issueState === "CLOSED" ? "Closed" : "Open",
+            issueState === "CLOSED" ? "" : "pill-ok"
+          )
+        );
+
+        const stats = document.createElement("div");
+        stats.className = "pr-stats";
+        stats.textContent = formatAgeText(issue);
+
+        cardTop.appendChild(badges);
+        cardTop.appendChild(stats);
+
+        const titleEl = document.createElement("div");
+        titleEl.className = "pr-title";
+        titleEl.textContent = issue.title || "";
+
+        const metaEl = document.createElement("div");
+        metaEl.className = "pr-meta";
+        appendAuthorAndLabels(metaEl, issue);
+
+        card.appendChild(cardTop);
+        card.appendChild(titleEl);
+        card.appendChild(metaEl);
         return card;
       }
 
@@ -939,19 +1091,18 @@
         el.countPill.textContent = `${prs.length} PR${prs.length === 1 ? "" : "s"}`;
 
         if (data.fetched_at) {
-          const dt = new Date(data.fetched_at);
-          const hhmm = Number.isNaN(dt.getTime())
-            ? data.fetched_at
-            : dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          const stamp = formatFetchedAt(data.fetched_at);
           let prefix = "Fetched";
           if (data.stale_cache) {
             prefix = "Offline cache";
           } else if (data.from_cache) {
             prefix = "Cached";
           }
-          el.cacheNote.textContent = `${prefix} ${hhmm}`;
+          el.cacheNote.textContent = `${prefix} ${stamp}`;
+          el.cacheNote.title = String(data.fetched_at);
         } else {
           el.cacheNote.textContent = "";
+          el.cacheNote.title = "";
         }
 
         if (data.error) {
@@ -1048,6 +1199,17 @@
         });
       }
 
+      function syncLookupLaunchButton(launchedPr = null) {
+        const btn = el.lookupPanel.querySelector(".lookup-rerun-btn");
+        if (!btn) return;
+        const prNum = Number.parseInt(btn.dataset.prNumber || "0", 10);
+        if (launchedPr !== null && launchedPr === prNum) {
+          btn.dataset.hasExisting = "1";
+          btn.textContent = `Re-run Review PR #${prNum} in Worktree ↗`;
+        }
+        btn.disabled = state.launchingPr !== null;
+      }
+
       async function launchReview(prNumber, force) {
         if (!Number.isInteger(prNumber) || prNumber <= 0) return;
         if (state.launchingPr !== null) return;
@@ -1055,6 +1217,7 @@
         showError("");
         showStatus(`Creating worktree & launching /review-code for PR #${prNumber}...`);
         if (state.queue) renderQueue(state.queue);
+        syncLookupLaunchButton();
         try {
           const sourceConversationId = window.sidecar?.conversationId || "";
           const res = await apiFetch("api/review", {
@@ -1081,6 +1244,7 @@
               stale_prs: updateLaunchedQueueItem(state.queue.stale_prs, prNumber, res),
             };
           }
+          syncLookupLaunchButton(prNumber);
           if (res.conversation_id) {
             openConversation(res.conversation_id);
           }
@@ -1090,6 +1254,94 @@
         } finally {
           state.launchingPr = null;
           if (state.queue) renderQueue(state.queue);
+          syncLookupLaunchButton();
+        }
+      }
+
+      function makeLookupNotice(text, variantClass) {
+        const notice = document.createElement("div");
+        notice.className = `banner ${variantClass} lookup-notice`;
+        notice.textContent = text;
+        return notice;
+      }
+
+      function renderLookupConversations(convs) {
+        const list = document.createElement("div");
+        list.className = "lookup-result-list";
+        for (const c of convs) {
+          const row = document.createElement("div");
+          row.className = "lookup-result-item";
+          const info = document.createElement("div");
+          const convTitle = document.createElement("div");
+          convTitle.textContent = c.title || "";
+          const convIdEl = document.createElement("div");
+          convIdEl.className = "mono cache-note";
+          convIdEl.textContent = c.conversation_id || "";
+          info.appendChild(convTitle);
+          info.appendChild(convIdEl);
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "primary";
+          btn.textContent = "Open Chat ↗";
+          btn.addEventListener("click", () => openConversation(c.conversation_id));
+          row.appendChild(info);
+          row.appendChild(btn);
+          list.appendChild(row);
+        }
+        return list;
+      }
+
+      function makeSpinnerStatus(text) {
+        const statusEl = document.createElement("div");
+        statusEl.className = "lookup-bg-status";
+        const spinEl = document.createElement("span");
+        spinEl.className = "spinner";
+        spinEl.setAttribute("aria-hidden", "true");
+        const labelEl = document.createElement("span");
+        labelEl.textContent = text;
+        statusEl.appendChild(spinEl);
+        statusEl.appendChild(labelEl);
+        return statusEl;
+      }
+
+      async function checkIssueInBackground(seq, prNum, repoLabel, refs) {
+        try {
+          const issueRes = await apiFetch(`api/lookup-issue?number=${prNum}`);
+          if (seq !== state.lookupSeq) return;
+          const kind = issueRes.item_kind || "not_found";
+          if (kind === "issue") {
+            refs.headerTitle.textContent = `Issue #${prNum} (${repoLabel})`;
+            refs.noticeEl.className = "banner banner-info lookup-notice";
+            refs.noticeEl.textContent =
+              `#${prNum} in ${repoLabel} is an issue, not a pull request.`;
+            const doneText = document.createElement("span");
+            doneText.textContent = `Issue lookup complete: #${prNum} is an issue.`;
+            refs.statusEl.replaceChildren(makePill("Issue", "pill-info"), doneText);
+            if (issueRes.issue) {
+              refs.issueCardSlot.replaceChildren(renderIssueCard(issueRes.issue));
+              refs.issueCardSlot.classList.remove("hidden");
+            }
+            return;
+          }
+          if (kind === "not_found") {
+            refs.noticeEl.textContent =
+              issueRes.error ||
+              `#${prNum} was not found as a pull request or issue in ${repoLabel}.`;
+            const doneText = document.createElement("span");
+            doneText.textContent =
+              `Issue lookup complete: #${prNum} is not a GitHub issue either.`;
+            refs.statusEl.replaceChildren(doneText);
+            return;
+          }
+          const errText = document.createElement("span");
+          errText.textContent =
+            `Background issue check failed: ${issueRes.error || "unknown error"}`;
+          refs.statusEl.replaceChildren(errText);
+        } catch (err) {
+          if (seq !== state.lookupSeq) return;
+          const errText = document.createElement("span");
+          errText.textContent = `Background issue check failed: ${err.message}`;
+          refs.statusEl.replaceChildren(errText);
         }
       }
 
@@ -1100,19 +1352,21 @@
           showError("Enter a valid positive PR number.");
           return;
         }
+        const seq = ++state.lookupSeq;
         showError("");
         el.lookupPanel.classList.remove("hidden");
-        const loadingNote = document.createElement("span");
-        loadingNote.className = "cache-note";
-        loadingNote.textContent = `Looking up PR #${prNum}...`;
-        el.lookupPanel.replaceChildren(loadingNote);
+        el.lookupPanel.replaceChildren(makeSpinnerStatus(`Looking up PR #${prNum}...`));
         try {
           const res = await apiFetch(`api/lookup-pr?pr=${prNum}`);
+          if (seq !== state.lookupSeq) return;
           const convs = res.conversations || [];
+          const repoLabel = res.repo || "";
+          const itemKind = res.item_kind || (res.pr ? "pull_request" : "error");
+
           const header = document.createElement("div");
           header.className = "pr-card-top";
           const headerTitle = document.createElement("strong");
-          headerTitle.textContent = `PR #${prNum} (${res.repo || ""})`;
+          headerTitle.textContent = `PR #${prNum} (${repoLabel})`;
           header.appendChild(headerTitle);
 
           const closeBtn = document.createElement("button");
@@ -1120,36 +1374,69 @@
           closeBtn.className = "subtle";
           closeBtn.textContent = "Close";
           closeBtn.addEventListener("click", () => {
+            state.lookupSeq += 1;
             el.lookupPanel.classList.add("hidden");
           });
           header.appendChild(closeBtn);
 
           el.lookupPanel.replaceChildren(header);
 
-          if (convs.length) {
-            const list = document.createElement("div");
-            list.className = "lookup-result-list";
-            for (const c of convs) {
-              const row = document.createElement("div");
-              row.className = "lookup-result-item";
-              const info = document.createElement("div");
-              const convTitle = document.createElement("div");
-              convTitle.textContent = c.title || "";
-              const convIdEl = document.createElement("div");
-              convIdEl.className = "mono cache-note";
-              convIdEl.textContent = c.conversation_id || "";
-              info.appendChild(convTitle);
-              info.appendChild(convIdEl);
-              const btn = document.createElement("button");
-              btn.type = "button";
-              btn.className = "primary";
-              btn.textContent = "Open Chat ↗";
-              btn.addEventListener("click", () => openConversation(c.conversation_id));
-              row.appendChild(info);
-              row.appendChild(btn);
-              list.appendChild(row);
+          if (itemKind === "not_found") {
+            const noticeEl = makeLookupNotice(
+              res.pr_error || `PR #${prNum} was not found in ${repoLabel}.`,
+              "banner-error"
+            );
+            const bgStatusEl = makeSpinnerStatus(
+              `Checking in the background if #${prNum} is an issue...`
+            );
+            const issueCardSlot = document.createElement("div");
+            issueCardSlot.className = "lookup-card-wrap hidden";
+            el.lookupPanel.appendChild(noticeEl);
+            el.lookupPanel.appendChild(bgStatusEl);
+            el.lookupPanel.appendChild(issueCardSlot);
+            if (convs.length) {
+              el.lookupPanel.appendChild(renderLookupConversations(convs));
             }
-            el.lookupPanel.appendChild(list);
+            // Run issue check asynchronously without blocking the PR-not-found UI.
+            void checkIssueInBackground(seq, prNum, repoLabel, {
+              headerTitle,
+              noticeEl,
+              statusEl: bgStatusEl,
+              issueCardSlot,
+            });
+            return;
+          }
+
+          if (itemKind === "pull_request" && res.pr) {
+            if (res.pr_error) {
+              el.lookupPanel.appendChild(
+                makeLookupNotice(
+                  `Live lookup unavailable (${res.pr_error}); showing cached PR info.`,
+                  "banner-info"
+                )
+              );
+            }
+            const wrap = document.createElement("div");
+            wrap.className = "lookup-card-wrap";
+            wrap.appendChild(
+              renderPrCard(res.pr, false, {
+                showActions: false,
+                showReviewDetails: true,
+                fromCache: Boolean(res.from_cache),
+              })
+            );
+            el.lookupPanel.appendChild(wrap);
+          } else if (res.pr_error) {
+            el.lookupPanel.appendChild(
+              makeLookupNotice(
+                `Could not load PR info from GitHub: ${res.pr_error}`,
+                "banner-error"
+              )
+            );
+          }
+
+          if (convs.length) {
+            el.lookupPanel.appendChild(renderLookupConversations(convs));
           } else {
             const msg = document.createElement("p");
             msg.className = "cache-note";
@@ -1157,17 +1444,23 @@
             el.lookupPanel.appendChild(msg);
           }
 
+          const hasExisting =
+            convs.length > 0 || Boolean(res.pr?.triggered_chat?.conversation_id);
           const newBtn = document.createElement("button");
           newBtn.type = "button";
           newBtn.className = "lookup-rerun-btn";
-          newBtn.textContent = convs.length
+          newBtn.dataset.prNumber = String(prNum);
+          newBtn.dataset.hasExisting = hasExisting ? "1" : "0";
+          newBtn.disabled = state.launchingPr !== null;
+          newBtn.textContent = hasExisting
             ? `Re-run Review PR #${prNum} in Worktree ↗`
             : `Review PR #${prNum} in Worktree ↗`;
           newBtn.addEventListener("click", () =>
-            launchReview(prNum, convs.length > 0)
+            launchReview(prNum, newBtn.dataset.hasExisting === "1")
           );
           el.lookupPanel.appendChild(newBtn);
         } catch (err) {
+          if (seq !== state.lookupSeq) return;
           el.lookupPanel.classList.add("hidden");
           showError(`Lookup failed: ${err.message}`);
         }
