@@ -1,0 +1,3 @@
+load(":dependency_groups_tests.bzl", "dependency_groups_test_suite")
+
+dependency_groups_test_suite(name = "dependency_groups_tests")
