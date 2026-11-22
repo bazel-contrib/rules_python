@@ -622,6 +622,48 @@ def _test_deps_with_extras(env):
 
 _tests.append(_test_deps_with_extras)
 
+def _test_deps_with_extras_legacy(env):
+    py_library_calls = []
+    missing_calls = []
+
+    whl_library_deps_targets(
+        name = "foo-0-py3-none-any.whl",
+        metadata_name = "foo",
+        # Without the hub, e.g. with the vendored `requirements.bzl`.
+        dep_template = "@pip_{name}//:{target}",
+        requires_dist = [
+            "bar[socks]",
+            "baz[a]; sys_platform == 'linux'",
+            "qux[missing]",
+        ],
+        repo = None,
+        aliases = {},
+        native = struct(
+            alias = lambda **kwargs: None,
+        ),
+        rules = struct(
+            py_library = lambda **kwargs: py_library_calls.append(kwargs),
+            env_marker_setting = lambda **kwargs: None,
+            missing_extra_error = lambda **kwargs: missing_calls.append(kwargs),
+        ),
+    )
+
+    # The dependencies use the `pkg` targets, which include the extras from
+    # the requirement lines of the dependencies, so the extras that are not
+    # provided or not requested do not result in missing targets.
+    env.expect.that_collection([
+        (c["name"], c["deps"])
+        for c in py_library_calls
+    ]).contains_exactly([
+        ("pkg", ["srcs", "@pip_bar//:pkg", "@pip_qux//:pkg"] + select({
+            ":is_include_baz_true": ["@pip_baz//:pkg"],
+            "//conditions:default": [],
+        })),
+    ])
+    env.expect.that_collection(missing_calls).contains_exactly([])
+
+_tests.append(_test_deps_with_extras_legacy)
+
 def whl_library_deps_targets_test_suite(name):
     """create the test suite.
 

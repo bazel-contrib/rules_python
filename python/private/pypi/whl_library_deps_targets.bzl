@@ -266,7 +266,11 @@ def whl_library_deps_targets(
             include = include,
             excludes = members if is_member(extra) else [],
             extras = want_extras,
-            keep_extras = True,
+            # Without the hub, e.g. with the vendored `requirements.bzl`, the
+            # `pkg` targets of the dependencies already include the extras
+            # from their requirement lines, so the dependencies use them
+            # like before.
+            keep_extras = "//:" not in dep_template,
         )
         rules.py_library(
             name = name,

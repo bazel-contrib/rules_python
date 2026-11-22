@@ -142,7 +142,9 @@ When the `requirements.bzl` file is vendored, there is no hub repo and the
 labels returned by the `requirement` helper point to the repositories of the
 wheels. Their `pkg` targets include the extras from the lock file and they
 have the `[]` target and the `[extra]` targets for the extras used in the lock
-file and for all of the extras that the package provides.
+file and for all of the extras that the package provides. The dependencies
+between the packages use the `pkg` targets and ignore the extras from the wheel
+`METADATA` like before, so the extras need to be in the lock file.
 
 The `whl` targets, e.g. `@pypi//foo:whl`, do not use the extras and include
 only the wheels of the package and its dependencies without extras.
