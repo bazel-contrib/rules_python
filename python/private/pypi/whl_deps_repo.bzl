@@ -35,8 +35,7 @@ not provide them.
 
 The targets for all of the extras that the package provides are always created,
 so this is only needed if the extras are not selected by a hub repository, e.g.
-when using a vendored `requirements.bzl`, or if the extras may be unknown to the
-package.
+when using a vendored `requirements.bzl`.
 """,
     ),
 }

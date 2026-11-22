@@ -30,6 +30,8 @@ py_test(
         # The extra that the package does not provide is the same as the
         # package without extras.
         "@whl_library_extras_direct_dep//:[unknown]",
+        # The same for the extra that is only requested in the hub config.
+        "@whl_library_extras_direct_dep//:[nope]",
     ],
 )
 

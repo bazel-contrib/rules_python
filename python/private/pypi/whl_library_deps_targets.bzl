@@ -60,12 +60,16 @@ def whl_library_deps_targets(
             `requirements.bzl`. The `[<extra>]` targets are also created for
             the requested extras that the package does not provide and they
             are the same as the package without extras, because an unknown
-            extra has no dependencies.
+            extra has no dependencies. A warning is printed for them, like
+            `pip` does.
         include: {type}`list[str] | dict[str, list[str] | None]` The list
             of packages to include. If it is a dict, then the values are the
             extras of each package that are available in the hub and the
             dependencies on the extras that are not available will fail the
-            build with a helpful message.
+            build with a helpful message. The `[<extra>]` targets are also
+            created for the extras of this package that are available in
+            the hub, see `extras` for the ones that the package does not
+            provide.
         group_name: {type}`str | None` name of the dependency group (if any).
         dep_template: {type}`str | None` The dep_template to use.
         tags: {type}`list[str]` The tags set on the targets.
@@ -138,14 +142,29 @@ def whl_library_deps_targets(
         return visibility if group_label and not is_member(extra) else impl_vis
 
     # Create targets for every extra that the package provides, so that the hub
-    # can select only the extras that are requested on each platform. The
-    # requested extras that the package does not provide also get targets, they
-    # do not add any dependencies, which is how `pip` treats unknown extras.
+    # can select only the extras that are requested on each platform without
+    # passing the extras to this repository. The extras that are requested,
+    # either in the hub or by the `extras` arg, but are not provided by the
+    # package also get targets. They do not add any dependencies and only
+    # result in a warning, which is how `pip` treats unknown extras.
     requested_extras = sorted({normalize_name(e): None for e in extras})
-    extras_targets = sorted({
+    provided_extras = {normalize_name(e): None for e in provides_extra}
+    hub_extras = (include.get(self_name) if type(include) == type({}) else None) or []
+    unknown_extras = sorted({
         normalize_name(e): None
-        for e in list(provides_extra) + requested_extras
+        for e in requested_extras + list(hub_extras)
+        if normalize_name(e) not in provided_extras
     })
+    extras_targets = sorted(provided_extras.keys() + unknown_extras)
+    for extra in unknown_extras:
+        getattr(rules, "warn", _warn)("WARNING: {} does not provide the extra '{}'".format(
+            " ".join([metadata_name] + [
+                t.partition("=")[2]
+                for t in tags
+                if t.startswith("pypi_version=")
+            ]),
+            extra,
+        ))
     whl_file_label = _name("", WHEEL_FILE_PUBLIC_LABEL)
 
     # The `pkg` target includes the requested extras, so the package without
@@ -284,6 +303,10 @@ def whl_library_deps_targets(
             required_by = metadata_name,
             visibility = ["//visibility:private"],
         )
+
+def _warn(msg):
+    # buildifier: disable=print
+    print(msg)
 
 def _conditions(settings, package_deps):
     return {

@@ -210,10 +210,105 @@ def _test_extras(env):
 
 _tests.append(_test_extras)
 
+def _test_unknown_extras_in_hub(env):
+    alias_calls = []
+    py_library_calls = []
+    warnings = []
+
+    whl_library_deps_targets(
+        name = "foo-1.0-py3-none-any.whl",
+        metadata_name = "Foo",
+        dep_template = "@pypi//{name}:{target}",
+        requires_dist = [
+            "bar",
+            "grpc; extra == 'grpc'",
+        ],
+        provides_extra = ["grpc", "async"],
+        # The hub requests the `grpc` extra and the `nope` extra that the
+        # package does not provide.
+        include = {"bar": [], "foo": ["grpc", "nope"], "grpc": []},
+        tags = ["pypi_name=Foo", "pypi_version=1.0"],
+        repo = None,
+        aliases = {},
+        native = struct(
+            filegroup = lambda **kwargs: None,
+            alias = lambda **kwargs: alias_calls.append(kwargs),
+        ),
+        rules = struct(
+            py_library = lambda **kwargs: py_library_calls.append(kwargs),
+            env_marker_setting = lambda **kwargs: None,
+            warn = warnings.append,
+        ),
+    )
+
+    # The extras are not passed to the whl repositories of a hub, so the `pkg`
+    # target does not include them. The extra that the package does not
+    # provide is the same as the package without extras and results in a
+    # warning, just like in `pip`.
+    env.expect.that_collection([
+        (c["name"], c["actual"])
+        for c in alias_calls
+    ]).contains_exactly([
+        ("[]", ":pkg"),
+    ])
+    env.expect.that_collection([
+        (c["name"], c["deps"])
+        for c in py_library_calls
+    ]).contains_exactly([
+        ("pkg", ["srcs", "@pypi//bar:pkg"]),
+        ("[async]", ["srcs", "@pypi//bar:pkg"]),
+        ("[grpc]", ["srcs", "@pypi//bar:pkg", "@pypi//grpc:pkg"]),
+        ("[nope]", ["srcs", "@pypi//bar:pkg"]),
+    ])
+    env.expect.that_collection(warnings).contains_exactly([
+        "WARNING: Foo 1.0 does not provide the extra 'nope'",
+    ])
+
+_tests.append(_test_unknown_extras_in_hub)
+
+def _test_unknown_extras_in_hub_no_deps(env):
+    alias_calls = []
+    warnings = []
+
+    whl_library_deps_targets(
+        name = "foo-1.0-py3-none-any.whl",
+        metadata_name = "foo",
+        dep_template = "@pypi//{name}:{target}",
+        requires_dist = [],
+        include = {"foo": ["nope"]},
+        repo = None,
+        aliases = {},
+        native = struct(
+            filegroup = lambda **kwargs: None,
+            alias = lambda **kwargs: alias_calls.append(kwargs),
+        ),
+        rules = struct(
+            py_library = lambda **kwargs: None,
+            env_marker_setting = lambda **kwargs: None,
+            warn = warnings.append,
+        ),
+    )
+
+    env.expect.that_collection([
+        (c["name"], c["actual"])
+        for c in alias_calls
+    ]).contains_exactly([
+        ("whl", "whl_file"),
+        ("pkg", "srcs"),
+        ("[nope]", "srcs"),
+        ("[]", ":pkg"),
+    ])
+    env.expect.that_collection(warnings).contains_exactly([
+        "WARNING: foo does not provide the extra 'nope'",
+    ])
+
+_tests.append(_test_unknown_extras_in_hub_no_deps)
+
 def _test_requested_extras(env):
     alias_calls = []
     py_library_calls = []
     filegroup_calls = []
+    warnings = []
 
     whl_library_deps_targets(
         name = "foo-0-py3-none-any.whl",
@@ -235,8 +330,12 @@ def _test_requested_extras(env):
         rules = struct(
             py_library = lambda **kwargs: py_library_calls.append(kwargs),
             env_marker_setting = lambda **kwargs: None,
+            warn = warnings.append,
         ),
     )
+    env.expect.that_collection(warnings).contains_exactly([
+        "WARNING: Foo does not provide the extra 'nope'",
+    ])
 
     # The `pkg` target includes the requested extras, which is needed if there
     # is no hub to select the extras, and the `[]` target is the package
@@ -281,6 +380,7 @@ def _test_requested_extras_no_deps(env):
         rules = struct(
             py_library = lambda **kwargs: py_library_calls.append(kwargs),
             env_marker_setting = lambda **kwargs: None,
+            warn = lambda _: None,
         ),
     )
 

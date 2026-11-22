@@ -95,14 +95,12 @@ def generate_whl_library_build_bazel(
     if extras:
         kwargs["extras"] = extras
 
-    if not requires_dist:
-        # no deps, we can leave the extra loads out
-        pass
-    elif config_load:
+    if config_load:
+        # The config is also needed without any deps, because it has the
+        # extras that are requested from this package.
         loads.append("""load("{}", "{}")""".format(config_load, "packages"))
         kwargs["include"] = "packages"
-        kwargs["requires_dist"] = requires_dist
-    else:
+    if requires_dist:
         kwargs["requires_dist"] = requires_dist
 
     loads.extend([
