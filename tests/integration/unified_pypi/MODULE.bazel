@@ -62,6 +62,7 @@ pip.configure(
     venv = "pypi_b_colorama",
 )
 pip.configure(
+    dependency_groups = ["*"],
     hub_name = "pypi_b",
     pyproject_toml = "//:pyproject_venvs.toml",
     venv = "pypi_b_dev",
