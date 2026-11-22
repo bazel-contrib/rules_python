@@ -180,14 +180,42 @@ def get_windows_path_with_unc_prefix(path, always=False):
 
   # abspath returns a normalized absolute path
   path = abspath(path)
-  # Long paths only work without the prefix if LongPathsEnabled is set, which
-  # is off by default. Only add the prefix when it's needed, so that short
-  # paths, e.g. __file__, are unchanged.
+  # Only add the prefix when it's needed, so that other paths, e.g. __file__,
+  # are unchanged: the prefix turns off normalization, e.g. of "..".
   if not always and len(path) < _MAX_PATH_WITHOUT_PREFIX:
+    return path
+  if _long_paths_enabled():
     return path
   if path.startswith('\\\\'):
     return unicode_prefix + 'UNC\\' + path[2:]
   return unicode_prefix + path
+
+def strip_windows_unc_prefix(path):
+  """Removes the prefix that get_windows_path_with_unc_prefix() adds."""
+  if path.startswith('\\\\?\\UNC\\'):
+    return '\\\\' + path[8:]
+  if path.startswith('\\\\?\\'):
+    return path[4:]
+  return path
+
+_long_paths_enabled_result = None
+
+def _long_paths_enabled():
+  """Returns whether LongPathsEnabled is set, which is off by default."""
+  global _long_paths_enabled_result
+  if _long_paths_enabled_result is None:
+    # Read the registry instead of calling RtlAreLongPathsEnabled() through
+    # ctypes. ctypes needs to load _ctypes.pyd, and LongPathsEnabled doesn't
+    # apply to loading DLLs, so the import fails when Python itself is under
+    # a long path, e.g. in runfiles. winreg is built in, so it always works.
+    # python.exe opts in to long paths, so the registry value is enough.
+    try:
+      import winreg
+      with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\FileSystem") as key:
+        _long_paths_enabled_result = bool(winreg.QueryValueEx(key, "LongPathsEnabled")[0])
+    except (ImportError, OSError):
+      _long_paths_enabled_result = False
+  return _long_paths_enabled_result
 
 def search_path(name):
   """Finds a file in a given search path."""
@@ -354,14 +382,15 @@ def _symlink_tree(link_from, link_to):
     # Ensure the source is an absolute path to simplify symlinking
     link_to_root = abspath(link_to)
     link_from_root = abspath(link_from)
-    # Walk with the \\?\ prefix, or os.walk() skips directories with long paths.
-    link_to_root = get_windows_path_with_unc_prefix(link_to_root, always=True)
+    # Walk with the \\?\ prefix, or os.walk() skips directories with long
+    # paths, but only pass the prefix on for the paths that need it.
+    walk_root = get_windows_path_with_unc_prefix(link_to_root, always=True)
 
     # This is non-optimal because it recreates the entire
     # venv site-packages tree (as opposed to finding a highest-common
     # directory to symlink). But its easy and understandable.
-    for root, dirs, files in os.walk(link_to_root):
-        rel_path = os.path.relpath(root, link_to_root)
+    for root, dirs, files in os.walk(walk_root):
+        rel_path = os.path.relpath(root, walk_root)
         link_from_dir = get_windows_path_with_unc_prefix(
             join(link_from_root, rel_path))
 
@@ -369,7 +398,7 @@ def _symlink_tree(link_from, link_to):
             os.makedirs(link_from_dir)
 
         for name in files:
-            link_to = join(root, name)
+            link_to = join(link_to_root, rel_path, name)
             link_from = join(link_from_dir, name)
             _symlink_exist_ok(from_=link_from, to=link_to)
 
@@ -685,7 +714,9 @@ def _link_dir_windows(from_, to):
   import _winapi
   try:
     # Junctions don't need any privileges, but need an absolute target.
-    _winapi.CreateJunction(to, from_)
+    # CreateJunction() adds its own prefix to the target, and the target
+    # doesn't have the MAX_PATH limit, so remove ours.
+    _winapi.CreateJunction(strip_windows_unc_prefix(to), from_)
   # Another process sharing RULES_PYTHON_EXTRACT_ROOT created it first.
   except FileExistsError:
     return

@@ -159,14 +159,34 @@ def get_windows_path_with_unc_prefix(path):
 
     # os.path.abspath returns a normalized absolute path
     path = os.path.abspath(path)
-    # Long paths only work without the prefix if LongPathsEnabled is set, which
-    # is off by default. Only add the prefix when it's needed, so that short
-    # paths, e.g. __file__, are unchanged. 248 is the limit for directories.
-    if len(path) < 248:
+    # Only add the prefix when it's needed, so that other paths, e.g. __file__,
+    # are unchanged: the prefix turns off normalization, e.g. of "..". 248 is
+    # the limit for directories.
+    if len(path) < 248 or _long_paths_enabled():
         return path
     if path.startswith("\\\\"):
         return unicode_prefix + "UNC\\" + path[2:]
     return unicode_prefix + path
+
+
+@cache
+def _long_paths_enabled():
+    """Returns whether LongPathsEnabled is set, which is off by default."""
+    # Read the registry instead of calling RtlAreLongPathsEnabled() through
+    # ctypes. ctypes needs to load _ctypes.pyd, and LongPathsEnabled doesn't
+    # apply to loading DLLs, so the import fails when Python itself is under
+    # a long path, e.g. in runfiles. winreg is built in, so it always works.
+    # python.exe opts in to long paths, so the registry value is enough.
+    try:
+        import winreg
+
+        with winreg.OpenKey(
+            winreg.HKEY_LOCAL_MACHINE,
+            r"SYSTEM\CurrentControlSet\Control\FileSystem",
+        ) as key:
+            return bool(winreg.QueryValueEx(key, "LongPathsEnabled")[0])
+    except (ImportError, OSError):
+        return False
 
 
 def print_verbose(*args, mapping=None, values=None):
