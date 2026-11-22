@@ -7,6 +7,7 @@ load(
     "EXTRACTED_WHEEL_FILES",
     "PY_LIBRARY_PUBLIC_LABEL",
     "WHEEL_FILE_PUBLIC_LABEL",
+    "extra_label",
 )
 load("@rules_python//python/private/pypi:missing_package.bzl", "missing_package_error")
 
@@ -25,6 +26,9 @@ def define_venv_flag_config_settings(name, hubs):
 
 _STANDARD_ALIASES = [
     PY_LIBRARY_PUBLIC_LABEL,
+    # The package without extras, the `[<extra>]` targets are passed as the
+    # extra aliases because they are only in the hubs that request the extras.
+    extra_label(""),
     WHEEL_FILE_PUBLIC_LABEL,
     DATA_LABEL,
     DIST_INFO_LABEL,

@@ -141,6 +141,7 @@ bzl_library(
         ":hub_builder",
         ":hub_exposure",
         ":hub_repository",
+        ":labels",
         ":parse_whl_name",
         ":pep508_env",
         ":pip_repository_attrs",

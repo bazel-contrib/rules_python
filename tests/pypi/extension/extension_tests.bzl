@@ -17,7 +17,7 @@
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "subjects")
 load("//python/private/pypi:default_platforms.bzl", "default_platforms")  # buildifier: disable=bzl-visibility
-load("//python/private/pypi:extension.bzl", "build_config", "parse_modules")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:extension.bzl", "build_config", "parse_modules", "unified_hub_args")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:platform.bzl", _plat = "platform")  # buildifier: disable=bzl-visibility
 load("//python/private/pypi:whl_config_setting.bzl", "whl_config_setting")  # buildifier: disable=bzl-visibility
 load("//tests/support/mocks:mocks.bzl", "mocks")
@@ -226,6 +226,54 @@ def _test_simple(env):
     pypi.whl_mods().contains_exactly({})
 
 _tests.append(_test_simple)
+
+def _test_unified_hub_extras(env):
+    mods = parse_modules(
+        module_ctx = _pypi_mock_mctx(
+            _mod(
+                name = "rules_python",
+                parse = [
+                    _parse(
+                        hub_name = "pypi_a",
+                        python_version = "3.15",
+                        simpleapi_skip = ["simple"],
+                        requirements_lock = "requirements_extras.txt",
+                    ),
+                    _parse(
+                        hub_name = "pypi_b",
+                        python_version = "3.15",
+                        simpleapi_skip = ["simple"],
+                        requirements_lock = "requirements.txt",
+                    ),
+                ],
+            ),
+            os_name = "linux",
+            arch_name = "x86_64",
+            mock_files = {
+                "requirements_extras.txt": "simple[foo,bar]==0.0.1 --hash=sha256:deadbeef",
+            },
+        ),
+        available_interpreters = {
+            "python_3_15_host": "unit_test_interpreter_target",
+        },
+        minor_mapping = {"3.15": "3.15.19"},
+    )
+
+    # The targets for the extras are only in the hubs that request them, the
+    # `[]` target is in all of the hubs.
+    env.expect.that_dict(unified_hub_args(mods)).contains_exactly({
+        "default_hub": "pypi_a",
+        "extra_aliases": {
+            "simple:[bar]": ["pypi_a"],
+            "simple:[foo]": ["pypi_a"],
+        },
+        "hubs": ["pypi_a", "pypi_b"],
+        "name": "pypi",
+        "packages": {"simple": ["pypi_a", "pypi_b"]},
+        "requirements_bzl": False,
+    })
+
+_tests.append(_test_unified_hub_extras)
 
 def _test_pip_parse_pyproject_toml(env):
     # pip.parse() reads the version from pyproject.toml's requires-python when

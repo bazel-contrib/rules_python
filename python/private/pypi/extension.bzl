@@ -26,6 +26,7 @@ load(":default_platforms.bzl", "default_platforms")
 load(":hub_builder.bzl", "hub_builder")
 load(":hub_exposure.bzl", "hub_exposure")
 load(":hub_repository.bzl", "hub_repository", "whl_config_settings_to_json")
+load(":labels.bzl", "extra_label")
 load(":parse_whl_name.bzl", "parse_whl_name")
 load(":pep508_env.bzl", "env")
 load(":pip_repository_attrs.bzl", "ATTRS")
@@ -421,9 +422,18 @@ You cannot use both the additive_build_content and additive_build_content_file a
         },
     )
 
-def _create_unified_hub_repo(mods):
+def unified_hub_args(mods):
+    """Return the args of the unified hub repository.
+
+    Args:
+        mods: {type}`struct` the value returned by {obj}`parse_modules`.
+
+    Returns:
+        {type}`dict | None` the args for {obj}`unified_hub_repo` or `None` if
+        a concrete hub uses the name of the unified hub.
+    """
     if "pypi" in mods.hub_whl_map:
-        return
+        return None
 
     hubs = sorted(mods.hub_whl_map.keys())
     if mods.default_hub and mods.default_hub not in hubs:
@@ -445,8 +455,16 @@ def _create_unified_hub_repo(mods):
             if hub_name not in packages[norm_pkg]:
                 packages[norm_pkg].append(hub_name)
 
+            # The `[<extra>]` targets only exist in the hubs that request
+            # the extra.
+            extras = {
+                extra_label(extra): None
+                for settings in mods.hub_whl_map[hub_name].get(pkg_name, {}).values()
+                for setting in settings
+                for extra in setting.extras or []
+            }
             extra = mods.extra_aliases.get(hub_name, {}).get(norm_pkg, [])
-            for alias_name in extra:
+            for alias_name in sorted(extras) + extra:
                 qual_alias = "%s:%s" % (norm_pkg, alias_name)
                 if qual_alias not in extra_aliases:
                     extra_aliases[qual_alias] = []
@@ -462,7 +480,7 @@ def _create_unified_hub_repo(mods):
             if qual_alias not in extra_aliases:
                 extra_aliases[qual_alias] = []
 
-    unified_hub_repo(
+    return dict(
         name = "pypi",
         default_hub = mods.default_hub or (hubs[0] if hubs else ""),
         extra_aliases = extra_aliases,
@@ -470,6 +488,11 @@ def _create_unified_hub_repo(mods):
         packages = packages,
         requirements_bzl = mods.unified_hub_requirements_bzl,
     )
+
+def _create_unified_hub_repo(mods):
+    args = unified_hub_args(mods)
+    if args != None:
+        unified_hub_repo(**args)
 
 def _pip_impl(module_ctx):
     """Implementation of a class tag that creates the pip hub and corresponding pip spoke whl repositories.
