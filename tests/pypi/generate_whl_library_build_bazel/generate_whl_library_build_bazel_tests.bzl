@@ -114,6 +114,7 @@ whl_library_targets(
         "data_exclude_all",
     ],
     dep_template = "@pypi//{name}:{target}",
+    extras = ["extra"],
     group_deps = [
         "foo",
         "fox",
@@ -162,6 +163,7 @@ package_metadata(
         group_name = "qux",
         purl = "foo",
         group_deps = ["foo", "fox", "qux"],
+        extras = ["extra"],
     )
     env.expect.that_str(actual.replace("@@", "@")).equals(want)
 
@@ -240,6 +242,39 @@ package_metadata(
     env.expect.that_str(actual.replace("@@", "@")).equals(want)
 
 _tests.append(_test_all_with_loads)
+
+def _test_no_deps_with_config(env):
+    # The config is loaded without any deps, because it has the extras that
+    # are requested from the package in the hub.
+    want = """\
+load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
+load("@pypi//:config.bzl", "packages")
+load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets")
+
+package(default_visibility = ["//visibility:public"])
+
+whl_library_targets(
+    dep_template = "@pypi//{name}:{target}",
+    include = packages,
+    metadata_name = "foo",
+    name = "foo.whl",
+    tags = [
+        "pypi_name=foo",
+        "pypi_version=0",
+    ],
+)
+"""
+    actual = generate_whl_library_build_bazel(
+        metadata_version = "0",
+        metadata_name = "foo",
+        dep_template = "@pypi//{name}:{target}",
+        name = "foo.whl",
+        requires_dist = [],
+        config_load = "@pypi//:config.bzl",
+    )
+    env.expect.that_str(actual.replace("@@", "@")).equals(want)
+
+_tests.append(_test_no_deps_with_config)
 
 def _test_deps_targets(env):
     want = """\

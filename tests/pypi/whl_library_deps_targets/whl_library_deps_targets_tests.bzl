@@ -135,6 +135,11 @@ def _test_whl_library_deps_targets_no_deps(env):
             "actual": "srcs",
             "visibility": ["//visibility:public"],
         },
+        {
+            "name": "[]",
+            "actual": ":pkg",
+            "visibility": ["//visibility:public"],
+        },
     ])  # buildifier: @unsorted-dict-items
 
     env.expect.that_collection(filegroup_calls).contains_exactly([])
@@ -204,6 +209,238 @@ def _test_extras(env):
     ])  # buildifier: @unsorted-dict-items
 
 _tests.append(_test_extras)
+
+def _test_unknown_extras_in_hub(env):
+    alias_calls = []
+    py_library_calls = []
+    warnings = []
+
+    whl_library_deps_targets(
+        name = "foo-1.0-py3-none-any.whl",
+        metadata_name = "Foo",
+        dep_template = "@pypi//{name}:{target}",
+        requires_dist = [
+            "bar",
+            "grpc; extra == 'grpc'",
+        ],
+        provides_extra = ["grpc", "async"],
+        # The hub requests the `grpc` extra and the `nope` extra that the
+        # package does not provide.
+        include = {"bar": [], "foo": ["grpc", "nope"], "grpc": []},
+        tags = ["pypi_name=Foo", "pypi_version=1.0"],
+        repo = None,
+        aliases = {},
+        native = struct(
+            filegroup = lambda **kwargs: None,
+            alias = lambda **kwargs: alias_calls.append(kwargs),
+        ),
+        rules = struct(
+            py_library = lambda **kwargs: py_library_calls.append(kwargs),
+            env_marker_setting = lambda **kwargs: None,
+            warn = warnings.append,
+        ),
+    )
+
+    # The extras are not passed to the whl repositories of a hub, so the `pkg`
+    # target does not include them. The extra that the package does not
+    # provide is the same as the package without extras and results in a
+    # warning, just like in `pip`.
+    env.expect.that_collection([
+        (c["name"], c["actual"])
+        for c in alias_calls
+    ]).contains_exactly([
+        ("[]", ":pkg"),
+    ])
+    env.expect.that_collection([
+        (c["name"], c["deps"])
+        for c in py_library_calls
+    ]).contains_exactly([
+        ("pkg", ["srcs", "@pypi//bar:pkg"]),
+        ("[async]", ["srcs", "@pypi//bar:pkg"]),
+        ("[grpc]", ["srcs", "@pypi//bar:pkg", "@pypi//grpc:pkg"]),
+        ("[nope]", ["srcs", "@pypi//bar:pkg"]),
+    ])
+    env.expect.that_collection(warnings).contains_exactly([
+        "WARNING: Foo 1.0 does not provide the extra 'nope'",
+    ])
+
+_tests.append(_test_unknown_extras_in_hub)
+
+def _test_unknown_extras_in_hub_no_deps(env):
+    alias_calls = []
+    warnings = []
+
+    whl_library_deps_targets(
+        name = "foo-1.0-py3-none-any.whl",
+        metadata_name = "foo",
+        dep_template = "@pypi//{name}:{target}",
+        requires_dist = [],
+        include = {"foo": ["nope"]},
+        repo = None,
+        aliases = {},
+        native = struct(
+            filegroup = lambda **kwargs: None,
+            alias = lambda **kwargs: alias_calls.append(kwargs),
+        ),
+        rules = struct(
+            py_library = lambda **kwargs: None,
+            env_marker_setting = lambda **kwargs: None,
+            warn = warnings.append,
+        ),
+    )
+
+    env.expect.that_collection([
+        (c["name"], c["actual"])
+        for c in alias_calls
+    ]).contains_exactly([
+        ("whl", "whl_file"),
+        ("pkg", "srcs"),
+        ("[nope]", "srcs"),
+        ("[]", ":pkg"),
+    ])
+    env.expect.that_collection(warnings).contains_exactly([
+        "WARNING: foo does not provide the extra 'nope'",
+    ])
+
+_tests.append(_test_unknown_extras_in_hub_no_deps)
+
+def _test_requested_extras(env):
+    alias_calls = []
+    py_library_calls = []
+    filegroup_calls = []
+    warnings = []
+
+    whl_library_deps_targets(
+        name = "foo-0-py3-none-any.whl",
+        metadata_name = "Foo",
+        dep_template = "@pip_{name}//:{target}",
+        requires_dist = [
+            "bar",
+            "grpc; extra == 'grpc'",
+            "uvloop; extra == 'async'",
+        ],
+        provides_extra = ["async", "grpc"],
+        extras = ["Grpc", "nope"],
+        repo = None,
+        aliases = {},
+        native = struct(
+            filegroup = lambda **kwargs: filegroup_calls.append(kwargs),
+            alias = lambda **kwargs: alias_calls.append(kwargs),
+        ),
+        rules = struct(
+            py_library = lambda **kwargs: py_library_calls.append(kwargs),
+            env_marker_setting = lambda **kwargs: None,
+            warn = warnings.append,
+        ),
+    )
+    env.expect.that_collection(warnings).contains_exactly([
+        "WARNING: Foo does not provide the extra 'nope'",
+    ])
+
+    # The `pkg` target includes the requested extras, which is needed if there
+    # is no hub to select the extras, and the `[]` target is the package
+    # without extras. The requested extra that the package does not provide
+    # does not have any dependencies, just like in `pip`.
+    env.expect.that_collection(alias_calls).contains_exactly([])
+    env.expect.that_collection([
+        (c["name"], c["deps"])
+        for c in py_library_calls
+    ]).contains_exactly([
+        ("pkg", ["srcs", "@pip_bar//:pkg", "@pip_grpc//:pkg"]),
+        ("[]", ["srcs", "@pip_bar//:pkg"]),
+        ("[async]", ["srcs", "@pip_bar//:pkg", "@pip_uvloop//:pkg"]),
+        ("[grpc]", ["srcs", "@pip_bar//:pkg", "@pip_grpc//:pkg"]),
+        ("[nope]", ["srcs", "@pip_bar//:pkg"]),
+    ])
+    env.expect.that_collection([
+        (c["name"], c["data"])
+        for c in filegroup_calls
+    ]).contains_exactly([
+        ("whl", ["@pip_bar//:whl"]),
+    ])
+
+_tests.append(_test_requested_extras)
+
+def _test_requested_extras_no_deps(env):
+    alias_calls = []
+    py_library_calls = []
+
+    whl_library_deps_targets(
+        name = "foo-0-py3-none-any.whl",
+        metadata_name = "Foo",
+        dep_template = "@pypi//{name}:{target}",
+        requires_dist = [],
+        extras = ["nope"],
+        repo = None,
+        aliases = {},
+        native = struct(
+            filegroup = lambda **kwargs: None,
+            alias = lambda **kwargs: alias_calls.append(kwargs),
+        ),
+        rules = struct(
+            py_library = lambda **kwargs: py_library_calls.append(kwargs),
+            env_marker_setting = lambda **kwargs: None,
+            warn = lambda _: None,
+        ),
+    )
+
+    env.expect.that_collection([
+        (c["name"], c["actual"])
+        for c in alias_calls
+    ]).contains_exactly([
+        ("whl", "whl_file"),
+        ("pkg", "srcs"),
+        ("[nope]", "srcs"),
+        ("[]", ":pkg"),
+    ])
+    env.expect.that_collection(py_library_calls).contains_exactly([])
+
+_tests.append(_test_requested_extras_no_deps)
+
+def _test_requested_extras_in_group_legacy(env):
+    alias_calls = []
+    py_library_calls = []
+
+    whl_library_deps_targets(
+        name = "foo-0-py3-none-any.whl",
+        metadata_name = "foo",
+        dep_template = "@pip_{name}//:{target}",
+        requires_dist = ["qux", "bar; extra == 'a'", "baz; extra == 'a'"],
+        provides_extra = ["a"],
+        extras = ["a"],
+        group_name = "group",
+        group_deps = ["foo", "bar"],
+        repo = None,
+        aliases = {},
+        native = struct(
+            filegroup = lambda **kwargs: None,
+            alias = lambda **kwargs: alias_calls.append(kwargs),
+        ),
+        rules = struct(
+            py_library = lambda **kwargs: py_library_calls.append(kwargs),
+            env_marker_setting = lambda **kwargs: None,
+        ),
+    )
+
+    # The implementation target of the member includes the requested extras
+    # and the package without extras is the group library.
+    env.expect.that_collection([
+        (c["name"], c["actual"], c["visibility"])
+        for c in alias_calls
+    ]).contains_exactly([
+        ("pkg", "@pip__config//_groups:group_pkg", ["//visibility:public"]),
+        ("whl", "@pip__config//_groups:group_whl", ["//visibility:public"]),
+        ("[]", ":pkg", ["//visibility:public"]),
+    ])
+    env.expect.that_collection([
+        (c["name"], c["deps"], c["visibility"])
+        for c in py_library_calls
+    ]).contains_exactly([
+        ("_pkg", ["srcs", "@pip_baz//:pkg", "@pip_qux//:pkg"], ["@pip__config//_groups:__pkg__"]),
+        ("[a]", ["srcs", "@pip_bar//:pkg", "@pip_baz//:pkg", "@pip_qux//:pkg"], ["//visibility:public"]),
+    ])
+
+_tests.append(_test_requested_extras_in_group_legacy)
 
 def _test_extras_in_group(env):
     py_library_calls = []
@@ -282,6 +519,7 @@ def _test_extras_in_group_legacy(env):
         ("pkg", "@pip__config//_groups:group_pkg"),
         ("[a]", "@pip__config//_groups:group_pkg"),
         ("whl", "@pip__config//_groups:group_whl"),
+        ("[]", ":pkg"),
     ])
     env.expect.that_collection([
         (c["name"], c["deps"], c["visibility"])

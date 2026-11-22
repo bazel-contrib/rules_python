@@ -361,7 +361,7 @@ pip_archive_attrs = {
 } | {
     "requirement": attr.string(
         mandatory = True,
-        doc = "Python requirement string describing the package to download or build with `pip`. The extras are not needed because the targets for all of the extras are created.",
+        doc = "Python requirement string describing the package to download or build with `pip`. The extras are used in the same way as in {obj}`whl_archive`.",
     ),
 }
 

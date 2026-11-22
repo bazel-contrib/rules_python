@@ -305,11 +305,12 @@ def _pkg_targets(*, actual, extras_by_setting, group_name, group_extras, native,
     })
     for extra in [""] + all_extras:
         # The platforms that do not request the extra get the package without
-        # extras.
+        # extras. The `pkg` targets of the whl repositories are not used,
+        # because they may include the requested extras.
         targets = _select({
             setting: _target(
                 repo,
-                extra_label(extra) if extra in extras_by_setting.get(setting, ()) else PY_LIBRARY_PUBLIC_LABEL,
+                extra_label(extra if extra in extras_by_setting.get(setting, ()) else ""),
             )
             for setting, repo in actual.items()
         })
