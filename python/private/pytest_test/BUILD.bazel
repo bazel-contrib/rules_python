@@ -35,15 +35,3 @@ alias(
     actual = "@pypi//pytest_bazel",
     visibility = NOT_ACTUALLY_PUBLIC,
 )
-
-alias(
-    name = "default_pytest_shard",
-    actual = "@pypi//pytest_shard",
-    visibility = NOT_ACTUALLY_PUBLIC,
-)
-
-alias(
-    name = "default_pytest_randomly",
-    actual = "@pypi//pytest_randomly",
-    visibility = NOT_ACTUALLY_PUBLIC,
-)

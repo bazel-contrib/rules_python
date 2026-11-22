@@ -1,5 +1,5 @@
 {
-  "checksum": "2d0ce215f26718cc18a9b0d2ec186981b34870f61dd4e7fbe3e24330778493bc",
+  "checksum": "261e46aa4944be2809c1b6c1cbcb64ddc3822f55e7e4cdc8dba510b778fa7c23",
   "crates": {
     "aho-corasick 1.1.5": {
       "name": "aho-corasick",
@@ -477,6 +477,45 @@
         "MIT"
       ],
       "license_file": "LICENSE"
+    },
+    "configparser 3.3.0": {
+      "name": "configparser",
+      "version": "3.3.0",
+      "package_url": "https://github.com/QEDK/configparser-rs",
+      "repository": {
+        "Http": {
+          "url": "https://static.crates.io/crates/configparser/3.3.0/download",
+          "sha256": "031ad3d167622974ed636505ae4556267ed4aa2aea0464122fa6bc9698a32825"
+        }
+      },
+      "targets": [
+        {
+          "Library": {
+            "crate_name": "configparser",
+            "crate_root": "src/lib.rs",
+            "srcs": {
+              "allow_empty": true,
+              "include": [
+                "**/*.rs"
+              ]
+            }
+          }
+        }
+      ],
+      "library_target_name": "configparser",
+      "common_attrs": {
+        "compile_data_glob": [
+          "**"
+        ],
+        "edition": "2024",
+        "version": "3.3.0"
+      },
+      "license": "MIT OR LGPL-3.0-or-later",
+      "license_ids": [
+        "LGPL-3.0",
+        "MIT"
+      ],
+      "license_file": "LICENSE-LGPL"
     },
     "const-oid 0.10.2": {
       "name": "const-oid",
@@ -3213,6 +3252,10 @@
               "target": "base64"
             },
             {
+              "id": "configparser 3.3.0",
+              "target": "configparser"
+            },
+            {
               "id": "csv 1.4.0",
               "target": "csv"
             },
@@ -5248,6 +5291,7 @@
     "anyhow 1.0.104",
     "argfile 1.0.0",
     "base64 0.23.1",
+    "configparser 3.3.0",
     "csv 1.4.0",
     "flate2 1.1.11",
     "lexopt 0.3.2",

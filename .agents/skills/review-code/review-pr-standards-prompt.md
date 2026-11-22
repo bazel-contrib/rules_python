@@ -27,5 +27,16 @@ Your sole task is to audit PR titles and PR descriptions against
    with `BLOCKER`, `QUESTION`, or `HUMAN-SIGN-OFF`, and verify the PR has the
    `"do not merge"` label when open questions are present (add it or flag as
    `BLOCKER` if missing).
+8. Check PR description line wrapping against `.agents/rules/pr.md` and
+   `CONTRIBUTING.md` (72 columns for body prose, excluding long URLs,
+   Markdown links, fenced code blocks, and Markdown tables). When reviewing
+   an existing GitHub PR, run
+   `.agents/skills/review-code/scripts/wrap_pr_body.py --dry-run` with
+   `--repo=bazel-contrib/rules_python -- "<pr>"` first. When it reports
+   `status=would_update`, report `Severity: NIT`, `Location: PR Description`,
+   and `Proposed Fix:` instructing the orchestrator to run
+   `.agents/skills/review-code/scripts/wrap_pr_body.py` (posting a brief notice
+   only on another contributor's PR, or requesting 72-column wrapping if
+   `gh pr edit` lacks permissions).
 
 @.agents/skills/review-code/review-report-format.md

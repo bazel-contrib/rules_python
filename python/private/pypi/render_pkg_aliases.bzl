@@ -146,8 +146,14 @@ def render_pkg_aliases(
 
     public = ["//visibility:public"]
     if exposed_packages != None:
-        exposed_packages = {normalize_name(name): None for name in exposed_packages}
-    internal_visibility = _internal_visibility(aliases, has_groups = bool(requirement_cycles)) + extra_internal_visibility
+        exposed_packages = {
+            normalize_name(name): None
+            for name in exposed_packages
+        }
+    internal_visibility = _internal_visibility(
+        aliases,
+        has_groups = bool(requirement_cycles),
+    ) + extra_internal_visibility
 
     files = {}
     for name, pkg_aliases in aliases.items():

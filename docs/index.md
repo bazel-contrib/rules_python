@@ -98,6 +98,7 @@ getting-started
 pypi/index
 Toolchains <toolchains>
 coverage
+Testing with pytest <pytest>
 precompiling
 gazelle/docs/index
 REPL <repl>
