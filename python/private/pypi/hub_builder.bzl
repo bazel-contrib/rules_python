@@ -376,6 +376,10 @@ def _add_whl_library(self, *, python_version, whl, repo):
 ### end of setters, below we have various functions to implement the public methods
 
 def _set_get_index_urls(self, mctx, pip_attr, default_envsubst, python_version):
+    if "*" in pip_attr.simpleapi_skip:
+        # The SimpleAPI is not used for any of the packages.
+        return False
+
     # Combine default_envsubst and pip_attr.envsubst without duplications.
     combined_envsubst = {k: True for k in default_envsubst + pip_attr.envsubst}.keys()
 
