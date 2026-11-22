@@ -4,3 +4,5 @@ packages = [
     "optional_dep",
     "pkg",
 ]
+
+testonly_packages = []

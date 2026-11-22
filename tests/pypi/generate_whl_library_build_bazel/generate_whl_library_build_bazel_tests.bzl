@@ -22,7 +22,7 @@ _tests = []
 def _test_all_workspace(env):
     want = """\
 load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
-load("@pypi//:config.bzl", "packages")
+load("@pypi//:config.bzl", "packages", "testonly_packages")
 load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets")
 
 package(default_visibility = ["//visibility:public"])
@@ -59,6 +59,7 @@ whl_library_targets(
         "pypi_name=foo",
         "pypi_version=0",
     ],
+    testonly_deps = testonly_packages,
 )
 
 package_metadata(
@@ -96,7 +97,7 @@ _tests.append(_test_all_workspace)
 def _test_all(env):
     want = """\
 load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
-load("@pypi//:config.bzl", "packages")
+load("@pypi//:config.bzl", "packages", "testonly_packages")
 load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets")
 
 package(default_visibility = ["//visibility:public"])
@@ -133,6 +134,7 @@ whl_library_targets(
         "pypi_name=foo",
         "pypi_version=0",
     ],
+    testonly_deps = testonly_packages,
 )
 
 package_metadata(
@@ -170,7 +172,7 @@ _tests.append(_test_all)
 def _test_all_with_loads(env):
     want = """\
 load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
-load("@pypi//:config.bzl", "packages")
+load("@pypi//:config.bzl", "packages", "testonly_packages")
 load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets")
 
 package(default_visibility = ["//visibility:public"])
@@ -207,6 +209,7 @@ whl_library_targets(
         "pypi_name=foo",
         "pypi_version=0",
     ],
+    testonly_deps = testonly_packages,
 )
 
 package_metadata(

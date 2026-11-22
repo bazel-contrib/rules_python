@@ -390,16 +390,24 @@ You cannot use both the additive_build_content and additive_build_content_file a
     # The `all_*requirements` only list the selected packages that are
     # available on all of the platforms, while all of the selected packages
     # stay public.
-    for hub_name, packages in configured_hubs.items():
-        selected = {name: None for name in packages}
+    testonly_packages = {}
+    unified_testonly_packages = {}
+    for hub_name, info in configured_hubs.items():
+        selected = {name: None for name in info.packages}
         exposed_packages[hub_name] = [
             name
             for name in exposed_packages[hub_name]
             if name in selected
         ]
+        testonly_packages[hub_name] = info.testonly_packages
+
+        # An alias can't be less testonly than what it points to, so a package
+        # is testonly in the unified hub if it is testonly in any hub.
+        for pkg in info.testonly_packages:
+            unified_testonly_packages[pkg] = None
 
     return struct(
-        # dict[str, list[str]]: configured hubs and exposed packages.
+        # dict[str, struct]: configured hubs, see `hub_exposure`.
         configured_hubs = configured_hubs,
         config = config,
         declared_deps = declared_deps,
@@ -409,7 +417,9 @@ You cannot use both the additive_build_content and additive_build_content_file a
         facts = simpleapi_cache.get_facts(),
         hub_group_map = hub_group_map,
         hub_whl_map = hub_whl_map,
+        testonly_packages = testonly_packages,
         unified_hub_requirements_bzl = config.unified_hub_requirements_bzl,
+        unified_testonly_packages = sorted(unified_testonly_packages),
         whl_libraries = whl_libraries,
         whl_mods = whl_mods,
         platform_config_settings = {
@@ -434,10 +444,9 @@ def _create_unified_hub_repo(mods):
 
     for hub_name in hubs:
         # The hubs configured with `pip.configure` only expose some packages.
-        hub_packages = mods.configured_hubs.get(
-            hub_name,
-            mods.hub_whl_map[hub_name],
-        )
+        hub_packages = mods.hub_whl_map[hub_name]
+        if hub_name in mods.configured_hubs:
+            hub_packages = mods.configured_hubs[hub_name].packages
         for pkg_name in hub_packages:
             norm_pkg = normalize_name(pkg_name)
             if norm_pkg not in packages:
@@ -469,6 +478,7 @@ def _create_unified_hub_repo(mods):
         hubs = hubs,
         packages = packages,
         requirements_bzl = mods.unified_hub_requirements_bzl,
+        testonly_packages = mods.unified_testonly_packages,
     )
 
 def _pip_impl(module_ctx):
@@ -562,7 +572,10 @@ def _pip_impl(module_ctx):
             groups = mods.hub_group_map.get(hub_name),
             # The hubs configured with `pip.configure` hide the other packages.
             hide_unexposed_packages = hub_name in mods.configured_hubs,
-            public_packages = mods.configured_hubs.get(hub_name, []),
+            public_packages = (
+                mods.configured_hubs[hub_name].packages if hub_name in mods.configured_hubs else []
+            ),
+            testonly_packages = mods.testonly_packages.get(hub_name, []),
         )
 
     _create_unified_hub_repo(mods)
@@ -1177,6 +1190,23 @@ Defaults to the last `pyproject_toml` set by an earlier `pip.configure` tag of
 the same module and hub, then to the {attr}`pip.parse.pyproject_toml` of the
 hub, then to {attr}`pip.default.pyproject_toml` if the hub is defined by the
 root module. It is only needed when {attr}`dependency_groups` is set.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+        ),
+        "testonly": attr.bool(
+            default = False,
+            doc = """\
+Make the aliases of the selected packages testonly. A package that is also
+selected by a `pip.configure` tag without `testonly` is not testonly. It can't
+be used with `["*", "transitive"]`, which exposes all of the packages.
+
+The testonly packages are left out of the `all_requirements`,
+`all_whl_requirements` and `all_data_requirements` lists in the hub's
+`requirements.bzl` and listed in `all_testonly_requirements` instead. In the
+[Unified @pypi Hub](unified-pypi-hub), a package is testonly if it is testonly
+in any of the hubs.
 
 :::{versionadded} VERSION_NEXT_FEATURE
 :::

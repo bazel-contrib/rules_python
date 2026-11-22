@@ -15,6 +15,8 @@ def _whl_config_repo_impl(rctx):
         rctx.attr._config_template,
         substitutions = {
             "%%PACKAGES%%": render.dict(rctx.attr.whl_map or {}, value_repr = lambda x: "None"),
+            # There are no testonly packages in WORKSPACE.
+            "%%TESTONLY_PACKAGES%%": "[]",
         },
     )
 

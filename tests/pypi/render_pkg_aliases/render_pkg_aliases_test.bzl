@@ -58,6 +58,37 @@ pkg_aliases(
 
 _tests.append(_test_legacy_aliases)
 
+def _test_testonly_aliases(env):
+    actual = render_pkg_aliases(
+        aliases = {
+            "bar": "pypi_bar",
+            "foo": "pypi_foo",
+        },
+        testonly_packages = ["Foo"],
+    )
+
+    env.expect.that_str(actual["foo/BUILD.bazel"]).equals("""\
+load("@rules_python//python/private/pypi:pkg_aliases.bzl", "pkg_aliases")
+
+package(default_visibility = ["//visibility:public"])
+
+pkg_aliases(
+    name = "foo",
+    actual = "pypi_foo",
+    testonly = True,
+)""")
+    env.expect.that_str(actual["bar/BUILD.bazel"]).equals("""\
+load("@rules_python//python/private/pypi:pkg_aliases.bzl", "pkg_aliases")
+
+package(default_visibility = ["//visibility:public"])
+
+pkg_aliases(
+    name = "bar",
+    actual = "pypi_bar",
+)""")
+
+_tests.append(_test_testonly_aliases)
+
 def _test_hidden_aliases(env):
     actual = render_pkg_aliases(
         aliases = {

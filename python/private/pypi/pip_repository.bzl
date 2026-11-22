@@ -276,6 +276,7 @@ def _pip_repository_impl(rctx):
                     pkg: None
                     for pkg in bzl_packages
                 }, value_repr = lambda x: "None"),
+                "%%TESTONLY_PACKAGES%%": "[]",
             },
         )
         config_repo_template = repr(rctx.attr.name)

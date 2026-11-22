@@ -243,6 +243,34 @@ the `pyproject.toml` selects the optional dependencies of the project. The
 packages that are not part of the hub are ignored, so a single `pyproject.toml`
 can list tools that are missing from the lock file.
 
+### Testonly Packages
+
+Set {attr}`pip.configure.testonly` to make the selected packages testonly, so
+that they can only be used by tests and other testonly targets:
+
+```starlark
+pip.configure(
+    hub_name = "pypi_hub",
+    dependency_groups = ["default"],
+)
+pip.configure(
+    hub_name = "pypi_hub",
+    dependency_groups = ["group:test"],
+    testonly = True,
+)
+```
+
+A package that is also selected by a tag without `testonly` is not testonly.
+The testonly packages are left out of the `all_requirements`,
+`all_whl_requirements` and `all_data_requirements` lists in the hub's
+`requirements.bzl` and are listed in `all_testonly_requirements` instead. In
+the [Unified @pypi Hub](unified-pypi-hub), a package is testonly if it is
+testonly in any of the hubs.
+
+Only the targets of the hub are testonly. The other packages of the hub can
+depend on the testonly packages, so a testonly package is still a transitive
+dependency of the packages that need it, even if they are not testonly.
+
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
 

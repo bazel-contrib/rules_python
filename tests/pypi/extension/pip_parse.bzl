@@ -4,12 +4,14 @@ def configure(
         *,
         dependency_groups = [],
         hub_name,
-        pyproject_toml = None):
+        pyproject_toml = None,
+        testonly = False):
     """Simulate the PyPI extension configure tag class for testing."""
     return struct(
         dependency_groups = dependency_groups,
         hub_name = hub_name,
         pyproject_toml = pyproject_toml,
+        testonly = testonly,
     )
 
 def pip_parse(
