@@ -276,6 +276,26 @@ def _test_version_normalization_impl(env, target):
 
 _tests.append(_test_version_normalization)
 
+def _test_version_normalization_with_digits_before_placeholders(name):
+    rt_util.helper_target(
+        py_wheel,
+        name = name + "_subject",
+        distribution = "mydist_" + name,
+        version = "0.{BUILD_TIMESTAMP}.90{BUILD_USER}",
+    )
+    analysis_test(
+        name = name,
+        impl = _test_version_normalization_with_digits_before_placeholders_impl,
+        target = name + "_subject",
+    )
+
+def _test_version_normalization_with_digits_before_placeholders_impl(env, target):
+    env.expect.that_target(target).default_outputs().contains_exactly([
+        "{package}/mydist_{test_name}-0.{{BUILD_TIMESTAMP}}.90{{BUILD_USER}}-py3-none-any.whl",
+    ])
+
+_tests.append(_test_version_normalization_with_digits_before_placeholders)
+
 def _make_vars_impl(ctx):
     return [platform_common.TemplateVariableInfo(ctx.attr.vars)]
 
