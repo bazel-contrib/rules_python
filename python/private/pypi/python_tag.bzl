@@ -36,7 +36,7 @@ def python_tag(implementation_name, python_version = ""):
     )
 
 def python_major_minor(python_version):
-    """Get the major and minor numbers of a Python version.
+    """Get the major and maybe minor numbers of a Python version.
 
     Only the first two numbers of the version are needed to match the
     wheel tags, so the version is not parsed as per PEP 440.
