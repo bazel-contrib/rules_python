@@ -29,16 +29,22 @@ def requirement(spec):
     """
 
     # The options are not a part of PEP 508.
-    spec, _, _ = spec.partition(" --")
+    for sep in (" --", "\t--"):
+        spec, _, _ = spec.partition(sep)
 
     head, semicolon, marker = spec.partition(";")
     name, at, url = head.partition("@")
-    if at and "==" in name:
+    if at:
         # PEP 508 does not allow a version for the direct URL requirements,
         # but `name==version @ url` has always been accepted here, so that
         # the version of the distribution is known.
         name, _, _ = name.partition("==")
-        spec = name + at + url + semicolon + marker
+
+        # PEP 508 needs a whitespace between the URL and the marker, but
+        # `name @ url; marker` is accepted by `pip` in the requirements files.
+        spec = name + at + url.rstrip()
+        if semicolon:
+            spec += " ;" + marker
 
     req = pypackaging.requirements.parse(spec)
 

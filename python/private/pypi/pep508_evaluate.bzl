@@ -19,15 +19,12 @@ what `rules_python` needs on top of it:
 
 * The `platform_machine` aliases, so that e.g. `arm64` and `aarch64` mean the
   same thing.
-* The partial evaluation, which is used to evaluate what is known when the
-  repositories are created (e.g. the `extra`) and to leave the rest for the
-  analysis phase.
+* A single function for the full and the partial evaluation. The latter is
+  used to evaluate what is known when the repositories are created (e.g. the
+  `extra`) and to leave the rest for the analysis phase.
 """
 
 load("@pypackaging.bzl", "pypackaging")
-
-_AND = "and"
-_OR = "or"
 
 _PLATFORM_MACHINE_ALIASES = {
     # These pairs mean the same hardware, but different values may be used
@@ -52,58 +49,59 @@ def evaluate(marker, *, env, strict = True):
         not be evaluated and it will represent the remaining expression.
     """
     tree = pypackaging.markers.parse(marker)
+    if "platform_machine" in marker and "platform_machine" in env:
+        # The comparisons that are not evaluated are left as they are written.
+        tree = _with_platform_machine_aliases(tree, max_depth = len(marker))
 
-    # Each frame is the list that is being reduced, the index of the next
-    # item in it and the values of the items that have been reduced so far.
-    stack = [(tree, 0, [])]
+    if strict:
+        return pypackaging.markers.evaluate(tree, env)
 
-    # Each step advances an index or pops a frame, so this always terminates.
-    for _ in range(2 * len(marker) + 2):
-        items, i, values = stack[-1]
+    result = pypackaging.markers.evaluate_partial(tree, env)
+    if type(result) == "bool":
+        return result
 
-        if i >= len(items):
-            value = _reduce(values)
-            stack.pop()
-            if not stack:
-                if type(value) == "bool":
-                    return value
-                return pypackaging.markers.to_string([value])
+    return pypackaging.markers.to_string(result)
 
-            stack[-1][2].append(value)
-            continue
+def _with_platform_machine_aliases(tree, *, max_depth):
+    """Use the canonical names in the comparisons with `platform_machine`.
 
-        item = items[i]
-        stack[-1] = (items, i + 1, values)
-
-        if type(item) == "list":
-            stack.append((item, 0, []))
-        elif type(item) == "tuple":
-            values.append(_evaluate_item(item, env = env, strict = strict))
-        else:
-            values.append(item)
-
-    return fail("BUG: failed to evaluate the marker: {}".format(marker))
-
-def _evaluate_item(item, *, env, strict):
-    """Evaluate a single `<left> <op> <right>` expression.
+    Args:
+        tree: {type}`list` the parsed marker.
+        max_depth: {type}`int` the upper bound for the number of the
+            parenthesized expressions in the marker.
 
     Returns:
-        {type}`bool` or the item itself if it uses a variable that is not in
-        the env and `strict` is `False`.
+        {type}`list` a copy of the parsed marker.
     """
+    result = []
+
+    # The pairs of the list to copy and the list to copy it to.
+    todo = [(tree, result)]
+    for _ in range(max_depth + 1):
+        if not todo:
+            break
+
+        src, dst = todo.pop()
+        for item in src:
+            if type(item) == "list":
+                nested = []
+                dst.append(nested)
+                todo.append((item, nested))
+            elif type(item) == "tuple":
+                dst.append(_with_platform_machine_alias(item))
+            else:
+                dst.append(item)
+
+    return result
+
+def _with_platform_machine_alias(item):
     lhs, op, rhs = item
-
-    if not strict:
-        for side in (lhs, rhs):
-            if side.type == "variable" and side.value not in env:
-                return item
-
     if lhs.type == "variable" and lhs.value == "platform_machine":
-        rhs = _platform_machine(rhs)
+        return (lhs, op, _platform_machine(rhs))
     elif rhs.type == "variable" and rhs.value == "platform_machine":
-        lhs = _platform_machine(lhs)
-
-    return pypackaging.markers.evaluate([(lhs, op, rhs)], env)
+        return (_platform_machine(lhs), op, rhs)
+    else:
+        return item
 
 def _platform_machine(value):
     if value.type != "string":
@@ -113,49 +111,3 @@ def _platform_machine(value):
         type = value.type,
         value = _PLATFORM_MACHINE_ALIASES.get(value.value, value.value),
     )
-
-def _reduce(values):
-    """Reduce the values of a single (parenthesized) expression.
-
-    Args:
-        values: {type}`list` the values separated by the `and` and `or`
-            operators. A value is a {type}`bool`, an expression that could
-            not be evaluated or a list of such for a parenthesized expression.
-
-    Returns:
-        {type}`bool` or a list for what could not be evaluated.
-    """
-
-    # `and` binds tighter than `or`, so do the `and` groups first
-    groups = [[]]
-    for value in values:
-        if value == _OR:
-            groups.append([])
-        elif value != _AND:
-            groups[-1].append(value)
-
-    remaining = []
-    for group in groups:
-        if False in group:
-            continue
-
-        group = [v for v in group if v != True]
-        if not group:
-            return True
-
-        if remaining:
-            remaining.append(_OR)
-
-        for i, value in enumerate(group):
-            if i:
-                remaining.append(_AND)
-            remaining.append(value)
-
-    if not remaining:
-        return False
-
-    if len(remaining) == 1:
-        # No need to keep the parentheses.
-        return remaining[0]
-
-    return remaining
