@@ -1,0 +1,1526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PR Queue</title>
+  <script src="/preload.js"></script>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: var(--background, #f7f8fa);
+      --fg: var(--foreground, #1f2328);
+      --surface: var(--card, #ffffff);
+      --surface-fg: var(--card-foreground, var(--fg));
+      --surface-muted: var(--muted, rgba(127, 127, 127, 0.1));
+      --fg-muted: var(--muted-foreground, #656d76);
+      --accent: var(--primary, #0969da);
+      --accent-fg: var(--primary-foreground, #ffffff);
+      --line: var(--border, rgba(127, 127, 127, 0.24));
+      --ok-fg: #1a7f37;
+      --ok-bg: rgba(26, 127, 55, 0.14);
+      --warn-fg: #9a6700;
+      --warn-bg: rgba(154, 103, 0, 0.14);
+      --err-fg: #cf222e;
+      --err-bg: rgba(207, 34, 46, 0.13);
+      --info-fg: #0969da;
+      --info-bg: rgba(9, 105, 218, 0.13);
+      --member-fg: #6639ba;
+      --member-bg: rgba(130, 80, 223, 0.13);
+      --radius: 8px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: var(--background, #16181d);
+        --fg: var(--foreground, #e6edf3);
+        --surface: var(--card, #1e2128);
+        --surface-fg: var(--card-foreground, var(--fg));
+        --surface-muted: var(--muted, rgba(255, 255, 255, 0.06));
+        --fg-muted: var(--muted-foreground, #8b949e);
+        --accent: var(--primary, #2f81f7);
+        --accent-fg: var(--primary-foreground, #ffffff);
+        --line: var(--border, rgba(255, 255, 255, 0.14));
+        --ok-fg: #3fb950;
+        --ok-bg: rgba(63, 185, 80, 0.15);
+        --warn-fg: #d29922;
+        --warn-bg: rgba(210, 153, 34, 0.16);
+        --err-fg: #f85149;
+        --err-bg: rgba(248, 81, 73, 0.16);
+        --info-fg: #58a6ff;
+        --info-bg: rgba(88, 166, 255, 0.16);
+        --member-fg: #d2a8ff;
+        --member-bg: rgba(163, 113, 247, 0.18);
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 12px;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .app {
+      max-width: 920px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .topbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .title-group {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .title-group h1 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 500;
+      background: var(--surface-muted);
+      color: var(--fg-muted);
+      border: 1px solid var(--line);
+      white-space: nowrap;
+    }
+
+    .pill-info {
+      background: var(--info-bg);
+      color: var(--info-fg);
+      border-color: transparent;
+    }
+
+    .pill-ok {
+      background: var(--ok-bg);
+      color: var(--ok-fg);
+      border-color: transparent;
+    }
+
+    .pill-warn {
+      background: var(--warn-bg);
+      color: var(--warn-fg);
+      border-color: transparent;
+    }
+
+    .pill-err {
+      background: var(--err-bg);
+      color: var(--err-fg);
+      border-color: transparent;
+    }
+
+    .pill-member {
+      background: var(--member-bg);
+      color: var(--member-fg);
+      border-color: transparent;
+    }
+
+    .toolbar-actions {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .cache-note {
+      font-size: 11px;
+      color: var(--fg-muted);
+    }
+
+    button {
+      font: inherit;
+      cursor: pointer;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--surface-fg);
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: opacity 0.12s ease, border-color 0.12s ease;
+    }
+
+    button:hover:not(:disabled) {
+      border-color: var(--fg-muted);
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: var(--accent-fg);
+      border-color: transparent;
+    }
+
+    button.primary:hover:not(:disabled) {
+      opacity: 0.92;
+    }
+
+    button.subtle {
+      background: var(--surface-muted);
+    }
+
+    .lookup-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .lookup-row input,
+    .filter-grid input[type="text"],
+    .filter-grid input[type="number"] {
+      width: 100%;
+      min-width: 0;
+      padding: 6px 9px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--surface-fg);
+      font: inherit;
+      font-size: 12px;
+    }
+
+    .lookup-row input:focus,
+    .filter-grid input:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: -1px;
+    }
+
+    .panel {
+      background: var(--surface);
+      color: var(--surface-fg);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 12px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 10px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .field-wide {
+      grid-column: 1 / -1;
+    }
+
+    .field label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--fg-muted);
+    }
+
+    .checkbox-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid var(--line);
+    }
+
+    .checkbox-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .filter-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .banner {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: var(--radius);
+      font-size: 12px;
+      border: 1px solid var(--line);
+    }
+
+    .banner-error {
+      background: var(--err-bg);
+      color: var(--err-fg);
+      border-color: rgba(248, 81, 73, 0.3);
+    }
+
+    .banner-info {
+      background: var(--info-bg);
+      color: var(--info-fg);
+      border-color: rgba(88, 166, 255, 0.3);
+    }
+
+    .summary-strip {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--fg-muted);
+    }
+
+    .pr-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .pr-card {
+      background: var(--surface);
+      color: var(--surface-fg);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .pr-card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .pr-badges {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .pr-link {
+      font-weight: 600;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .pr-link:hover {
+      text-decoration: underline;
+    }
+
+    .pr-stats {
+      font-size: 11px;
+      color: var(--fg-muted);
+      white-space: nowrap;
+    }
+
+    .pr-title {
+      font-size: 13.5px;
+      font-weight: 600;
+      word-break: break-word;
+    }
+
+    .pr-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      color: var(--fg-muted);
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 11px;
+    }
+
+    .pr-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      padding-top: 2px;
+    }
+
+    .worktree-note {
+      font-size: 11px;
+      color: var(--fg-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 100%;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 28px 16px;
+      color: var(--fg-muted);
+      background: var(--surface);
+      border: 1px dashed var(--line);
+      border-radius: var(--radius);
+    }
+
+    details.stale-drawer {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      padding: 8px 10px;
+    }
+
+    details.stale-drawer summary {
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--fg-muted);
+    }
+
+    details.stale-drawer[open] summary {
+      margin-bottom: 8px;
+    }
+
+    .lookup-rerun-btn {
+      margin-top: 8px;
+    }
+
+    .lookup-card-wrap {
+      margin-top: 8px;
+    }
+
+    .lookup-notice {
+      margin-top: 8px;
+    }
+
+    .lookup-pr-extra {
+      font-size: 11.5px;
+      color: var(--fg-muted);
+    }
+
+    .lookup-bg-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      font-size: 11.5px;
+      color: var(--fg-muted);
+    }
+
+    .spinner {
+      width: 12px;
+      height: 12px;
+      border: 2px solid var(--line);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: lookup-spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes lookup-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .spinner {
+        animation: none;
+      }
+    }
+
+    .lookup-result-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .lookup-result-item {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      background: var(--surface-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="title-group">
+        <h1>PR Queue</h1>
+        <span id="repo-pill" class="pill">loading...</span>
+        <span id="count-pill" class="pill">0 PRs</span>
+      </div>
+      <div class="toolbar-actions">
+        <span id="cache-note" class="cache-note"></span>
+        <button id="filters-btn" type="button" class="subtle">Filters</button>
+        <button id="refresh-btn" type="button" class="primary">↻ Refresh</button>
+      </div>
+    </header>
+
+    <div class="lookup-row">
+      <input
+        id="lookup-input"
+        type="text"
+        placeholder="Lookup PR # (e.g. 4487)..."
+        aria-label="Pull request number lookup"
+      />
+      <button id="lookup-btn" type="button">Lookup PR</button>
+    </div>
+
+    <section id="lookup-panel" class="panel hidden" aria-live="polite"></section>
+
+    <section id="filters-panel" class="panel hidden">
+      <!-- LINT.IfChange(pr_queue_config_fields) -->
+      <form id="filters-form">
+        <div class="filter-grid">
+          <div class="field">
+            <label for="cfg-repo">GitHub Repo (owner/name)</label>
+            <input id="cfg-repo" type="text" placeholder="bazel-contrib/rules_python" />
+          </div>
+          <div class="field">
+            <label for="cfg-user">Reviewer GitHub Login (blank = auto)</label>
+            <input id="cfg-user" type="text" placeholder="Auto via gh api user" />
+          </div>
+          <div class="field">
+            <label for="cfg-max-age">Mark Stale After (days, 0 = off)</label>
+            <input id="cfg-max-age" type="number" min="0" step="1" />
+          </div>
+          <div class="field">
+            <label for="cfg-base-repo">Local Base Repo Path (config.json only)</label>
+            <input
+              id="cfg-base-repo"
+              type="text"
+              readonly
+              placeholder="Auto-detect local checkout"
+            />
+          </div>
+          <div class="field field-wide">
+            <label for="cfg-query">GitHub Search Query (`gh pr list --search`)</label>
+            <input
+              id="cfg-query"
+              type="text"
+              placeholder="e.g. -author:app/dependabot label:enhancement"
+            />
+          </div>
+        </div>
+        <div class="checkbox-row">
+          <label class="checkbox-item">
+            <input id="cfg-req-only" type="checkbox" />
+            <span>Review requested from me only</span>
+          </label>
+          <label class="checkbox-item">
+            <input id="cfg-excl-approved" type="checkbox" />
+            <span>Exclude approved by me</span>
+          </label>
+          <label class="checkbox-item">
+            <input id="cfg-excl-authored" type="checkbox" />
+            <span>Exclude authored by me</span>
+          </label>
+          <label class="checkbox-item">
+            <input id="cfg-excl-drafts" type="checkbox" />
+            <span>Exclude drafts</span>
+          </label>
+        </div>
+        <div class="filter-actions">
+          <button id="filters-cancel-btn" type="button">Cancel</button>
+          <button id="filters-save-btn" type="submit" class="primary">
+            Save &amp; Refresh
+          </button>
+        </div>
+      </form>
+      <!-- LINT.ThenChange(//.agents/plugins/pr-queue/sidecars/pr_queue/state_store.py:pr_queue_config_fields) -->
+    </section>
+
+    <div id="error-banner" class="banner banner-error hidden" role="alert">
+      <span id="error-text"></span>
+      <button id="error-dismiss-btn" type="button" class="subtle">Dismiss</button>
+    </div>
+
+    <div id="status-banner" class="banner banner-info hidden" role="status">
+      <span id="status-text"></span>
+      <button id="status-dismiss-btn" type="button" class="subtle">Dismiss</button>
+    </div>
+
+    <div id="summary-strip" class="summary-strip"></div>
+
+    <main id="pr-list" class="pr-list" aria-live="polite"></main>
+
+    <details id="stale-drawer" class="stale-drawer hidden">
+      <summary id="stale-summary">Stale PRs (0)</summary>
+      <div id="stale-list" class="pr-list"></div>
+    </details>
+  </div>
+
+  <script>
+    "use strict";
+
+    function asSafeInt(value) {
+      return Number.isInteger(value) ? value : 0;
+    }
+
+    function makePill(text, variantClass = "") {
+      const span = document.createElement("span");
+      span.className = variantClass ? `pill ${variantClass}` : "pill";
+      span.textContent = text;
+      return span;
+    }
+
+    function sanitizeExternalUrl(raw) {
+      if (typeof raw !== "string" || !raw.trim()) return "";
+      try {
+        const parsed = new URL(raw.trim());
+        if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+          return parsed.href;
+        }
+      } catch (_err) {
+        return "";
+      }
+      return "";
+    }
+  </script>
+  <!-- LINT.IfChange(action_needed_buckets) -->
+  <script>
+    "use strict";
+
+    function actionBadge(pr) {
+      const map = {
+        review_requested: ["Review Requested", "pill-warn"],
+        needs_review: ["Needs Review", "pill-info"],
+        waiting_on_author: ["Changes Requested", "pill-err"],
+        approved: ["Approved", "pill-ok"],
+        draft: ["Draft", "pill"],
+        my_pr: ["Your PR", "pill"],
+      };
+      const pair = map[pr.action_needed] || [pr.action_needed || "Open", "pill"];
+      return makePill(pair[0], pair[1]);
+    }
+  </script>
+  <!-- LINT.ThenChange(//.agents/plugins/pr-queue/sidecars/pr_queue/fetch_pr_queue.py:action_needed_buckets) -->
+  <!-- LINT.IfChange(checks_state_values) -->
+  <script>
+    "use strict";
+
+    function checksBadge(pr) {
+      const total = asSafeInt(pr.checks_total);
+      if (total <= 0) return null;
+      const passed = asSafeInt(pr.checks_passed);
+      const failed = asSafeInt(pr.checks_failed);
+      const pending = asSafeInt(pr.checks_pending);
+      const map = {
+        passing: [`CI ${passed}/${total} passing`, "pill-ok"],
+        failing: [`CI ${failed} failing`, "pill-err"],
+        pending: [`CI ${pending} pending`, "pill-warn"],
+        cancelled: ["CI cancelled", "pill"],
+      };
+      const pair = map[pr.checks_state];
+      return pair ? makePill(pair[0], pair[1]) : null;
+    }
+  </script>
+  <!-- LINT.ThenChange(//.agents/plugins/pr-queue/sidecars/pr_queue/fetch_pr_queue.py:checks_state_values) -->
+
+  <script>
+    (function () {
+      "use strict";
+
+      const state = {
+        config: null,
+        queue: null,
+        loading: false,
+        launchingPr: null,
+        lookupSeq: 0,
+      };
+
+      const el = {
+        repoPill: document.getElementById("repo-pill"),
+        countPill: document.getElementById("count-pill"),
+        cacheNote: document.getElementById("cache-note"),
+        filtersBtn: document.getElementById("filters-btn"),
+        refreshBtn: document.getElementById("refresh-btn"),
+        lookupInput: document.getElementById("lookup-input"),
+        lookupBtn: document.getElementById("lookup-btn"),
+        lookupPanel: document.getElementById("lookup-panel"),
+        filtersPanel: document.getElementById("filters-panel"),
+        filtersForm: document.getElementById("filters-form"),
+        filtersCancelBtn: document.getElementById("filters-cancel-btn"),
+        cfgRepo: document.getElementById("cfg-repo"),
+        cfgUser: document.getElementById("cfg-user"),
+        cfgMaxAge: document.getElementById("cfg-max-age"),
+        cfgBaseRepo: document.getElementById("cfg-base-repo"),
+        cfgQuery: document.getElementById("cfg-query"),
+        cfgReqOnly: document.getElementById("cfg-req-only"),
+        cfgExclApproved: document.getElementById("cfg-excl-approved"),
+        cfgExclAuthored: document.getElementById("cfg-excl-authored"),
+        cfgExclDrafts: document.getElementById("cfg-excl-drafts"),
+        errorBanner: document.getElementById("error-banner"),
+        errorText: document.getElementById("error-text"),
+        errorDismissBtn: document.getElementById("error-dismiss-btn"),
+        statusBanner: document.getElementById("status-banner"),
+        statusText: document.getElementById("status-text"),
+        statusDismissBtn: document.getElementById("status-dismiss-btn"),
+        summaryStrip: document.getElementById("summary-strip"),
+        prList: document.getElementById("pr-list"),
+        staleDrawer: document.getElementById("stale-drawer"),
+        staleSummary: document.getElementById("stale-summary"),
+        staleList: document.getElementById("stale-list"),
+      };
+
+      async function apiFetch(relPath, options = {}) {
+        const cleanPath = relPath.replace(/^\//, "");
+        // Exceeds backend 3x30s gh retry budget plus jittered backoff (~92s).
+        const timeoutMs = options.timeoutMs ?? 100000;
+        const { timeoutMs: _ignored, ...fetchOpts } = options;
+        const runner =
+          window.sidecar && typeof window.sidecar.fetch === "function"
+            ? window.sidecar.fetch
+            : window.fetch.bind(window);
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        let res;
+        try {
+          res = await runner(cleanPath, {
+            ...fetchOpts,
+            signal: controller.signal,
+          });
+        } catch (err) {
+          if (err && err.name === "AbortError") {
+            throw new Error(
+              `Request timed out after ${Math.round(timeoutMs / 1000)}s`
+            );
+          }
+          throw new Error(err?.message || "Sidecar network request failed");
+        } finally {
+          clearTimeout(timer);
+        }
+        const text = await res.text();
+        let data = {};
+        try {
+          data = text ? JSON.parse(text) : {};
+        } catch (_err) {
+          // Keep non-JSON error snippets brief in UI banners.
+          throw new Error(`Invalid response (${res.status}): ${text.slice(0, 120)}`);
+        }
+        if (!res.ok || data.ok === false) {
+          throw new Error(data.error || `Request failed (${res.status})`);
+        }
+        return data;
+      }
+
+      function showError(msg) {
+        if (!msg) {
+          el.errorBanner.classList.add("hidden");
+          el.errorText.textContent = "";
+          return;
+        }
+        el.errorText.textContent = msg;
+        el.errorBanner.classList.remove("hidden");
+      }
+
+      function showStatus(msg) {
+        if (!msg) {
+          el.statusBanner.classList.add("hidden");
+          el.statusText.textContent = "";
+          return;
+        }
+        el.statusText.textContent = msg;
+        el.statusBanner.classList.remove("hidden");
+      }
+
+      function openConversation(convId) {
+        if (!convId) return;
+        if (window.sidecar?.ui?.toggleConversation) {
+          window.sidecar.ui.toggleConversation(convId);
+        } else {
+          showStatus(`Review conversation ID: ${convId}`);
+        }
+      }
+
+      function openExternalUrl(url) {
+        const safeUrl = sanitizeExternalUrl(url);
+        if (!safeUrl) return;
+        if (window.sidecar?.ui?.openUrl) {
+          window.sidecar.ui.openUrl(safeUrl);
+        } else {
+          window.open(safeUrl, "_blank", "noopener,noreferrer");
+        }
+      }
+
+      function resolveDaysSinceUpdate(pr) {
+        if (Number.isInteger(pr.days_since_update) && pr.days_since_update >= 0) {
+          return pr.days_since_update;
+        }
+        if (typeof pr.updated_at === "string" && pr.updated_at) {
+          const updatedMs = Date.parse(pr.updated_at);
+          if (!Number.isNaN(updatedMs)) {
+            return Math.max(0, Math.floor((Date.now() - updatedMs) / 86400000));
+          }
+        }
+        if (Number.isInteger(pr.stale_days) && pr.stale_days >= 0) {
+          return pr.stale_days;
+        }
+        return null;
+      }
+
+      function formatAgeText(pr) {
+        const days = resolveDaysSinceUpdate(pr);
+        if (days === null) return "";
+        if (days === 0) return "updated today";
+        if (days === 1) return "updated 1d ago";
+        return `updated ${days}d ago`;
+      }
+
+      function formatFetchedAt(rawTimestamp) {
+        const dt = new Date(rawTimestamp);
+        if (Number.isNaN(dt.getTime())) {
+          return String(rawTimestamp);
+        }
+        const dateOptions = { month: "short", day: "numeric" };
+        if (dt.getFullYear() !== new Date().getFullYear()) {
+          dateOptions.year = "numeric";
+        }
+        const datePart = dt.toLocaleDateString([], dateOptions);
+        const timePart = dt.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        return `${datePart}, ${timePart}`;
+      }
+
+      function renderCardActions(pr, isStaleCard) {
+        const actions = document.createElement("div");
+        actions.className = "pr-actions";
+        const prNum = asSafeInt(pr.number);
+        const busy = state.launchingPr === prNum;
+        const chat = pr.triggered_chat;
+
+        if (!(chat && chat.conversation_id)) {
+          const reviewBtn = document.createElement("button");
+          reviewBtn.type = "button";
+          reviewBtn.className = isStaleCard ? "" : "primary";
+          reviewBtn.disabled = busy || prNum <= 0;
+          let buttonText = "Review in Worktree ↗";
+          if (busy) {
+            buttonText = "Preparing Worktree...";
+          } else if (isStaleCard) {
+            buttonText = "Review anyway ↗";
+          }
+          reviewBtn.textContent = buttonText;
+          reviewBtn.addEventListener("click", () => launchReview(prNum, false));
+          actions.appendChild(reviewBtn);
+          return actions;
+        }
+
+        const openBtn = document.createElement("button");
+        openBtn.type = "button";
+        openBtn.className = "primary";
+        openBtn.textContent = "Open Review Chat ↗";
+        openBtn.addEventListener("click", () => openConversation(chat.conversation_id));
+        actions.appendChild(openBtn);
+
+        const rerunBtn = document.createElement("button");
+        rerunBtn.type = "button";
+        rerunBtn.disabled = busy || prNum <= 0;
+        rerunBtn.textContent = busy ? "Launching..." : "Re-run";
+        rerunBtn.addEventListener("click", () => launchReview(prNum, true));
+        actions.appendChild(rerunBtn);
+
+        if (chat.stale_commit) {
+          const staleTag = document.createElement("span");
+          staleTag.className = "pill pill-warn";
+          staleTag.textContent = "New commits since review";
+          actions.appendChild(staleTag);
+        }
+
+        if (chat.worktree_path) {
+          const wt = document.createElement("span");
+          wt.className = "worktree-note mono";
+          wt.textContent = chat.worktree_path;
+          wt.title = chat.worktree_path;
+          actions.appendChild(wt);
+        }
+        return actions;
+      }
+
+      function prStateOrActionBadge(pr) {
+        const prState = typeof pr.state === "string" ? pr.state.toUpperCase() : "";
+        if (prState === "MERGED") {
+          return makePill("Merged", "pill-member");
+        }
+        if (prState === "CLOSED") {
+          return makePill("Closed", "pill-err");
+        }
+        return actionBadge(pr);
+      }
+
+      function createItemNumberLink(itemNum, rawUrl) {
+        const safeUrl = sanitizeExternalUrl(rawUrl);
+        const anchor = document.createElement(safeUrl ? "a" : "span");
+        anchor.className = "pr-link";
+        anchor.textContent = `#${itemNum}`;
+        if (safeUrl) {
+          anchor.href = safeUrl;
+          anchor.target = "_blank";
+          anchor.rel = "noopener noreferrer";
+          anchor.addEventListener("click", (evt) => {
+            evt.preventDefault();
+            openExternalUrl(safeUrl);
+          });
+        }
+        return anchor;
+      }
+
+      function appendAuthorAndLabels(metaEl, item, extraNodes = []) {
+        const authorEl = document.createElement("span");
+        authorEl.textContent = `@${item.author || ""}`;
+        metaEl.appendChild(authorEl);
+
+        if (item.is_project_member) {
+          const memberPill = document.createElement("span");
+          memberPill.className = "pill pill-member";
+          memberPill.title = `Repository role: ${item.author_association || "MEMBER"}`;
+          memberPill.textContent = "Project member";
+          metaEl.appendChild(memberPill);
+        }
+
+        if (item.is_bot) {
+          metaEl.appendChild(makePill("bot"));
+        }
+
+        for (const node of extraNodes) {
+          if (node) metaEl.appendChild(node);
+        }
+
+        // Cap per-card label pills at 4 to keep card headers compact.
+        for (const label of (item.labels || []).slice(0, 4)) {
+          metaEl.appendChild(makePill(String(label)));
+        }
+      }
+
+      function buildReviewDetailsLine(pr) {
+        const bits = [];
+        if (Array.isArray(pr.approved_by) && pr.approved_by.length) {
+          bits.push(`Approved by: ${pr.approved_by.join(", ")}`);
+        }
+        if (Array.isArray(pr.changes_requested_by) && pr.changes_requested_by.length) {
+          bits.push(`Changes requested by: ${pr.changes_requested_by.join(", ")}`);
+        }
+        if (Array.isArray(pr.requested_reviewers) && pr.requested_reviewers.length) {
+          bits.push(`Reviewers requested: ${pr.requested_reviewers.join(", ")}`);
+        }
+        if (!bits.length && pr.review_decision && pr.review_decision !== "NONE") {
+          bits.push(`Review status: ${pr.review_decision}`);
+        }
+        if (!bits.length) return null;
+        const row = document.createElement("div");
+        row.className = "lookup-pr-extra";
+        row.textContent = bits.join(" · ");
+        return row;
+      }
+
+      function renderPrCard(pr, isStaleCard, options = {}) {
+        const card = document.createElement("article");
+        card.className = "pr-card";
+        const prNum = asSafeInt(pr.number);
+
+        const cardTop = document.createElement("div");
+        cardTop.className = "pr-card-top";
+
+        const badges = document.createElement("div");
+        badges.className = "pr-badges";
+        badges.appendChild(createItemNumberLink(prNum, pr.url));
+        badges.appendChild(prStateOrActionBadge(pr));
+        const checksPill = checksBadge(pr);
+        if (checksPill) {
+          badges.appendChild(checksPill);
+        }
+        if (options.fromCache) {
+          badges.appendChild(makePill("Cached"));
+        }
+
+        const stats = document.createElement("div");
+        stats.className = "pr-stats";
+        const diffStats =
+          `+${asSafeInt(pr.additions)} / -${asSafeInt(pr.deletions)} · ` +
+          `${asSafeInt(pr.changed_files)}f`;
+        const ageText = formatAgeText(pr);
+        stats.textContent = ageText ? `${ageText} · ${diffStats}` : diffStats;
+
+        cardTop.appendChild(badges);
+        cardTop.appendChild(stats);
+
+        const titleEl = document.createElement("div");
+        titleEl.className = "pr-title";
+        titleEl.textContent = pr.title || "";
+
+        const metaEl = document.createElement("div");
+        metaEl.className = "pr-meta";
+        let branchEl = null;
+        if (pr.head_ref_name || pr.base_ref_name) {
+          branchEl = document.createElement("span");
+          branchEl.className = "mono";
+          branchEl.textContent =
+            `${pr.head_ref_name || ""} → ${pr.base_ref_name || ""}`;
+        }
+        appendAuthorAndLabels(metaEl, pr, branchEl ? [branchEl] : []);
+
+        card.appendChild(cardTop);
+        card.appendChild(titleEl);
+        card.appendChild(metaEl);
+        if (options.showReviewDetails) {
+          const extraRow = buildReviewDetailsLine(pr);
+          if (extraRow) card.appendChild(extraRow);
+        }
+        if (options.showActions !== false) {
+          card.appendChild(renderCardActions(pr, isStaleCard));
+        }
+        return card;
+      }
+
+      function renderIssueCard(issue) {
+        const card = document.createElement("article");
+        card.className = "pr-card";
+        const issueNum = asSafeInt(issue.number);
+        const issueState =
+          typeof issue.state === "string" ? issue.state.toUpperCase() : "OPEN";
+
+        const cardTop = document.createElement("div");
+        cardTop.className = "pr-card-top";
+
+        const badges = document.createElement("div");
+        badges.className = "pr-badges";
+        badges.appendChild(createItemNumberLink(issueNum, issue.url));
+        badges.appendChild(makePill("Issue", "pill-info"));
+        badges.appendChild(
+          makePill(
+            issueState === "CLOSED" ? "Closed" : "Open",
+            issueState === "CLOSED" ? "" : "pill-ok"
+          )
+        );
+
+        const stats = document.createElement("div");
+        stats.className = "pr-stats";
+        stats.textContent = formatAgeText(issue);
+
+        cardTop.appendChild(badges);
+        cardTop.appendChild(stats);
+
+        const titleEl = document.createElement("div");
+        titleEl.className = "pr-title";
+        titleEl.textContent = issue.title || "";
+
+        const metaEl = document.createElement("div");
+        metaEl.className = "pr-meta";
+        appendAuthorAndLabels(metaEl, issue);
+
+        card.appendChild(cardTop);
+        card.appendChild(titleEl);
+        card.appendChild(metaEl);
+        return card;
+      }
+
+      function populateFilterForm(cfg) {
+        if (!cfg) return;
+        el.cfgRepo.value = cfg.repo || "";
+        el.cfgUser.value = cfg.user || "";
+        el.cfgMaxAge.value = String(cfg.max_age_days ?? 30);
+        el.cfgBaseRepo.value = cfg.base_repo || "";
+        if (cfg.detected_base_repo) {
+          el.cfgBaseRepo.placeholder = `Auto: ${cfg.detected_base_repo}`;
+        }
+        el.cfgQuery.value = cfg.custom_query || "";
+        el.cfgReqOnly.checked = Boolean(cfg.review_requested_only);
+        el.cfgExclApproved.checked = Boolean(cfg.exclude_approved_by_me);
+        el.cfgExclAuthored.checked = Boolean(cfg.exclude_authored_by_me);
+        el.cfgExclDrafts.checked = Boolean(cfg.exclude_drafts);
+      }
+
+      function renderQueue(data) {
+        state.queue = data;
+        el.repoPill.textContent = data.repo || "bazel-contrib/rules_python";
+        const prs = data.prs || [];
+        const stale = data.stale_prs || [];
+        el.countPill.textContent = `${prs.length} PR${prs.length === 1 ? "" : "s"}`;
+
+        if (data.fetched_at) {
+          const stamp = formatFetchedAt(data.fetched_at);
+          let prefix = "Fetched";
+          if (data.stale_cache) {
+            prefix = "Offline cache";
+          } else if (data.from_cache) {
+            prefix = "Cached";
+          }
+          el.cacheNote.textContent = `${prefix} ${stamp}`;
+          el.cacheNote.title = String(data.fetched_at);
+        } else {
+          el.cacheNote.textContent = "";
+          el.cacheNote.title = "";
+        }
+
+        if (data.error) {
+          showError(
+            data.stale_cache
+              ? `Refresh failed (${data.error}). Showing cached results.`
+              : data.error
+          );
+        }
+
+        const hiddenBits = [];
+        const skippedDrafts = asSafeInt(data.skipped_drafts);
+        const skippedAuthored = asSafeInt(data.skipped_authored);
+        const skippedApproved = asSafeInt(data.skipped_approved);
+        const maxAgeDays = asSafeInt(data.max_age_days);
+        if (skippedDrafts > 0) hiddenBits.push(`${skippedDrafts} drafts`);
+        if (skippedAuthored > 0) hiddenBits.push(`${skippedAuthored} authored`);
+        if (skippedApproved > 0) hiddenBits.push(`${skippedApproved} approved`);
+        const hiddenText = hiddenBits.length ? ` · Hidden: ${hiddenBits.join(", ")}` : "";
+        const viewerText = data.viewer ? `Viewer: @${data.viewer}` : "";
+        el.summaryStrip.textContent = `${viewerText}${hiddenText} · Manual refresh & review only`;
+
+        el.prList.replaceChildren();
+        if (!prs.length) {
+          const empty = document.createElement("div");
+          empty.className = "empty-state";
+          empty.textContent = data.error
+            ? "Unable to load PRs. Fix the error above and click Refresh."
+            : "No matching open pull requests in this queue.";
+          el.prList.appendChild(empty);
+        } else {
+          for (const pr of prs) {
+            el.prList.appendChild(renderPrCard(pr, false));
+          }
+        }
+
+        el.staleList.replaceChildren();
+        if (stale.length) {
+          el.staleSummary.textContent =
+            `Stale PRs (>${maxAgeDays}d since update): ${stale.length}`;
+          for (const pr of stale) {
+            el.staleList.appendChild(renderPrCard(pr, true));
+          }
+          el.staleDrawer.classList.remove("hidden");
+        } else {
+          el.staleDrawer.classList.add("hidden");
+        }
+      }
+
+      async function loadConfig() {
+        try {
+          const cfg = await apiFetch("api/config");
+          state.config = cfg;
+          populateFilterForm(cfg);
+        } catch (err) {
+          showError(`Failed to load config: ${err.message}`);
+        }
+      }
+
+      async function loadQueue(refresh) {
+        if (state.loading) return;
+        state.loading = true;
+        el.refreshBtn.disabled = true;
+        el.refreshBtn.textContent = refresh ? "Refreshing..." : "Loading...";
+        if (refresh) {
+          showError("");
+        }
+        try {
+          const data = await apiFetch(`api/queue?refresh=${refresh ? "1" : "0"}`);
+          renderQueue(data);
+        } catch (err) {
+          showError(err.message);
+        } finally {
+          state.loading = false;
+          el.refreshBtn.disabled = false;
+          el.refreshBtn.textContent = "↻ Refresh";
+        }
+      }
+
+      function updateLaunchedQueueItem(items, prNumber, res) {
+        return (items || []).map((item) => {
+          if (item.number !== prNumber) return item;
+          return {
+            ...item,
+            triggered_chat: {
+              conversation_id: res.conversation_id,
+              title: res.title,
+              head_sha: res.record?.head_sha || "",
+              worktree_path: res.worktree_path,
+              triggered_at: res.record?.triggered_at || Date.now() / 1000,
+              stale_commit: false,
+            },
+          };
+        });
+      }
+
+      function syncLookupLaunchButton(launchedPr = null) {
+        const btn = el.lookupPanel.querySelector(".lookup-rerun-btn");
+        if (!btn) return;
+        const prNum = Number.parseInt(btn.dataset.prNumber || "0", 10);
+        if (launchedPr !== null && launchedPr === prNum) {
+          btn.dataset.hasExisting = "1";
+          btn.textContent = `Re-run Review PR #${prNum} in Worktree ↗`;
+        }
+        btn.disabled = state.launchingPr !== null;
+      }
+
+      async function launchReview(prNumber, force) {
+        if (!Number.isInteger(prNumber) || prNumber <= 0) return;
+        if (state.launchingPr !== null) return;
+        state.launchingPr = prNumber;
+        showError("");
+        showStatus(`Creating worktree & launching /review-code for PR #${prNumber}...`);
+        if (state.queue) renderQueue(state.queue);
+        syncLookupLaunchButton();
+        try {
+          const sourceConversationId = window.sidecar?.conversationId || "";
+          const res = await apiFetch("api/review", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              pr_number: prNumber,
+              force: Boolean(force),
+              source_conversation_id: sourceConversationId,
+            }),
+            // Covers worst-case sequential retries: two 3x60s git fetches (~364s),
+            // uncached gh user+view lookups (~94s), local git (30s), and LS RPCs (~65s).
+            timeoutMs: 560000,
+          });
+          showStatus(
+            res.reused
+              ? `Opened existing review chat for PR #${prNumber}.`
+              : `Started review chat for PR #${prNumber} in ${res.worktree_path}`
+          );
+          if (state.queue) {
+            state.queue = {
+              ...state.queue,
+              prs: updateLaunchedQueueItem(state.queue.prs, prNumber, res),
+              stale_prs: updateLaunchedQueueItem(state.queue.stale_prs, prNumber, res),
+            };
+          }
+          syncLookupLaunchButton(prNumber);
+          if (res.conversation_id) {
+            openConversation(res.conversation_id);
+          }
+        } catch (err) {
+          showStatus("");
+          showError(`Failed to launch review for PR #${prNumber}: ${err.message}`);
+        } finally {
+          state.launchingPr = null;
+          if (state.queue) renderQueue(state.queue);
+          syncLookupLaunchButton();
+        }
+      }
+
+      function makeLookupNotice(text, variantClass) {
+        const notice = document.createElement("div");
+        notice.className = `banner ${variantClass} lookup-notice`;
+        notice.textContent = text;
+        return notice;
+      }
+
+      function renderLookupConversations(convs) {
+        const list = document.createElement("div");
+        list.className = "lookup-result-list";
+        for (const c of convs) {
+          const row = document.createElement("div");
+          row.className = "lookup-result-item";
+          const info = document.createElement("div");
+          const convTitle = document.createElement("div");
+          convTitle.textContent = c.title || "";
+          const convIdEl = document.createElement("div");
+          convIdEl.className = "mono cache-note";
+          convIdEl.textContent = c.conversation_id || "";
+          info.appendChild(convTitle);
+          info.appendChild(convIdEl);
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "primary";
+          btn.textContent = "Open Chat ↗";
+          btn.addEventListener("click", () => openConversation(c.conversation_id));
+          row.appendChild(info);
+          row.appendChild(btn);
+          list.appendChild(row);
+        }
+        return list;
+      }
+
+      function makeSpinnerStatus(text) {
+        const statusEl = document.createElement("div");
+        statusEl.className = "lookup-bg-status";
+        const spinEl = document.createElement("span");
+        spinEl.className = "spinner";
+        spinEl.setAttribute("aria-hidden", "true");
+        const labelEl = document.createElement("span");
+        labelEl.textContent = text;
+        statusEl.appendChild(spinEl);
+        statusEl.appendChild(labelEl);
+        return statusEl;
+      }
+
+      async function checkIssueInBackground(seq, prNum, repoLabel, refs) {
+        try {
+          const issueRes = await apiFetch(`api/lookup-issue?number=${prNum}`);
+          if (seq !== state.lookupSeq) return;
+          const kind = issueRes.item_kind || "not_found";
+          if (kind === "issue") {
+            refs.headerTitle.textContent = `Issue #${prNum} (${repoLabel})`;
+            refs.noticeEl.className = "banner banner-info lookup-notice";
+            refs.noticeEl.textContent =
+              `#${prNum} in ${repoLabel} is an issue, not a pull request.`;
+            const doneText = document.createElement("span");
+            doneText.textContent = `Issue lookup complete: #${prNum} is an issue.`;
+            refs.statusEl.replaceChildren(makePill("Issue", "pill-info"), doneText);
+            if (issueRes.issue) {
+              refs.issueCardSlot.replaceChildren(renderIssueCard(issueRes.issue));
+              refs.issueCardSlot.classList.remove("hidden");
+            }
+            return;
+          }
+          if (kind === "not_found") {
+            refs.noticeEl.textContent =
+              issueRes.error ||
+              `#${prNum} was not found as a pull request or issue in ${repoLabel}.`;
+            const doneText = document.createElement("span");
+            doneText.textContent =
+              `Issue lookup complete: #${prNum} is not a GitHub issue either.`;
+            refs.statusEl.replaceChildren(doneText);
+            return;
+          }
+          const errText = document.createElement("span");
+          errText.textContent =
+            `Background issue check failed: ${issueRes.error || "unknown error"}`;
+          refs.statusEl.replaceChildren(errText);
+        } catch (err) {
+          if (seq !== state.lookupSeq) return;
+          const errText = document.createElement("span");
+          errText.textContent = `Background issue check failed: ${err.message}`;
+          refs.statusEl.replaceChildren(errText);
+        }
+      }
+
+      async function runLookup() {
+        const raw = el.lookupInput.value.trim().replace(/^#/, "");
+        const prNum = /^\d+$/.test(raw) ? Number.parseInt(raw, 10) : 0;
+        if (prNum <= 0) {
+          showError("Enter a valid positive PR number.");
+          return;
+        }
+        const seq = ++state.lookupSeq;
+        showError("");
+        el.lookupPanel.classList.remove("hidden");
+        el.lookupPanel.replaceChildren(makeSpinnerStatus(`Looking up PR #${prNum}...`));
+        try {
+          const res = await apiFetch(`api/lookup-pr?pr=${prNum}`);
+          if (seq !== state.lookupSeq) return;
+          const convs = res.conversations || [];
+          const repoLabel = res.repo || "";
+          const itemKind = res.item_kind || (res.pr ? "pull_request" : "error");
+
+          const header = document.createElement("div");
+          header.className = "pr-card-top";
+          const headerTitle = document.createElement("strong");
+          headerTitle.textContent = `PR #${prNum} (${repoLabel})`;
+          header.appendChild(headerTitle);
+
+          const closeBtn = document.createElement("button");
+          closeBtn.type = "button";
+          closeBtn.className = "subtle";
+          closeBtn.textContent = "Close";
+          closeBtn.addEventListener("click", () => {
+            state.lookupSeq += 1;
+            el.lookupPanel.classList.add("hidden");
+          });
+          header.appendChild(closeBtn);
+
+          el.lookupPanel.replaceChildren(header);
+
+          if (itemKind === "not_found") {
+            const noticeEl = makeLookupNotice(
+              res.pr_error || `PR #${prNum} was not found in ${repoLabel}.`,
+              "banner-error"
+            );
+            const bgStatusEl = makeSpinnerStatus(
+              `Checking in the background if #${prNum} is an issue...`
+            );
+            const issueCardSlot = document.createElement("div");
+            issueCardSlot.className = "lookup-card-wrap hidden";
+            el.lookupPanel.appendChild(noticeEl);
+            el.lookupPanel.appendChild(bgStatusEl);
+            el.lookupPanel.appendChild(issueCardSlot);
+            if (convs.length) {
+              el.lookupPanel.appendChild(renderLookupConversations(convs));
+            }
+            // Run issue check asynchronously without blocking the PR-not-found UI.
+            void checkIssueInBackground(seq, prNum, repoLabel, {
+              headerTitle,
+              noticeEl,
+              statusEl: bgStatusEl,
+              issueCardSlot,
+            });
+            return;
+          }
+
+          if (itemKind === "pull_request" && res.pr) {
+            if (res.pr_error) {
+              el.lookupPanel.appendChild(
+                makeLookupNotice(
+                  `Live lookup unavailable (${res.pr_error}); showing cached PR info.`,
+                  "banner-info"
+                )
+              );
+            }
+            const wrap = document.createElement("div");
+            wrap.className = "lookup-card-wrap";
+            wrap.appendChild(
+              renderPrCard(res.pr, false, {
+                showActions: false,
+                showReviewDetails: true,
+                fromCache: Boolean(res.from_cache),
+              })
+            );
+            el.lookupPanel.appendChild(wrap);
+          } else if (res.pr_error) {
+            el.lookupPanel.appendChild(
+              makeLookupNotice(
+                `Could not load PR info from GitHub: ${res.pr_error}`,
+                "banner-error"
+              )
+            );
+          }
+
+          if (convs.length) {
+            el.lookupPanel.appendChild(renderLookupConversations(convs));
+          } else {
+            const msg = document.createElement("p");
+            msg.className = "cache-note";
+            msg.textContent = "No existing review chat found for this PR.";
+            el.lookupPanel.appendChild(msg);
+          }
+
+          const hasExisting =
+            convs.length > 0 || Boolean(res.pr?.triggered_chat?.conversation_id);
+          const newBtn = document.createElement("button");
+          newBtn.type = "button";
+          newBtn.className = "lookup-rerun-btn";
+          newBtn.dataset.prNumber = String(prNum);
+          newBtn.dataset.hasExisting = hasExisting ? "1" : "0";
+          newBtn.disabled = state.launchingPr !== null;
+          newBtn.textContent = hasExisting
+            ? `Re-run Review PR #${prNum} in Worktree ↗`
+            : `Review PR #${prNum} in Worktree ↗`;
+          newBtn.addEventListener("click", () =>
+            launchReview(prNum, newBtn.dataset.hasExisting === "1")
+          );
+          el.lookupPanel.appendChild(newBtn);
+        } catch (err) {
+          if (seq !== state.lookupSeq) return;
+          el.lookupPanel.classList.add("hidden");
+          showError(`Lookup failed: ${err.message}`);
+        }
+      }
+
+      el.filtersBtn.addEventListener("click", () => {
+        el.filtersPanel.classList.toggle("hidden");
+      });
+
+      el.filtersCancelBtn.addEventListener("click", () => {
+        populateFilterForm(state.config);
+        el.filtersPanel.classList.add("hidden");
+      });
+
+      el.filtersForm.addEventListener("submit", async (evt) => {
+        evt.preventDefault();
+        showError("");
+        const parsedMaxAge = Number.parseInt(el.cfgMaxAge.value || "30", 10);
+        const payload = {
+          repo: el.cfgRepo.value.trim(),
+          user: el.cfgUser.value.trim(),
+          max_age_days:
+            Number.isInteger(parsedMaxAge) && parsedMaxAge >= 0 ? parsedMaxAge : 30,
+          custom_query: el.cfgQuery.value.trim(),
+          review_requested_only: el.cfgReqOnly.checked,
+          exclude_approved_by_me: el.cfgExclApproved.checked,
+          exclude_authored_by_me: el.cfgExclAuthored.checked,
+          exclude_drafts: el.cfgExclDrafts.checked,
+        };
+        try {
+          const res = await apiFetch("api/config", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          state.config = res.config;
+          populateFilterForm(res.config);
+          el.filtersPanel.classList.add("hidden");
+          await loadQueue(true);
+        } catch (err) {
+          showError(err.message);
+        }
+      });
+
+      el.refreshBtn.addEventListener("click", () => loadQueue(true));
+      el.lookupBtn.addEventListener("click", runLookup);
+      el.lookupInput.addEventListener("keydown", (evt) => {
+        if (evt.key === "Enter") {
+          evt.preventDefault();
+          runLookup();
+        }
+      });
+      el.errorDismissBtn.addEventListener("click", () => showError(""));
+      el.statusDismissBtn.addEventListener("click", () => showStatus(""));
+
+      document.addEventListener("DOMContentLoaded", async () => {
+        await loadConfig();
+        await loadQueue(false);
+      });
+    })();
+  </script>
+</body>
+</html>

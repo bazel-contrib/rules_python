@@ -58,7 +58,6 @@ def _PyRuntimeInfo_init(
         interpreter_files_to_run = None,
         coverage_tool = None,
         coverage_files = None,
-        coverage_imports = None,
         pyc_tag = None,
         python_version,
         stub_shebang = None,
@@ -85,16 +84,11 @@ def _PyRuntimeInfo_init(
         if interpreter_files_to_run.executable != interpreter:
             fail("'interpreter_files_to_run.executable' must match 'interpreter'")
 
-    if coverage_tool and coverage_imports:
-        fail("cannot specify both 'coverage_tool' and 'coverage_imports'")
-
-    has_coverage = bool(coverage_tool or coverage_imports)
-    if has_coverage != bool(coverage_files):
+    if (coverage_tool and not coverage_files) or (not coverage_tool and coverage_files):
         fail(
-            "coverage_files must be set if and only if coverage_tool or " +
-            "coverage_imports is set, got coverage_tool={}, coverage_imports={}, coverage_files={}".format(
+            "coverage_tool and coverage_files must both be set or neither must be set, " +
+            "got coverage_tool={}, coverage_files={}".format(
                 coverage_tool,
-                coverage_imports,
                 coverage_files,
             ),
         )
@@ -124,7 +118,6 @@ def _PyRuntimeInfo_init(
         "abi_flags": abi_flags,
         "bootstrap_template": bootstrap_template,
         "coverage_files": coverage_files,
-        "coverage_imports": coverage_imports,
         "coverage_tool": coverage_tool,
         "files": files,
         "implementation_name": implementation_name,
@@ -228,18 +221,8 @@ The set of substitutions depends on {obj}`--bootstrap_impl`
         "coverage_files": """
 :type: depset[File] | None
 
-The files required at runtime for using `coverage_tool` or `coverage_imports`.
-Will be `None` if neither was provided.
-""",
-        "coverage_imports": """
-:type: depset[str] | None
-
-Runfiles-root-relative import paths that make the `coverage` package importable,
-e.g. the {obj}`PyInfo.imports` of a `py_library` used as the coverage tool.
-Mutually exclusive with `coverage_tool`.
-
-:::{versionadded} VERSION_NEXT_FEATURE
-:::
+The files required at runtime for using `coverage_tool`. Will be `None` if no
+`coverage_tool` was provided.
 """,
         "coverage_tool": """
 :type: File | None
@@ -322,7 +305,16 @@ are (only) `"PY2"` and `"PY3"`.
 The template to use for the binary-specific site-init hook run by the
 interpreter at startup.
 
+The following substitutions are made during template expansion:
+* `%coverage_from_deps%`: The string `1` if coverage is enabled and the
+  `coverage` package is importable from the dependencies (see
+  {flag}`--coverage`). The string `0` otherwise.
+
 :::{versionadded} 1.0.0
+:::
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+Added the `%coverage_from_deps%` substitution.
 :::
 """,
         "stage2_bootstrap_template": """
@@ -339,9 +331,8 @@ The following substitutions are made during template expansion:
   can be a `.py` or `.pyc` file, depending on precompile settings.
 * `%coverage_tool%`: Runfiles-relative path to the coverage library's entry point.
   If coverage is not enabled or available, an empty string.
-* `%coverage_imports%`: A colon-delimited string of runfiles-relative paths to
-  add to sys.path to import the `coverage` package. If coverage is not enabled
-  or the runtime has no `coverage_imports`, an empty string.
+* `%coverage_rcfiles%`: A colon-delimited string of the `File.short_path`
+  values of the `.coveragerc` files to merge. See {flag}`--coverage`.
 * `%import_all%`: The string `True` if all repositories in the runfiles should
   be added to sys.path. The string `False` otherwise.
 * `%imports%`: A colon-delimited string of runfiles-relative paths to add to
@@ -350,6 +341,10 @@ The following substitutions are made during template expansion:
 * `%workspace_name%`: The name of the workspace the target belongs to.
 
 :::{versionadded} 0.33.0
+:::
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+Added the `%coverage_rcfiles%` substitution.
 :::
 """,
         "stub_shebang": """

@@ -18,15 +18,41 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load(":common_labels.bzl", "labels")
 load(":flags.bzl", "FreeThreadedFlag")
-load(":py_info.bzl", "PyInfo")
 load(":py_internal.bzl", "py_internal")
 load(":py_runtime_info.bzl", "DEFAULT_STUB_SHEBANG", "PyRuntimeInfo")
 load(":reexports.bzl", "BuiltinPyRuntimeInfo")
-load(":version.bzl", "version")
 
 _py_builtins = py_internal
+_HAS_COVERAGE_FLAG = "//python/private:has_coverage_flag"
+_UNSET_COVERAGE_LABELS = (
+    # keep-sorted start
+    Label("//python/private:sentinel"),
+    Label("//python:none"),
+    # keep-sorted end
+)
 
-def coverage_tool_missing_message(*, coverage_enabled, coverage_tool, label):
+# Inspects `settings[labels.COVERAGE]` via raw BuildOptions onto a bool_setting
+# so `py_runtime` can suppress `coverage_tool_missing_message` when `--coverage`
+# is set. Depending on `//python/config_settings:coverage` directly (or via
+# `config_setting`) from `py_runtime` would configure the `py_library` target,
+# resolving the Python toolchain and creating a dependency cycle.
+def _has_coverage_flag_transition_impl(settings, _attr):
+    return {
+        _HAS_COVERAGE_FLAG: settings[labels.COVERAGE] not in _UNSET_COVERAGE_LABELS,
+    }
+
+_has_coverage_flag_transition = transition(
+    implementation = _has_coverage_flag_transition_impl,
+    inputs = [labels.COVERAGE],
+    outputs = [_HAS_COVERAGE_FLAG],
+)
+
+def coverage_tool_missing_message(
+        *,
+        coverage_enabled,
+        coverage_tool,
+        has_coverage_flag = False,
+        label):
     """Build the warning for a selected runtime that cannot produce coverage.
 
     Kept separate from the rule implementation so the decision is unit testable
@@ -35,20 +61,25 @@ def coverage_tool_missing_message(*, coverage_enabled, coverage_tool, label):
     Args:
         coverage_enabled: {type}`bool` whether the build is collecting coverage.
         coverage_tool: {type}`File | None` the runtime's coverage entry point.
+        has_coverage_flag: {type}`bool` whether `--coverage` is set to a target.
         label: {type}`Label` the `py_runtime` being analyzed.
 
     Returns:
         {type}`str | None` the message to print, or `None` when no warning is
         warranted.
     """
-    if not coverage_enabled or coverage_tool:
+    if not coverage_enabled or coverage_tool or has_coverage_flag:
         return None
 
     return """
 ======================================================================
 WARNING: Python runtime {label} has no coverage_tool.
   `bazel coverage` will produce empty lcov data for py_test targets that
-  resolve to this runtime.
+  resolve to this runtime, unless --@rules_python//python/config_settings:coverage
+  is set.
+
+  To use the `coverage` locked in your requirements, set e.g.:
+    --@rules_python//python/config_settings:coverage=@pypi//coverage
 
   For rules_python's hermetic toolchains, enable the bundled coverage.py:
     python.toolchain(configure_coverage_tool = True)           # bzlmod
@@ -60,31 +91,6 @@ WARNING: Python runtime {label} has no coverage_tool.
   https://rules-python.readthedocs.io/en/latest/coverage.html
 ======================================================================
 """.format(label = label)
-
-def _coverage_tool_transition_impl(_settings, _attr):
-    """Build the coverage tool without itself being a toolchain coverage tool.
-
-    The coverage tool can be a target that resolves the Python toolchain itself,
-    e.g. a `py_library` from a pip hub. Setting the bootstrap flag makes the
-    {obj}`py_runtime` macro drop the `coverage_tool` dependency in that
-    configuration, which would otherwise be a dependency cycle. The coverage tool
-    itself is not instrumented, so coverage collection is disabled.
-
-    This mirrors how `rules_go` builds `nogo`.
-    """
-    return {
-        labels.BOOTSTRAP_COVERAGE_TOOL: True,
-        "//command_line_option:collect_code_coverage": False,
-    }
-
-_coverage_tool_transition = transition(
-    implementation = _coverage_tool_transition_impl,
-    inputs = [],
-    outputs = [
-        labels.BOOTSTRAP_COVERAGE_TOOL,
-        "//command_line_option:collect_code_coverage",
-    ],
-)
 
 def _py_runtime_impl(ctx):
     interpreter_path = ctx.attr.interpreter_path or None  # Convert empty string to None
@@ -151,29 +157,23 @@ def _py_runtime_impl(ctx):
         else:
             fail("interpreter must be an executable target or must produce exactly one file.")
 
-    coverage_tool = None
-    coverage_imports = None
-    coverage_files = None
     if ctx.attr.coverage_tool:
-        # A list because of the Starlark transition on the attribute.
-        coverage_target = ctx.attr.coverage_tool[0]
-        coverage_di = coverage_target[DefaultInfo]
+        coverage_di = ctx.attr.coverage_tool[DefaultInfo]
 
-        if PyInfo in coverage_target:
-            # E.g. `@pypi//coverage`: the `coverage` package is imported using
-            # the import paths of the target.
-            coverage_imports = coverage_target[PyInfo].imports
-        elif _is_singleton_depset(coverage_di.files):
+        if _is_singleton_depset(coverage_di.files):
             coverage_tool = coverage_di.files.to_list()[0]
         elif coverage_di.files_to_run and coverage_di.files_to_run.executable:
             coverage_tool = coverage_di.files_to_run.executable
         else:
-            fail("coverage_tool must provide PyInfo, be an executable target or produce exactly one file.")
+            fail("coverage_tool must be an executable target or must produce exactly one file.")
 
         coverage_files = depset(transitive = [
             coverage_di.files,
             coverage_di.default_runfiles.files,
         ])
+    else:
+        coverage_tool = None
+        coverage_files = None
 
     # Reported here rather than where the toolchains are registered: this rule is
     # analyzed once per configuration, and only for the runtime that toolchain
@@ -181,7 +181,10 @@ def _py_runtime_impl(ctx):
     # hypothetical. See https://github.com/bazel-contrib/rules_python/issues/3950.
     coverage_warning = coverage_tool_missing_message(
         coverage_enabled = ctx.configuration.coverage_enabled,
-        coverage_tool = coverage_tool or coverage_imports,
+        coverage_tool = coverage_tool,
+        has_coverage_flag = (
+            ctx.attr._has_coverage_flag[0][BuildSettingInfo].value
+        ),
         label = ctx.label,
     )
     if coverage_warning:
@@ -222,8 +225,7 @@ def _py_runtime_impl(ctx):
         interpreter = interpreter,
         files = runtime_files if hermetic else None,
         coverage_tool = coverage_tool,
-        # The builtin provider only knows about coverage_tool.
-        coverage_files = coverage_files if coverage_tool else None,
+        coverage_files = coverage_files,
         python_version = python_version,
         stub_shebang = ctx.attr.stub_shebang,
         bootstrap_template = ctx.file.bootstrap_template,
@@ -232,8 +234,6 @@ def _py_runtime_impl(ctx):
 
     # There are all args that BuiltinPyRuntimeInfo doesn't support
     py_runtime_info_kwargs.update(dict(
-        coverage_files = coverage_files,
-        coverage_imports = coverage_imports,
         implementation_name = ctx.attr.implementation_name,
         interpreter_version_info = interpreter_version_info,
         interpreter_files_to_run = interpreter_files_to_run,
@@ -333,35 +333,19 @@ See @bazel_tools//tools/python:python_bootstrap_template.txt for more variables.
             ),
             "coverage_tool": attr.label(
                 allow_files = False,
-                cfg = _coverage_tool_transition,
                 doc = """
 This is a target to use for collecting code coverage information from
 {rule}`py_binary` and {rule}`py_test` targets.
 
-If set, the target must either provide {obj}`PyInfo` (e.g. a `py_library`
-such as `@pypi//coverage`), produce a single file or be an executable target.
-If the target provides {obj}`PyInfo`, then its import paths are used to import
-the `coverage` package. Otherwise, the path to the single file, or the
-executable if the target is executable, determines the entry point for the
-python coverage tool.  The target and its runfiles will be added to the
-runfiles when coverage is enabled.
+If set, the target must either produce a single file or be an executable target.
+The path to the single file, or the executable if the target is executable,
+determines the entry point for the python coverage tool.  The target and its
+runfiles will be added to the runfiles when coverage is enabled.
 
 The entry point for the tool must be loadable by a Python interpreter (e.g. a
 `.py` or `.pyc` file).  It must accept the command line arguments
 of [`coverage.py`](https://coverage.readthedocs.io), at least including
 the `run` and `lcov` subcommands.
-
-Using a target providing {obj}`PyInfo` is the preferred way. See
-{ref}`coverage-from-pypi` for using `coverage` from a pip hub.
-
-:::{versionchanged} VERSION_NEXT_FEATURE
-Targets providing {obj}`PyInfo`, such as `@pypi//coverage`, can be used.
-:::
-
-:::{deprecated} VERSION_NEXT_FEATURE
-Using a target that does not provide {obj}`PyInfo` will be deprecated in the
-next version.
-:::
 """,
             ),
             "files": attr.label_list(
@@ -504,6 +488,10 @@ The {obj}`PyRuntimeInfo.zip_main_template` field.
 :::
 """,
             ),
+            "_has_coverage_flag": attr.label(
+                cfg = _has_coverage_flag_transition,
+                default = _HAS_COVERAGE_FLAG,
+            ),
             "_py_freethreaded_flag": attr.label(
                 default = labels.PY_FREETHREADED,
             ),
@@ -518,11 +506,15 @@ def _is_singleton_depset(files):
     return _py_builtins.is_singleton_depset(files)
 
 def _interpreter_version_info_from_version_str(version_str):
-    v = version.parse(version_str)
+    # We only need the release numbers, e.g. `3.15.0` from `3.15.0rc1`.
     version_info = {}
-    parts = list(v.release)
-    for key in ("major", "minor", "micro"):
-        if not parts:
-            break
-        version_info[key] = parts.pop(0)
+    for key, part in zip(("major", "minor", "micro"), version_str.split(".")):
+        digits = ""
+        for c in part.elems():
+            if not c.isdigit():
+                break
+            digits += c
+        if not digits:
+            fail("Expected the Python version to be '<major>[.<minor>[.<micro>]]', got: '{}'".format(version_str))
+        version_info[key] = int(digits)
     return version_info

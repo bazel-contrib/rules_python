@@ -21,8 +21,7 @@ dependencies = [
     "macholib",
     "markupsafe",
     "pytest",
-    "pytest-bazel",
+    # >=1.0.0 for built-in test sharding and non-sandbox rootdir fixes.
+    "pytest-bazel>=1.0.0",
     "pytest-mock",
-    "pytest-randomly",
-    "pytest-shard",
 ]

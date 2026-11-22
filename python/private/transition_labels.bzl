@@ -10,6 +10,7 @@ load(":common_labels.bzl", "labels")
 _BASE_TRANSITION_LABELS = [
     labels.ADD_SRCS_TO_RUNFILES,
     labels.BOOTSTRAP_IMPL,
+    labels.COVERAGE,
     labels.DEBUGGER,
     labels.EXEC_TOOLS_TOOLCHAIN,
     "//command_line_option:extra_toolchains",

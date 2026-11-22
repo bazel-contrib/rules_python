@@ -1,0 +1,6 @@
+{
+  "name": "pr-queue",
+  "displayName": "PR Queue",
+  "description": "Pending GitHub PR review queue and manual PR code review launcher side panel",
+  "suggestedPrompts": ["/pr-queue"]
+}

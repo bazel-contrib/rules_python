@@ -16,16 +16,23 @@ path = "shrubbery/src/lib.rs"
 # keep-sorted start
 anyhow = "1.0.104"
 argfile = "1.0.0"
-# Transitive dep of zip: zip's `deflate-flate2` leaves the backend unset, so a
-# top-level pin keeps flate2 on its default pure-Rust backend.
-flate2 = "1.1.11"
+base64 = "0.23.1"
+configparser = "3.3.0"
+csv = "1.4.0"
+# Transitive dep of zip: disable default features (`rust_backend` pulls in
+# unused `miniz_oxide`) and enable `runtime_detection` so `zlib-rs` enables
+# runtime SIMD feature detection (`zip` disables `flate2` default features).
+flate2 = { version = "1.1.11", default-features = false, features = ["runtime_detection"] }
 lexopt = "0.3.2"
+pep440_rs = "0.7.3"
+pep508_rs = "0.9.2"
+regex = "1.13.1"
 sha2 = "0.11.1"
 # Disable default features (C zstd-sys bindings plus unused compression,
-# encryption, and time subsystems) and enable only `deflate-flate2`.
+# encryption, and time subsystems) and enable only `deflate-flate2-zlib-rs`.
 # NOTE: Keep below 9.1.0; zip >= 9.1.0 adds mandatory target-conditional OS deps
 # (getrandom, windows-sys, libc) that fail on powerpc64le-unknown-linux-musl
 # until rules_rust defines a powerpc64le @rules_rust//rust/platform
 # config_setting.
-zip = { version = "~9.0.5", default-features = false, features = ["deflate-flate2"] }
+zip = { version = "~9.0.5", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 # keep-sorted end

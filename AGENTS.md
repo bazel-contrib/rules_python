@@ -72,8 +72,10 @@ execution logs, or check checklists in the PR description.
   trivial diff details (e.g., stating a push is "comment-only"). GitHub
   already displays commits and check statuses.
 * **Comment only when actionable:** Only post a PR comment to answer a
-  reviewer's question, ask a clarifying question, or briefly indicate the PR
-  is ready for re-review (e.g., `PTAL`) once CI is passing.
+  reviewer's question, ask a clarifying question, briefly note direct PR
+  description line-wrapping edits or summarize direct fixes pushed while
+  reviewing another author's PR during `/review-code`, or briefly indicate
+  the PR is ready for re-review (e.g., `PTAL`) once CI is passing.
 
 ### Python pytest conventions
 
@@ -204,8 +206,9 @@ This repository contains 3 Bazel bzlmod modules.
 public API. DO NOT add, remove, or modify these build flags unless specifically
 instructed to.
 
-`version.bzl` defines `MINIMUM_BAZEL_VERSION`. Do not add compatibility logic
-or feature guards for Bazel versions older than `MINIMUM_BAZEL_VERSION`.
+The minimum supported Bazel version is the `bazel` version of
+`.minimum_supported_version` in `.bazelci/presubmit.yml`. Do not add
+compatibility logic or feature guards for older Bazel versions.
 
 `bazel query --output=build` can be used to inspect target definitions.
 
