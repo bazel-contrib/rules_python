@@ -71,7 +71,7 @@ For example, if the lock file has `google-api-core[async_rest,grpc]`, then the
 hub has:
 
 ```
-@pypi//google_api_core               # The package with all of the extras
+@pypi//google_api_core               # The package with the requested extras
 @pypi//google_api_core:[]            # The package without any extras
 @pypi//google_api_core:[async_rest]  # The package with the async_rest extra
 @pypi//google_api_core:[grpc]        # The package with the grpc extra
