@@ -4,6 +4,11 @@ load("@bazel_skylib//lib:types.bzl", "types")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load(":pep508_requirement.bzl", "requirement")
 
+# The limit for processing the groups selected by the self references, e.g.
+# `my-project[test]`. A group is processed once for each different set of
+# markers that it is selected with.
+_MAX_SELF_REFERENCES = 10000
+
 def select_dependency_groups(pyproject, specs, _fail = fail):
     """Select the packages named by the given dependency group specifiers.
 
@@ -30,6 +35,13 @@ def select_dependency_groups(pyproject, specs, _fail = fail):
           * `all`: {type}`bool` whether all of the packages including the
             transitive dependencies should be selected, i.e. `"*"` and
             `"transitive"` were given.
+          * `extras`: {type}`dict[str, dict[tuple[str], list[str]]]` the
+            normalized package names mapped to the extras that the selected
+            requirements request, e.g. `requests[socks]`. The extras are
+            keyed by the environment markers that all need to be true for
+            the extras to be requested, e.g. `("sys_platform == 'win32'",)`
+            or an empty tuple if there are no markers. When `all` is set,
+            the extras of all of the groups are returned.
         Returns `None` on failure.
     """
     groups = {"default": pyproject.dependencies}
@@ -41,18 +53,17 @@ def select_dependency_groups(pyproject, specs, _fail = fail):
     for name, reqs in expanded.items():
         groups["group:" + name] = reqs
 
-    if "transitive" in specs:
+    select_all = "transitive" in specs
+    if select_all:
         if "*" not in specs:
             _fail("The 'transitive' dependency group specifier is only supported together with '*', which selects all of the packages, got: {}".format(
                 specs,
             ))
             return None
-        return struct(
-            # list[str]: sorted normalized package names selected by `specs`.
-            packages = [],
-            # bool: True when all hub packages are selected.
-            all = True,
-        )
+
+        # All of the packages are selected, but the extras are only known
+        # from the groups.
+        specs = ["*"]
 
     selected = {}
     for spec in specs:
@@ -70,29 +81,83 @@ def select_dependency_groups(pyproject, specs, _fail = fail):
 
     # A self reference like `my-project[test]` selects the optional
     # dependencies, including nested composite extras.
+    #
+    # The groups are queued together with the markers of the self references
+    # that selected them, because the requirements of such groups are only
+    # requested when the markers are true. A group is processed again if it is
+    # selected with markers that are not known to be stricter than the ones
+    # that it was processed with.
     project = normalize_name(pyproject.name or "")
     packages = {}
-    queue = list(selected)
-    for _ in range(len(groups)):
+    extras = {}
+    processed = {}
+    queue = [(key, ()) for key in selected]
+    for _ in range(_MAX_SELF_REFERENCES):
         if not queue:
             break
-        for req in groups[queue.pop(0)]:
+        key, markers = queue.pop(0)
+        if _is_processed(processed.setdefault(key, []), markers):
+            continue
+        processed[key].append(markers)
+        for req in groups[key]:
             req = requirement(req)
+            req_markers = _add_marker(markers, req.marker)
             if req.name_ != project:
                 packages[req.name_] = None
+                if req.extras:
+                    pkg_extras = extras.setdefault(req.name_, {}).setdefault(req_markers, {})
+                    for extra in req.extras:
+                        pkg_extras[extra] = None
                 continue
             for extra in req.extras:
                 opt_key = "optional:" + extra
-                if opt_key in groups and opt_key not in selected:
-                    selected[opt_key] = None
-                    queue.append(opt_key)
+                if opt_key in groups:
+                    queue.append((opt_key, req_markers))
+
+    if queue:
+        _fail("Too many self references with different markers in the dependency groups of '{}'".format(
+            pyproject.name,
+        ))
+        return None
 
     return struct(
         # list[str]: sorted normalized package names selected by `specs`.
-        packages = sorted(packages),
+        packages = [] if select_all else sorted(packages),
         # bool: True when all packages including transitive ones are selected.
-        all = False,
+        all = select_all,
+        # dict[str, dict[tuple[str], list[str]]]: the extras of the packages
+        # keyed by the markers that need to be true.
+        extras = {
+            name: {
+                markers: sorted(pkg_extras)
+                for markers, pkg_extras in sorted(by_markers.items())
+            }
+            for name, by_markers in sorted(extras.items())
+        },
     )
+
+def _add_marker(markers, marker):
+    if not marker or marker in markers:
+        return markers
+    return tuple(sorted(markers + (marker,)))
+
+def _is_processed(processed, markers):
+    """Tell if a group was already processed with the same or looser markers.
+
+    Args:
+        processed: {type}`list[tuple[str]]` the markers that the group was
+            processed with.
+        markers: {type}`tuple[str]` the markers to check.
+
+    Returns:
+        {type}`bool` `True` if all of the markers of a processed entry are in
+        `markers`, i.e. the requirements of the group are already requested
+        whenever `markers` are true.
+    """
+    for known in processed:
+        if len([m for m in known if m in markers]) == len(known):
+            return True
+    return False
 
 def _match(spec, groups):
     """Match a dependency group specifier against normalized group keys.

@@ -100,6 +100,106 @@ def _test_select_all(env):
 
 _tests.append(_test_select_all)
 
+def _test_select_extras(env):
+    pyproject = struct(
+        name = "my-project",
+        dependencies = ["main-pkg[Foo_Bar, baz]>=1.0", "plain-pkg"],
+        optional_dependencies = {
+            "all": ["my-project[docs]"],
+            "docs": ["docs-pkg[extra]", "main-pkg[docs]"],
+        },
+        dependency_groups = {
+            "dev": ["dev-pkg[cli]", {"include-group": "test"}],
+            "test": [
+                "test-pkg[cov]; sys_platform == 'linux'",
+                "test-pkg[win]; sys_platform == 'win32'",
+                "test-pkg[cov]",
+            ],
+        },
+    )
+    for specs, want in [
+        (["default"], {"main_pkg": {(): ["baz", "foo_bar"]}}),
+        # The markers of the requirements are kept, so that the extras can be
+        # added only for the platforms that request them.
+        (["dev"], {
+            "dev_pkg": {(): ["cli"]},
+            "test_pkg": {
+                (): ["cov"],
+                ("sys_platform == 'linux'",): ["cov"],
+                ("sys_platform == 'win32'",): ["win"],
+            },
+        }),
+        # The extras of the self reference are the optional dependencies of
+        # the project, not the extras of a package.
+        (["all"], {"docs_pkg": {(): ["extra"]}, "main_pkg": {(): ["docs"]}}),
+        (["default", "docs"], {
+            "docs_pkg": {(): ["extra"]},
+            "main_pkg": {(): ["baz", "docs", "foo_bar"]},
+        }),
+    ]:
+        got, failures = _select(specs, pyproject = pyproject)
+        env.expect.where(specs = specs).that_collection(failures).contains_exactly([])
+        env.expect.where(specs = specs).that_dict(got.extras).contains_exactly(want)
+
+    # The extras of all of the groups are returned when everything is selected.
+    got, failures = _select(["*", "transitive"], pyproject = pyproject)
+    env.expect.that_collection(failures).contains_exactly([])
+    env.expect.that_bool(got.all).equals(True)
+    env.expect.that_collection(got.packages).contains_exactly([])
+    env.expect.that_dict(got.extras).keys().contains_exactly([
+        "dev_pkg",
+        "docs_pkg",
+        "main_pkg",
+        "test_pkg",
+    ])
+
+_tests.append(_test_select_extras)
+
+def _test_select_extras_self_reference_markers(env):
+    pyproject = struct(
+        name = "my-project",
+        dependencies = [
+            "my-project[win]; sys_platform == 'win32'",
+            "my-project[cycle]; python_version < '3.12'",
+        ],
+        optional_dependencies = {
+            "cycle": ["my-project[win]", "my-project[cycle]", "cycle-pkg[c]"],
+            "win": [
+                "win-pkg[a]",
+                "win-pkg[b]; python_version < '3.12'",
+                "my-project[cycle]",
+            ],
+        },
+        dependency_groups = {},
+    )
+
+    # The requirements of a group that is selected by a self reference with a
+    # marker are only requested if the marker is true.
+    got, failures = _select(["default"], pyproject = pyproject)
+    env.expect.that_collection(failures).contains_exactly([])
+    env.expect.that_collection(got.packages).contains_exactly(["cycle_pkg", "win_pkg"])
+    env.expect.that_dict(got.extras).contains_exactly({
+        "cycle_pkg": {
+            ("python_version < '3.12'",): ["c"],
+            ("sys_platform == 'win32'",): ["c"],
+        },
+        "win_pkg": {
+            ("python_version < '3.12'",): ["a", "b"],
+            ("python_version < '3.12'", "sys_platform == 'win32'"): ["b"],
+            ("sys_platform == 'win32'",): ["a"],
+        },
+    })
+
+    # Selecting the group directly requests it on all of the platforms.
+    got, failures = _select(["default", "win"], pyproject = pyproject)
+    env.expect.that_collection(failures).contains_exactly([])
+    env.expect.that_dict(got.extras["win_pkg"]).contains_at_least({
+        (): ["a"],
+        ("python_version < '3.12'",): ["b"],
+    })
+
+_tests.append(_test_select_extras_self_reference_markers)
+
 def _test_select_empty_wildcards(env):
     pyproject = struct(
         name = "my-project",
