@@ -41,7 +41,17 @@ def _load_bootstrap() -> dict:
     return bootstrap
 
 
+def _can_create_symlinks() -> bool:
+    with tempfile.TemporaryDirectory() as temp:
+        try:
+            os.symlink(temp, os.path.join(temp, "link"), target_is_directory=True)
+        except OSError:
+            return False
+    return True
+
+
 class CachedVenvDanglingSymlinkTest(unittest.TestCase):
+    @unittest.skipUnless(_can_create_symlinks(), "can't create symlinks")
     def test_replaces_dangling_package_link_before_creating_child_link(self) -> None:
         self._test_replaces_dangling_package_link(symlinks_supported=True)
 
