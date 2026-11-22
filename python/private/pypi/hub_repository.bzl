@@ -60,6 +60,7 @@ def _impl(rctx):
         rctx.attr._config_template,
         substitutions = {
             "%%PACKAGES%%": render.dict(rctx.attr.whl_map, value_repr = lambda x: "None"),
+            "%%TESTONLY_PACKAGES%%": render.list(sorted(testonly_packages)),
         },
     )
 

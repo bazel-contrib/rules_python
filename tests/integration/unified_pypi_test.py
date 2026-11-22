@@ -37,6 +37,7 @@ class UnifiedPypiTest(runner.TestCase):
         self.run_bazel(
             "test",
             "//:test_testonly",
+            "//:test_testonly_dep",
             "//:test_testonly_unified",
             "//:test_all_testonly_requirements",
         )

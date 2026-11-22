@@ -82,7 +82,7 @@ pip.configure(
 )
 use_repo(pip, "pypi_filtered")
 
-# `pypi_testonly` only exposes `iniconfig` and it is testonly.
+# `pypi_testonly` only exposes testonly packages.
 pip.parse(
     hub_name = "pypi_testonly",
     pyproject_toml = "//:pyproject_testonly.toml",

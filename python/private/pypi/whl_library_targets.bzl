@@ -29,6 +29,7 @@ def whl_library_targets(
         extras = [],
         entry_points = {},
         include = [],
+        testonly_deps = [],
         group_deps = [],
         group_name = None,
         dep_template = None,
@@ -58,6 +59,8 @@ def whl_library_targets(
         extras: {type}`list[str]` The list of requested extras. This essentially includes extra transitive dependencies in the final targets depending on the wheel `METADATA`.
         entry_points: {type}`list[dict]` A list of parsed entry point definitions.
         include: {type}`list[str]` The list of packages to include.
+        testonly_deps: {type}`list[str]` The packages that are `testonly` in
+            the hub.
         group_name: {type}`str | None` name of the dependency group (if any).
         dep_template: {type}`str | None` The dep_template to use.
         data_exclude: {type}`list[str]` The globs for data attribute exclusion.
@@ -99,6 +102,7 @@ def whl_library_targets(
             group_name = group_name,  # must specify group_deps together
             extras = extras,  # only needed if requires_dist is present
             include = include,  # only needed if requires_dist is present
+            testonly_deps = testonly_deps,  # only needed if requires_dist is present
             repo = None,  # set aliases in the same repo
             aliases = {},
             **kwargs

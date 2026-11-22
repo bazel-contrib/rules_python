@@ -43,6 +43,7 @@ load(
     "PY_LIBRARY_IMPL_LABEL",
     "PY_LIBRARY_PUBLIC_LABEL",
     "PY_SRCS_LABEL",
+    "TESTONLY_IMPL_PREFIX",
     "WHEEL_FILE",
     "WHEEL_FILE_IMPL_LABEL",
     "WHEEL_FILE_PUBLIC_LABEL",
@@ -253,6 +254,12 @@ _TESTONLY_WRAPPED = [
     EXTRACTED_WHEEL_FILES,
 ]
 
+# The wrapped targets that the whl repositories depend on.
+_TESTONLY_DEPS = [
+    PY_LIBRARY_PUBLIC_LABEL,
+    WHEEL_FILE_PUBLIC_LABEL,
+]
+
 def _alias(_native, rules, *, name, actual, testonly, **kwargs):
     if not testonly:
         _native.alias(name = name, actual = actual, **kwargs)
@@ -264,11 +271,13 @@ def _alias(_native, rules, *, name, actual, testonly, **kwargs):
         _native.alias(name = name, actual = actual, testonly = True, **kwargs)
         return
 
-    impl = "_testonly_" + name
+    # The whl repositories are not `testonly`, so they depend on the wrapped
+    # targets of the `pkg` and `whl` instead.
+    impl = TESTONLY_IMPL_PREFIX + name
     _native.alias(
         name = impl,
         actual = actual,
-        visibility = ["//visibility:private"],
+        visibility = ["//visibility:public" if name in _TESTONLY_DEPS else "//visibility:private"],
     )
     if name == PY_LIBRARY_PUBLIC_LABEL:
         rules.py_library(

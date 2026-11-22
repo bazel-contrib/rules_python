@@ -11,6 +11,7 @@ load(
     "PY_LIBRARY_IMPL_LABEL",
     "PY_LIBRARY_PUBLIC_LABEL",
     "PY_SRCS_LABEL",
+    "TESTONLY_IMPL_PREFIX",
     "WHEEL_FILE",
     "WHEEL_FILE_IMPL_LABEL",
     "WHEEL_FILE_PUBLIC_LABEL",
@@ -26,6 +27,7 @@ def whl_library_deps_targets(
         requires_dist = [],
         extras = [],
         include = [],
+        testonly_deps = [],
         group_deps = [],
         group_name = None,
         dep_template,
@@ -53,6 +55,9 @@ def whl_library_deps_targets(
             depending on the wheel `METADATA`. Optional because some packages
             don't request them.
         include: {type}`list[str]` The list of packages to include.
+        testonly_deps: {type}`list[str]` The packages that are `testonly` in
+            the hub. The targets created here are not `testonly`, so they
+            depend on the targets that the `testonly` targets of the hub wrap.
         group_name: {type}`str | None` name of the dependency group (if any).
         dep_template: {type}`str | None` The dep_template to use.
         tags: {type}`list[str]` The tags set on the targets.
@@ -157,7 +162,9 @@ def whl_library_deps_targets(
             data = _deps(
                 deps = [],
                 package_deps = package_deps,
-                tmpl = dep_template.format(name = "{}", target = WHEEL_FILE_PUBLIC_LABEL),
+                dep_template = dep_template,
+                target = WHEEL_FILE_PUBLIC_LABEL,
+                testonly_deps = testonly_deps,
             ),
             visibility = impl_vis,
         )
@@ -173,7 +180,9 @@ def whl_library_deps_targets(
                 # `pyi_srcs`, see `tests/base_rules/py_library`.
                 deps = [repo_label(PY_SRCS_LABEL)],
                 package_deps = package_deps,
-                tmpl = dep_template.format(name = "{}", target = PY_LIBRARY_PUBLIC_LABEL),
+                dep_template = dep_template,
+                target = PY_LIBRARY_PUBLIC_LABEL,
+                testonly_deps = testonly_deps,
             ),
             # Disable precompilation on this wrapper target to prevent duplicate
             # pyc generation; the underlying PY_SRCS_LABEL target handles it.
@@ -213,12 +222,20 @@ def _config_settings(dependencies_with_markers, rules, **kwargs):
             **kwargs
         )
 
-def _deps(deps, package_deps, tmpl):
-    deps = [] + deps + [tmpl.format(d) for d in sorted(package_deps.deps)]
+def _deps(deps, package_deps, *, dep_template, target, testonly_deps):
+    testonly_deps = {d: None for d in testonly_deps}
+
+    def label(dep):
+        return dep_template.format(
+            name = dep,
+            target = TESTONLY_IMPL_PREFIX + target if dep in testonly_deps else target,
+        )
+
+    deps = [] + deps + [label(d) for d in sorted(package_deps.deps)]
 
     for dep in package_deps.deps_select:
         deps = deps + select({
-            ":is_include_{}_true".format(dep): [tmpl.format(dep)],
+            ":is_include_{}_true".format(dep): [label(dep)],
             "//conditions:default": [],
         })
 
