@@ -138,6 +138,11 @@ def _venv_error(venv, hub, *, hubs, configured, testonly):
     # `//python/config_settings:venv` flag.
     if venv in ("pypi", "auto"):
         return "pip.configure() venv name '{}' is reserved".format(venv)
+
+    # A hub named `pypi` takes the place of the unified hub, so there would be
+    # nothing to select the venv with.
+    if "pypi" in hubs:
+        return "pip.configure() venv '{}' needs the unified `@pypi` hub, which is not created when a hub is named 'pypi'. Rename the hub or set RULES_PYTHON_PYPI_HUB_RESERVED=1 to rename it automatically".format(venv)
     if venv in configured and configured[venv].hub != hub:
         return "pip.configure() venv '{}' is used with both hub '{}' and hub '{}'".format(
             venv,

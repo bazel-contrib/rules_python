@@ -325,6 +325,37 @@ def _test_configure_venv_errors(env):
 
 _tests.append(_test_configure_venv_errors)
 
+def _test_configure_venv_with_pypi_hub(env):
+    # A hub named `pypi` replaces the unified hub, which the venvs need. It
+    # does not matter which hub the venv is for.
+    hubs = {
+        "hub": _hub(pyproject = "pyproject.toml"),
+        "pypi": _hub(pyproject = "pyproject.toml"),
+    }
+    for hub_name in ["hub", "pypi"]:
+        got, failures = _exposure(
+            _module(configure = [
+                _configure(hub_name = hub_name, venv = "dev", dependency_groups = ["dev"]),
+            ]),
+            hubs = hubs,
+        )
+        env.expect.where(hub_name = hub_name).that_str(got).equals(None)
+        env.expect.where(hub_name = hub_name).that_collection(failures).contains_exactly([
+            "pip.configure() venv 'dev' needs the unified `@pypi` hub, which is not created when a hub is named 'pypi'. Rename the hub or set RULES_PYTHON_PYPI_HUB_RESERVED=1 to rename it automatically",
+        ])
+
+    # The hub named `pypi` can still be configured itself.
+    got, failures = _exposure(
+        _module(configure = [
+            _configure(hub_name = "pypi", dependency_groups = ["dev"]),
+        ]),
+        hubs = hubs,
+    )
+    env.expect.that_collection(failures).contains_exactly([])
+    env.expect.that_dict(_packages(got)).contains_exactly({"pypi": ["other_pkg"]})
+
+_tests.append(_test_configure_venv_with_pypi_hub)
+
 def hub_exposure_test_suite(name):
     """Create the test suite.
 

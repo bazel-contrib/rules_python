@@ -292,7 +292,8 @@ does not create a new repository and does not change the hub.
 
 A venv name must not collide with a hub and a venv can't be used with two
 different hubs. The packages of a venv are testonly if they are testonly in
-the hub.
+the hub. The venvs can't be used when a hub is named `pypi`, because such a hub
+replaces the unified hub.
 
 :::{versionadded} VERSION_NEXT_FEATURE
 :::

@@ -1248,7 +1248,8 @@ hub.
 The name must not collide with a hub and a venv can't be used with two
 different hubs. Multiple tags with the same `venv` are combined and each of
 them needs the {attr}`dependency_groups` of its packages. `testonly` is not
-supported for venvs.
+supported for venvs. The venvs can't be used when a hub is named `pypi`,
+because such a hub replaces the unified hub.
 
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
