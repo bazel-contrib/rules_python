@@ -137,7 +137,7 @@ def _resolve_extras(self_name, reqs, extras):
 
     self_reqs = []
     for req in reqs:
-        if req.name != self_name:
+        if req.name_ != self_name:
             continue
 
         if req.marker == None:
