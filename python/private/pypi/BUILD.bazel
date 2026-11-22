@@ -284,6 +284,7 @@ bzl_library(
     name = "pep508_deps",
     srcs = ["pep508_deps.bzl"],
     deps = [
+        ":labels",
         ":pep508_env",
         ":pep508_evaluate",
         ":pep508_requirement",

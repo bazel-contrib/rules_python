@@ -348,7 +348,7 @@ def test_deps_with_extras_excludes_and_includes(env):
         "foo",
         requires_dist = ["bar", "bar[socks]", "baz[a]", "baz[b]", "qux[b]"],
         # The excludes are dependencies and the includes are packages
-        excludes = ["bar", "baz[a]"],
+        excludes = ["Bar", "baz[A]"],
         include = ["bar", "baz"],
         keep_extras = True,
     )
