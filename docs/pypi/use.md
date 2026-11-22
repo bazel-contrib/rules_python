@@ -130,7 +130,10 @@ If the lock file requests an extra that the package does not provide, e.g.
 `foo[nope]`, then `@pypi//foo:[nope]` is the same as `@pypi//foo:[]`, because
 an unknown extra does not have any dependencies. A warning is printed when the
 package is loaded, e.g. `WARNING: foo 1.0 does not provide the extra 'nope'`,
-which is how `pip` handles the unknown extras.
+which is how `pip` handles the unknown extras. The extras that a package
+provides are the `Provides-Extra` fields of the wheel `METADATA` and the extras
+that are used in the markers of its requirements, e.g. `extra == "socks"`,
+because the old metadata versions do not have the `Provides-Extra` fields.
 
 In bzlmod the extras are not passed to the repositories of the wheels, so
 changing the extras in the lock file does not refetch them.
