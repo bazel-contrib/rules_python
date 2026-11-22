@@ -146,8 +146,13 @@ A path relative to the `kind` directory within the venv.
         "version": """
 :type: str | None
 
-Represents the PyPI package version that the code originates from. It is normalized according to the
-PEP440 standard.
+Represents the PyPI package version that the code originates from. It is the
+version as it is spelled in the name of the `.dist-info` directory, which the
+installers normalize according to the PEP440 standard.
+
+:::{versionchanged} VERSION_NEXT_PATCH
+The version is no longer normalized by `rules_python`.
+:::
 """,
     },
 )
