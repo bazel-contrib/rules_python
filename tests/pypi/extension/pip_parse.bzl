@@ -6,7 +6,7 @@ def configure(
         hub_name,
         pyproject_toml = None,
         testonly = False):
-    """A simple helper for testing to simulate the PyPI extension configure tag class"""
+    """Simulate the PyPI extension configure tag class for testing."""
     return struct(
         dependency_groups = dependency_groups,
         hub_name = hub_name,

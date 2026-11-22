@@ -25,7 +25,11 @@ def _hub(*, module_name = "root", pyproject = None):
         packages = ["other_pkg", "simple", "transitive_pkg"],
     )
 
-def _configure(hub_name = "hub", dependency_groups = [], pyproject_toml = None, testonly = False):
+def _configure(
+        hub_name = "hub",
+        dependency_groups = [],
+        pyproject_toml = None,
+        testonly = False):
     return mocks.tag(
         hub_name = hub_name,
         dependency_groups = dependency_groups,
@@ -70,9 +74,15 @@ def _test_configure(env):
         # `not-in-hub` is ignored
         (["group:test"], ["simple"]),
     ]:
-        got, failures = _exposure(_module(configure = [_configure(dependency_groups = groups)]))
-        env.expect.where(groups = groups).that_collection(failures).contains_exactly([])
-        env.expect.where(groups = groups).that_dict(_packages(got)).contains_exactly({"hub": want})
+        got, failures = _exposure(
+            _module(configure = [_configure(dependency_groups = groups)]),
+        )
+        env.expect.where(groups = groups).that_collection(
+            failures,
+        ).contains_exactly([])
+        env.expect.where(groups = groups).that_dict(
+            _packages(got),
+        ).contains_exactly({"hub": want})
 
 _tests.append(_test_configure)
 
@@ -94,7 +104,9 @@ def _test_configure_combines_tags(env):
         _configure(dependency_groups = ["dev"]),
     ]))
     env.expect.that_collection(failures).contains_exactly([])
-    env.expect.that_dict(_packages(got)).contains_exactly({"hub": ["other_pkg", "simple"]})
+    env.expect.that_dict(_packages(got)).contains_exactly(
+        {"hub": ["other_pkg", "simple"]},
+    )
 
 _tests.append(_test_configure_combines_tags)
 

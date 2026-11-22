@@ -116,6 +116,19 @@ IS_WINDOWS = os.name == "nt"
 BIN_DIR_NAME = "bin" if not IS_WINDOWS else "Scripts"
 LIB_DIR_NAME = "lib" if not IS_WINDOWS else "Lib"
 
+# Windows only: set to False once creating a symlink fails, e.g. without the
+# privilege to create symlinks, so that it isn't attempted for every file.
+# Tests set the environment variable to use the fallback even when symlinks
+# can be created.
+_symlinks_supported = not (
+    IS_WINDOWS and os.environ.get("RULES_PYTHON_TESTING_DISABLE_SYMLINKS")
+)
+
+# The build of Windows 10 1809 and Windows Server 2019, which added
+# FILE_DISPOSITION_FLAG_IGNORE_READONLY_ATTRIBUTE that the fallback for when
+# symlinks can't be created needs to clean up.
+_WINDOWS_FALLBACK_MIN_BUILD = 17763
+
 # Windows APIs can be picky about slashes depending on the context,
 # so convert to backslashes to avoid any issues.
 if IS_WINDOWS:
@@ -441,11 +454,10 @@ print(site.getsitepackages(["{venv_src}"])[-1])
         link_to = normpath(join(runfiles_root, link_to_rf_path))
         venv_parent = dirname(venv_abs_path)
         # A cached venv can leave this parent as a dangling link to an old EXTRACT_ROOT.
-        if os.path.islink(venv_parent):
-            try:
-                os.stat(venv_parent)
-            except FileNotFoundError:
-                os.unlink(venv_parent)
+        # islink() is False for a junction on Windows, but lexists() doesn't
+        # follow it, and unlink() removes it.
+        if os.path.lexists(venv_parent) and not os.path.exists(venv_parent):
+            os.unlink(venv_parent)
         os.makedirs(venv_parent, exist_ok=True)
         _symlink_exist_ok(from_=venv_abs_path, to=link_to)
 
@@ -599,7 +611,7 @@ def execute_file(python_program, main_filename, args, env, runfiles_root,
   if delete_dirs:
     for delete_dir in delete_dirs:
       print_verbose("cleanup: rmtree:", delete_dir)
-      shutil.rmtree(delete_dir, True)
+      _rmtree(delete_dir)
   sys.exit(ret_code)
 
 def _run_execv(python_program, argv, env):
@@ -617,13 +629,151 @@ def _run_execv(python_program, argv, env):
     raise
 
 def _symlink_exist_ok(*, from_, to):
+  """Creates a symlink, or on Windows, a hard link, junction or copy if that's not possible."""
+  global _symlinks_supported
+  # On Windows, symlinks have to be told whether they're
+  # pointing to a file or directory. Python is supposed to auto-detect
+  # this, but in practice, this doesn't reliably happen.
+  is_dir = os.path.isdir(to)
+  if _symlinks_supported:
+    try:
+      os.symlink(to, from_, target_is_directory=is_dir)
+      return
+    except FileExistsError:
+      return
+    except OSError as e:
+      if not IS_WINDOWS:
+        raise
+      if sys.getwindowsversion().build < _WINDOWS_FALLBACK_MIN_BUILD:
+        raise OSError(
+            "Creating symlinks failed, which is required before Windows 10 "
+            "1809 and Windows Server 2019: {}".format(e)
+        ) from e
+      print_verbose("symlink failed, falling back to links or copies:", e)
+      _symlinks_supported = False
+
+  if os.path.lexists(from_):
+    return
+  # The target can itself be a symlink, e.g. when Bazel could create the
+  # runfiles symlinks. A hard link to a symlink is also a symlink, so link to
+  # the file or directory that it points to instead.
+  to = os.path.realpath(to)
+  if is_dir:
+    _link_dir_windows(from_, to)
+  else:
+    _link_file_windows(from_, to)
+
+def _link_file_windows(from_, to):
+  # Hard links don't need any privileges, but only work within the same
+  # volume, so fall back to copying the file.
   try:
-    # On Windows, symlinks have to be told whether they're
-    # pointing to a file or directory. Python is supposed to auto-detect
-    # this, but in practice, this doesn't reliably happen.
-    os.symlink(to, from_, target_is_directory=os.path.isdir(to))
+    os.link(to, from_)
+  # Another process sharing RULES_PYTHON_EXTRACT_ROOT created it first.
   except FileExistsError:
-    pass
+    return
+  except OSError as e:
+    print_verbose("hard link failed, copying:", to, "error:", e)
+    shutil.copy2(to, from_)
+
+def _link_dir_windows(from_, to):
+  import _winapi
+  try:
+    # Junctions don't need any privileges, but need an absolute target.
+    _winapi.CreateJunction(to, from_)
+  # Another process sharing RULES_PYTHON_EXTRACT_ROOT created it first.
+  except FileExistsError:
+    return
+  except OSError as e:
+    print_verbose("junction failed, copying:", to, "error:", e)
+    # This can still fail with FileExistsError if another process sharing
+    # RULES_PYTHON_EXTRACT_ROOT creates the directory while copying. Both
+    # creating the junction and a concurrent run have to fail for that, so
+    # this isn't handled.
+    shutil.copytree(to, from_)
+
+_kernel32 = None
+
+def _get_kernel32():
+  """Returns kernel32 with the prototypes that cleaning up the venv needs."""
+  global _kernel32
+  if _kernel32 is not None:
+    return _kernel32
+
+  import ctypes
+  from ctypes import wintypes
+
+  kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+  kernel32.CreateFileW.restype = wintypes.HANDLE
+  kernel32.CreateFileW.argtypes = [
+      wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID,
+      wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE,
+  ]
+  kernel32.SetFileInformationByHandle.restype = wintypes.BOOL
+  kernel32.SetFileInformationByHandle.argtypes = [
+      wintypes.HANDLE, ctypes.c_int, wintypes.LPVOID, wintypes.DWORD,
+  ]
+  kernel32.CloseHandle.restype = wintypes.BOOL
+  kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+  _kernel32 = kernel32
+  return kernel32
+
+def _remove_read_only_file_windows(path):
+  """Removes a read-only file without changing its read-only attribute.
+
+  Windows refuses to delete a read-only file, such as a hard link to or a
+  copy of a Bazel output. Clearing the attribute would also clear it for the
+  other hard links of the file, i.e. the Bazel output, so the file is deleted
+  with FILE_DISPOSITION_FLAG_IGNORE_READONLY_ATTRIBUTE instead.
+  """
+  import ctypes
+  from ctypes import wintypes
+
+  kernel32 = _get_kernel32()
+
+  DELETE = 0x00010000
+  FILE_SHARE_READ_WRITE_DELETE = 0x7
+  OPEN_EXISTING = 3
+  FILE_FLAG_OPEN_REPARSE_POINT = 0x00200000
+  FILE_DISPOSITION_INFO_EX = 21
+  FILE_DISPOSITION_FLAG_DELETE = 0x1
+  FILE_DISPOSITION_FLAG_IGNORE_READONLY_ATTRIBUTE = 0x10
+  INVALID_HANDLE_VALUE = wintypes.HANDLE(-1).value
+
+  handle = kernel32.CreateFileW(
+      path, DELETE, FILE_SHARE_READ_WRITE_DELETE, None, OPEN_EXISTING,
+      FILE_FLAG_OPEN_REPARSE_POINT, None,
+  )
+  if handle == INVALID_HANDLE_VALUE:
+    raise ctypes.WinError(ctypes.get_last_error())
+  try:
+    flags = wintypes.DWORD(
+        FILE_DISPOSITION_FLAG_DELETE | FILE_DISPOSITION_FLAG_IGNORE_READONLY_ATTRIBUTE
+    )
+    if not kernel32.SetFileInformationByHandle(
+        handle, FILE_DISPOSITION_INFO_EX, ctypes.byref(flags), ctypes.sizeof(flags)
+    ):
+      raise ctypes.WinError(ctypes.get_last_error())
+  finally:
+    # The file is deleted when the handle is closed.
+    kernel32.CloseHandle(handle)
+
+def _rmtree(path):
+  if not IS_WINDOWS:
+    shutil.rmtree(path, True)
+    return
+
+  def _on_error(func, error_path, _):
+    if func not in (os.unlink, os.remove):
+      return
+    try:
+      _remove_read_only_file_windows(error_path)
+    except OSError as e:
+      print_verbose("cleanup: failed to remove:", error_path, "error:", e)
+
+  if sys.version_info >= (3, 12):
+    shutil.rmtree(path, onexc=_on_error)
+  else:
+    shutil.rmtree(path, onerror=_on_error)
 
 
 def main():

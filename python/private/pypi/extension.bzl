@@ -386,10 +386,19 @@ You cannot use both the additive_build_content and additive_build_content_file a
     )
     if configured_hubs == None:
         return None
+
+    # The `all_*requirements` only list the selected packages that are
+    # available on all of the platforms, while all of the selected packages
+    # stay public.
     testonly_packages = {}
     unified_testonly_packages = {}
     for hub_name, info in configured_hubs.items():
-        exposed_packages[hub_name] = info.packages
+        selected = {name: None for name in info.packages}
+        exposed_packages[hub_name] = [
+            name
+            for name in exposed_packages[hub_name]
+            if name in selected
+        ]
         testonly_packages[hub_name] = info.testonly_packages
 
         # An alias can't be less testonly than what it points to, so a package
@@ -563,6 +572,9 @@ def _pip_impl(module_ctx):
             groups = mods.hub_group_map.get(hub_name),
             # The hubs configured with `pip.configure` hide the other packages.
             hide_unexposed_packages = hub_name in mods.configured_hubs,
+            public_packages = (
+                mods.configured_hubs[hub_name].packages if hub_name in mods.configured_hubs else []
+            ),
             testonly_packages = mods.testonly_packages.get(hub_name, []),
         )
 

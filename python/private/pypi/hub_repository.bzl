@@ -28,7 +28,7 @@ exports_files(["requirements.bzl"])
 def _impl(rctx):
     if rctx.attr.hide_unexposed_packages:
         bzl_packages = rctx.attr.packages
-        exposed_packages = bzl_packages
+        exposed_packages = rctx.attr.public_packages
     else:
         bzl_packages = rctx.attr.packages or rctx.attr.whl_map.keys()
         exposed_packages = None
@@ -63,8 +63,11 @@ def _impl(rctx):
         },
     )
 
-    # The testonly packages are only listed in `all_testonly_requirements`.
+    # The testonly packages are only listed in `all_testonly_requirements`,
+    # which also leaves out the packages that are not available on all of the
+    # platforms.
     all_packages = [p for p in bzl_packages if p not in testonly_packages]
+    all_testonly_packages = [p for p in bzl_packages if p in testonly_packages]
     rctx.template("requirements.bzl", rctx.attr._requirements_bzl_template, substitutions = {
         "%%ALL_DATA_REQUIREMENTS%%": render.list([
             macro_tmpl.format(p, "data")
@@ -76,7 +79,7 @@ def _impl(rctx):
         ]),
         "%%ALL_TESTONLY_REQUIREMENTS%%": render.list([
             macro_tmpl.format(p, "pkg")
-            for p in testonly_packages
+            for p in all_testonly_packages
         ]),
         "%%ALL_WHL_REQUIREMENTS_BY_PACKAGE%%": render.dict({
             p: macro_tmpl.format(p, "whl")
@@ -97,8 +100,8 @@ hub_repository = repository_rule(
         "hide_unexposed_packages": attr.bool(
             default = False,
             doc = """
-Make the aliases of the packages that are not in `packages` visible only to
-the wheel repositories.
+Make the aliases of the packages that are not in `public_packages` visible only
+to the wheel repositories.
 """,
         ),
         "packages": attr.string_list(
@@ -111,6 +114,14 @@ Defaults to whl_map keys unless `hide_unexposed_packages` is set.
         "platform_config_settings": attr.string_list_dict(
             doc = "The constraint values for each platform name. The values are string canonical string Label representations",
             mandatory = False,
+        ),
+        "public_packages": attr.string_list(
+            mandatory = False,
+            doc = """
+The packages whose aliases are public when `hide_unexposed_packages` is set.
+Unlike `packages`, it includes the packages that are not available on all of
+the platforms.
+""",
         ),
         "repo_name": attr.string(
             mandatory = True,

@@ -1,0 +1,21 @@
+load("@rules_rust//rust:defs.bzl", "rust_test")
+
+package(default_visibility = ["//:__subpackages__"])
+
+licenses(["notice"])
+
+rust_test(
+    name = "venv_shebang_rewriter_test",
+    size = "small",
+    srcs = ["venv_shebang_rewriter_test.rs"],
+    data = [
+        "//crates/shrubbery",
+    ],
+    edition = "2024",
+    env = {
+        "SHRUBBERY_BIN": "$(rootpath //crates/shrubbery)",
+    },
+    deps = [
+        "//crates/venv_shebang_rewriter:venv_shebang_rewriter_lib",
+    ],
+)

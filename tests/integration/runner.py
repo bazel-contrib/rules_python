@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import hashlib
 import logging
 import os
 import os.path
@@ -22,6 +23,23 @@ import subprocess
 import unittest
 
 _logger = logging.getLogger(__name__)
+
+
+def _windows_short_base_dir(outer_test_tmpdir: pathlib.Path) -> pathlib.Path | None:
+    """Returns a short base directory under the outer `output_base` on Windows.
+
+    On Windows, `TEST_TMPDIR` is nested deep inside the outer Bazel `execroot`
+    (e.g. `C:\\b\\<base>\\execroot\\_main\\_tmp\\<32-char-hash>`). If the inner
+    Bazel places its `output_user_root` inside `TEST_TMPDIR`, the inner
+    `execroot` prefix exceeds 110 characters and Rust tool builds (such as
+    `@rules_rust//util/process_wrapper` and `cargo_toml_variable_extractor`)
+    exceed the 260-character Windows `MAX_PATH` limit in `link.exe` (`LNK1181`).
+    """
+    for parent in outer_test_tmpdir.parents:
+        if parent.name == "execroot":
+            digest = hashlib.sha256(str(outer_test_tmpdir).encode()).hexdigest()[:8]
+            return parent.parent / digest
+    return None
 
 
 class ExecuteError(Exception):
@@ -84,12 +102,21 @@ class TestCase(unittest.TestCase):
                 interpreter = first_line[2:].decode().split()
                 if interpreter and interpreter[0].endswith("/env"):
                     interpreter = interpreter[1:]
-        self.bazel_cmd = (*interpreter, str(bazel))
         outer_test_tmpdir = pathlib.Path(os.environ["TEST_TMPDIR"])
-        self.test_tmp_dir = outer_test_tmpdir / "bit_test_tmp"
-        # Put the global tmp not under the test tmp to better match how a real
-        # execution has entirely different directories for these.
-        self.tmp_dir = outer_test_tmpdir / "bit_tmp"
+        short_base = (
+            _windows_short_base_dir(outer_test_tmpdir) if os.name == "nt" else None
+        )
+        if short_base is not None:
+            self.test_tmp_dir = short_base / "t"
+            self.tmp_dir = short_base / "g"
+            startup_flags = (f"--output_base={short_base / 'b'}",)
+        else:
+            self.test_tmp_dir = outer_test_tmpdir / "bit_test_tmp"
+            # Put the global tmp not under the test tmp to better match how a real
+            # execution has entirely different directories for these.
+            self.tmp_dir = outer_test_tmpdir / "bit_tmp"
+            startup_flags = ()
+        self.bazel_cmd = (*interpreter, str(bazel), *startup_flags)
         self.test_tmp_dir.mkdir(parents=True, exist_ok=True)
         self.tmp_dir.mkdir(parents=True, exist_ok=True)
         self.bazel_env = {

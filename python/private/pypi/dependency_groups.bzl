@@ -57,7 +57,9 @@ def select_dependency_groups(pyproject, specs, _fail = fail):
     selected = {}
     for spec in specs:
         keys = _match(spec, groups)
-        if not keys:
+
+        # A wildcard matches nothing when its table is empty or missing.
+        if not keys and spec not in ("*", "optional:*", "group:*"):
             _fail("Unknown dependency group '{}'. Available groups: {}".format(
                 spec,
                 ", ".join(sorted(groups)),
