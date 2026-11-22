@@ -872,9 +872,14 @@ fn test_fstring_backslash_before_braces() {
 
 #[test]
 fn test_pep263_coding_cookies_and_run_cli_exit_codes() {
-    // Line 1 & line 2 Latin-1 coding cookies with non-UTF-8 bytes (including CRLF blank line 1).
+    // Line 1 & line 2 Latin-1 coding cookies with non-UTF-8 bytes (including CRLF blank line 1
+    // and non-UTF-8 bytes on the cookie comment line itself).
     assert_eq!(
         module_runs_tests_bytes(b"# -*- coding: latin-1 -*-\ndef test_f():\n    s = '\xe9'\n"),
+        Ok(false)
+    );
+    assert_eq!(
+        module_runs_tests_bytes(b"# \xe9 -*- coding: latin-1 -*-\ndef test_f():\n    s = '\xe9'\n"),
         Ok(false)
     );
     assert_eq!(
@@ -889,6 +894,8 @@ fn test_pep263_coding_cookies_and_run_cli_exit_codes() {
         ),
         Ok(true)
     );
+    // Code on line 1 disables line-2 PEP 263 cookie detection (`tokenize.detect_encoding`).
+    assert!(module_runs_tests_bytes(b"x = 1\n# -*- coding: latin-1 -*-\ny = '\xe9'\n").is_err());
 
     // Emacs `-unix`, `-dos`, and `-mac` PEP 263 suffixes match CPython `get_normal_name`.
     assert_eq!(

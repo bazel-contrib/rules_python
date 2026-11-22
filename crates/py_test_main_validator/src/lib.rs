@@ -47,10 +47,14 @@ Options:
   -h, --help           Print this help";
 
 /// PEP 263 coding-cookie pattern; compiled once and shared across calls.
-static COOKIE_RE: LazyLock<std::result::Result<regex::bytes::Regex, regex::Error>> =
-    LazyLock::new(|| {
-        regex::bytes::Regex::new(r"(?-u)^[ \t\x0c]*#.*?coding[:=][ \t]*([-_.a-zA-Z0-9]+)")
-    });
+static COOKIE_RE: LazyLock<regex::bytes::Regex> = LazyLock::new(|| {
+    #[expect(
+        clippy::expect_used,
+        reason = "static PEP 263 regex literal is infallible"
+    )]
+    regex::bytes::Regex::new(r"(?-u)^[ \t\x0c]*#.*?coding[:=][ \t]*([-_.a-zA-Z0-9]+)")
+        .expect("PEP 263 regex literal should compile")
+});
 
 /// Formats the validation failure message for an inert `py_test` main module.
 pub fn format_error(label: &str, src_name: &str) -> String {
@@ -77,53 +81,50 @@ This check can be disabled by setting
 }
 
 fn is_blank_or_comment_line(line: &[u8]) -> bool {
-    let first_non_ws = line
-        .iter()
-        .copied()
-        .find(|&b| !matches!(b, b' ' | b'\t' | b'\x0c'));
-    matches!(first_non_ws, None | Some(b'#'))
+    line.trim_ascii_start().first().is_none_or(|&b| b == b'#')
 }
 
-/// Returns the encoding named by a PEP 263 coding cookie on `line` (without trailing `\r\n`), if
-/// any.
-fn cookie_encoding<'a>(re: &regex::bytes::Regex, line: &'a [u8]) -> Option<&'a str> {
-    let caps = re.captures(line)?;
-    std::str::from_utf8(caps.get(1)?.as_bytes()).ok()
+/// Returns the encoding named by a PEP 263 coding cookie on `line`, if any.
+fn cookie_encoding(line: &[u8]) -> Option<&[u8]> {
+    COOKIE_RE.captures(line)?.get(1).map(|m| m.as_bytes())
 }
 
-fn extract_pep263_encoding(body: &[u8]) -> std::result::Result<Option<&str>, SyntaxError> {
-    let re = COOKIE_RE
-        .as_ref()
-        .map_err(|e| SyntaxError::new(format!("invalid PEP 263 regex: {e}")))?;
-
-    let mut lines = body
-        .split(|&b| b == b'\n')
-        .map(|line| line.strip_suffix(b"\r").unwrap_or(line));
-    let Some(line1) = lines.next() else {
-        return Ok(None);
-    };
-    if let Some(enc) = cookie_encoding(re, line1) {
-        return Ok(Some(enc));
+fn extract_pep263_encoding(body: &[u8]) -> Option<&[u8]> {
+    let mut lines = body.split(|&b| b == b'\n');
+    let line1 = lines.next()?;
+    if let Some(enc) = cookie_encoding(line1) {
+        return Some(enc);
     }
+    // PEP 263 (`tokenize.detect_encoding`) only inspects line 2 when line 1 is blank or a
+    // comment (such as a `#!` shebang); code on line 1 disables line-2 cookie detection.
     if !is_blank_or_comment_line(line1) {
-        return Ok(None);
+        return None;
     }
-    Ok(lines.next().and_then(|line2| cookie_encoding(re, line2)))
+    lines.next().and_then(cookie_encoding)
 }
 
-fn is_utf8_encoding_name(normalized: &str) -> bool {
-    normalized == "utf-8" || normalized == "utf8" || normalized.starts_with("utf-8-")
+fn is_utf8_encoding_name(normalized: &[u8]) -> bool {
+    normalized == b"utf-8" || normalized == b"utf8" || normalized.starts_with(b"utf-8-")
 }
 
-fn is_latin1_encoding_name(normalized: &str) -> bool {
+fn is_ascii_encoding_name(normalized: &[u8]) -> bool {
     matches!(
         normalized,
-        "latin-1" | "latin1" | "iso-8859-1" | "iso8859-1" | "iso-latin-1" | "latin" | "l1"
-    ) || normalized.starts_with("latin-1-")
-        || normalized.starts_with("iso-8859-1-")
-        || normalized.starts_with("iso-latin-1-")
+        b"ascii" | b"us-ascii" | b"646" | b"ansi-x3.4-1968"
+    )
 }
 
+fn is_latin1_encoding_name(normalized: &[u8]) -> bool {
+    matches!(
+        normalized,
+        b"latin-1" | b"latin1" | b"iso-8859-1" | b"iso8859-1" | b"iso-latin-1" | b"latin" | b"l1"
+    ) || normalized.starts_with(b"latin-1-")
+        || normalized.starts_with(b"iso-8859-1-")
+        || normalized.starts_with(b"iso-latin-1-")
+}
+
+/// Decodes `source` bytes into UTF-8 text following PEP 263 (`ruff_python_parser` only accepts
+/// `&str` and does not decode non-UTF-8 byte sources or reject NUL bytes inside strings).
 fn decode_python_source(source: &[u8]) -> std::result::Result<Cow<'_, str>, SyntaxError> {
     if source.contains(&0) {
         return Err(SyntaxError::new("source code cannot contain null bytes"));
@@ -134,7 +135,7 @@ fn decode_python_source(source: &[u8]) -> std::result::Result<Cow<'_, str>, Synt
         None => (false, source),
     };
 
-    let Some(raw_enc) = extract_pep263_encoding(body)? else {
+    let Some(raw_enc) = extract_pep263_encoding(body) else {
         return std::str::from_utf8(body)
             .map(Cow::Borrowed)
             .map_err(|_| SyntaxError::new("invalid utf-8 encoding"));
@@ -142,49 +143,57 @@ fn decode_python_source(source: &[u8]) -> std::result::Result<Cow<'_, str>, Synt
 
     // Match CPython `get_normal_name` (Parser/tokenizer/helpers.c), including Emacs `-unix`,
     // `-dos`, and `-mac` suffixes on `utf-8-*` and `(latin-1|iso-8859-1|iso-latin-1)-*`.
-    let normalized = raw_enc.to_ascii_lowercase().replace('_', "-");
+    let normalized: Vec<u8> = raw_enc
+        .iter()
+        .map(|&b| {
+            if b == b'_' {
+                b'-'
+            } else {
+                b.to_ascii_lowercase()
+            }
+        })
+        .collect();
     let is_utf8 = is_utf8_encoding_name(&normalized);
     if has_bom && !is_utf8 {
         return Err(SyntaxError::new("encoding problem: utf-8 with BOM"));
     }
 
     if is_utf8 {
-        return std::str::from_utf8(body)
+        std::str::from_utf8(body)
             .map(Cow::Borrowed)
-            .map_err(|_| SyntaxError::new("invalid utf-8 encoding"));
-    }
-
-    match normalized.as_str() {
-        "ascii" | "us-ascii" | "646" | "ansi-x3.4-1968" => {
-            if !body.is_ascii() {
-                return Err(SyntaxError::new("'ascii' codec can't decode byte"));
-            }
-            std::str::from_utf8(body)
-                .map(Cow::Borrowed)
-                .map_err(|_| SyntaxError::new("invalid ascii encoding"))
+            .map_err(|_| SyntaxError::new("invalid utf-8 encoding"))
+    } else if is_ascii_encoding_name(&normalized) {
+        if !body.is_ascii() {
+            return Err(SyntaxError::new("'ascii' codec can't decode byte"));
         }
-        s if is_latin1_encoding_name(s) => {
-            if body.is_ascii()
-                && let Ok(ascii_str) = std::str::from_utf8(body)
-            {
-                Ok(Cow::Borrowed(ascii_str))
-            } else {
-                Ok(Cow::Owned(body.iter().map(|&b| char::from(b)).collect()))
-            }
+        std::str::from_utf8(body)
+            .map(Cow::Borrowed)
+            .map_err(|_| SyntaxError::new("invalid ascii encoding"))
+    } else if is_latin1_encoding_name(&normalized) {
+        if body.is_ascii()
+            && let Ok(ascii_str) = std::str::from_utf8(body)
+        {
+            Ok(Cow::Borrowed(ascii_str))
+        } else {
+            Ok(Cow::Owned(body.iter().map(|&b| char::from(b)).collect()))
         }
-        _ => Err(SyntaxError::new(format!("unknown encoding: {raw_enc}"))),
+    } else {
+        Err(SyntaxError::new(format!(
+            "unknown encoding: {}",
+            String::from_utf8_lossy(raw_enc)
+        )))
     }
 }
 
-/// Returns `true` if evaluating `expr` contains a call, `await`, or `yield`.
+/// Returns `true` if evaluating `expr` does not invoke a call, `await`, or `yield`.
 ///
 /// Walks `expr` as written without modeling execution (for example, a call inside an uninvoked
 /// `lambda` body still counts as active); erring toward "runs code" avoids false positives on
 /// valid tests.
-fn expr_runs_code(expr: &Expr) -> bool {
+fn is_inert_expr(expr: &Expr) -> bool {
     let mut finder = ActiveExprFinder::default();
     finder.visit_expr(expr);
-    finder.found
+    !finder.found
 }
 
 fn all_inert(stmts: &[Stmt]) -> bool {
@@ -201,21 +210,20 @@ pub fn is_inert_statement(stmt: &Stmt) -> bool {
         | Stmt::Global(_)
         | Stmt::Pass(_)
         | Stmt::TypeAlias(_) => true,
-        Stmt::Assign(node) => !expr_runs_code(&node.value),
-        Stmt::AugAssign(node) => !expr_runs_code(&node.value),
-        Stmt::AnnAssign(node) => node.value.as_deref().is_none_or(|v| !expr_runs_code(v)),
+        Stmt::Assign(node) => is_inert_expr(&node.value),
+        Stmt::AugAssign(node) => is_inert_expr(&node.value),
+        Stmt::AnnAssign(node) => node.value.as_deref().is_none_or(is_inert_expr),
         Stmt::Assert(node) => {
-            !expr_runs_code(&node.test) && node.msg.as_deref().is_none_or(|m| !expr_runs_code(m))
+            is_inert_expr(&node.test) && node.msg.as_deref().is_none_or(is_inert_expr)
         }
-        Stmt::Expr(node) => !expr_runs_code(&node.value),
+        Stmt::Expr(node) => is_inert_expr(&node.value),
         // Inspect `if` and `try` (`try`/`except*`) blocks recursively so inert guards such as
         // `if TYPE_CHECKING:` or `try: import foo except ImportError:` do not bypass the check.
         Stmt::If(node) => {
-            !expr_runs_code(&node.test)
+            is_inert_expr(&node.test)
                 && all_inert(&node.body)
                 && node.elif_else_clauses.iter().all(|clause| {
-                    clause.test.as_ref().is_none_or(|t| !expr_runs_code(t))
-                        && all_inert(&clause.body)
+                    clause.test.as_ref().is_none_or(is_inert_expr) && all_inert(&clause.body)
                 })
         }
         Stmt::Try(node) => {
