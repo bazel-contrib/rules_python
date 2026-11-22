@@ -139,9 +139,19 @@ def _test_config_settings_label_value_relative_to_caller(name, config):
         srcs = ["main.py"],
         main = "main.py",
         config_settings = {
-            # The value is relative to the package of the caller.
-            "@rules_python//python/config_settings:debugger": ":" + name + "_debugger",
+            # The values are relative to the package of the caller.
+            "@rules_python//python/config_settings:coverage": (
+                ":" + name + "_coverage"
+            ),
+            "@rules_python//python/config_settings:debugger": (
+                ":" + name + "_debugger"
+            ),
         },
+    )
+    rt_util.helper_target(
+        py_library,
+        name = name + "_coverage",
+        srcs = [name + "_coverage.py"],
     )
     rt_util.helper_target(
         py_library,
@@ -152,18 +162,23 @@ def _test_config_settings_label_value_relative_to_caller(name, config):
         name = name,
         impl = _test_config_settings_label_value_relative_to_caller_impl,
         target = name + "_subject",
+        config_settings = {
+            "//command_line_option:collect_code_coverage": True,
+        },
     )
 
 def _test_config_settings_label_value_relative_to_caller_impl(env, target):
-    env.expect.that_target(target).runfiles().contains_predicate(
-        matching.str_endswith(target.label.name.removesuffix("_subject") + "_debugger.py"),
-    )
+    env.expect.that_target(target).runfiles().contains_at_least([
+        "{workspace}/{package}/{test_name}_coverage.py",
+        "{workspace}/{package}/{test_name}_debugger.py",
+    ])
 
 _tests.append(_test_config_settings_label_value_relative_to_caller)
 
 def _test_config_settings_label_value_select(name, config):
     # The values of a select() can't be resolved by the macro, so canonical
     # label strings are used.
+    coverage = str(native.package_relative_label(":" + name + "_coverage"))
     debugger = str(native.package_relative_label(":" + name + "_debugger"))
     rt_util.helper_target(
         config.rule,
@@ -172,9 +187,15 @@ def _test_config_settings_label_value_select(name, config):
         main = "main.py",
         config_settings = select({
             "//conditions:default": {
+                "@rules_python//python/config_settings:coverage": coverage,
                 "@rules_python//python/config_settings:debugger": debugger,
             },
         }),
+    )
+    rt_util.helper_target(
+        py_library,
+        name = name + "_coverage",
+        srcs = [name + "_coverage.py"],
     )
     rt_util.helper_target(
         py_library,
@@ -185,6 +206,9 @@ def _test_config_settings_label_value_select(name, config):
         name = name,
         impl = _test_config_settings_label_value_relative_to_caller_impl,
         target = name + "_subject",
+        config_settings = {
+            "//command_line_option:collect_code_coverage": True,
+        },
     )
 
 _tests.append(_test_config_settings_label_value_select)
@@ -328,6 +352,112 @@ def _test_debugger_impl(env, targets):
     # Ensure that tools don't inherit debugger.
     env.expect.that_target(targets.exec_target).runfiles().not_contains(
         "{workspace}/{package}/{test_name}_debugger.py",
+    )
+
+def _test_coverage_flag(name, config):
+    rt_util.helper_target(
+        py_library,
+        name = name + "_coverage",
+        imports = ["."],
+        srcs = [rt_util.empty_file(name + "_coverage.py")],
+    )
+
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject",
+        srcs = [rt_util.empty_file(name + "_subject.py")],
+        config_settings = {
+            labels.COVERAGE: ":" + name + "_coverage",
+        },
+    )
+
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject_omit_source",
+        srcs = [rt_util.empty_file(name + "_subject_omit_source.py")],
+        config_settings = {
+            labels.COVERAGE: ":" + name + "_coverage",
+            labels.PRECOMPILE: "force_enabled",
+            labels.PRECOMPILE_SOURCE_RETENTION: "omit_source",
+        },
+    )
+
+    analysis_test(
+        name = name,
+        impl = _test_coverage_flag_impl,
+        targets = {
+            "exec_target": name + "_subject",
+            "target": name + "_subject",
+            "target_omit_source": name + "_subject_omit_source",
+        },
+        attrs = {
+            "exec_target": attr.label(cfg = "exec"),
+        },
+        config_settings = {
+            "//command_line_option:collect_code_coverage": True,
+            labels.PYTHON_VERSION: "3.13",
+        },
+    )
+
+_tests.append(_test_coverage_flag)
+
+def _test_coverage_flag_impl(env, targets):
+    meta = env.expect.meta.derive(
+        format_str_kwargs = {"package": targets.target.label.package},
+    )
+    expected_import = meta.format_str("{workspace}/{package}")
+
+    # 1. Coverage-enabled target gets the coverage dep and its imports.
+    env.expect.that_target(targets.target).runfiles().contains_at_least([
+        "{workspace}/{package}/{test_name}_coverage.py",
+    ])
+    env.expect.that_collection(
+        targets.target[PyInfo].imports.to_list(),
+    ).contains(expected_import)
+
+    # 2. Sourceless precompilation retains the coverage dep and its imports.
+    env.expect.that_target(targets.target_omit_source).runfiles().contains_predicate(
+        matching.str_matches("*_coverage.py*"),
+    )
+    env.expect.that_collection(
+        targets.target_omit_source[PyInfo].imports.to_list(),
+    ).contains(expected_import)
+
+    # 3. Exec-config tools do not inherit the coverage dep.
+    env.expect.that_target(targets.exec_target).runfiles().not_contains(
+        "{workspace}/{package}/{test_name}_coverage.py",
+    )
+
+def _test_coverage_flag_disabled(name, config):
+    rt_util.helper_target(
+        py_library,
+        name = name + "_coverage",
+        srcs = [rt_util.empty_file(name + "_coverage.py")],
+    )
+
+    rt_util.helper_target(
+        config.rule,
+        name = name + "_subject",
+        srcs = [rt_util.empty_file(name + "_subject.py")],
+        config_settings = {
+            labels.COVERAGE: ":" + name + "_coverage",
+        },
+    )
+
+    analysis_test(
+        name = name,
+        impl = _test_coverage_flag_disabled_impl,
+        target = name + "_subject",
+        config_settings = {
+            "//command_line_option:collect_code_coverage": False,
+        },
+    )
+
+_tests.append(_test_coverage_flag_disabled)
+
+def _test_coverage_flag_disabled_impl(env, target):
+    env.expect.that_target(target).runfiles().not_contains(
+        "{workspace}/{package}/{test_name}_coverage.py",
     )
 
 def _test_default_main_can_be_generated(name, config):
