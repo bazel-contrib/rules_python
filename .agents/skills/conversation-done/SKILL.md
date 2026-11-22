@@ -1,19 +1,18 @@
 ---
 name: conversation-done
 description: >-
-  Clean up files and resources that aren't part of the agent conversation
-  (e.g. Bazel output base, Git worktree, local/remote branches)
+  Clean up workspace resources (Bazel output base, Git worktree, local/remote
+  branches) and delete the agent conversation after successful cleanup
 ---
 
 # Conversation Done Skill
 
-Cleans up external workspace resources created during agent workflows while
-preserving agent conversation data, chat history, and brain transcripts.
+Cleans up workspace resources created during agent workflows and deletes the
+active agent conversation once all cleanup steps succeed.
 
 ## Overview
 
-When agents work on tasks, several external resources outside the agent
-conversation directory (`~/.gemini/jetski/brain/`) are created:
+When working on tasks, agents create several workspace and session resources:
 
 1. **Bazel Output Base(s)**: Intermediate build artifacts, execroot trees,
    and running Bazel server and persistent worker processes (consuming tens of
@@ -21,15 +20,13 @@ conversation directory (`~/.gemini/jetski/brain/`) are created:
 2. **Remote Git Branch**: The feature branch pushed to the user's fork
    (e.g., `origin`).
 3. **Local Git Branch**: The feature branch associated with the worktree.
-4. **Git Worktree**: The checked-out directory on disk (removed last, and only
-   if all other cleanup steps succeed).
-5. **Conversation Name**: Once cleanup completes without errors, the active
-   conversation title is prefixed with `"done "` (without duplicating an
-   existing `"done "` prefix, capped at 70 characters).
-
-This skill safely shuts down active build processes, reclaims these external
-resources, and marks the conversation title as `"done "` without removing the
-conversation transcript or chat history.
+4. **Git Worktree**: The checked-out directory on disk (removed after build
+   and branch cleanup steps succeed).
+5. **Agent Conversation**: Once all workspace cleanup steps succeed, the script
+   prefixes the active conversation (`ANTIGRAVITY_CONVERSATION_ID`) title with
+   `"done "` (without duplicating an existing `"done "` prefix, capped at 70
+   characters) and permanently deletes the conversation via the local Language
+   Server.
 
 ## Script Location
 
@@ -98,20 +95,28 @@ Fine-tune what gets cleaned up using selective leave flags:
 * **Upstream Remote Protection**: Never deletes branches on `upstream`.
 * **No Expunge Rule**: Never runs `bazel clean --expunge`; shuts down servers
   gracefully and deletes the specific output base directory directly.
-* **Worktree Deleted Last**: Removes the Git worktree only after all other
-  cleanup steps succeed, keeping the working directory intact on failure.
+* **Worktree Deleted After Branch & Build Cleanup**: Removes the Git worktree
+  only after Bazel and Git branch cleanup steps succeed, keeping the working
+  directory intact on failure.
+* **Conversation Deleted Last on Success**: Prefixes the conversation title
+  with `"done "` and permanently deletes the active conversation only after all
+  workspace cleanup steps succeed, preserving the conversation and transcripts
+  if any cleanup step fails.
 
 ## Reporting Results
 
-After running the cleanup script, always report to the user what resources were
-deleted (or would be deleted in `--dry-run` mode), including:
+Deleting the active conversation immediately terminates and removes the
+session. When running live cleanup from inside an active conversation, state
+which resources you will clean up beforehand (or run `--dry-run` first to
+preview). In `--dry-run` mode or external invocations without an active
+conversation ID, report the deleted (or previewed) resources:
 
 * **Bazel Output Base(s)**: Paths and reclaimed disk space sizes.
 * **Remote Git Branch**: Deleted remote branch (`<remote>/<branch>`).
 * **Local Git Branch**: Deleted local branch name.
 * **Git Worktree**: Removed worktree directory path.
-* **Conversation Name**: Updated conversation title (prefixed with `"done "`
-  after successful cleanup).
+* **Agent Conversation**: Updated `"done "` conversation title and deleted (or
+  previewed) conversation ID.
 
 If any resources were skipped, left intact via `--leave-*` flags, or not found,
 note that briefly in the summary.
