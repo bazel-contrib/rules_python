@@ -42,7 +42,7 @@ def _test_legacy_aliases(env):
     want = {
         "foo": ":pkg",
         "pkg": ":[]",
-        "[]": "@repo//:pkg",
+        "[]": "@repo//:[]",
         "srcs": "@repo//:srcs",
         "whl_file": "@repo//:whl_file",
         "whl": "@repo//:whl",
@@ -82,7 +82,7 @@ def _test_config_setting_aliases(env):
     want = {
         "pkg": ":[]",
         "[]": {
-            "//:my_config_setting": "@bar_baz_repo//:pkg",
+            "//:my_config_setting": "@bar_baz_repo//:[]",
             "//conditions:default": "_no_matching_repository",
         },
         # This will be printing the current config values and will make sure we
@@ -184,9 +184,9 @@ def _test_multiplatform_whl_aliases(env):
     want = {
         "pkg": ":[]",
         "[]": {
-            "//:my_config_setting": "@bzlmod_repo//:pkg",
-            "//_config:is_cp39": "@version_repo//:pkg",
-            "//_config:is_cp39_linux_x86_64": "@version_platform_repo//:pkg",
+            "//:my_config_setting": "@bzlmod_repo//:[]",
+            "//_config:is_cp39": "@version_repo//:[]",
+            "//_config:is_cp39_linux_x86_64": "@version_platform_repo//:[]",
             "//conditions:default": "_no_matching_repository",
         },
     }
@@ -223,7 +223,7 @@ def _test_group_aliases(env):
         },
         {
             "name": "_pkg",
-            "actual": "@repo//:pkg",
+            "actual": "@repo//:[]",
             "visibility": ["//_groups:__subpackages__"],
         },
         {
@@ -359,6 +359,11 @@ def _test_deps_and_aliases_integration(env):
         {
             "name": "foo",
             "actual": ":pkg",
+        },
+        {
+            "name": "[]",
+            "actual": ":pkg",
+            "visibility": ["//:__subpackages__"],
         },
         {
             "name": "data",
@@ -577,21 +582,21 @@ def _test_extras_aliases(env):
             "//conditions:default": "_no_matching_repository",
         },
         "[]": {
-            _LINUX: "@repo//:pkg",
-            _OSX: "@repo//:pkg",
-            _WINDOWS: "@other_repo//:pkg",
+            _LINUX: "@repo//:[]",
+            _OSX: "@repo//:[]",
+            _WINDOWS: "@other_repo//:[]",
             "//conditions:default": "_no_matching_repository",
         },
         "[bar]": {
             _LINUX: "@repo//:[bar]",
-            _OSX: "@repo//:pkg",
-            _WINDOWS: "@other_repo//:pkg",
+            _OSX: "@repo//:[]",
+            _WINDOWS: "@other_repo//:[]",
             "//conditions:default": "_no_matching_repository",
         },
         "[baz]": {
-            _LINUX: "@repo//:pkg",
+            _LINUX: "@repo//:[]",
             _OSX: "@repo//:[baz]",
-            _WINDOWS: "@other_repo//:pkg",
+            _WINDOWS: "@other_repo//:[]",
             "//conditions:default": "_no_matching_repository",
         },
     }
@@ -664,13 +669,13 @@ def _test_extras_aliases_group(env):
         },
         "[]": "//_groups:group_pkg",
         "_pkg": {
-            _LINUX: "@repo//:pkg",
-            _OSX: "@repo//:pkg",
+            _LINUX: "@repo//:[]",
+            _OSX: "@repo//:[]",
             "//conditions:default": "_no_matching_repository",
         },
         "[bar]": {
             _LINUX: "@repo//:[bar]",
-            _OSX: "@repo//:pkg",
+            _OSX: "@repo//:[]",
             "//conditions:default": "_no_matching_repository",
         },
     })
@@ -700,7 +705,7 @@ def _test_extras_aliases_group_with_extras(env):
     # buildifier: disable=unsorted-dict-items
     env.expect.that_dict(got).contains_at_least({
         "pkg": "//_groups:group_pkg",
-        "[]": "@repo//:pkg",
+        "[]": "@repo//:[]",
         "[bar]": "//_groups:group_pkg",
         "_[bar]": "@repo//:[bar]",
         "whl": "@repo//:whl",

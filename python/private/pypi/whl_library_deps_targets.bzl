@@ -26,6 +26,7 @@ def whl_library_deps_targets(
         metadata_name,
         requires_dist = [],
         provides_extra = [],
+        extras = [],
         include = [],
         group_deps = [],
         group_name = None,
@@ -53,6 +54,13 @@ def whl_library_deps_targets(
         provides_extra: {type}`list[str]` The list of extras that the package
             provides. For each extra the `[<extra>]` target is created
             that includes the package and the dependencies of that extra.
+        extras: {type}`list[str]` The list of requested extras. The `pkg`
+            target includes them, which is how the extras are used when there
+            is no hub repository to select them, e.g. when using a vendored
+            `requirements.bzl`. The `[<extra>]` targets are also created for
+            the requested extras that the package does not provide and they
+            are the same as the package without extras, because an unknown
+            extra has no dependencies.
         include: {type}`list[str] | dict[str, list[str] | None]` The list
             of packages to include. If it is a dict, then the values are the
             extras of each package that are available in the hub and the
@@ -130,13 +138,32 @@ def whl_library_deps_targets(
         return visibility if group_label and not is_member(extra) else impl_vis
 
     # Create targets for every extra that the package provides, so that the hub
-    # can select only the extras that are requested on each platform without
-    # passing the extras to this repository.
-    extras_targets = [""] + sorted({normalize_name(e): None for e in provides_extra})
+    # can select only the extras that are requested on each platform. The
+    # requested extras that the package does not provide also get targets, they
+    # do not add any dependencies, which is how `pip` treats unknown extras.
+    requested_extras = sorted({normalize_name(e): None for e in extras})
+    extras_targets = sorted({
+        normalize_name(e): None
+        for e in list(provides_extra) + requested_extras
+    })
     whl_file_label = _name("", WHEEL_FILE_PUBLIC_LABEL)
 
+    # The `pkg` target includes the requested extras, so the package without
+    # extras needs a separate target if any are requested. In the legacy mode
+    # the group library is the package without extras if it is a member.
+    base_label = extra_label("")
+    has_base_target = bool(requires_dist and requested_extras and not (group_label and is_member("")))
+
+    # The targets to create as tuples of the name, the member of the group
+    # that the target is and the extras to include.
+    pkg_targets = [(_name("", PY_LIBRARY_PUBLIC_LABEL), "", requested_extras)] + [
+        (_name(extra, PY_LIBRARY_PUBLIC_LABEL), extra, [extra])
+        for extra in extras_targets
+    ] + ([(base_label, "", [])] if has_base_target else [])
+
+    aliases = dict(aliases)
     if group_label:
-        for extra in extras_targets:
+        for extra in [""] + extras_targets:
             if is_member(extra):
                 aliases[extra_label(extra) if extra else PY_LIBRARY_PUBLIC_LABEL] = group_label.format(PY_LIBRARY_PUBLIC_LABEL)
         if is_member(""):
@@ -146,14 +173,22 @@ def whl_library_deps_targets(
         # If the package is in a group but has no deps, we still need the labels to point at
         # the srcs targets so that the group implementation can use them.
         aliases[whl_file_label] = repo_label(WHEEL_FILE)
-        for extra in extras_targets:
-            aliases[_name(extra, PY_LIBRARY_PUBLIC_LABEL)] = repo_label(PY_SRCS_LABEL)
+        for name, _, _ in pkg_targets:
+            aliases[name] = repo_label(PY_SRCS_LABEL)
 
     for alias, actual in aliases.items():
         native.alias(
             name = alias,
             actual = actual,
             visibility = visibility,
+        )
+
+    if not has_base_target:
+        # The same visibility as the `pkg` target.
+        native.alias(
+            name = base_label,
+            actual = ":" + PY_LIBRARY_PUBLIC_LABEL,
+            visibility = visibility if group_label or not requires_dist else impl_vis,
         )
 
     if not requires_dist:
@@ -205,17 +240,17 @@ def whl_library_deps_targets(
             visibility = _visibility(""),
         )
 
-    for extra in extras_targets if hasattr(rules, "py_library") else []:
+    for name, extra, want_extras in pkg_targets if hasattr(rules, "py_library") else []:
         package_deps = deps(
             name = self_name,
             requires_dist = requires_dist,
             include = include,
             excludes = members if is_member(extra) else [],
-            extras = [extra] if extra else [],
+            extras = want_extras,
             keep_extras = True,
         )
         rules.py_library(
-            name = _name(extra, PY_LIBRARY_PUBLIC_LABEL),
+            name = name,
             # We include as srcs to ensure that the (locations :pkg) works as expected.
             srcs = [repo_label(PY_SRCS_LABEL)],
             deps = _deps(

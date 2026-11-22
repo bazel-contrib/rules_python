@@ -22,6 +22,7 @@ _RENDER = {
     "data": render.list,
     "data_exclude": render.list,
     "entry_points": render.dict_dict,
+    "extras": render.list,
     "group_deps": render.list,
     "include": str,
     "provides_extra": render.list,
@@ -59,6 +60,7 @@ def generate_whl_library_build_bazel(
         config_load,
         purl = None,
         requires_dist = [],
+        extras = [],
         **kwargs):
     """Generate a BUILD file for an unzipped Wheel
 
@@ -68,6 +70,7 @@ def generate_whl_library_build_bazel(
         config_load: {type}`str` The location from where to load the config.
         purl: The purl.
         requires_dist: {type}`list[str]` The list of dependencies from the METADATA file.
+        extras: {type}`list[str]` The list of requested extras.
         **kwargs: Extra args serialized to be passed to the
             {obj}`whl_library_targets`.
 
@@ -89,6 +92,8 @@ def generate_whl_library_build_bazel(
         "pypi_version={}".format(metadata_version),
     ]
     kwargs["tags"] = tags
+    if extras:
+        kwargs["extras"] = extras
 
     if not requires_dist:
         # no deps, we can leave the extra loads out

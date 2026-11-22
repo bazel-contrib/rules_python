@@ -114,6 +114,7 @@ whl_library_targets(
         "data_exclude_all",
     ],
     dep_template = "@pypi//{name}:{target}",
+    extras = ["extra"],
     group_deps = [
         "foo",
         "fox",
@@ -162,6 +163,7 @@ package_metadata(
         group_name = "qux",
         purl = "foo",
         group_deps = ["foo", "fox", "qux"],
+        extras = ["extra"],
     )
     env.expect.that_str(actual.replace("@@", "@")).equals(want)
 
