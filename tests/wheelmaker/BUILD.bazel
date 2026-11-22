@@ -1,0 +1,17 @@
+load("@rules_rust//rust:defs.bzl", "rust_test")
+
+package(default_visibility = ["//:__subpackages__"])
+
+licenses(["notice"])
+
+rust_test(
+    name = "wheelmaker_test",
+    size = "small",
+    srcs = ["wheelmaker_test.rs"],
+    edition = "2024",
+    deps = [
+        "//crates/wheelmaker:wheelmaker_lib",
+        "@crates//:sha2",
+        "@crates//:zip",
+    ],
+)

@@ -9,6 +9,16 @@ from pathlib import Path
 from urllib.error import URLError
 from urllib.request import urlopen
 
+_WHEELMAKER_IMPL = os.environ["WHEELMAKER_IMPL"]
+# Rust wheelmaker (flate2) and Python wheelmaker.py (zlib) emit deterministic
+# but distinct RFC 1951 DEFLATE streams.
+_EXPECTED_WHEEL_SHA256 = {
+    # keep-sorted start
+    "python": "ef5afd9f6c3ff569ef7e5b2799d3a2ec9675d029414f341e0abd7254d6b9a25d",
+    "rust": "abb3ff8d5bb5142cdb476b46e91f586043e10a540170ed66050fbc5c1e19ae32",
+    # keep-sorted end
+}
+
 
 def find_free_port():
     with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
@@ -94,9 +104,10 @@ class TestTwineUpload(unittest.TestCase):
         )
 
         # Then I should be able to get its contents
+        want_sha256 = _EXPECTED_WHEEL_SHA256[_WHEELMAKER_IMPL]
         with urlopen(self.url + "/example-minimal-library/") as response:
             got_content = response.read().decode("utf-8")
-            want_content = """
+            want_content = f"""
 <!DOCTYPE html>
 <html lang="en">
     <head>
@@ -106,7 +117,7 @@ class TestTwineUpload(unittest.TestCase):
     </head>
     <body>
         <h1>Links for example-minimal-library</h1>
-            <a href="/packages/example_minimal_library-0.0.1-py3-none-any.whl#sha256=ef5afd9f6c3ff569ef7e5b2799d3a2ec9675d029414f341e0abd7254d6b9a25d">example_minimal_library-0.0.1-py3-none-any.whl</a><br>
+            <a href="/packages/example_minimal_library-0.0.1-py3-none-any.whl#sha256={want_sha256}">example_minimal_library-0.0.1-py3-none-any.whl</a><br>
     </body>
 </html>"""
             self.assertEqual(

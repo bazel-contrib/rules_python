@@ -34,10 +34,6 @@ load(
     "toolchains_repo",
 )
 
-# The `coverage` package from the `rules_python_coverage` pip hub, which is
-# configured in the `MODULE.bazel` file of `rules_python`.
-_BZLMOD_COVERAGE_TOOL = Label("@rules_python_coverage//coverage")
-
 def _get_platform_setting(version_info, key, *, platform, default):
     value = version_info.get(key, {})
     if type(value) != "dict":
@@ -76,7 +72,8 @@ def python_register_toolchains(
         python_version: {type}`str` the Python version.
         register_toolchains: {type}`bool` Whether or not to register the downloaded toolchains.
         register_coverage_tool: {type}`bool` Whether or not to register the
-            downloaded coverage tool to the toolchains.
+            downloaded coverage tool to the toolchains. Only used with
+            WORKSPACE.
         set_python_version_constraint: {type}`bool` When set to `True`,
             `target_compatible_with` for the toolchains will include a version
             constraint.
@@ -173,13 +170,19 @@ def python_register_toolchains(
             ),
         )
 
+        # NOTE: With bzlmod the `coverage` package from the
+        # `rules_python_coverage` pip hub is added to the dependencies of the
+        # executables instead, see `python.toolchain.configure_coverage_tool`.
+        #
         # NOTE @aignas 2023-01-19: The coverage tool is not supported on
         # Windows, because the upstream coverage wrapper is written in shell.
-        if register_coverage_tool and coverage_tool == None and "windows" not in base_platform:
-            if bzlmod_toolchain_call:
-                coverage_tool = str(_BZLMOD_COVERAGE_TOOL)
-            else:
-                coverage_tool = workspace_coverage_tool(python_version)
+        if (
+            register_coverage_tool and
+            coverage_tool == None and
+            not bzlmod_toolchain_call and
+            "windows" not in base_platform
+        ):
+            coverage_tool = workspace_coverage_tool(python_version)
 
         impl_repo_name = "{}_{}".format(name, platform)
         impl_repos[impl_repo_name] = (platform, platform_info)

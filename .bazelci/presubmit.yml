@@ -20,12 +20,10 @@ buildifier:
   warnings: "all"
 # LINT.ThenChange(//.pre-commit-config.yaml:buildifier)
 # NOTE: Minimum supported version is 7.x
-# LINT.IfChange(minimum_supported_version)
 .minimum_supported_version: &minimum_supported_version
   # For testing minimum supported version.
   bazel: 7.x
   skip_in_bazel_downstream_pipeline: "Bazel 7 required"
-# LINT.ThenChange(//version.bzl:minimum_bazel_version)
 .reusable_config: &reusable_config
   # USE_BAZEL_DIFF is disabled because target_compatible_with is used heavily,
   # but BazelCI's bazel-diff integration errors when handling them.
@@ -395,6 +393,28 @@ tasks:
       - "bazel vendor --vendor_dir=./vendor //..."
       - "bazel build --vendor_dir=./vendor //..."
       - "rm -rf ./vendor"
+
+  integration_test_bzlmod_windows_no_symlinks:
+    <<: *reusable_build_test_all
+    name: "examples/bzlmod: Windows, without symlinks"
+    working_directory: examples/bzlmod
+    platform: windows
+    bazel: 8.x
+    batch_commands:
+      # The last value wins, so this overrides the setting in .bazelrc to
+      # check that binaries work without the privilege to create symlinks.
+      - "echo startup --nowindows_enable_symlinks >> .bazelrc"
+    build_flags: &windows_no_symlinks_flags
+      ? "--keep_going"
+      # The CI user may be able to create symlinks, so force the fallback.
+      ? "--action_env=RULES_PYTHON_TESTING_DISABLE_SYMLINKS=1"
+      # Without symlinks, Bazel creates a junction instead of a copy in the
+      # runfiles tree for an output that isn't downloaded from the remote
+      # cache yet, and a junction to a file doesn't work.
+      ? "--remote_download_all"
+      # Repeat in build_flags so `bazel test` reuses the build's analysis cache.
+      ? "--test_env=RULES_PYTHON_TESTING_DISABLE_SYMLINKS=1"
+    test_flags: *windows_no_symlinks_flags
 
   integration_test_multi_python_versions_ubuntu_workspace:
     <<: *reusable_build_test_all

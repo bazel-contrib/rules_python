@@ -95,8 +95,6 @@ pip.parse(
 )
 pip.dep(name = "pytest")
 pip.dep(name = "pytest-bazel")
-pip.dep(name = "pytest-randomly")
-pip.dep(name = "pytest-shard")
 
 # The default coverage tool for the hermetic toolchains, see
 # `python.toolchain.configure_coverage_tool`. The versions that do not have a
@@ -160,7 +158,7 @@ rust_crates.from_cargo(
 # rules_rust has no @rules_rust//rust/platform config_setting for Linux ppc64le,
 # so don't mark the crates as incompatible with platforms that don't match one
 # of the triples above. Such platforms get only the unconditional dependencies,
-# which suffice for anyhow, flate2, lexopt, sha2, and zip.
+# which suffice for every crate in //crates:Cargo.toml.
 rust_crates.render_config(
     generate_target_compatible_with = False,
 )
@@ -406,26 +404,6 @@ dev_python.toolchain(
     python_version = "3.12.16",
 )
 
-# For testing the coverage collection with the coverage tool from a PyPI hub.
-# See //tests/coverage:coverage_from_pypi_test
-dev_python.toolchain(
-    python_version = "3.13.13",
-)
-
-[
-    dev_python.single_version_platform_override(
-        coverage_tool = "@dev_pip//coverage",
-        platform = platform,
-        python_version = "3.13.13",
-    )
-    for platform in [
-        "aarch64-apple-darwin",
-        "aarch64-unknown-linux-gnu",
-        "x86_64-apple-darwin",
-        "x86_64-unknown-linux-gnu",
-    ]
-]
-
 # For testing an arbitrary runtime triggered by a custom flag.
 # See //tests/toolchains:custom_platform_toolchain_test
 dev_python.single_version_platform_override(
@@ -537,7 +515,7 @@ use_repo(
     # "build_bazel_bazel_rolling",
     "build_bazel_bazel_self",
 )
-# LINT.ThenChange(//version.bzl:supported_bazel_versions)
+# LINT.ThenChange(//internal_dev_setup.bzl:workspace_bazel_binaries)
 
 # TODO @aignas 2025-01-27: should this be moved to `//python/extensions:uv.bzl` or should
 # it stay as it is? I think I may prefer to move it.

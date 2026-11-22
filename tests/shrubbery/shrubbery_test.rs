@@ -17,7 +17,6 @@ fn temp_test_dir(prefix: &str) -> PathBuf {
 
 #[test]
 fn test_subcommands_registry_sorted_and_complete() {
-    assert_eq!(SUBCOMMANDS.len(), 3);
     let mut sorted = SUBCOMMANDS.to_vec();
     sorted.sort_unstable();
     assert_eq!(SUBCOMMANDS, sorted.as_slice());
@@ -82,6 +81,28 @@ fn test_subcommand_forwarding() {
         ExitCode::SUCCESS
     );
     assert!(out_main.exists());
+
+    let metadata = dir.join("metadata.txt");
+    let out_whl = dir.join("pkg-1.0.0-py3-none-any.whl");
+    fs::write(&metadata, "Metadata-Version: 2.1\nName: pkg\n")
+        .expect("metadata should be writable");
+
+    assert_eq!(
+        run_cli([
+            "shrubbery",
+            "wheelmaker",
+            "--name",
+            "pkg",
+            "--version",
+            "1.0.0",
+            "--out",
+            out_whl.to_str().expect("out_whl path should be UTF-8"),
+            "--metadata_file",
+            metadata.to_str().expect("metadata path should be UTF-8"),
+        ]),
+        ExitCode::SUCCESS
+    );
+    assert!(out_whl.exists());
 }
 
 #[test]
@@ -118,5 +139,36 @@ fn test_cli_binary_subprocess() {
         String::from_utf8_lossy(&bad_out.stderr).contains("unknown subcommand"),
         "unexpected stderr: {}",
         String::from_utf8_lossy(&bad_out.stderr)
+    );
+
+    let abs_resolved =
+        std::path::absolute(&resolved).expect("SHRUBBERY_BIN should resolve to an absolute path");
+    let dir = temp_test_dir("subprocess_cwd");
+    fs::write(
+        dir.join("metadata.txt"),
+        "Metadata-Version: 2.1\nName: pkg\n",
+    )
+    .expect("metadata should be writable");
+    let whl_out = Command::new(&abs_resolved)
+        .current_dir(&dir)
+        .args([
+            "wheelmaker",
+            "--name=pkg",
+            "--version=1.0.0",
+            "--metadata_file=metadata.txt",
+            "--name_file=wheelname.txt",
+        ])
+        .output()
+        .expect("shrubbery wheelmaker should run in subprocess cwd");
+    assert_eq!(
+        whl_out.status.code(),
+        Some(0),
+        "stderr: {}",
+        String::from_utf8_lossy(&whl_out.stderr)
+    );
+    assert!(dir.join("pkg-1.0.0-py3-none-any.whl").exists());
+    assert_eq!(
+        fs::read_to_string(dir.join("wheelname.txt")).expect("wheelname.txt should exist"),
+        "pkg-1.0.0-py3-none-any.whl"
     );
 }

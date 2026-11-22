@@ -1,16 +1,26 @@
 """Implementation of whl_filegroup rule."""
 
+load("//python/private:toolchain_types.bzl", "SHRUBBERY_TOOLCHAIN_TYPE")
+load("//python/private/toolchains:shrubbery_toolchain.bzl", "get_shrubbery_tool")
+
 def _whl_filegroup_impl(ctx):
     out_dir = ctx.actions.declare_directory(ctx.attr.name)
+    tool = get_shrubbery_tool(
+        ctx,
+        "extract_wheel_files",
+        ctx.attr._extract_wheel_files_tool,
+    )
+    args = ctx.actions.args()
+    args.add_all(tool.prefix_args)
+    args.add(ctx.file.whl.path)
+    args.add(out_dir.path)
+    args.add(ctx.attr.pattern)
     ctx.actions.run(
         outputs = [out_dir],
         inputs = [ctx.file.whl],
-        arguments = [
-            ctx.file.whl.path,
-            out_dir.path,
-            ctx.attr.pattern,
-        ],
-        executable = ctx.executable._extract_wheel_files_tool,
+        arguments = [args],
+        executable = tool.executable[DefaultInfo].files_to_run,
+        toolchain = tool.toolchain,
         mnemonic = "PyExtractWheelFiles",
         progress_message = "Extracting %s files from %s" % (ctx.attr.pattern, ctx.file.whl.short_path),
     )
@@ -61,4 +71,7 @@ from the already extracted whl file.
             executable = True,
         ),
     },
+    toolchains = [
+        config_common.toolchain_type(SHRUBBERY_TOOLCHAIN_TYPE, mandatory = False),
+    ],
 )

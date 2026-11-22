@@ -1,8 +1,10 @@
 load("//python:py_library.bzl", "py_library")
 load("//python:pytest_test.bzl", "pytest_test")
-load("//tests/support:py_reconfig.bzl", "py_reconfig_test")
+load("//tests/support:py_reconfig.bzl", "py_reconfig_binary")
 load("//tests/support:support.bzl", "NOT_WINDOWS", "SUPPORTS_BZLMOD")
 load(":coverage_workspace_tests.bzl", "coverage_workspace_test_suite")
+
+_PYPI_PYTHON_VERSION = "3.14"
 
 py_library(
     name = "lib",
@@ -12,16 +14,16 @@ py_library(
 # The program that is built with coverage enabled. It is run by the
 # `coverage_collection_test` below, which sets the same environment variables
 # that `bazel coverage` would set.
-py_reconfig_test(
+py_reconfig_binary(
     name = "instrumented",
     srcs = ["instrumented.py"],
     collect_code_coverage = True,
     main = "instrumented.py",
-    # The default coverage tool is configured for this version, see the
-    # `MODULE.bazel` and `WORKSPACE` files.
+    # The coverage tool of the toolchain is configured for this version, see
+    # the `MODULE.bazel` and `WORKSPACE` files.
     python_version = "3.12.16",
     tags = ["manual"],
-    # The default coverage tool is not supported on Windows.
+    # The coverage collection is not supported on Windows.
     target_compatible_with = NOT_WINDOWS,
     deps = [":lib"],
 )
@@ -37,14 +39,71 @@ pytest_test(
     deps = ["//python/runfiles"],
 )
 
-# The same program, but the coverage tool is the `coverage` py_library from the
-# `@dev_pip` hub, see the `MODULE.bazel` file.
-py_reconfig_test(
-    name = "instrumented_pypi",
+# Like `instrumented`, but the `coverage` package of the toolchain is
+# materialized in the binary's venv site-packages instead of being added to
+# `sys.path`.
+py_reconfig_binary(
+    name = "instrumented_venv",
     srcs = ["instrumented.py"],
     collect_code_coverage = True,
     main = "instrumented.py",
-    python_version = "3.13.13",
+    python_version = "3.12.16",
+    tags = ["manual"],
+    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    venvs_site_packages = "yes",
+    deps = [":lib"],
+)
+
+pytest_test(
+    name = "coverage_collection_venvs_site_packages_test",
+    srcs = ["coverage_collection_test.py"],
+    data = [":instrumented_venv"],
+    env = {
+        "INSTRUMENTED": "$(rlocationpath :instrumented_venv)",
+    },
+    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    deps = ["//python/runfiles"],
+)
+
+# Like `instrumented`, but with a toolchain that is not the default one for the
+# `3.12` version. The `coverage` package is locked per `X.Y` version, so it is
+# used for all of the `X.Y.Z` versions.
+py_reconfig_binary(
+    name = "instrumented_patch_version",
+    srcs = ["instrumented.py"],
+    collect_code_coverage = True,
+    main = "instrumented.py",
+    python_version = "3.12.13",
+    tags = ["manual"],
+    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    deps = [":lib"],
+)
+
+pytest_test(
+    name = "coverage_collection_patch_version_test",
+    srcs = ["coverage_collection_test.py"],
+    data = [":instrumented_patch_version"],
+    env = {
+        "INSTRUMENTED": "$(rlocationpath :instrumented_patch_version)",
+    },
+    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    deps = ["//python/runfiles"],
+)
+
+# The programs below use `coverage` from the `@dev_pip` hub (see
+# `MODULE.bazel`) and a Python version for which the toolchain has no coverage
+# tool, so coverage collection only works when `--coverage` is set.
+
+# Uses `@dev_pip//coverage` via the `coverage` flag.
+py_reconfig_binary(
+    name = "instrumented_pypi",
+    srcs = ["instrumented.py"],
+    collect_code_coverage = True,
+    config_settings = {
+        "//python/config_settings:coverage": "@dev_pip//coverage",
+    },
+    main = "instrumented.py",
+    python_version = _PYPI_PYTHON_VERSION,
     tags = ["manual"],
     target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
     deps = [":lib"],
@@ -56,6 +115,77 @@ pytest_test(
     data = [":instrumented_pypi"],
     env = {
         "INSTRUMENTED": "$(rlocationpath :instrumented_pypi)",
+    },
+    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    deps = ["//python/runfiles"],
+)
+
+# Like `instrumented_pypi`, but `@dev_pip//coverage` is materialized in the
+# binary's venv site-packages instead of being added to `sys.path`.
+py_reconfig_binary(
+    name = "instrumented_pypi_venv",
+    srcs = ["instrumented.py"],
+    collect_code_coverage = True,
+    config_settings = {
+        "//python/config_settings:coverage": "@dev_pip//coverage",
+    },
+    main = "instrumented.py",
+    python_version = _PYPI_PYTHON_VERSION,
+    tags = ["manual"],
+    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    venvs_site_packages = "yes",
+    deps = [":lib"],
+)
+
+pytest_test(
+    name = "coverage_from_pypi_venvs_site_packages_test",
+    srcs = ["coverage_collection_test.py"],
+    data = [":instrumented_pypi_venv"],
+    env = {
+        "INSTRUMENTED": "$(rlocationpath :instrumented_pypi_venv)",
+    },
+    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    deps = ["//python/runfiles"],
+)
+
+# `coverage` targets with `.coveragerc` files, used via the `coverage` flag.
+py_library(
+    name = "coverage_base_coveragerc",
+    data = ["base/.coveragerc"],
+    tags = ["manual"],
+    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    deps = ["@dev_pip//coverage"],
+)
+
+py_library(
+    name = "coverage_with_coveragerc",
+    data = [".coveragerc"],
+    tags = ["manual"],
+    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    deps = [":coverage_base_coveragerc"],
+)
+
+py_reconfig_binary(
+    name = "instrumented_pypi_coveragerc",
+    srcs = ["instrumented.py"],
+    collect_code_coverage = True,
+    config_settings = {
+        "//python/config_settings:coverage": ":coverage_with_coveragerc",
+    },
+    main = "instrumented.py",
+    python_version = _PYPI_PYTHON_VERSION,
+    tags = ["manual"],
+    target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
+    deps = [":lib"],
+)
+
+pytest_test(
+    name = "coverage_from_pypi_coveragerc_test",
+    srcs = ["coverage_collection_test.py"],
+    data = [":instrumented_pypi_coveragerc"],
+    env = {
+        "EXPECT_COVERAGERC": "1",
+        "INSTRUMENTED": "$(rlocationpath :instrumented_pypi_coveragerc)",
     },
     target_compatible_with = NOT_WINDOWS + SUPPORTS_BZLMOD,
     deps = ["//python/runfiles"],

@@ -24,6 +24,7 @@ load("//python/private:pyproject_utils.bzl", "read_pyproject", "version_from_req
 load("//python/private:repo_utils.bzl", "repo_utils")
 load(":default_platforms.bzl", "default_platforms")
 load(":hub_builder.bzl", "hub_builder")
+load(":hub_exposure.bzl", "hub_exposure")
 load(":hub_repository.bzl", "hub_repository", "whl_config_settings_to_json")
 load(":parse_whl_name.bzl", "parse_whl_name")
 load(":pep508_env.bzl", "env")
@@ -89,6 +90,7 @@ def build_config(
     unified_hub_requirements_bzl = False
     defaults = {
         "platforms": default_platforms(),
+        "pyproject_toml": None,
         "python_version": None,
     }
     for mod in module_ctx.modules:
@@ -105,6 +107,8 @@ def build_config(
                 unified_hub_requirements_bzl = True
             pyproject_toml = tag.pyproject_toml
             if pyproject_toml:
+                if mod.is_root:
+                    defaults["pyproject_toml"] = pyproject_toml
                 pyproject = read_pyproject(module_ctx, pyproject_toml)
                 if pyproject.requires_python:
                     defaults["python_version"] = version_from_requires_python(pyproject.requires_python)
@@ -153,6 +157,8 @@ def build_config(
             for name, values in defaults["platforms"].items()
         },
         enable_pipstar_extract = enable_pipstar_extract,
+        # Label | None: default `pyproject.toml` from `pip.default`.
+        pyproject_toml = defaults["pyproject_toml"],
         toml_decode = toml.decode,
         unified_hub_requirements_bzl = unified_hub_requirements_bzl,
     )
@@ -245,6 +251,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
     # dict[str repo, HubBuilder]
     # See `hub_builder.bzl%hub_builder()` for `HubBuilder`
     pip_hub_map = {}
+    hub_pyproject = {}
     simpleapi_cache = pypi_cache(mctx = module_ctx)
 
     is_pypi_hub_reserved = module_ctx.getenv("RULES_PYTHON_PYPI_HUB_RESERVED", "0") == "1"
@@ -321,6 +328,9 @@ You cannot use both the additive_build_content and additive_build_content_file a
             else:
                 builder = pip_hub_map[hub_name]
 
+            if pip_attr.pyproject_toml and hub_name not in hub_pyproject:
+                hub_pyproject[hub_name] = pip_attr.pyproject_toml
+
             builder.pip_parse(
                 module_ctx,
                 pip_attr = pip_attr,
@@ -345,6 +355,7 @@ You cannot use both the additive_build_content and additive_build_content_file a
     exposed_packages = {}
     extra_aliases = {}
     whl_libraries = {}
+    hubs = {}
     for hub in pip_hub_map.values():
         out = hub.build()
 
@@ -358,8 +369,38 @@ You cannot use both the additive_build_content and additive_build_content_file a
         extra_aliases[hub.name] = out.extra_aliases
         hub_group_map[hub.name] = out.group_map
         hub_whl_map[hub.name] = out.whl_map
+        hubs[hub.name] = struct(
+            # str: module that created the hub.
+            module_name = hub.module_name,
+            # Label | None: `pyproject_toml` set on `pip.parse`.
+            pyproject = hub_pyproject.get(hub.name),
+            # list[str]: normalized names of all packages in the hub.
+            packages = out.whl_map.keys(),
+        )
+
+    configured_hubs = hub_exposure(
+        module_ctx,
+        hubs = hubs,
+        default_pyproject = config.pyproject_toml,
+        _fail = _fail,
+    )
+    if configured_hubs == None:
+        return None
+
+    # The `all_*requirements` only list the selected packages that are
+    # available on all of the platforms, while all of the selected packages
+    # stay public.
+    for hub_name, packages in configured_hubs.items():
+        selected = {name: None for name in packages}
+        exposed_packages[hub_name] = [
+            name
+            for name in exposed_packages[hub_name]
+            if name in selected
+        ]
 
     return struct(
+        # dict[str, list[str]]: configured hubs and exposed packages.
+        configured_hubs = configured_hubs,
         config = config,
         declared_deps = declared_deps,
         default_hub = config.default_hub or renamed_default_hub,
@@ -392,7 +433,12 @@ def _create_unified_hub_repo(mods):
     extra_aliases = {}
 
     for hub_name in hubs:
-        for pkg_name in mods.hub_whl_map[hub_name]:
+        # The hubs configured with `pip.configure` only expose some packages.
+        hub_packages = mods.configured_hubs.get(
+            hub_name,
+            mods.hub_whl_map[hub_name],
+        )
+        for pkg_name in hub_packages:
             norm_pkg = normalize_name(pkg_name)
             if norm_pkg not in packages:
                 packages[norm_pkg] = []
@@ -514,6 +560,9 @@ def _pip_impl(module_ctx):
             packages = mods.exposed_packages.get(hub_name, []),
             platform_config_settings = mods.platform_config_settings.get(hub_name, {}),
             groups = mods.hub_group_map.get(hub_name),
+            # The hubs configured with `pip.configure` hide the other packages.
+            hide_unexposed_packages = hub_name in mods.configured_hubs,
+            public_packages = mods.configured_hubs.get(hub_name, []),
         )
 
     _create_unified_hub_repo(mods)
@@ -656,6 +705,10 @@ This is designed to work with dependency management tools like Renovate.
 
 :::{versionadded} 2.3.0
 :::
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+Also used by {obj}`pip.configure` for the hubs of the root module.
+:::
 """,
     ),
     "unified_hub_requirements_bzl": attr.bool(
@@ -685,12 +738,28 @@ parameters like `{major}` and `{minor}` which will be replaced with python versi
 `cp{major}{minor}` will result in `cp313` given the full python version is `3.13.5`.
 Will always  include `"none"` even if it is not specified.
 
+The python tag of the wheels using the stable ABI (`abi3` and `abi3t`) is
+treated as the minimum supported Python version, e.g. a `cp315-abi3t` wheel is
+selected for Python `3.15` and above.
+
+The default platforms use the following values:
+* `["abi3", "cp{major}{minor}"]` for the GIL-enabled builds.
+* `["abi3t", "cp{major}{minor}t"]` for the free-threaded builds, where `abi3t`
+  is the stable ABI for the free-threaded builds as specified in
+  [PEP 803](https://peps.python.org/pep-0803/). The GIL-enabled builds only
+  select `abi3t` wheels if they are also tagged as `abi3` (e.g.
+  `cp315-abi3.abi3t`).
+
 :::{note}
 We select a single wheel and the last match will take precedence.
 :::
 
 :::{seealso}
 See official [docs](https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/#abi-tag) for more information.
+:::
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+The default free-threaded platforms select the `abi3t` wheels.
 :::
 """,
     ),
@@ -858,6 +927,10 @@ The version must be specified as `==X.Y.Z` (exact version with full semver).
 :::
 
 :::{versionadded} 2.3.0
+:::
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+Also used by {obj}`pip.configure` to select the packages that the hub exposes.
 :::
 """,
         ),
@@ -1058,6 +1131,83 @@ execution-phase error when built.
 """,
 )
 
+_configure_tag = tag_class(
+    attrs = {
+        "dependency_groups": attr.string_list(
+            default = [],
+            doc = """
+The `pyproject.toml` dependency groups whose packages the hub exposes. The
+default, `[]`, does not select any packages, so the tag does not limit the hub
+and it does not need a `pyproject.toml`.
+
+Each item is one of:
+
+* `"default"`: the `[project] dependencies`.
+* `"optional:<name>"`: the `[project.optional-dependencies]` entry `<name>`.
+* `"group:<name>"`: the PEP 735 `[dependency-groups]` entry `<name>`.
+* `"optional:*"` or `"group:*"`: all entries of the table.
+* `"*"`: all of the above.
+* `"<name>"`: the dependency group `<name>` if it exists, otherwise the
+  optional dependency group `<name>`.
+* `"transitive"`: only supported together with `"*"`, exposes all of the
+  packages of the hub including the transitive dependencies, i.e. all of the
+  packages from the requirements files or the `uv.lock` file.
+
+See {ref}`Configuring the Exposed Packages <pip-configure>` for examples.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+        ),
+        "hub_name": attr.string(
+            mandatory = True,
+            doc = """
+The name of the hub to configure.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+        ),
+        "pyproject_toml": attr.label(
+            mandatory = False,
+            doc = """
+The `pyproject.toml` file that defines the dependency groups. It is also used
+by the later `pip.configure` tags of the same module and hub that don't set it.
+Defaults to the last `pyproject_toml` set by an earlier `pip.configure` tag of
+the same module and hub, then to the {attr}`pip.parse.pyproject_toml` of the
+hub, then to {attr}`pip.default.pyproject_toml` if the hub is defined by the
+root module. It is only needed when {attr}`dependency_groups` is set.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+        ),
+    },
+    doc = """
+Configure the packages exposed by a hub.
+
+The packages are selected from a `pyproject.toml` file using the
+`[project] dependencies`, `[project.optional-dependencies]` and PEP 735
+`[dependency-groups]` tables. The other packages of the hub, e.g. the
+transitive dependencies, are still used by the packages that need them, but
+they are not public.
+
+The tags work like a builder: they are applied in order and multiple tags for
+the same hub are combined, so each tag can configure a different part of the
+hub. A `pyproject_toml` set on a tag is used by the later tags of the same
+module and hub. A tag that does not select any {attr}`dependency_groups` does
+not limit the hub.
+
+Only the root module and the module that created the hub can configure it. If
+both do, the root module wins.
+
+See {ref}`Configuring the Exposed Packages <pip-configure>` for examples.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+:::
+""",
+)
+
 pypi = module_extension(
     environ = ["RULES_PYTHON_PYPI_HUB_RESERVED"],
     doc = """\
@@ -1081,12 +1231,17 @@ Environment Variables:
 - `RULES_PYTHON_PYPI_HUB_RESERVED`: Enable fallback renaming for reserved hub name collisions.
   See the {envvar}`RULES_PYTHON_PYPI_HUB_RESERVED` documentation for details.
 
+pip.configure:
+This tag class configures the packages exposed by a hub using the dependency
+groups from a pyproject.toml file.
+
 pip.whl_mods:
 This tag class is used to help create JSON files to describe modifications to
 the BUILD files for wheels.
 """,
     implementation = _pip_impl,
     tag_classes = {
+        "configure": _configure_tag,
         "default": tag_class(
             attrs = _default_attrs,
             doc = """\

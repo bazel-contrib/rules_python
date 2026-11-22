@@ -38,6 +38,9 @@ def _test_coverage_warning_when_enabled_and_no_tool(env):
     env.expect.that_bool(msg == None).equals(False)
     env.expect.that_str(msg).contains("has no coverage_tool")
     env.expect.that_str(msg).contains("//fake:runtime")
+    env.expect.that_str(msg).contains(
+        "--@rules_python//python/config_settings:coverage",
+    )
 
 _basic_tests.append(_test_coverage_warning_when_enabled_and_no_tool)
 
@@ -64,6 +67,17 @@ def _test_no_coverage_warning_when_tool_present(env):
     env.expect.that_bool(msg == None).equals(True)
 
 _basic_tests.append(_test_no_coverage_warning_when_tool_present)
+
+def _test_no_coverage_warning_when_coverage_flag_set(env):
+    msg = coverage_tool_missing_message(
+        coverage_enabled = True,
+        coverage_tool = None,
+        has_coverage_flag = True,
+        label = Label("//fake:runtime"),
+    )
+    env.expect.that_bool(msg == None).equals(True)
+
+_basic_tests.append(_test_no_coverage_warning_when_coverage_flag_set)
 
 def _simple_binary_impl(ctx):
     executable = ctx.actions.declare_file(ctx.label.name)
@@ -232,71 +246,6 @@ def _test_coverage_tool_plain_files_impl(env, target):
     ])
 
 _tests.append(_test_coverage_tool_plain_files)
-
-def _test_coverage_tool_py_library(name):
-    rt_util.helper_target(
-        py_runtime,
-        name = name + "_subject",
-        python_version = "PY3",
-        interpreter_path = "/bogus",
-        coverage_tool = name + "_coverage",
-    )
-
-    # Like `@pypi//coverage`, which depends on the Python toolchain.
-    rt_util.helper_target(
-        py_library,
-        name = name + "_coverage",
-        srcs = [
-            "site-packages/coverage/__init__.py",
-            "site-packages/coverage/__main__.py",
-        ],
-        imports = ["site-packages"],
-    )
-    analysis_test(
-        name = name,
-        target = name + "_subject",
-        impl = _test_coverage_tool_py_library_impl,
-    )
-
-def _test_coverage_tool_py_library_impl(env, target):
-    info = env.expect.that_target(target).provider(PyRuntimeInfo, factory = py_runtime_info_subject)
-    env.expect.that_bool(info.actual.coverage_tool == None).equals(True)
-    info.coverage_imports().contains_exactly_predicates([
-        matching.str_endswith("tests/py_runtime/site-packages"),
-    ])
-    info.coverage_files().contains_at_least([
-        "{package}/site-packages/coverage/__init__.py",
-        "{package}/site-packages/coverage/__main__.py",
-    ])
-
-_tests.append(_test_coverage_tool_py_library)
-
-def _test_coverage_tool_multiple_files(name):
-    rt_util.helper_target(
-        py_runtime,
-        name = name + "_subject",
-        python_version = "PY3",
-        interpreter_path = "/bogus",
-        coverage_tool = name + "_files",
-    )
-    rt_util.helper_target(
-        native.filegroup,
-        name = name + "_files",
-        srcs = ["coverage_file1.txt", "coverage_file2.txt"],
-    )
-    analysis_test(
-        name = name,
-        target = name + "_subject",
-        impl = _test_coverage_tool_multiple_files_impl,
-        expect_failure = True,
-    )
-
-def _test_coverage_tool_multiple_files_impl(env, target):
-    env.expect.that_target(target).failures().contains_predicate(
-        matching.str_matches("coverage_tool must provide PyInfo*produce exactly one file"),
-    )
-
-_tests.append(_test_coverage_tool_multiple_files)
 
 def _test_in_build_interpreter(name):
     rt_util.helper_target(
@@ -659,6 +608,58 @@ def _test_version_info_from_flag_impl(env, target):
     version_info.serial().equals(None)
 
 _tests.append(_test_version_info_from_flag)
+
+def _test_coverage_flag_does_not_cycle(name):
+    rt_util.helper_target(
+        py_library,
+        name = name + "_cov",
+        srcs = [rt_util.empty_file(name + "_cov.py")],
+    )
+    rt_util.helper_target(
+        py_runtime,
+        name = name + "_subject",
+        interpreter_path = "/bogus",
+        python_version = "PY3",
+    )
+    analysis_test(
+        name = name,
+        target = name + "_subject",
+        impl = _test_coverage_flag_does_not_cycle_impl,
+        config_settings = {
+            "//command_line_option:collect_code_coverage": True,
+            labels.COVERAGE: "//{}:{}_cov".format(native.package_name(), name),
+        },
+    )
+
+def _test_coverage_flag_does_not_cycle_impl(env, target):
+    env.expect.that_target(target).has_provider(PyRuntimeInfo)
+
+_tests.append(_test_coverage_flag_does_not_cycle)
+
+def _test_version_info_from_flag_with_prerelease(name):
+    py_runtime(
+        name = name + "_subject",
+        interpreter_version_info = None,
+        interpreter_path = "/bogus",
+    )
+    analysis_test(
+        name = name,
+        target = name + "_subject",
+        impl = _test_version_info_from_flag_with_prerelease_impl,
+        config_settings = {
+            labels.PYTHON_VERSION: "3.15.0rc1",
+        },
+    )
+
+def _test_version_info_from_flag_with_prerelease_impl(env, target):
+    version_info = env.expect.that_target(target).provider(PyRuntimeInfo, factory = py_runtime_info_subject).interpreter_version_info()
+    version_info.major().equals(3)
+    version_info.minor().equals(15)
+    version_info.micro().equals(0)
+    version_info.releaselevel().equals(None)
+    version_info.serial().equals(None)
+
+_tests.append(_test_version_info_from_flag_with_prerelease)
 
 def py_runtime_test_suite(name):
     test_suite(

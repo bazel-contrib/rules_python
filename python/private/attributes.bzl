@@ -432,6 +432,12 @@ special targets, or define your own by putting them in your own `command_line_op
 directory.
 :::
 
+The values of settings that take a label, such as {flag}`--debugger`, are
+resolved relative to the package of the caller, like label attributes. This is
+done when the target is defined, so it is not possible when `config_settings`
+is a `select()`. In that case, pass canonical label strings, e.g.
+`str(Label(":my_debugger"))`, for the values.
+
 :::{seealso}
 * {obj}`//command_line_option:build_runfile_links`
 * {obj}`//command_line_option:enable_runfiles`
@@ -447,6 +453,11 @@ more information about risks and considerations.
 :::
 
 :::{versionadded} 1.7.0
+:::
+
+:::{versionchanged} VERSION_NEXT_PATCH
+The label values of settings are resolved relative to the package of the
+caller.
 :::
 """,
     ),

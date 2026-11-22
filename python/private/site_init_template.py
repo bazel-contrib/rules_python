@@ -27,9 +27,9 @@ _WORKSPACE_NAME = "%workspace_name%"
 _SELF_RUNFILES_RELATIVE_PATH = "%site_init_runfiles_path%"
 # Runfiles-relative path to the coverage tool entry point, if any.
 _COVERAGE_TOOL = "%coverage_tool%"
-# Colon-delimited string of runfiles-relative import paths of the coverage
-# package, if any.
-_COVERAGE_IMPORTS = "%coverage_imports%"
+# True if the coverage package is importable from the dependencies, i.e. when
+# --@rules_python//python/config_settings:coverage is set.
+_COVERAGE_FROM_DEPS = "%coverage_from_deps%" == "1"
 # True if the runfiles root should be added to sys.path
 _ADD_RUNFILES_ROOT_TO_SYS_PATH = "%add_runfiles_root_to_sys_path%" == "1"
 _INTERPRETER_ACTUAL_PATH = "%interpreter_actual_path%"
@@ -56,7 +56,7 @@ _print_verbose("import_all:", _IMPORT_ALL)
 _print_verbose("workspace_name:", _WORKSPACE_NAME)
 _print_verbose("self_runfiles_path:", _SELF_RUNFILES_RELATIVE_PATH)
 _print_verbose("coverage_tool:", _COVERAGE_TOOL)
-_print_verbose("coverage_imports:", _COVERAGE_IMPORTS)
+_print_verbose("coverage_from_deps:", _COVERAGE_FROM_DEPS)
 _print_verbose("interpreter_actual_path:", _INTERPRETER_ACTUAL_PATH)
 
 
@@ -213,12 +213,11 @@ def _setup_sys_path():
     # one executed by this one (e.g. an extension module).
     # NOTE: Coverage is added last to allow user dependencies to override it.
     coverage_setup = False
-    if os.environ.get("COVERAGE_DIR") and _COVERAGE_IMPORTS:
-        _print_verbose_coverage(f"Using toolchain coverage_imports {_COVERAGE_IMPORTS}")
-        for rel_path in _COVERAGE_IMPORTS.split(":"):
-            _maybe_add_path(os.path.join(_RUNFILES_ROOT, rel_path), "coverage-imports")
-        coverage_setup = True
-    elif os.environ.get("COVERAGE_DIR"):
+    if os.environ.get("COVERAGE_DIR"):
+        if _COVERAGE_FROM_DEPS:
+            # The import paths were already added along with the other deps.
+            _print_verbose_coverage("Using coverage from deps")
+            return True
         cov_tool = _COVERAGE_TOOL
         if cov_tool:
             _print_verbose_coverage(f"Using toolchain coverage_tool {cov_tool}")

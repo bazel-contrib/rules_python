@@ -452,7 +452,22 @@ def _find_host_interpreter_name(
         name = _host_interpreter_name(version_str)
         if name in available_interpreters:
             return name
-    return None
+
+    if python_version != _major_minor_version(python_version):
+        return None
+
+    # The toolchains may be pinned to `X.Y.Z` versions that are not the default
+    # one for the `X.Y` version, e.g. `3.12.3`. Use the latest one of them.
+    prefix = "python_{}_".format(python_version.replace(".", "_"))
+    suffix = "_host"
+    found, found_patch = None, -1
+    for name in available_interpreters:
+        if not (name.startswith(prefix) and name.endswith(suffix)):
+            continue
+        patch = name[len(prefix):-len(suffix)]
+        if patch.isdigit() and int(patch) > found_patch:
+            found, found_patch = name, int(patch)
+    return found
 
 def _detect_interpreter(self, pip_attr, python_version, full_python_version):
     python_interpreter_target = pip_attr.python_interpreter_target
