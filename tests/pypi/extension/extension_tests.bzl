@@ -754,6 +754,7 @@ def _test_default_index_setting(env):
             # The unresolved template is passed on, because the resolved value
             # may contain credentials.
             want_index_url = "${RULES_PYTHON_PIP_INDEX_URL}",
+            want_envsubst = ["RULES_PYTHON_PIP_INDEX_URL"],
         ),
         struct(
             modules = [
@@ -779,6 +780,7 @@ def _test_default_index_setting(env):
             # `my_module` is setting the default. The unresolved template is
             # passed on, because the resolved value may contain credentials.
             want_index_url = "${RULES_PYTHON_PIP_INDEX_URL}",
+            want_envsubst = ["RULES_PYTHON_PIP_INDEX_URL"],
         ),
     ]:
         pypi = _parse_modules(
@@ -808,16 +810,21 @@ simple==0.0.1 \
             simpleapi_download = mock_simpleapi_download,
         )
 
+        want_whl_library = {
+            "config_load": "@pypi_a//:config.bzl",
+            "dep_template": "@pypi_a//{name}:{target}",
+            "filename": "simple-0.0.1-py3-none-any.whl",
+            "index_url": test.want_index_url,
+            "integrity": "sha256-3q2+7w==",
+            "requirement": "simple==0.0.1",
+            "urls": ["file://simple-0.0.1-py3-none-any.whl"],
+        }
+        if getattr(test, "want_envsubst", []):
+            # The env vars of `pip.default` are needed to resolve the index
+            # URL template in the repository rules.
+            want_whl_library["envsubst"] = test.want_envsubst
         pypi.whl_libraries().contains_exactly({
-            "pypi_a_315_simple_py3_none_any_deadbeef": {
-                "config_load": "@pypi_a//:config.bzl",
-                "dep_template": "@pypi_a//{name}:{target}",
-                "filename": "simple-0.0.1-py3-none-any.whl",
-                "index_url": test.want_index_url,
-                "integrity": "sha256-3q2+7w==",
-                "requirement": "simple==0.0.1",
-                "urls": ["file://simple-0.0.1-py3-none-any.whl"],
-            },
+            "pypi_a_315_simple_py3_none_any_deadbeef": want_whl_library,
         })
 
 _tests.append(_test_default_index_setting)

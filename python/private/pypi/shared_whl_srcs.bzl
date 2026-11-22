@@ -129,12 +129,15 @@ def _srcs_key(args, srcs_args):
     """Return the key identifying the downloaded and extracted wheel.
 
     The URLs are not resolved using `envsubst`, so that credentials do not end
-    up in the key. The other args that only influence the download, e.g. the
-    `index_url`, are not part of the key, so the first registration wins.
+    up in the key. This means that the relative URLs cannot be resolved,
+    because the `index_url` may be a template, so they are kept together with
+    the `index_url` that they are relative to. The other args that only
+    influence the download are not part of the key, so the first registration
+    wins.
     """
     index_url = args.get("index_url", "")
     urls = tuple([
-        urllib.absolute_url(index_url, url)
+        url if urllib.is_absolute(url) else (index_url, url)
         for url in args["urls"]
     ])
     extract_args = {

@@ -108,7 +108,7 @@ def _test_unique_by_url_and_integrity(env):
             "a_312_foo": _whl(),
             "b_312_foo": _whl(integrity = "sha256-other"),
             "c_312_foo": _whl(urls = ["https://example.org/foo-0.0.1-py3-none-any.whl"]),
-            # A relative URL is resolved against the unresolved index_url
+            # A relative URL is kept together with the unresolved index_url
             "d_312_foo": _whl(
                 index_url = "${INDEX}/foo",
                 urls = ["../../packages/foo-0.0.1-py3-none-any.whl"],

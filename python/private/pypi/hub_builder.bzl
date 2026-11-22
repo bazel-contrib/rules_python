@@ -219,6 +219,7 @@ def _pip_parse(self, module_ctx, pip_attr, default_envsubst = [], python_version
         pip_attr = pip_attr,
         python_version = python_version,
         full_python_version = full_python_version,
+        default_envsubst = default_envsubst,
         enable_pipstar_extract = bool(
             self._config.enable_pipstar_extract or
             self._get_index_urls.get(python_version),
@@ -559,6 +560,7 @@ def _create_whl_repos(
         pip_attr,
         python_version,
         full_python_version,
+        default_envsubst = [],
         enable_pipstar_extract = False):
     """create all of the whl repositories
 
@@ -566,6 +568,8 @@ def _create_whl_repos(
         self: the builder.
         module_ctx: {type}`module_ctx`.
         pip_attr: {type}`struct` - the struct that comes from the tag class iteration.
+        default_envsubst: {type}`list[str]` - the env vars that are needed to
+            resolve the default index URL.
         python_version: {type}`str` - the resolved python version for this pip.parse call.
         full_python_version: {type}`str` - the full X.Y.Z python version.
         enable_pipstar_extract: {type}`bool` - enable the pipstar extraction or not.
@@ -605,10 +609,17 @@ def _create_whl_repos(
         for mod, whl_name in pip_attr.whl_modifications.items():
             whl_modifications[normalize_name(whl_name)] = mod
 
+    envsubst = pip_attr.envsubst
+    if self._get_index_urls.get(python_version):
+        # The index URL is passed to the repositories unresolved, so they need
+        # all of the env vars that are used to resolve it.
+        envsubst = {k: True for k in default_envsubst + pip_attr.envsubst}.keys()
+
     common_args = _common_args(
         self,
         module_ctx,
         pip_attr = pip_attr,
+        envsubst = envsubst,
     )
 
     interpreter = _detect_interpreter(
@@ -645,7 +656,7 @@ def _create_whl_repos(
                 repo = repo,
             )
 
-def _common_args(self, module_ctx, *, pip_attr):
+def _common_args(self, module_ctx, *, pip_attr, envsubst):
     # Construct args separately so that the lock file can be smaller and does not include unused
     # attrs.
     whl_library_args = dict(
@@ -658,7 +669,7 @@ def _common_args(self, module_ctx, *, pip_attr):
         download_only = pip_attr.download_only,
         enable_implicit_namespace_pkgs = pip_attr.enable_implicit_namespace_pkgs,
         environment = pip_attr.environment,
-        envsubst = pip_attr.envsubst,
+        envsubst = envsubst,
         pip_data_exclude = pip_attr.pip_data_exclude,
     )
 
