@@ -1,6 +1,6 @@
 ---
 trigger: model_decision
-description: rules to apply to pull request descriptions
+description: Pull request titles, descriptions, commits, comments, and replies
 ---
 
 @CONTRIBUTING.md
@@ -35,8 +35,9 @@ Before drafting any pull request description, strictly adhere to the rules in
 * **NEVER** amend or rebase commits on an active PR branch to avoid breaking
   code review threads.
 * **PR Metadata Discrepancies**: If a PR title or description diverges from
-  the branch's actual scope, notify the user of the discrepancy and ask for
-  confirmation before updating GitHub.
+  the branch's actual scope (including stale benchmark numbers after follow-up
+  commits), notify the user of the discrepancy and ask for confirmation before
+  updating GitHub.
 * **NEVER** include a list of per-file edits, changelog bullet points of
   individual file modifications, test execution logs/checklists, or AI
   disclosure metadata in PR descriptions or commit messages.
@@ -50,13 +51,33 @@ Before drafting any pull request description, strictly adhere to the rules in
   existing PR (such as a Dependabot PR); instead, disclose AI authorship only
   on comments you actually post (see below). Never post comments for every CI
   run or narrate build IDs, commit SHAs, line counts, or trivial diff details
-  (e.g., "comment-only"); comment `PTAL` only when ready for re-review.
+  on your own PR (e.g., "comment-only"); comment `PTAL` only when ready for
+  re-review, post a brief notice when `/review-code` re-wraps another
+  contributor's PR description, or post a single summary comment when pushing
+  direct fixes while reviewing another author's PR.
 * High-level overview only: state *why* the change is made and *how* at a
-  conceptual level. Link related issues (e.g. `Work towards #<issue>`).
+  conceptual level.
+* **Issue References**: Reference issues in PR descriptions (e.g., `Work towards
+  #<issue>`), never in commit messages; rebasing commits with `#<issue>` spams
+  the issue.
+* **Stacked Pull Requests**:
+  * **Same-repo** (head and base branches both in `rules_python`): Base each
+    child PR on its parent branch (`--base <parent-branch>`), register the PRs
+    in GitHub's native PR stack via `.agents/scripts/gh_pr_stack.py` (`create` /
+    `add`), and omit stack headers or tables from the PR description.
+  * **Forked-repo** (head branch in a fork, base branch in `rules_python`):
+    Add `DO NOT MERGE: awaiting #<parent_pr>` to child PR descriptions.
 * **Conciseness & Style (Strunk & White)**: Omit needless words. Use clear,
   active, and direct phrasing for *why* and *how*.
+* **Benchmark Summaries**: Format performance comparisons as a brief 3-5 bullet
+  list by workload dimension (speedup range, wall time, RSS) rather than prose.
 * **Preserve Existing Descriptions**: Preserve the author's wording unless
-  instructed to change it. Wrap bodies at 72 columns.
+  instructed to change it. Wrap body prose at 72 columns (excluding long
+  URLs, Markdown links, fenced code blocks, and Markdown tables). As an
+  explicit exception during `/review-code`, run
+  `.agents/skills/review-code/scripts/wrap_pr_body.py` directly on GitHub PRs
+  and, when editing another contributor's PR, post a brief notice comment
+  instead of drafting a long formatting suggestion.
 * **Open Questions & Follow-Up Items**:
   * Add the `"do not merge"` label to the PR when the PR description contains
     open questions (e.g., `gh pr edit <pr> --repo bazel-contrib/rules_python
@@ -70,13 +91,22 @@ Before drafting any pull request description, strictly adhere to the rules in
 ## PR Review Comments & Thread Resolution
 * End every posted PR comment or review reply with an italicized disclosure
   line:
-  * If the exact comment text was not shown to and approved by the user before
-    posting (including automatic PR AI disclosure comments):
-    `*This is an automatically generated agent comment.*`
-  * Only if the user was shown the exact comment text and explicitly approved
-    posting it:
+  * When posted without prior user review and approval of the comment text or
+    underlying `code-review-results.md` finding (including automatic PR
+    disclosures and direct review replies):
+    `*This is an agent-generated comment unreviewed by the user.*`
+  * Only when the user reviewed and explicitly approved posting the comment
+    text or underlying `code-review-results.md` finding:
     `*This is an agent-generated comment reviewed and approved by the user.*`
-* After fixing an inline PR review thread, reply with the commit hash and
-  explanation (`addPullRequestReviewThreadReply`) and resolve the thread
-  (`resolveReviewThread`) via `gh api graphql`, batching at most 3-4 threads per
-  request to avoid `502 Bad Gateway` timeouts.
+* **Reply Style (`arXiv:2610.29162v1`)**: Keep review replies to 1-3 short
+  sentences (~15-60 words) leading with the commit hash or direct answer. Pair
+  direct subjects with concrete verbs (`"I replaced X in <sha>"`, `"str::lines
+  strips \r\n"`); avoid inanimate subjects with agentive verbs (`"This commit
+  facilitates..."`), denominal verbs, 3+ stacked nouns, center-embedded relative
+  clauses, and excessive inline backticks. Critically evaluate each comment
+  against source/specs first and push back concisely when a premise does not
+  hold.
+* **Thread Resolution**: Reply via `addPullRequestReviewThreadReply` (`gh api
+  graphql`, batching at most 3-4 mutations per request to avoid `502 Bad
+  Gateway` timeouts), and **do not** resolve review threads
+  (`resolveReviewThread`) unless explicitly instructed.

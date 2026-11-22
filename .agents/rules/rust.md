@@ -12,10 +12,10 @@ globs: "*.rs,Cargo.toml,Cargo.lock,Cargo.Bazel.lock,MODULE.bazel"
   scratch.
 * Never hand-roll CLI argument parsers (`lexopt` or `clap`), `@flagfile`
   response-file readers (`argfile`), CSV/INI/JSON/TOML format parsers (`csv`,
-  etc.), base64/hex codecs (`base64`), language or packaging-spec parsers
-  (`ruff_python_parser`, `pep440_rs`, `pep508_rs`), regex engines (`regex`),
-  archive/compression codecs (`zip`, `flate2`), or cryptographic hashes
-  (`sha2`).
+  `configparser`, etc.), base64/hex codecs (`base64`), language or
+  packaging-spec parsers (`ruff_python_parser`, `pep440_rs`, `pep508_rs`),
+  regex engines (`regex`), archive/compression codecs (`zip`, `flate2`), or
+  cryptographic hashes (`sha2`).
 
 ## Dependency Vetting & Versioning
 When adding or updating a Rust crate dependency:
@@ -33,15 +33,29 @@ When adding or updating a Rust crate dependency:
   C `-sys` libraries (breaking hermetic cross-compiled and static `musl`
   builds), platform-incompatible OS crates, or heavy unused subsystems, and
   document the reason in a comment.
+* **Compression backends**: For `zip`/`flate2` DEFLATE workloads, prefer
+  pure-Rust `zlib-rs` (`flate2` features `["zlib-rs", "runtime_detection"]`,
+  plus `zip` feature `deflate-flate2-zlib-rs` when using `zip`, both with
+  `default-features = false`) over `miniz_oxide` so throughput matches or
+  exceeds C `zlib` while preserving pure-Rust `musl` cross-compilation and
+  deterministic bitstreams.
 * **Regenerate lockfiles**: Update `Cargo.lock` and `Cargo.Bazel.lock` with
   `CARGO_BAZEL_REPIN=1`; never hand-edit generated lockfiles.
 
 ## Idiomatic Rust, CLI Design & Crate Layout
 * **Edition & control flow**: Use `edition = "2024"`. Flatten nested
   conditionals with early `continue`/`return` guards and `let`-chains
-  (`if let Some(p) = out.parent() && !p.as_os_str().is_empty()`). Prefer `str`
-  pattern methods (`split_once`, `rsplit_once`, `strip_prefix`, `strip_suffix`)
-  over manual index slicing.
+  (`if let Some(ext) = path.extension() && ext == "whl"`).
+* **String & line processing**: Prefer raw string literals (`r#"..."#`) when a
+  string contains embedded quotes or backslashes instead of backslash-escaping
+  them. Prefer `str` pattern methods (`split_once`, `rsplit_once`,
+  `strip_prefix`, `strip_suffix`) over manual index slicing. Iterate lines
+  directly with `str::lines()` (`.map(str::trim).filter(...)`) instead of
+  pre-allocating `.replace("\r\n", "\n")` (`str::lines()` strips both `\n` and
+  `\r\n`).
+* **Filesystem parent directories**: Pass `parent` directly to
+  `fs::create_dir_all(parent)` without `!parent.as_os_str().is_empty()` (`""` is
+  already a no-op).
 * **Parse, don't validate**: Parse CLI flags and raw inputs into strong types
   (`bool`, enums, validated `PathBuf`, pre-compiled `Regex`) in `parse_args`
   rather than storing stringly-typed `String` fields or deferring validation to
@@ -53,12 +67,26 @@ When adding or updating a Rust crate dependency:
   and `PathBuf`; never round-trip `OsString -> String -> PathBuf` via
   `to_string_lossy()`. Return `std::process::ExitCode` from `main()` and
   `run_cli`.
+* **Symbolic constants in `match` arms**: When string tokens (subcommand names,
+  CLI flags, or wire-format tags) appear across multiple sites (`match` arms,
+  registries, or error messages), group them as constants in a module (`mod
+  flags`, `mod subcommands`) and match via qualified paths (`flags::TEMPLATE`,
+  `subcommands::ZIPPER`). A misspelled bare identifier in a Rust `match` arm
+  parses as a catch-all variable binding, whereas a module-qualified path fails
+  compilation (`E0531`). Keep raw string literals in tests so tests catch typos
+  in constant values, and pass `case=no` to `keep-sorted` when `_` vs.
+  uppercase ASCII would invert runtime lowercase sort order (`"zip_main_maker"`
+  < `"zipper"`, whereas `ZIPPER` < `ZIP_MAIN_MAKER`).
 * **Collections**: Default to `Vec` and `HashMap`/`HashSet` over
-  `BTreeMap`/`BTreeSet` unless sorted-key traversal is a data-structure
+  `BTreeMap`/`BTreeSet` (and over `Vec<(K, V)>` linear scans when insertion
+  order is not required) unless sorted-key traversal is a data-structure
   invariant. Sort a `Vec` at formatting or output boundaries when deterministic
-  order is required.
+  order is required; omit defensive key sorting when template placeholders are
+  disjoint delimited tokens (e.g., `%KEY%`).
 * **Cohesive file organization**: Place core logic in library crates
-  (`src/lib.rs`) so unit tests call library functions directly. Group CLI
+  (`src/lib.rs`) so unit tests call library functions directly, and extract
+  shared wire/manifest parsers into a small workspace library crate rather than
+  duplicating line parsing across sibling `shrubbery` crates. Group CLI
   option structs, `parse_args`, and `run_cli` together in one contiguous
   section rather than splitting `parse_args` at the top and `run_cli` at the
   bottom around domain logic.
@@ -81,6 +109,8 @@ When adding or updating a Rust crate dependency:
   `std::error::Error` with `#[from]`/`#[source]`) so callers can match on
   variants and errors compose across crate boundaries; such a type still
   converts into `anyhow::Error` for free at the CLI layer.
+* **Document `# Errors`**: Add `# Errors` rustdoc sections on fallible `pub fn`
+  library items stating when they return `Err`.
 * **Tests may panic**: `unwrap()`, `expect()`, `panic!`, and indexing are
   allowed in test code (`.clippy.toml` sets `allow-*-in-tests`). When using
   `expect()`, write the message in std's recommended style, stating why the
@@ -94,8 +124,11 @@ When adding or updating a Rust crate dependency:
   `allow-*-in-tests` settings only recognize `#[test]` functions and
   `#[cfg(test)]` items, so helper functions in integration-test crates
   (`tests/*/*_test.rs`) would be flagged. Code under `#[cfg(unix)]` must
-  leave no `unused_mut`/`useless_vec` behind on Windows; rebind instead of
-  conditionally `push`ing.
+  leave no `unused_mut`/`useless_vec` behind on Windows: initialize base
+  collections as fixed-size arrays (`[...]`) or strings rather than `vec![...]`
+  before rebinding under `#[cfg(unix)]` (spot-check the non-Unix branch locally
+  on Linux by temporarily flipping `#[cfg(unix)]` to `#[cfg(windows)]` before
+  pushing).
 * **WORKSPACE-mode stub**: Any new `@rules_rust//...` flag or aspect
   referenced from `.bazelrc` must also exist in
   `tests/modules/rules_rust_stub/`, which WORKSPACE CI jobs use in place of

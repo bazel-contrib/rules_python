@@ -29,6 +29,18 @@ Unreleased changes are tracked as individual files in the [news/](./news)
 directory, or view the [latest generated
 changelog](https://rules-python.readthedocs.io/en/latest/changelog.html).
 
+{#v2-5-1}
+## [2.5.1] - 2026-11-13
+
+[2.5.1]: https://github.com/bazel-contrib/rules_python/releases/tag/2.5.1
+
+{#v2-5-1-fixed}
+### Fixed
+* (binaries/tests) The {obj}`stamp` attribute no longer transitions the
+  {flag}`--stamp` flag for the whole target, so dependencies of executables with
+  `stamp = 0` or `stamp = 1` are no longer built in a separate configuration.
+
+
 {#v2-5-0}
 ## [2.5.0] - 2026-10-31
 
@@ -771,6 +783,34 @@ Other changes:
     {obj}`PyExecutableInfo.venv_interpreter_symlinks` adde
 * (wheel) Add support for `add_path_prefix` argument in `py_wheel` which can be
   used to prepend a prefix to the files in the wheel.
+
+{#v1-9-3}
+## [1.9.3] - 2026-11-17
+
+[1.9.3]: https://github.com/bazel-contrib/rules_python/releases/tag/1.9.3
+
+{#v1-9-3-changed}
+### Changed
+* (toolchains) `//python:toolchain_type` now defines the `toolchain_type`
+  directly instead of aliasing `@bazel_tools//tools/python:toolchain_type`
+  when the `bazel_features.rules._toolchain_type_in_rules_python` flag is
+  enabled (requires `bazel_features` 1.55.0, currently `False` so behavior
+  is unchanged). Backport of
+  [#4404](https://github.com/bazel-contrib/rules_python/pull/4404) in
+  [#4521](https://github.com/bazel-contrib/rules_python/pull/4521).
+
+{#v1-9-2}
+## [1.9.2] - 2026-07-28
+
+[1.9.2]: https://github.com/bazel-contrib/rules_python/releases/tag/1.9.2
+
+{#v1-9-2-fixed}
+### Fixed
+* (executables) `py_binary_rule_builder()` / `py_test_rule_builder()` (from
+  `python/api/executables.bzl`) no longer fail at analysis time with a
+  visibility error when used to construct a custom rule from an external
+  module. Fixes
+  ([#3919](https://github.com/bazel-contrib/rules_python/pull/3919)).
 
 {#v1-9-1}
 ## [1.9.1] - 2026-05-14

@@ -1,6 +1,6 @@
 module(name = "integration_test")
 
-bazel_dep(name = "package_metadata", version = "0.0.7")
+bazel_dep(name = "package_metadata", version = "0.0.13")
 bazel_dep(name = "rules_python", version = "0.0.0")
 local_path_override(
     module_name = "rules_python",

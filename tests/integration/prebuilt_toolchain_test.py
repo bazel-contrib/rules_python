@@ -74,19 +74,32 @@ class PrebuiltToolchainTest(runner.TestCase):
         override_flag = f"--override_module=rules_python={self.rules_python_dir}"
 
         self.run_bazel(
+            "build",
+            override_flag,
+            _NEED_SHRUBBERY_FLAG,
+            "//:wheel",
+        )
+        self.run_bazel(
             "test",
             override_flag,
             _NEED_SHRUBBERY_FLAG,
             "//:zipapp_test",
         )
 
-        for mnemonic in ("PyZipAppCreateExecutableZip", "PyZipAppCreateZip"):
+        for mnemonic, target in (
+            # keep-sorted start
+            ("PyWheel", "//:wheel"),
+            ("PyZipAppCreateExecutableZip", "//:zipapp_test"),
+            ("PyZipAppCreateMainPy", "//:zipapp_test"),
+            ("PyZipAppCreateZip", "//:zipapp_test"),
+            # keep-sorted end
+        ):
             with self.subTest(mnemonic=mnemonic):
                 aquery_res = self.run_bazel(
                     "aquery",
                     override_flag,
                     _NEED_SHRUBBERY_FLAG,
-                    f"mnemonic({mnemonic}, //:zipapp_test)",
+                    f"mnemonic({mnemonic}, {target})",
                 )
                 self.assert_result_matches(
                     aquery_res,

@@ -74,6 +74,15 @@ sh_py_run_test(
 )
 
 sh_py_run_test(
+    name = "run_binary_without_symlinks_test",
+    bootstrap_impl = "system_python",
+    py_src = "bin.py",
+    sh_src = "run_binary_without_symlinks_test.sh",
+    # The fallback for when symlinks can't be created is Windows only.
+    target_compatible_with = ["@platforms//os:windows"],
+)
+
+sh_py_run_test(
     name = "run_binary_find_runfiles_test",
     py_src = "bin.py",
     sh_src = "run_binary_find_runfiles_test.sh",
@@ -146,6 +155,21 @@ py_test(
     data = ["//python/private:python_bootstrap_template.txt"],
     main = "cached_venv_dangling_symlink_test.py",
     deps = ["//python/runfiles"],
+)
+
+py_reconfig_test(
+    name = "relative_formatwarning_bootstrap_script_test",
+    srcs = ["relative_formatwarning_test.py"],
+    bootstrap_impl = "script",
+    main = "relative_formatwarning_test.py",
+    target_compatible_with = SUPPORTS_BOOTSTRAP_SCRIPT,
+)
+
+py_reconfig_test(
+    name = "relative_formatwarning_bootstrap_system_python_test",
+    srcs = ["relative_formatwarning_test.py"],
+    bootstrap_impl = "system_python",
+    main = "relative_formatwarning_test.py",
 )
 
 py_reconfig_test(

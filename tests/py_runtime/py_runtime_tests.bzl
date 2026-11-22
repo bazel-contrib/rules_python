@@ -17,6 +17,7 @@ load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "matching")
 load("@rules_testing//lib:util.bzl", rt_util = "util")
+load("//python:py_library.bzl", "py_library")
 load("//python:py_runtime.bzl", "py_runtime")
 load("//python:py_runtime_info.bzl", "PyRuntimeInfo")
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
@@ -37,6 +38,9 @@ def _test_coverage_warning_when_enabled_and_no_tool(env):
     env.expect.that_bool(msg == None).equals(False)
     env.expect.that_str(msg).contains("has no coverage_tool")
     env.expect.that_str(msg).contains("//fake:runtime")
+    env.expect.that_str(msg).contains(
+        "--@rules_python//python/config_settings:coverage",
+    )
 
 _basic_tests.append(_test_coverage_warning_when_enabled_and_no_tool)
 
@@ -63,6 +67,17 @@ def _test_no_coverage_warning_when_tool_present(env):
     env.expect.that_bool(msg == None).equals(True)
 
 _basic_tests.append(_test_no_coverage_warning_when_tool_present)
+
+def _test_no_coverage_warning_when_coverage_flag_set(env):
+    msg = coverage_tool_missing_message(
+        coverage_enabled = True,
+        coverage_tool = None,
+        has_coverage_flag = True,
+        label = Label("//fake:runtime"),
+    )
+    env.expect.that_bool(msg == None).equals(True)
+
+_basic_tests.append(_test_no_coverage_warning_when_coverage_flag_set)
 
 def _simple_binary_impl(ctx):
     executable = ctx.actions.declare_file(ctx.label.name)
@@ -593,6 +608,58 @@ def _test_version_info_from_flag_impl(env, target):
     version_info.serial().equals(None)
 
 _tests.append(_test_version_info_from_flag)
+
+def _test_coverage_flag_does_not_cycle(name):
+    rt_util.helper_target(
+        py_library,
+        name = name + "_cov",
+        srcs = [rt_util.empty_file(name + "_cov.py")],
+    )
+    rt_util.helper_target(
+        py_runtime,
+        name = name + "_subject",
+        interpreter_path = "/bogus",
+        python_version = "PY3",
+    )
+    analysis_test(
+        name = name,
+        target = name + "_subject",
+        impl = _test_coverage_flag_does_not_cycle_impl,
+        config_settings = {
+            "//command_line_option:collect_code_coverage": True,
+            labels.COVERAGE: "//{}:{}_cov".format(native.package_name(), name),
+        },
+    )
+
+def _test_coverage_flag_does_not_cycle_impl(env, target):
+    env.expect.that_target(target).has_provider(PyRuntimeInfo)
+
+_tests.append(_test_coverage_flag_does_not_cycle)
+
+def _test_version_info_from_flag_with_prerelease(name):
+    py_runtime(
+        name = name + "_subject",
+        interpreter_version_info = None,
+        interpreter_path = "/bogus",
+    )
+    analysis_test(
+        name = name,
+        target = name + "_subject",
+        impl = _test_version_info_from_flag_with_prerelease_impl,
+        config_settings = {
+            labels.PYTHON_VERSION: "3.15.0rc1",
+        },
+    )
+
+def _test_version_info_from_flag_with_prerelease_impl(env, target):
+    version_info = env.expect.that_target(target).provider(PyRuntimeInfo, factory = py_runtime_info_subject).interpreter_version_info()
+    version_info.major().equals(3)
+    version_info.minor().equals(15)
+    version_info.micro().equals(0)
+    version_info.releaselevel().equals(None)
+    version_info.serial().equals(None)
+
+_tests.append(_test_version_info_from_flag_with_prerelease)
 
 def py_runtime_test_suite(name):
     test_suite(

@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("@package_metadata//licenses/rules:license.bzl", "license")
+load("@package_metadata//purl:purl.bzl", "purl")
+load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
 
 # Resolve rules_cc Starlark libraries to their correct targets
 # gazelle:resolve starlark @rules_cc//cc/common:cc_info.bzl @rules_cc//cc/common:common
@@ -53,10 +55,27 @@ package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])
 
+package_metadata(
+    name = "package_metadata",
+    attributes = [
+        ":license",
+    ],
+    purl = purl.bazel(
+        module_name() or "rules_python",
+        module_version(),
+    ),
+    visibility = ["//visibility:public"],
+)
+
+license(
+    name = "license",
+    kind = "@package_metadata//licenses/spdx:Apache-2.0",
+    text = ":LICENSE",
+)
+
 exports_files([
     ".clippy.toml",
     "LICENSE",
-    "version.bzl",
 ])
 
 exports_files(
@@ -71,21 +90,52 @@ exports_files(
 )
 
 exports_files(
-    glob(["*.md"]),
+    glob(
+        ["*.md"],
+        # Not all files are present when used as an integration test fixture
+        allow_empty = True,
+    ),
     visibility = ["//docs:__subpackages__"],
+)
+
+filegroup(
+    name = "downloader_configs",
+    srcs = [
+        "downloader_cfg.bazelrc",
+        "downloader_config.cfg",
+    ],
+    visibility = ["//tests:__subpackages__"],
+)
+
+# Expose gazelle's synced downloader configs from the root package:
+# rules_python_gazelle_plugin is not a bazel_dep in root MODULE.bazel, and
+# .bazelrc.deleted_packages disables //gazelle so Bazel ignores
+# gazelle/BUILD.bazel and treats gazelle/* as part of //.
+filegroup(
+    name = "gazelle_downloader_configs",
+    # Use a glob because //gazelle is a real package when rules_python is used
+    # as an external repository. Plain labels would be invalid there and fail
+    # loading of every target in the root package. The glob does not cross
+    # package boundaries, so it is empty in that case.
+    srcs = glob(
+        ["gazelle/downloader_*"],
+        allow_empty = True,
+    ),
+    visibility = ["//tests:__subpackages__"],
 )
 
 filegroup(
     name = "distribution",
     srcs = [
         "BUILD.bazel",
+        "LICENSE",
         "MODULE.bazel",
+        "REPO.bazel",
         "WORKSPACE",
         "WORKSPACE.bzlmod",
-        "downloader_config.cfg",
         "internal_dev_deps.bzl",
         "internal_dev_setup.bzl",
-        "version.bzl",
+        ":downloader_configs",
         "//command_line_option:distribution",
         "//crates:distribution",
         "//python:distribution",
@@ -105,13 +155,6 @@ filegroup(
         "//python/pip_install:bzl",
     ],
     visibility = ["//visibility:public"],
-)
-
-# keep
-bzl_library(
-    name = "version",
-    srcs = ["version.bzl"],
-    visibility = ["//:__subpackages__"],
 )
 
 # No-op change to verify PR metadata checks

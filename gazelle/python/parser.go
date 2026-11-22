@@ -163,11 +163,24 @@ type Module struct {
 	From string `json:"from"`
 	// Whether this import is type-checking only (inside if TYPE_CHECKING block).
 	TypeCheckingOnly bool `json:"type_checking_only"`
+	// Whether the name was declared in pytest_plugins, whose built-in aliases
+	// resolve differently from ordinary Python imports.
+	PytestPlugin bool `json:"pytest_plugin"`
 }
 
-// moduleComparator compares modules by name.
+// moduleComparator compares modules by name and plugin declaration status.
 func moduleComparator(a, b interface{}) int {
-	return godsutils.StringComparator(a.(Module).Name, b.(Module).Name)
+	left, right := a.(Module), b.(Module)
+	if cmp := godsutils.StringComparator(left.Name, right.Name); cmp != 0 {
+		return cmp
+	}
+	if left.PytestPlugin == right.PytestPlugin {
+		return 0
+	}
+	if left.PytestPlugin {
+		return 1
+	}
+	return -1
 }
 
 // addModuleToTreeSet adds a module to a treeset.Set, ensuring that a TypeCheckingOnly=false module is

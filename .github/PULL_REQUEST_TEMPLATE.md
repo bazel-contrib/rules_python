@@ -11,6 +11,8 @@ PR Instructions/requirements
   * Briefly describe *why* this change is being made.
   * Briefly give a high-level overview of *how* the code is changed.
   * Reference issue number, as applicable.
+  * Wrap body prose at 72 columns (excluding long URLs, Markdown links,
+    fenced code blocks, and Markdown tables).
   * Do not include per-file changelogs, test run logs/checklists, or AI
     disclosure metadata in the PR description.
 * Update docs and tests, and run `bazel test` and `buildifier` locally prior

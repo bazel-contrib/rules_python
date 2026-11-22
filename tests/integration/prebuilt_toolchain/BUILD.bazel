@@ -1,3 +1,4 @@
+load("@rules_python//python:packaging.bzl", "py_wheel")
 load("@rules_python//python:py_binary.bzl", "py_binary")
 load("@rules_python//python/zipapp:py_zipapp_test.bzl", "py_zipapp_test")
 
@@ -7,6 +8,13 @@ py_binary(
     config_settings = {
         "@rules_python//python/config_settings:bootstrap_impl": "script",
     },
+)
+
+py_wheel(
+    name = "wheel",
+    distribution = "prebuilt_test",
+    version = "0.1.0",
+    deps = [":main"],
 )
 
 py_zipapp_test(
