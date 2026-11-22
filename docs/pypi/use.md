@@ -119,12 +119,17 @@ platforms, for example `foo[bar]` on Linux and `foo[baz]` on macOS, then
 `@pypi//foo:[bar]` on macOS is the same as `@pypi//foo:[]`.
 
 The dependencies of the packages use the extras written in the wheel
-`METADATA`, so if `foo` depends on `bar[socks]`, then `@pypi//foo` depends on
-`@pypi//bar:[socks]`. If the extra is not in the lock file, then building
-`@pypi//foo` fails with a message asking you to add `bar[socks]` to the
-requirements or the lock file. For example, when compiling the requirements
-with `uv pip compile`, pass `--no-strip-extras` to keep the extras in the
-output.
+`METADATA`, so if `foo` depends on `bar[socks]`, then `@pypi//foo` includes
+`bar` and the dependencies of its `socks` extra. The extras of the
+dependencies are resolved by the repository of `bar` from its own `METADATA`,
+so they do not need to be in the lock file, e.g. when the requirements are
+compiled with the extras stripped. This does not change `@pypi//bar`, which
+only includes the extras requested in the lock file. The dependencies of the
+extra that are not in the lock file are left out like any other dependency
+that is not in the lock file. If `bar` does not provide the `socks` extra,
+then only `bar` is used and a warning is printed when `@pypi//foo` is
+analyzed, e.g. `WARNING: bar 1.0 does not provide the extra 'socks'`, which is
+how `pip` handles the unknown extras.
 
 If the lock file requests an extra that the package does not provide, e.g.
 `foo[nope]`, then `@pypi//foo:[nope]` is the same as `@pypi//foo:[]`, because
