@@ -1,0 +1,10 @@
+# Base config merged before //tests/coverage:.coveragerc
+[coverage:run]
+relative_files = False
+source = /nonexistent/source/from/user/coveragerc
+source_dirs = /nonexistent/source_dir/from/user/coveragerc
+
+[coverage:report]
+precision = 2
+exclude_also =
+    def excluded_by_base_coveragerc
