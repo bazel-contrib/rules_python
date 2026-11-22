@@ -10,12 +10,17 @@ globs: "*.rs,Cargo.toml,Cargo.lock,Cargo.Bazel.lock,MODULE.bazel"
 * Prefer `std` and established ecosystem crates (consult
   `https://blessed.rs/crates`) over implementing non-trivial subsystems from
   scratch.
-* Never hand-roll CLI argument parsers (`lexopt` or `clap`), `@flagfile`
-  response-file readers (`argfile`), CSV/INI/JSON/TOML format parsers (`csv`,
-  `configparser`, etc.), base64/hex codecs (`base64`), language or
-  packaging-spec parsers (`ruff_python_parser`, `pep440_rs`, `pep508_rs`),
-  regex engines (`regex`), archive/compression codecs (`zip`, `flate2`), or
-  cryptographic hashes (`sha2`).
+* Never hand-roll:
+  * CLI argument parsers (`lexopt` or `clap`)
+  * `@flagfile` response-file readers (`argfile`)
+  * CSV, INI, JSON, or TOML format parsers (`csv`, `configparser`, etc.)
+  * Base64 or hex codecs (`base64`)
+  * Text encoding codecs (`encoding_rs`)
+  * Language or packaging-spec parsers (`ruff_python_parser`, `pep440_rs`,
+    `pep508_rs`)
+  * Regex engines (`regex`)
+  * Archive or compression codecs (`zip`, `flate2`)
+  * Cryptographic hashes (`sha2`)
 
 ## Dependency Vetting & Versioning
 When adding or updating a Rust crate dependency:
@@ -46,13 +51,18 @@ When adding or updating a Rust crate dependency:
 * **Edition & control flow**: Use `edition = "2024"`. Flatten nested
   conditionals with early `continue`/`return` guards and `let`-chains
   (`if let Some(ext) = path.extension() && ext == "whl"`).
-* **String & line processing**: Prefer raw string literals (`r#"..."#`) when a
-  string contains embedded quotes or backslashes instead of backslash-escaping
-  them. Prefer `str` pattern methods (`split_once`, `rsplit_once`,
-  `strip_prefix`, `strip_suffix`) over manual index slicing. Iterate lines
-  directly with `str::lines()` (`.map(str::trim).filter(...)`) instead of
-  pre-allocating `.replace("\r\n", "\n")` (`str::lines()` strips both `\n` and
-  `\r\n`).
+* **String, byte & line processing**:
+  * Use raw string literals (`r#"..."#`, including `format!(r#"..."#)`) for
+    strings with embedded quotes, backslashes, or multi-line templates instead
+    of backslash escapes or `\` line continuations.
+  * Use `str` (`split_once`, `rsplit_once`) and shared `str`/`[u8]`
+    (`strip_prefix`, `strip_suffix`, `trim_ascii_start`) methods over manual
+    index slicing or byte iterator loops.
+  * Keep parsers of potentially non-UTF-8 inputs on `&[u8]` (`regex::bytes`,
+    byte slices) instead of converting intermediate substrings with
+    `str::from_utf8`.
+  * Iterate text lines with `str::lines()` instead of `.replace("\r\n", "\n")`
+    (`str::lines()` strips both `\n` and `\r\n`).
 * **Filesystem parent directories**: Pass `parent` directly to
   `fs::create_dir_all(parent)` without `!parent.as_os_str().is_empty()` (`""` is
   already a no-op).
@@ -98,9 +108,12 @@ When adding or updating a Rust crate dependency:
 * **Return errors, don't panic**: Production crates (`crates/*/src/*.rs`)
   carry `#![deny(clippy::expect_used, clippy::unwrap_used)]`; propagate
   with `?` and attach context so every failure names the path, line, or
-  entry it concerns. Reach for `const` values (e.g.
-  `zip::DateTime::DEFAULT`) instead of `.expect()` on infallible
-  constructors.
+  entry it concerns. Prefer `const` values (`zip::DateTime::DEFAULT`) over
+  `.expect()` on infallible constructors.
+* **Statically known `static` values**: Do not store `Result<T, E>` in a
+  `static` when validity is fixed at author time (such as a hardcoded regex
+  pattern) and no `const` constructor exists; unwrap with `.expect()` under a
+  scoped `#[expect(clippy::expect_used, reason = "...")]` attribute.
 * **Choose the error type by audience**: For CLI tools and other code that
   owns the error-handling context (the `shrubbery` subcommand crates), use
   `anyhow` (`bail!`, `.context()`, `.with_context(|| ...)`) and print the
