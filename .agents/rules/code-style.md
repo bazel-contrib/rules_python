@@ -29,6 +29,11 @@ Order definitions within a file as:
 * Keep functions small and focused on a single step; decompose multi-stage
   functions into named helpers with documented `Args:` and `Returns:`.
 * Use early-return guard clauses over deeply nested conditionals.
+* Use one dispatch form per classifier—either a `match` over literals/enums or
+  an `if`/`else if` chain of `is_*` predicates—instead of mixing `if` branches,
+  literal `match` arms, and predicate match guards.
+* Align private boolean helper polarity with callers: if every caller negates
+  `!helper(x)`, invert and rename the helper so call sites read positively.
 * When branching on validation modes, make the fall-off `else` the error case
   (fail-closed).
 * Accept one form per input (e.g., a file path, not "path or inline content").
@@ -39,7 +44,8 @@ Order definitions within a file as:
 * When exposing a private constant (`_NAME`) as public (`NAME`), update all
   internal callers to `NAME` and remove `_NAME = NAME` aliases.
 * Omit speculative precondition checks when the underlying operation fails
-  clearly on its own.
+  clearly on its own; comment non-obvious spec preconditions when an adjacent
+  regex or parser makes a required guard look redundant.
 * Do not accept `None` or add `if x is not None` guards unless `None` is a valid
   domain state.
 * Do not write nested comprehensions or comprehensions with multiple `for`
@@ -81,7 +87,8 @@ Order definitions within a file as:
 
 ## Synchronized Sections (`ifttt-lint`)
 * Use `LINT.IfChange(<name>)` and `LINT.ThenChange(<target>)` directives instead
-  of plain `# Keep in sync` comments for paired code or config sections.
+  of plain `# Keep in sync` or `"Mirrors <file>"` prose comments when two
+  implementations or config sections must stay synchronized.
 
 ## Bulk Logging
 * In bulk operations, log a single summary line on success; on failure, list

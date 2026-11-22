@@ -14,6 +14,7 @@ rust_library(
         "//crates/exe_zip_maker:exe_zip_maker_lib",
         "//crates/extract_wheel_files:extract_wheel_files_lib",
         "//crates/py_console_script_gen:py_console_script_gen_lib",
+        "//crates/py_test_main_validator:py_test_main_validator_lib",
         "//crates/py_wheel_dist:py_wheel_dist_lib",
         "//crates/venv_shebang_rewriter:venv_shebang_rewriter_lib",
         "//crates/wheel_record_rewriter:wheel_record_rewriter_lib",
