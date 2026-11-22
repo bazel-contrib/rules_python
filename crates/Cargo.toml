@@ -19,6 +19,7 @@ argfile = "1.0.0"
 base64 = "0.23.1"
 configparser = "3.3.0"
 csv = "1.4.0"
+encoding_rs = "0.8.44"
 # Transitive dep of zip: disable default features (`rust_backend` pulls in
 # unused `miniz_oxide`) and enable `runtime_detection` so `zlib-rs` enables
 # runtime SIMD feature detection (`zip` disables `flate2` default features).

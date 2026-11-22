@@ -915,6 +915,25 @@ fn test_pep263_coding_cookies_and_run_cli_exit_codes() {
         Ok(true)
     );
 
+    // Non-Latin-1 PEP 263 encodings (`cp1252`, `shift_jis`, `cp932`) decode via `encoding_rs`.
+    assert_eq!(
+        module_runs_tests_bytes(b"# coding: cp1252\ndef test_f():\n    s = '\x80'\n"),
+        Ok(false)
+    );
+    assert_eq!(
+        module_runs_tests_bytes(
+            b"# -*- coding: shift_jis -*-\ndef test_f():\n    s = '\x82\xa0'\n"
+        ),
+        Ok(false)
+    );
+    assert_eq!(
+        module_runs_tests_bytes(
+            b"# coding: cp932\ndef test_f():\n    s = '\x82\xa0'\nunittest.main()\n"
+        ),
+        Ok(true)
+    );
+    assert!(module_runs_tests_bytes(b"# coding: shift_jis\nx = '\xff'\n").is_err());
+
     // ASCII coding cookie rejects non-ASCII bytes.
     assert!(module_runs_tests_bytes(b"# coding: ascii\nx = '\xe9'\n").is_err());
 

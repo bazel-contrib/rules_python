@@ -21,6 +21,7 @@ use lexopt::prelude::*;
 use ruff_python_ast::visitor::{Visitor, walk_expr};
 use ruff_python_ast::{ExceptHandler, Expr, ModModule, Stmt};
 
+// LINT.IfChange(cli_flags)
 mod flags {
     // keep-sorted start
     pub const HELP: &str = "help";
@@ -31,6 +32,7 @@ mod flags {
     pub const SRC_NAME: &str = "src_name";
     // keep-sorted end
 }
+// LINT.ThenChange(//python/private/py_test_main_validator.py:cli_flags)
 
 /// Usage text for `--help`. `lexopt` does not generate help, so this is maintained by hand.
 const USAGE: &str = "\
@@ -56,6 +58,7 @@ static COOKIE_RE: LazyLock<regex::bytes::Regex> = LazyLock::new(|| {
         .expect("PEP 263 regex literal should compile")
 });
 
+// LINT.IfChange(error_message)
 /// Formats the validation failure message for an inert `py_test` main module.
 pub fn format_error(label: &str, src_name: &str) -> String {
     let target = if label.is_empty() { src_name } else { label };
@@ -79,6 +82,7 @@ This check can be disabled by setting
 --@rules_python//python/config_settings:validate_test_main=disabled."#
     )
 }
+// LINT.ThenChange(//python/private/py_test_main_validator.py:error_message)
 
 fn is_blank_or_comment_line(line: &[u8]) -> bool {
     line.trim_ascii_start().first().is_none_or(|&b| b == b'#')
@@ -123,6 +127,18 @@ fn is_latin1_encoding_name(normalized: &[u8]) -> bool {
         || normalized.starts_with(b"iso-latin-1-")
 }
 
+fn lookup_encoding_rs(raw_enc: &[u8], normalized: &[u8]) -> Option<&'static encoding_rs::Encoding> {
+    encoding_rs::Encoding::for_label_no_replacement(raw_enc)
+        .or_else(|| encoding_rs::Encoding::for_label_no_replacement(normalized))
+        .or(match normalized {
+            b"cp932" => Some(encoding_rs::SHIFT_JIS),
+            b"cp936" => Some(encoding_rs::GBK),
+            b"cp949" => Some(encoding_rs::EUC_KR),
+            b"cp950" => Some(encoding_rs::BIG5),
+            _ => None,
+        })
+}
+
 /// Decodes `source` bytes into UTF-8 text following PEP 263 (`ruff_python_parser` only accepts
 /// `&str` and does not decode non-UTF-8 byte sources or reject NUL bytes inside strings).
 fn decode_python_source(source: &[u8]) -> std::result::Result<Cow<'_, str>, SyntaxError> {
@@ -158,6 +174,10 @@ fn decode_python_source(source: &[u8]) -> std::result::Result<Cow<'_, str>, Synt
         return Err(SyntaxError::new("encoding problem: utf-8 with BOM"));
     }
 
+    // Handle `ascii` and `latin-1` before `encoding_rs`: WHATWG aliases both `ascii` and
+    // `iso-8859-1`/`latin1` to `windows-1252` (and omits `latin-1`), whereas Python rejects
+    // bytes `>= 0x80` under `ascii` and maps `0x80..=0x9F` 1:1 to `U+0080..=U+009F` under
+    // `latin-1`.
     if is_utf8 {
         std::str::from_utf8(body)
             .map(Cow::Borrowed)
@@ -177,6 +197,12 @@ fn decode_python_source(source: &[u8]) -> std::result::Result<Cow<'_, str>, Synt
         } else {
             Ok(Cow::Owned(body.iter().map(|&b| char::from(b)).collect()))
         }
+    } else if let Some(encoding) = lookup_encoding_rs(raw_enc, &normalized) {
+        encoding
+            .decode_without_bom_handling_and_without_replacement(body)
+            .ok_or_else(|| {
+                SyntaxError::new(format!("'{}' codec can't decode bytes", encoding.name()))
+            })
     } else {
         Err(SyntaxError::new(format!(
             "unknown encoding: {}",
@@ -185,6 +211,7 @@ fn decode_python_source(source: &[u8]) -> std::result::Result<Cow<'_, str>, Synt
     }
 }
 
+// LINT.IfChange(ast_rules)
 /// Returns `true` if evaluating `expr` does not invoke a call, `await`, or `yield`.
 ///
 /// Walks `expr` as written without modeling execution (for example, a call inside an uninvoked
@@ -258,6 +285,7 @@ pub fn defines_test_code(body: &[Stmt]) -> bool {
 pub fn module_runs_tests(body: &[Stmt]) -> bool {
     module_runs_something(body) || !defines_test_code(body)
 }
+// LINT.ThenChange(//python/private/py_test_main_validator.py:ast_rules)
 
 fn parse_python_module(source: &str) -> std::result::Result<ModModule, SyntaxError> {
     if source.contains('\0') {
@@ -459,6 +487,7 @@ pub struct Options {
     pub output: PathBuf,
 }
 
+// LINT.IfChange(active_expr_nodes)
 #[derive(Default)]
 struct ActiveExprFinder {
     found: bool,
@@ -481,6 +510,7 @@ impl<'a> Visitor<'a> for ActiveExprFinder {
         walk_expr(self, expr);
     }
 }
+// LINT.ThenChange(//python/private/py_test_main_validator.py:active_expr_nodes)
 
 /// Error returned when a Python source file cannot be decoded or parsed.
 #[derive(Debug, Clone, PartialEq, Eq)]

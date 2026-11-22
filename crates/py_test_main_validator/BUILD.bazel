@@ -12,6 +12,7 @@ rust_library(
     deps = [
         "@crates//:anyhow",
         "@crates//:argfile",
+        "@crates//:encoding_rs",
         "@crates//:lexopt",
         "@crates//:regex",
         "@crates//:ruff_python_ast",
