@@ -1,0 +1,25 @@
+load("@rules_rust//rust:defs.bzl", "rust_library")
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")  # buildifier: disable=bzl-visibility
+
+package(default_visibility = ["//:__subpackages__"])
+
+licenses(["notice"])
+
+rust_library(
+    name = "py_test_main_validator_lib",
+    srcs = ["src/lib.rs"],
+    edition = "2024",
+    deps = [
+        "@crates//:anyhow",
+        "@crates//:argfile",
+        "@crates//:encoding_rs",
+        "@crates//:lexopt",
+        "@crates//:regex",
+        "@crates//:ruff_python_ast",
+        "@crates//:ruff_python_parser",
+    ],
+)
+
+distribution_filegroup(
+    name = "distribution",
+)

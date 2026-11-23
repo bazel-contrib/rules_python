@@ -1,0 +1,5 @@
+load(":whl_package_metadata_tests.bzl", "whl_package_metadata_test_suite")
+
+whl_package_metadata_test_suite(
+    name = "whl_package_metadata_tests",
+)

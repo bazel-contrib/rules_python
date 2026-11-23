@@ -23,7 +23,7 @@ runs:
       run: printf 'branch_name=%s\n' "${RAW_BRANCH_NAME//[^a-zA-Z0-9._\/-]/}" >> "$GITHUB_OUTPUT"
 
     - name: Setup Bazel
-      uses: bazel-contrib/setup-bazel@0.19.1
+      uses: bazel-contrib/setup-bazel@0.19.2
       with:
         bazelisk-cache: true
         disk-cache: true

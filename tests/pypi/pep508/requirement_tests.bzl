@@ -32,9 +32,14 @@ def _test_requirement_line_parsing(env):
         "name[extra]@http://foo.com": ("name", ["extra"], ""),
         "name[foo]": ("name", ["foo"], ""),
         "name[quux, strange];python_version<'2.7' and platform_version=='2'": ("name", ["quux", "strange"], "python_version<'2.7' and platform_version=='2'"),
+        "name_foo; platform_release != \"custom -x\"": ("name-foo", [], "platform_release != \"custom -x\""),
+        # The text that looks like an option in a quoted marker value is kept
+        "name_foo; platform_release != 'custom -- kernel' --hash=sha256:deadbeef": ("name-foo", [], "platform_release != 'custom -- kernel'"),
         "name_foo==0.25\t--hash=sha256:deadbeef": ("name-foo", [], ""),
         # The options may be indented with tabs in the requirements files
         "name_foo==0.25 \t--hash=sha256:deadbeef": ("name-foo", [], ""),
+        # The short options, e.g. `-C` for `--config-settings`
+        "name_foo==0.25 -Ckey=value --hash=sha256:deadbeef": ("name-foo", [], ""),
         "name_foo==0.25 ; os_name=='a' --hash=sha256:deadbeef": ("name-foo", [], "os_name=='a'"),
         "name_foo[bar]": ("name-foo", ["bar"], ""),
         "name_foo[bar]==0.25": ("name-foo", ["bar"], ""),
@@ -42,10 +47,10 @@ def _test_requirement_line_parsing(env):
         "name_foo[bar]==0.25 @ http://foo.com ; os_name=='a'": ("name-foo", ["bar"], "os_name=='a'"),
     }
 
-    got = {
-        i: (parsed.name, parsed.extras, parsed.marker)
-        for i, parsed in {case: requirement(case) for case in want}.items()
-    }
+    got = {}
+    for case in want:
+        parsed = requirement(case)
+        got[case] = (parsed.name, parsed.extras, parsed.marker)
     env.expect.that_dict(got).contains_exactly(want)
 
 _tests.append(_test_requirement_line_parsing)
