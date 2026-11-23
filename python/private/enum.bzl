@@ -22,8 +22,8 @@ def enum(methods = {}, **kwargs):
 
     Args:
         methods: {type}`dict[str, callable]` functions that will be
-            added to the created enum object, but will have the enum object
-            itself passed as the first positional arg when calling them.
+            added to the created enum object, but will have the `__members__`
+            dict passed as the first positional arg when calling them.
         **kwargs: The fields of the returned struct. All uppercase names will
             be treated as enum values and added to `__members__`.
 
@@ -38,14 +38,13 @@ def enum(methods = {}, **kwargs):
     }
 
     for name, unbound_method in methods.items():
-        # buildifier: disable=uninitialized
-        kwargs[name] = lambda *a, **k: unbound_method(self, *a, **k)
+        kwargs[name] = lambda *a, **k: unbound_method(members, *a, **k)
 
     self = struct(__members__ = members, **kwargs)
     return self
 
-def _FlagEnum_flag_values(self):
-    return sorted(self.__members__.values())
+def _FlagEnum_flag_values(members):
+    return sorted(members.values())
 
 def FlagEnum(**kwargs):
     """Define an enum specialized for flags.
