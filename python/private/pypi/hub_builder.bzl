@@ -17,6 +17,8 @@ load(":requirements_files_by_platform.bzl", "requirements_files_by_platform")
 load(":whl_config_setting.bzl", "whl_config_setting")
 load(":whl_repo_name.bzl", "pypi_repo_name", "whl_repo_name")
 
+_PUBLIC_INDEX_URL = "https://pypi.org/simple"
+
 def _major_minor_version(version_str):
     ver = version.parse(version_str)
     return "{}.{}".format(ver.release[0], ver.release[1])
@@ -217,6 +219,7 @@ def _pip_parse(self, module_ctx, pip_attr, default_envsubst = [], python_version
         pip_attr = pip_attr,
         python_version = python_version,
         full_python_version = full_python_version,
+        default_envsubst = default_envsubst,
         enable_pipstar_extract = bool(
             self._config.enable_pipstar_extract or
             self._get_index_urls.get(python_version),
@@ -384,11 +387,23 @@ def _set_get_index_urls(self, mctx, pip_attr, default_envsubst, python_version):
     # active. Without this, an unsubstituted template like ``$RULES_PYTHON_PIP_INDEX_URL``
     # is treated as truthy and the mode is forced on, even when the env var
     # would expand to the empty string.
-    default_index_url = envsubst(
-        pip_attr.experimental_index_url,
+    #
+    # Only the resolved value is used for these decisions. The unresolved
+    # template is passed on, so that the credentials that the env vars may
+    # contain do not leak into the whl_library args.
+    default_index_url = pip_attr.experimental_index_url
+    resolved_index_url = envsubst(
+        default_index_url,
         combined_envsubst,
         mctx.getenv,
-    ) or self._config.index_url
+    )
+    if not resolved_index_url:
+        default_index_url = self._config.index_url
+        resolved_index_url = envsubst(
+            default_index_url,
+            combined_envsubst,
+            mctx.getenv,
+        )
     default_extra_index_urls = pip_attr.experimental_extra_index_urls or []
 
     if not default_index_url:
@@ -403,10 +418,10 @@ def _set_get_index_urls(self, mctx, pip_attr, default_envsubst, python_version):
     self._get_index_urls[python_version] = lambda ctx, distributions, *, index_url = None, extra_index_urls = None: self._simpleapi_download_fn(
         ctx,
         attr = struct(
-            index_url = envsubst(
-                _select_default_index(index_url, default_index_url).rstrip("/"),
-                combined_envsubst,
-                mctx.getenv,
+            index_url = _select_default_index(
+                index_url,
+                default_index_url,
+                is_default_public = resolved_index_url.rstrip("/") == _PUBLIC_INDEX_URL,
             ),
             extra_index_urls = [
                 x.rstrip("/")
@@ -428,13 +443,13 @@ def _set_get_index_urls(self, mctx, pip_attr, default_envsubst, python_version):
     )
     return True
 
-def _select_default_index(index, default):
+def _select_default_index(index, default, *, is_default_public):
     # We will use the value from the requirements file by default
     index = (index or default).rstrip("/")
     default = default.rstrip("/")
 
     # If the default is set to something else than the public mirror, use that
-    return index if default == "https://pypi.org/simple" else default
+    return index if is_default_public else default
 
 def _host_interpreter_name(python_version):
     return "python_{}_host".format(python_version.replace(".", "_"))
@@ -545,6 +560,7 @@ def _create_whl_repos(
         pip_attr,
         python_version,
         full_python_version,
+        default_envsubst = [],
         enable_pipstar_extract = False):
     """create all of the whl repositories
 
@@ -552,6 +568,8 @@ def _create_whl_repos(
         self: the builder.
         module_ctx: {type}`module_ctx`.
         pip_attr: {type}`struct` - the struct that comes from the tag class iteration.
+        default_envsubst: {type}`list[str]` - the env vars that are needed to
+            resolve the default index URL.
         python_version: {type}`str` - the resolved python version for this pip.parse call.
         full_python_version: {type}`str` - the full X.Y.Z python version.
         enable_pipstar_extract: {type}`bool` - enable the pipstar extraction or not.
@@ -591,10 +609,17 @@ def _create_whl_repos(
         for mod, whl_name in pip_attr.whl_modifications.items():
             whl_modifications[normalize_name(whl_name)] = mod
 
+    envsubst = pip_attr.envsubst
+    if self._get_index_urls.get(python_version):
+        # The index URL is passed to the repositories unresolved, so they need
+        # all of the env vars that are used to resolve it.
+        envsubst = {k: True for k in default_envsubst + pip_attr.envsubst}.keys()
+
     common_args = _common_args(
         self,
         module_ctx,
         pip_attr = pip_attr,
+        envsubst = envsubst,
     )
 
     interpreter = _detect_interpreter(
@@ -631,7 +656,7 @@ def _create_whl_repos(
                 repo = repo,
             )
 
-def _common_args(self, module_ctx, *, pip_attr):
+def _common_args(self, module_ctx, *, pip_attr, envsubst):
     # Construct args separately so that the lock file can be smaller and does not include unused
     # attrs.
     whl_library_args = dict(
@@ -644,7 +669,7 @@ def _common_args(self, module_ctx, *, pip_attr):
         download_only = pip_attr.download_only,
         enable_implicit_namespace_pkgs = pip_attr.enable_implicit_namespace_pkgs,
         environment = pip_attr.environment,
-        envsubst = pip_attr.envsubst,
+        envsubst = envsubst,
         pip_data_exclude = pip_attr.pip_data_exclude,
     )
 

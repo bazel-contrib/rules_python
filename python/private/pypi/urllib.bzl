@@ -87,9 +87,20 @@ def _strip_empty_path_segments(url):
     else:
         return "{}{}{}".format(scheme, sep, stripped)
 
+def _resolved_absolute_url(index_url, candidate, *, envsubst = None, getenv = None):
+    # The env vars are substituted first, because the relative candidates can
+    # only be resolved against the actual URL and not against its template,
+    # e.g. `${INDEX_URL:-https://pypi.org/simple}`.
+    url = _absolute_url(
+        _with_envsubst(index_url, envsubst, getenv),
+        _with_envsubst(candidate, envsubst, getenv),
+    )
+
+    # Ensure that we strip empty path segments when making an absolute URL
+    return _strip_empty_path_segments(url)
+
 urllib = struct(
     is_absolute = _is_downloadable,
-    # Ensure that we strip empty path segments when making an absolute URL
-    absolute_url = lambda index_url, candidate, *, envsubst = None, getenv = None: _strip_empty_path_segments(_with_envsubst(_absolute_url(index_url, candidate), envsubst, getenv)),
+    absolute_url = _resolved_absolute_url,
     strip_empty_path_segments = _strip_empty_path_segments,
 )

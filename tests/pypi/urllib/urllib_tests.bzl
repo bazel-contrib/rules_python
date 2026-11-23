@@ -34,6 +34,19 @@ def _test_absolute_url(env):
         getenv = {"PYPI_BAZEL_WORKSPACE_ROOT": "/some/dir"}.get,
     )).equals("file:///some/dir/vendor/distro/file.whl")
 
+    # The index URL template is resolved before the relative URLs
+    for candidate, want in {
+        "../../packages/file.whl": "https://example.com/packages/file.whl",
+        "/packages/file.whl": "https://example.com/packages/file.whl",
+        "file.whl": "https://example.com/simple/foo/file.whl",
+    }.items():
+        env.expect.that_str(urllib.absolute_url(
+            "${INDEX_URL:-https://pypi.org/simple}/foo/",
+            candidate,
+            envsubst = ["INDEX_URL"],
+            getenv = {"INDEX_URL": "https://example.com/simple"}.get,
+        )).equals(want)
+
 _tests.append(_test_absolute_url)
 
 def _test_strip_empty_path_segments(env):
