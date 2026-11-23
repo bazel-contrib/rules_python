@@ -35,7 +35,7 @@ replies.
      direct, and to the point—stating what the suggested fix is.
    - Limit any follow-up detail in `Proposed Fix` to at most 50 additional
      words for more information about the suggested fix (such as concrete
-     diagnostic wording).
+     diagnostic wording or a ~20-word news entry rewrite).
    - List other affected locations in the separate `Where` field only when more
      than just the primary location is affected (omit `Where` for
      single-location issues); `Where` is not subject to the `Proposed Fix`

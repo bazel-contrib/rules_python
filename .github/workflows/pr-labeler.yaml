@@ -1,0 +1,24 @@
+name: "PR Labeler"
+
+on:
+  # NOTE: pull_request_target is needed to label the PRs from forks. The
+  # workflow must not check out or run the code of the PR.
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions: {}
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/labeler@v7
+        with:
+          # The labels are only added, so that the manually set labels stay.
+          sync-labels: false

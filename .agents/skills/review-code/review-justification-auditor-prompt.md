@@ -4,7 +4,8 @@ exceptions, convention overrides, lint/type/buildifier suppressions, and custom
 thresholds across `git diff`, comments, PR descriptions, and review replies:
 
 1. Read and strictly enforce `.agents/rules/code-style.md`,
-   `.agents/rules/python.md`, `.agents/rules/starlark.md`, and `AGENTS.md`.
+   `.agents/rules/python.md`, `.agents/rules/rust.md`,
+   `.agents/rules/starlark.md`, and `AGENTS.md`.
 2. Inspect the diff, comments, PR description, and review threads for:
    - Direct-execution environment probing (`ImportError` fallbacks or
      `sys.path` manipulation to run a script via raw `python3` outside Bazel
@@ -12,7 +13,10 @@ thresholds across `git diff`, comments, PR descriptions, and review replies:
    - Lint, type, or formatter suppressions (`# buildifier: disable=...` outside
      authorized `/private/` loads in `tests/` or internal non-`python/` packages
      such as `crates/` and `tools/` loading `distribution_filegroup.bzl`,
-     `# pyrefly: ignore[...]`, `# ruff: noqa`, `# type: ignore`).
+     `#[expect(clippy::...)]` / `#[allow(clippy::...)]` outside authorized
+     `#[expect(clippy::expect_used)]` on author-time `static` values in
+     `.agents/rules/rust.md`, `# pyrefly: ignore[...]`, `# ruff: noqa`,
+     `# type: ignore`).
    - Custom timeouts, retry counts, or payload/UI caps outside the conservative
      self-approvable criteria in `.agents/rules/code-style.md`.
    - Review thread replies claiming a rule or convention does not apply.
