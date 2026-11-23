@@ -401,10 +401,16 @@ You cannot use both the additive_build_content and additive_build_content_file a
         ]
         testonly_packages[hub_name] = info.testonly_packages
 
-        # An alias can't be less testonly than what it points to, so a package
-        # is testonly in the unified hub if it is testonly in any hub.
-        for pkg in info.testonly_packages:
-            unified_testonly_packages[pkg] = None
+    # The unified hub only has aliases and `testonly` is enforced by the
+    # targets of the hubs that they point to, so a package is only marked as
+    # testonly there if it is testonly in all of the hubs that have it.
+    for hub_name, hub in hubs.items():
+        info = configured_hubs.get(hub_name)
+        hub_testonly = {pkg: None for pkg in info.testonly_packages} if info else {}
+        for pkg in (info.packages if info else hub.packages):
+            unified_testonly_packages[pkg] = (
+                unified_testonly_packages.get(pkg, True) and pkg in hub_testonly
+            )
 
     return struct(
         # dict[str, struct]: configured hubs, see `hub_exposure`.
@@ -419,7 +425,11 @@ You cannot use both the additive_build_content and additive_build_content_file a
         hub_whl_map = hub_whl_map,
         testonly_packages = testonly_packages,
         unified_hub_requirements_bzl = config.unified_hub_requirements_bzl,
-        unified_testonly_packages = sorted(unified_testonly_packages),
+        unified_testonly_packages = sorted([
+            pkg
+            for pkg, testonly in unified_testonly_packages.items()
+            if testonly
+        ]),
         whl_libraries = whl_libraries,
         whl_mods = whl_mods,
         platform_config_settings = {
@@ -1205,8 +1215,9 @@ be used with `["*", "transitive"]`, which exposes all of the packages.
 The testonly packages are left out of the `all_requirements`,
 `all_whl_requirements` and `all_data_requirements` lists in the hub's
 `requirements.bzl` and listed in `all_testonly_requirements` instead. In the
-[Unified @pypi Hub](unified-pypi-hub), a package is testonly if it is testonly
-in any of the hubs.
+[Unified @pypi Hub](unified-pypi-hub), the targets of a package point to the
+hub that is selected, so the package is testonly when it is testonly in that
+hub.
 
 :::{versionadded} VERSION_NEXT_FEATURE
 :::
