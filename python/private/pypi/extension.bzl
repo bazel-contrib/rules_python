@@ -75,16 +75,18 @@ def _configure(config, *, override = False, **kwargs):
 def build_config(
         *,
         module_ctx,
-        enable_pipstar_extract):
+        enable_pipstar_extract,
+        _fail = fail):
     """Parse 'configure' and 'default' extension tags
 
     Args:
         module_ctx: {type}`module_ctx` module context.
         enable_pipstar_extract: {type}`bool | None` a flag to also not pass Python
             interpreter to `whl_library` when possible.
+        _fail: {type}`function` the failure function, mainly for testing.
 
     Returns:
-        A struct with the configuration.
+        A struct with the configuration, or `None` on failure.
     """
     default_hub = None
     unified_hub_requirements_bzl = False
@@ -131,6 +133,14 @@ def build_config(
 
                 if platform and not (tag.arch_name or tag.config_settings or tag.env or tag.os_name or tag.whl_abi_tags or tag.whl_platform_tags or tag.marker):
                     defaults["platforms"].pop(platform)
+
+            if tag.index_url and not tag.index_url.rstrip("/"):
+                _fail((
+                    "pip.default(index_url = {}) is not a valid index URL. " +
+                    "To not use the SimpleAPI for the packages of a hub, set " +
+                    "`simpleapi_skip = [\"*\"]` on `pip.parse` instead."
+                ).format(repr(tag.index_url)))
+                return None
 
             _configure(
                 defaults,
@@ -213,7 +223,13 @@ You cannot use both the additive_build_content and additive_build_content_file a
                 srcs_exclude_glob = whl_mod.srcs_exclude_glob,
             )
 
-    config = build_config(module_ctx = module_ctx, enable_pipstar_extract = enable_pipstar_extract)
+    config = build_config(
+        module_ctx = module_ctx,
+        enable_pipstar_extract = enable_pipstar_extract,
+        _fail = _fail,
+    )
+    if config == None:
+        return None
 
     # TODO @aignas 2025-06-03: Merge override API with the builder?
     _overriden_whl_set = {}
@@ -955,14 +971,21 @@ No longer mandatory if the {obj}`pyproject_toml` attribute or
 """,
         ),
         "simpleapi_skip": attr.string_list(
-            doc = """\
-The list of packages to skip fetching metadata for from SimpleAPI index. You should
-normally not need this attribute, but in case you do, please report this as a bug
-to `rules_python` and use this attribute until the bug is fixed.
+            doc = """
+The list of packages to skip fetching metadata for from SimpleAPI index. You
+should normally not need this attribute, but in case you do, please report this
+as a bug to `rules_python` and use this attribute until the bug is fixed.
+
+Use `["*"]` to skip it for all of the packages, in which case the SimpleAPI is
+not used for this `pip.parse` call and the packages are downloaded with `pip`.
 
 EXPERIMENTAL: this may be removed without notice.
 
 :::{versionadded} 1.4.0
+:::
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+Added the support for `["*"]`.
 :::
 """,
         ),

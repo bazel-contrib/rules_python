@@ -851,6 +851,87 @@ simple==0.0.1 \
 
 _tests.append(_test_default_index_setting)
 
+def _test_default_slash_only_index_url_fails(env):
+    for index_url in ["/", "//"]:
+        failures = []
+        config = build_config(
+            module_ctx = _pypi_mock_mctx(
+                _mod(
+                    name = "my_module",
+                    default = [_default(index_url = index_url)],
+                ),
+                os_name = "linux",
+                arch_name = "x86_64",
+            ),
+            enable_pipstar_extract = True,
+            _fail = failures.append,
+        )
+
+        env.expect.that_bool(config == None).equals(True)
+        env.expect.that_collection(failures).contains_exactly([
+            (
+                'pip.default(index_url = "{}") is not a valid index URL. ' +
+                "To not use the SimpleAPI for the packages of a hub, set " +
+                '`simpleapi_skip = ["*"]` on `pip.parse` instead.'
+            ).format(index_url),
+        ])
+
+_tests.append(_test_default_slash_only_index_url_fails)
+
+def _test_simpleapi_skip_all(env):
+    downloads = []
+
+    pypi = _parse_modules(
+        env,
+        module_ctx = _pypi_mock_mctx(
+            _mod(
+                name = "my_module",
+                parse = [
+                    _parse(
+                        hub_name = "pypi",
+                        python_version = "3.15",
+                        simpleapi_skip = ["*"],
+                        requirements_lock = "requirements.txt",
+                    ),
+                ],
+            ),
+            os_name = "linux",
+            arch_name = "x86_64",
+            mock_files = {
+                "requirements.txt": """\
+other==0.0.2 \
+    --hash=sha256:deadb00f
+simple==0.0.1 \
+    --hash=sha256:deadbeef \
+    --hash=sha256:deadbaaf""",
+            },
+        ),
+        available_interpreters = {
+            "python_3_15_host": "unit_test_interpreter_target",
+        },
+        minor_mapping = {"3.15": "3.15.19"},
+        simpleapi_download = lambda *args, **kwargs: downloads.append(kwargs),
+    )
+
+    # The SimpleAPI is not used and all of the packages are downloaded with pip.
+    env.expect.that_collection(downloads).contains_exactly([])
+    pypi.whl_libraries().contains_exactly({
+        "pypi_315_other": {
+            "config_load": "@pypi//:config.bzl",
+            "dep_template": "@pypi//{name}:{target}",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "other==0.0.2 --hash=sha256:deadb00f",
+        },
+        "pypi_315_simple": {
+            "config_load": "@pypi//:config.bzl",
+            "dep_template": "@pypi//{name}:{target}",
+            "python_interpreter_target": "unit_test_interpreter_target",
+            "requirement": "simple==0.0.1 --hash=sha256:deadbeef --hash=sha256:deadbaaf",
+        },
+    })
+
+_tests.append(_test_simpleapi_skip_all)
+
 def _configure_parse_modules(env, *modules):
     return _parse_modules(
         env,
