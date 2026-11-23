@@ -28,9 +28,7 @@ def requirement(spec):
         A struct with the information.
     """
 
-    # The options are not a part of PEP 508.
-    for sep in (" --", "\t--"):
-        spec, _, _ = spec.partition(sep)
+    spec = _strip_options(spec)
 
     head, semicolon, marker = spec.partition(";")
     name, at, url = head.partition("@")
@@ -49,8 +47,36 @@ def requirement(spec):
     req = pypackaging.requirements.parse(spec)
 
     return struct(
+        # str: normalized PEP 503 package name using `-` separators.
         name = req.name,
+        # str: normalized package name using `_` separators for Bazel labels.
         name_ = req.name.replace("-", "_"),
+        # str: PEP 508 environment marker expression, or `""` if absent.
         marker = req.marker_str or "",
+        # list[str]: sorted normalized extra names using `_` separators.
         extras = [e.replace("-", "_") for e in req.extras],
     )
+
+def _strip_options(line):
+    """Remove the `requirements.txt` options, which are not a part of PEP 508.
+
+    The options, e.g. `--hash=sha256:...` or `-C key=value`, start with a `-`
+    that follows a whitespace. The quoted strings of the markers are skipped,
+    because they may have such text as well.
+    """
+    if " -" not in line and "\t-" not in line:
+        return line
+
+    quote = None
+    prev = ""
+    for i, c in enumerate(line.elems()):
+        if quote:
+            if c == quote:
+                quote = None
+        elif c in ("\"", "'"):
+            quote = c
+        elif c == "-" and prev in (" ", "\t"):
+            return line[:i]
+        prev = c
+
+    return line

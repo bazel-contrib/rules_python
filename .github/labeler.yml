@@ -1,0 +1,8 @@
+# The labels that are added to the PRs based on the changed files. See
+# https://github.com/actions/labeler for the syntax.
+gazelle:
+  - changed-files:
+      - any-glob-to-any-file: "gazelle/**"
+sphinxdocs:
+  - changed-files:
+      - any-glob-to-any-file: "sphinxdocs/**"

@@ -21,9 +21,9 @@ _tests = []
 
 def _test_all_workspace(env):
     want = """\
-load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
 load("@pypi//:config.bzl", "packages")
 load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets")
+load("@rules_python//python/private/pypi:whl_package_metadata.bzl", "whl_package_metadata")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -61,10 +61,10 @@ whl_library_targets(
     ],
 )
 
-package_metadata(
-    name = "package_metadata",
-    purl = "foo",
-    visibility = ["//:__subpackages__"],
+whl_package_metadata(
+    distribution = "foo",
+    file_name = "foo.whl",
+    version = "0",
 )
 
 # SOMETHING SPECIAL AT THE END
@@ -87,7 +87,7 @@ package_metadata(
         config_load = "@pypi//:config.bzl",
         group_name = "qux",
         group_deps = ["foo", "fox", "qux"],
-        purl = "foo",
+        purl = {"distribution": "foo", "file_name": "foo.whl", "version": "0"},
     )
     env.expect.that_str(actual.replace("@@", "@")).equals(want)
 
@@ -95,9 +95,9 @@ _tests.append(_test_all_workspace)
 
 def _test_all(env):
     want = """\
-load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
 load("@pypi//:config.bzl", "packages")
 load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets")
+load("@rules_python//python/private/pypi:whl_package_metadata.bzl", "whl_package_metadata")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -135,10 +135,10 @@ whl_library_targets(
     ],
 )
 
-package_metadata(
-    name = "package_metadata",
-    purl = "foo",
-    visibility = ["//:__subpackages__"],
+whl_package_metadata(
+    distribution = "foo",
+    file_name = "foo.whl",
+    version = "0",
 )
 
 # SOMETHING SPECIAL AT THE END
@@ -160,7 +160,7 @@ package_metadata(
         ),
         config_load = "@pypi//:config.bzl",
         group_name = "qux",
-        purl = "foo",
+        purl = {"distribution": "foo", "file_name": "foo.whl", "version": "0"},
         group_deps = ["foo", "fox", "qux"],
     )
     env.expect.that_str(actual.replace("@@", "@")).equals(want)
@@ -169,9 +169,9 @@ _tests.append(_test_all)
 
 def _test_all_with_loads(env):
     want = """\
-load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
 load("@pypi//:config.bzl", "packages")
 load("@rules_python//python/private/pypi:whl_library_targets.bzl", "whl_library_targets")
+load("@rules_python//python/private/pypi:whl_package_metadata.bzl", "whl_package_metadata")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -209,10 +209,10 @@ whl_library_targets(
     ],
 )
 
-package_metadata(
-    name = "package_metadata",
-    purl = "foo",
-    visibility = ["//:__subpackages__"],
+whl_package_metadata(
+    distribution = "foo",
+    file_name = "foo.whl",
+    version = "0",
 )
 
 # SOMETHING SPECIAL AT THE END
@@ -235,7 +235,7 @@ package_metadata(
         group_name = "qux",
         config_load = "@pypi//:config.bzl",
         group_deps = ["foo", "fox", "qux"],
-        purl = "foo",
+        purl = {"distribution": "foo", "file_name": "foo.whl", "version": "0"},
     )
     env.expect.that_str(actual.replace("@@", "@")).equals(want)
 
@@ -243,7 +243,6 @@ _tests.append(_test_all_with_loads)
 
 def _test_deps_targets(env):
     want = """\
-load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
 load("@rules_python//python/private/pypi:whl_library_deps_targets.bzl", "whl_library_deps_targets")
 
 package(default_visibility = ["//visibility:public"])
