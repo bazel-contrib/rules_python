@@ -53,6 +53,12 @@ def evaluate(marker, *, env, strict = True):
         # The comparisons that are not evaluated are left as they are written.
         tree = _with_platform_machine_aliases(tree, max_depth = len(marker))
 
+        # The value in the env may be an alias as well.
+        machine = env["platform_machine"]
+        env = env | {
+            "platform_machine": _PLATFORM_MACHINE_ALIASES.get(machine, machine),
+        }
+
     if strict:
         return pypackaging.markers.evaluate(tree, env)
 
