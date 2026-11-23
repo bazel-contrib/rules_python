@@ -42,10 +42,10 @@ def _test_requirement_line_parsing(env):
         "name_foo[bar]==0.25 @ http://foo.com ; os_name=='a'": ("name-foo", ["bar"], "os_name=='a'"),
     }
 
-    got = {
-        i: (parsed.name, parsed.extras, parsed.marker)
-        for i, parsed in {case: requirement(case) for case in want}.items()
-    }
+    got = {}
+    for case in want:
+        parsed = requirement(case)
+        got[case] = (parsed.name, parsed.extras, parsed.marker)
     env.expect.that_dict(got).contains_exactly(want)
 
 _tests.append(_test_requirement_line_parsing)

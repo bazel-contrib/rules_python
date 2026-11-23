@@ -49,8 +49,12 @@ def requirement(spec):
     req = pypackaging.requirements.parse(spec)
 
     return struct(
+        # str: normalized PEP 503 package name using `-` separators.
         name = req.name,
+        # str: normalized package name using `_` separators for Bazel labels.
         name_ = req.name.replace("-", "_"),
+        # str: PEP 508 environment marker expression, or `""` if absent.
         marker = req.marker_str or "",
+        # list[str]: sorted normalized extra names using `_` separators.
         extras = [e.replace("-", "_") for e in req.extras],
     )

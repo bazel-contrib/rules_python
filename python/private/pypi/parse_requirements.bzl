@@ -464,7 +464,7 @@ def _parse_requirements_from_req_files(
     extra_index_urls = []
 
     # The same lines are used on many platforms, so parse them once.
-    names = {}
+    parsed_reqs = {}
     for file, plats in requirements_by_platform.items():
         logger.trace(lambda: "Using {} for {}".format(file, plats))
         contents = ctx.read(file)
@@ -492,19 +492,21 @@ def _parse_requirements_from_req_files(
             # (3.0).
             get_index_urls = None
 
-        # Pre-parse requirements once per file to avoid redundant parsing in loops
-        parsed_reqs = [(entry, requirement(entry[1])) for entry in parse_result.requirements]
-        for entry, req in parsed_reqs:
-            names[entry[1]] = req.name
+        for _, req_line in parse_result.requirements:
+            if req_line not in parsed_reqs:
+                parsed_reqs[req_line] = requirement(req_line)
 
         for plat in plats:
             plat_env = platforms.get(plat)
 
-            requirements[plat] = [
-                entry
-                for entry, req in parsed_reqs
-                if not req.marker or (plat_env and evaluate(req.marker, env = plat_env.env))
-            ]
+            plat_reqs = []
+            for entry in parse_result.requirements:
+                marker = parsed_reqs[entry[1]].marker
+                if not marker or (
+                    plat_env and evaluate(marker, env = plat_env.env)
+                ):
+                    plat_reqs.append(entry)
+            requirements[plat] = plat_reqs
 
             options[plat] = pip_args
 
@@ -523,7 +525,7 @@ def _parse_requirements_from_req_files(
             parse_results,
             key = lambda x: (len(x[1].partition("==")[0]), x),
         ):
-            requirements_dict[names[entry[1]]] = entry
+            requirements_dict[parsed_reqs[entry[1]].name] = entry
 
         extra_pip_args_for_plat = options[plat]
 
