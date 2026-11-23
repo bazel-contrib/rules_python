@@ -236,7 +236,7 @@ def _pip_repository_impl(rctx):
         # NOTE: Maintain the order consistent with `buildifier`
         'load("@rules_python//python:pip.bzl", "pip_utils")',
         'load("@rules_python//python/pip_install:pip_repository.bzl", "whl_config_repo", "whl_library")',
-        'load("@rules_python//python/private/pypi:labels.bzl", "requirement_label", "requirement_labels")  # buildifier: disable=bzl-visibility',
+        'load("@rules_python//python/private/pypi:labels.bzl", "requirement_label")  # buildifier: disable=bzl-visibility',
     ]
 
     annotations = {}

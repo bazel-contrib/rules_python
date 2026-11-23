@@ -1,7 +1,7 @@
 ""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-load("//python/private/pypi:labels.bzl", "requirement_label", "requirement_labels")  # buildifier: disable=bzl-visibility
+load("//python/private/pypi:labels.bzl", "requirement_label")  # buildifier: disable=bzl-visibility
 
 _tests = []
 
@@ -27,22 +27,9 @@ def _test_requirement_label_multiple_extras_fails(env):
         fail = lambda msg: errors.append(msg),
     )
     env.expect.that_collection(errors).has_size(1)
-    env.expect.that_str(errors[0]).contains("requirements(\"google-api-core[grpc,async_rest]\")")
+    env.expect.that_str(errors[0]).contains("got 'google-api-core[grpc,async_rest]'")
 
 _tests.append(_test_requirement_label_multiple_extras_fails)
-
-def _test_requirement_labels(env):
-    env.expect.that_collection(
-        requirement_labels(_TMPL, "google-api-core[grpc, async_rest]", "foobar[baz]", "foo", "bar[]"),
-    ).contains_exactly([
-        "@@pypi//google_api_core:[async_rest]",
-        "@@pypi//google_api_core:[grpc]",
-        "@@pypi//foobar:[baz]",
-        "@@pypi//foo:pkg",
-        "@@pypi//bar:[]",
-    ]).in_order()
-
-_tests.append(_test_requirement_labels)
 
 def labels_test_suite(name):
     """Create the test suite.

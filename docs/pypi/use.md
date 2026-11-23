@@ -95,21 +95,17 @@ py_library(
 
 There are no targets for combinations of extras, because each `[extra]` target
 already includes the package. The `requirement` helper accepts at most one
-extra. To request more than one extra, use the `requirements` helper, which
-accepts any number of packages and returns a list with a label for each
-package and each extra:
+extra. To request more than one extra, depend on the target of each extra:
 
 ```starlark
-load("@pypi//:requirements.bzl", "requirements")
-
 py_library(
     name = "my_lib",
     deps = [
         ":other_lib",
-    ] + requirements(
-        "google-api-core[async_rest,grpc]",
-        "numpy",
-    ),
+        "@pypi//google_api_core:[async_rest]",
+        "@pypi//google_api_core:[grpc]",
+        "@pypi//numpy",
+    ],
 )
 ```
 

@@ -5,7 +5,7 @@
 
 load("@rules_python//python:pip.bzl", "pip_utils")
 load("@rules_python//python/pip_install:pip_repository.bzl", "whl_config_repo", "whl_library")
-load("@rules_python//python/private/pypi:labels.bzl", "requirement_label", "requirement_labels")  # buildifier: disable=bzl-visibility
+load("@rules_python//python/private/pypi:labels.bzl", "requirement_label")  # buildifier: disable=bzl-visibility
 
 all_requirements = [
     "@my_project_pip_deps_vendored_certifi//:pkg",
@@ -84,24 +84,12 @@ def requirement(name):
 
     Args:
         name: The name of the package with at most one extra, e.g. `foo`,
-            `foo[]` or `foo[bar]`. Use `requirements` for multiple extras.
+            `foo[]` or `foo[bar]`.
 
     Returns:
         The label of the package.
     """
     return requirement_label("@my_project_pip_deps_vendored_{}//:{}", name)
-
-def requirements(*names):
-    """Return the labels for the packages.
-
-    Args:
-        *names: The names of the packages with optional extras, e.g. `foo`,
-            `foo[]`, `foo[bar]` or `foo[bar,baz]`.
-
-    Returns:
-        The list of labels, with a label for each extra of a package.
-    """
-    return requirement_labels("@my_project_pip_deps_vendored_{}//:{}", *names)
 
 def whl_requirement(name):
     return "@my_project_pip_deps_vendored_{}//:{}".format(pip_utils.normalize_name(name), "whl")

@@ -70,29 +70,9 @@ def requirement_label(tmpl, requirement, *, fail = fail):
     """
     labels = _labels(tmpl, requirement)
     if len(labels) > 1:
-        fail("Only a single extra is supported by 'requirement', use 'requirements(\"{}\")' instead to get a list of labels.".format(requirement))
+        fail("Only a single extra is supported by 'requirement', got '{}'. Depend on the target of each extra instead.".format(requirement))
 
     return labels[0]
-
-def requirement_labels(tmpl, *requirements):
-    """Return the labels for requirements in a hub repository.
-
-    Args:
-        tmpl: {type}`str` the label template with two `{}` placeholders for
-            the package name and the target name.
-        *requirements: {type}`str` the names of the packages with optional
-            extras, e.g. `foo`, `foo[]`, `foo[bar]` or `foo[bar,baz]`.
-
-    Returns:
-        {type}`list[str]` the labels for each requirement, with an `[extra]`
-        label for each extra of a requirement. Each `[extra]` target includes
-        the package.
-    """
-    return [
-        label
-        for requirement in requirements
-        for label in _labels(tmpl, requirement)
-    ]
 
 def group_member(spec):
     """Normalize a member of a dependency group.
