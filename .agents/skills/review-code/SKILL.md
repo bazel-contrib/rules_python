@@ -74,8 +74,7 @@ file from `.agents/skills/review-code/`:
 9. **News Entry Sub-Agent** (`Role: "News Entry Auditor"`):
    - Prompt file:
      `.agents/skills/review-code/review-news-prompt.md`
-   - Focus: Audits `news/<id>.<category>.md` files for presence, naming (no
-     generic `0000` placeholders), brevity and skimmability, and formatting
+   - Focus: Audits `news/` entries and user-visible changes in `git diff`
      against `.agents/rules/news.md` and
      `.agents/skills/create-news/SKILL.md`.
 
