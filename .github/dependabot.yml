@@ -87,8 +87,9 @@ updates:
       # keep-sorted start
       - "tests/integration/unified_pypi/requirements_b.txt"
       - "tests/integration/unified_pypi/requirements_b_without_six.txt"
-      - "tests/multi_pypi/beta"
-      - "tests/multi_pypi/beta/**/*"
+      - "tests/multi_pypi/beta/*"
+      - "tests/multi_pypi/beta/pyproject.toml"
+      - "tests/multi_pypi/beta/uv.lock"
       # keep-sorted end
     patterns:
       - "*"
