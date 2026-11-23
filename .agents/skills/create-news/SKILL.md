@@ -1,49 +1,29 @@
 ---
 name: create-news
-description: Create or update a concise news entry file in `news/` for
+description: Create or update a ~20-word news entry file in `news/` for
   user-visible changes
 ---
 
-Use this skill when adding or editing a news fragment in `news/`. News entries
-are combined into `CHANGELOG.md` at release time and must be short snippets that
-are easy to skim and grok.
+Use this skill when adding or editing a news fragment in `news/`. Release
+tooling assembles `news/` files into `CHANGELOG.md`, so each entry must follow
+`.agents/rules/news.md`.
 
 @.agents/rules/news.md
 
 ### Workflow
 
-1. **Determine if a News Entry is Needed**:
-   - Create a news file only for released, user-visible changes (`added`,
-     `changed`, `fixed`, `removed`).
-   - Skip news files for internal refactoring, test-only changes, or fixes to
-     unreleased code.
-   - Never edit `CHANGELOG.md` directly for unreleased changes.
-
-2. **Choose the Filename (`news/<id>.<category>.md`)**:
-   - `<id>`: Use the GitHub issue or PR number if one exists (e.g., `4181`).
-     If no issue or PR exists yet, use a short, hyphenated descriptive term
-     (e.g., `py-typed-pyi-srcs.added.md`). Never use `0000` or generic
-     placeholders.
-   - `<category>`: Choose `added`, `changed`, `fixed`, or `removed`.
-
-3. **Draft a Short, Skimmable Snippet**:
-   - Keep the entry to 1-2 concise sentences stating *what* changed for users.
-   - Prefix with the subsystem in parentheses when applicable (e.g., `(pypi)`,
-     `(toolchains)`, `(gazelle)`, `(bzlmod)`).
-   - Omit leading bullet points (`*` or `-`).
-   - Cut implementation mechanics, internal helper names, and secondary
-     edge-case explanations; put detailed usage in API docstrings instead.
-   - Wrap lines at 80 columns.
-   - Append issue/PR links at the end when applicable:
-     `([#1234](https://github.com/bazel-contrib/rules_python/issues/1234))`.
+1. Check `.agents/rules/news.md` to confirm the change requires a
+   `news/<id>.<category>.md` file.
+2. Draft a single-sentence snippet targeting **~20 words** per
+   `.agents/rules/news.md`, then count the words (excluding any trailing
+   issue/PR link) and move secondary details to API docstrings or `docs/`.
 
 ### Examples
 
-**Good (concise and skimmable)**:
+**Good (~10–20 words, high-level and skimmable)**:
 ```markdown
-(toolchains) Added the
-{obj}`--@rules_python//python/config_settings:py_pbs_distribution` flag to
-select stripped `python-build-standalone` runtime archives
+(toolchains) Added {flag}`--py_pbs_distribution` to select stripped
+`python-build-standalone` runtime archives
 ([#4163](https://github.com/bazel-contrib/rules_python/issues/4163)).
 ```
 
@@ -51,7 +31,23 @@ select stripped `python-build-standalone` runtime archives
 (coverage) Skip lcov report generation when no coverage data is collected.
 ```
 
-**Bad (too verbose and detailed)**:
+**Bad (40+ words packing API-doc mechanics and rationale into `news/`)**:
+```markdown
+(coverage) Added the {flag}`--coverage` flag to use the `coverage` package
+locked in the requirements, e.g. `@pypi//coverage`, without configuring the
+Python toolchains. It can be a `py_library` that bundles plugins and
+`.coveragerc` files, which are merged, and it can be set per target via
+`config_settings`
+([#3902](https://github.com/bazel-contrib/rules_python/issues/3902)).
+```
+
+*Rewrite (11 words, excluding the trailing issue link):*
+```markdown
+(coverage) Added {flag}`--coverage` to select the coverage package from locked
+requirements
+([#3902](https://github.com/bazel-contrib/rules_python/issues/3902)).
+```
+
 ```markdown
 (pypi) A {obj}`pip.parse` call for a Python version that has no interpreter for
 the host platform is now skipped, like a version with no registered toolchain,
@@ -60,6 +56,10 @@ say, Python 3.9 no longer breaks every other hub on hosts that have no CPython
 3.9 build, such as Windows on ARM64
 ([#4184](https://github.com/bazel-contrib/rules_python/issues/4184)).
 ```
-*(Rewrite: `(pypi) Skip {obj}\`pip.parse\` calls for Python versions without a
-host interpreter instead of failing the {obj}\`pip\` extension
-([#4184](https://github.com/bazel-contrib/rules_python/issues/4184)).`)*
+
+*Rewrite (15 words, excluding the trailing issue link):*
+```markdown
+(pypi) Skip {obj}`pip.parse` calls for Python versions without a host
+interpreter instead of failing {obj}`pip`
+([#4184](https://github.com/bazel-contrib/rules_python/issues/4184)).
+```
