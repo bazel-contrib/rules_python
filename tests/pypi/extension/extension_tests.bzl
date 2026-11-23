@@ -986,10 +986,63 @@ def _test_configure_testonly_unified(env):
 
     pypi.testonly_packages().contains_exactly({"pypi_a": ["simple"], "pypi_b": []})
 
-    # A package is testonly in the unified hub if it is testonly in any hub.
-    pypi.unified_testonly_packages().contains_exactly(["simple"])
+    # The testonly is enforced by the hub that the unified hub alias points
+    # to, so a package is only marked as testonly in the unified hub if it is
+    # testonly in all of the hubs that have it.
+    pypi.unified_testonly_packages().contains_exactly([])
 
 _tests.append(_test_configure_testonly_unified)
+
+def _test_configure_testonly_unified_all_hubs(env):
+    pypi = _configure_parse_modules(
+        env,
+        _mod(
+            name = "rules_python",
+            parse = [
+                _configure_parse(hub_name = "pypi_a", pyproject_toml = "pyproject.toml"),
+                _configure_parse(hub_name = "pypi_b", pyproject_toml = "pyproject.toml"),
+                # This hub is not configured, so all of its packages are
+                # public and not testonly.
+                _configure_parse(hub_name = "pypi_c", pyproject_toml = "pyproject.toml"),
+            ],
+            configure = [
+                _configure(hub_name = "pypi_a", dependency_groups = ["default"], testonly = True),
+                # `other_pkg` is only public in this hub.
+                _configure(hub_name = "pypi_b", dependency_groups = ["default", "dev"], testonly = True),
+            ],
+        ),
+    )
+
+    pypi.testonly_packages().contains_exactly({
+        "pypi_a": ["simple"],
+        "pypi_b": ["other_pkg", "simple"],
+    })
+
+    # `simple` is not testonly in `pypi_c` and so is `other_pkg`.
+    pypi.unified_testonly_packages().contains_exactly([])
+
+_tests.append(_test_configure_testonly_unified_all_hubs)
+
+def _test_configure_testonly_unified_agreeing_hubs(env):
+    pypi = _configure_parse_modules(
+        env,
+        _mod(
+            name = "rules_python",
+            parse = [
+                _configure_parse(hub_name = "pypi_a", pyproject_toml = "pyproject.toml"),
+                _configure_parse(hub_name = "pypi_b", pyproject_toml = "pyproject.toml"),
+            ],
+            configure = [
+                _configure(hub_name = "pypi_a", dependency_groups = ["default"], testonly = True),
+                _configure(hub_name = "pypi_b", dependency_groups = ["default", "dev"], testonly = True),
+            ],
+        ),
+    )
+
+    # `other_pkg` is only public in `pypi_b`, where it is testonly.
+    pypi.unified_testonly_packages().contains_exactly(["other_pkg", "simple"])
+
+_tests.append(_test_configure_testonly_unified_agreeing_hubs)
 
 def _test_configure_default_pyproject(env):
     # The `pip.default` pyproject.toml is used for the hubs of the root module.

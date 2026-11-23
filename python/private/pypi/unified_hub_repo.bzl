@@ -142,7 +142,7 @@ unified_hub_repo = repository_rule(
         ),
         "testonly_packages": attr.string_list(
             default = [],
-            doc = "Packages that are testonly in at least one hub.",
+            doc = "Packages that are testonly in all of the hubs that have them.",
         ),
         "venvs": attr.string_dict(
             default = {},

@@ -264,8 +264,9 @@ A package that is also selected by a tag without `testonly` is not testonly.
 The testonly packages are left out of the `all_requirements`,
 `all_whl_requirements` and `all_data_requirements` lists in the hub's
 `requirements.bzl` and are listed in `all_testonly_requirements` instead. In
-the [Unified @pypi Hub](unified-pypi-hub), a package is testonly if it is
-testonly in any of the hubs.
+the [Unified @pypi Hub](unified-pypi-hub), the targets of a package point to
+the hub that is selected, so the package is testonly when it is testonly in
+that hub.
 
 Only the targets of the hub are testonly. The other packages of the hub can
 depend on the testonly packages, so a testonly package is still a transitive
