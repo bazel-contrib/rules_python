@@ -53,8 +53,6 @@ py_binary(
         },
     }),
     main = "native_ext_main.py",
-    # Pyrefly can't resolve the native extension module.
-    tags = ["no-pyrefly"],
     deps = ["@dev_pip//markupsafe"],
 )
 
@@ -67,7 +65,7 @@ py_test(
     name = "native_ext_zipapp_test",
     srcs = ["native_ext_zipapp_test.py"],
     data = [":native_ext_zipapp"],
-    env = {"TEST_ZIPAPP": "$(location :native_ext_zipapp)"},
+    env = {"TEST_ZIPAPP": "$(rootpath :native_ext_zipapp)"},
 )
 
 # Create the app with a supported level of compression

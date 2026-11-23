@@ -459,3 +459,48 @@ def test_link_packed_runfiles_symlinks_disabled(tmp_path):
     with zipfile.ZipFile(output_zip, "r") as zf:
         for info in zf.infolist():
             assert not is_symlink(info), f"{info.filename} should NOT be a symlink"
+
+
+def test_link_packed_runfiles_symlinks_shadowed_and_sorted(tmp_path):
+    manifest_path = tmp_path / "manifest.txt"
+    output_zip = tmp_path / "output.zip"
+
+    shared = tmp_path / "shared.txt"
+    shared.write_text("shared")
+    other = tmp_path / "other.txt"
+    other.write_text("other")
+    dup = tmp_path / "dup.so"
+    dup.write_text("dup")
+
+    manifest_path.write_text(
+        "\n".join(
+            [
+                # Shadowed rf-file must not redirect runfiles symlinks to the shadowing symlink.
+                f"rf-file|0|shadowed.txt|{shared}",
+                "symlink|my_ws/shadowed.txt|my_ws/other.txt",
+                f"rf-file|0|other.txt|{other}",
+                f"rf-root-symlink|0|my_ws/venv/shared.txt|{shared}",
+                # Duplicate content_path targets pick the sorted zip_path deterministically.
+                f"rf-file|0|z_copy.so|{dup}",
+                f"rf-file|0|a_copy.so|{dup}",
+                f"rf-root-symlink|0|my_ws/venv/dup.so|{dup}",
+            ]
+        )
+    )
+
+    create_zip(manifest_path, output_zip, link_packed_runfiles_symlinks=True)
+
+    with zipfile.ZipFile(output_zip, "r") as zf:
+        assert_zip_file_content(
+            zf,
+            "runfiles/my_ws/shadowed.txt",
+            is_symlink_file=True,
+            target="other.txt",
+        )
+        assert_zip_file_content(zf, "runfiles/my_ws/venv/shared.txt", content="shared")
+        assert_zip_file_content(
+            zf,
+            "runfiles/my_ws/venv/dup.so",
+            is_symlink_file=True,
+            target=symlink_target_path("../a_copy.so"),
+        )

@@ -22,6 +22,19 @@ use zip_manifest::{RawManifestEntry, SymlinkMode, parse_manifest_line};
 /// while staying well below sizes where a bigger buffer stops paying off.
 const BLOCK_SIZE: usize = 256 * 1024;
 
+mod flags {
+    // keep-sorted start
+    pub const COMPRESSION: &str = "compression";
+    pub const HELP: &str = "help";
+    pub const HELP_SHORT: char = 'h';
+    pub const LEGACY_EXTERNAL_RUNFILES: &str = "legacy-external-runfiles";
+    pub const LINK_PACKED_RUNFILES_SYMLINKS: &str = "link-packed-runfiles-symlinks";
+    pub const RUNFILES_DIR: &str = "runfiles-dir";
+    pub const TARGET_PLATFORM_PATHSEP: &str = "target-platform-pathsep";
+    pub const WORKSPACE_NAME: &str = "workspace-name";
+    // keep-sorted end
+}
+
 /// Usage text for `--help`. `lexopt` does not generate help, so this is maintained by hand.
 const USAGE: &str = "\
 Usage: zipper [OPTIONS] <manifest> <output>
@@ -227,19 +240,24 @@ fn parse_entry(
 
 /// Turns runfiles symlinks to packed files into symlinks to the packed copy.
 ///
-/// An `rf-symlink` or `rf-root-symlink` entry whose content is also stored by an `rf-file` entry
-/// (e.g. a venv site-packages entry that points into a pip repo) becomes a relative symlink to
-/// that `rf-file`'s zip path, instead of a second copy of the content. It keeps the precedence of
-/// a regular entry, so a file at the same zip path still wins over it.
+/// An `rf-symlink` or `rf-root-symlink` entry whose content is also stored by a winning `rf-file`
+/// entry (e.g. a venv site-packages entry that points into a pip repo) becomes a relative symlink
+/// to that `rf-file`'s zip path, instead of a second copy of the content. It keeps the precedence
+/// of a regular entry, so a file at the same zip path still wins over it.
 fn link_packed_runfiles_symlinks(entries: &mut [ManifestEntry]) {
+    let mut seen_zip_paths: HashSet<String> = HashSet::new();
     let mut packed: HashMap<PathBuf, String> = HashMap::new();
     for entry in entries.iter() {
+        let normalized_zip_path = normalize_components(&entry.zip_path).join("/");
+        if !seen_zip_paths.insert(normalized_zip_path.clone()) {
+            continue;
+        }
         if let (EntrySource::RunfilesFile, EntryKind::File { content_path, .. }) =
             (entry.source, &entry.kind)
         {
             packed
                 .entry(content_path.clone())
-                .or_insert_with(|| normalize_components(&entry.zip_path).join("/"));
+                .or_insert(normalized_zip_path);
         }
     }
     for entry in entries.iter_mut() {
@@ -252,11 +270,14 @@ fn link_packed_runfiles_symlinks(entries: &mut [ManifestEntry]) {
         let Some(target) = packed.get(content_path) else {
             continue;
         };
+        let normalized_zip_path = normalize_components(&entry.zip_path).join("/");
         // A link at the target's own path would point to itself.
-        if *target == normalize_components(&entry.zip_path).join("/") {
+        if *target == normalized_zip_path {
             continue;
         }
-        let parent = entry.zip_path.rsplit_once('/').map_or("", |(dir, _)| dir);
+        let parent = normalized_zip_path
+            .rsplit_once('/')
+            .map_or("", |(dir, _)| dir);
         entry.kind = EntryKind::PackedSymlink {
             target: relative_path(target, parent),
         };
@@ -288,10 +309,10 @@ fn read_manifest(options: &ZipOptions) -> Result<Vec<ManifestEntry>> {
             entries.push(entry);
         }
     }
+    entries.sort_by(|a, b| sort_key(a).cmp(&sort_key(b)));
     if options.link_packed_runfiles_symlinks {
         link_packed_runfiles_symlinks(&mut entries);
     }
-    entries.sort_by(|a, b| sort_key(a).cmp(&sort_key(b)));
     Ok(entries)
 }
 
@@ -460,6 +481,11 @@ fn write_entry<W: Write + Seek>(
 }
 
 /// Creates a zip file from a manifest according to `options`.
+///
+/// # Errors
+///
+/// Returns an error if `options.compress_level` exceeds `9`, the manifest cannot be read or
+/// parsed, an input file or symlink cannot be read, or writing the output zip archive fails.
 pub fn create_zip(options: &ZipOptions) -> Result<()> {
     if options.compress_level > 9 {
         bail!(
@@ -492,16 +518,21 @@ pub fn create_zip(options: &ZipOptions) -> Result<()> {
     Ok(())
 }
 
-/// Parses a `0`/`1` flag value, naming `flag` in the error.
+/// Parses a `0`/`1` flag value, naming `--{flag}` in the error.
 fn parse_bool_flag(flag: &str, value: &str) -> Result<bool, lexopt::Error> {
     match value {
         "0" => Ok(false),
         "1" => Ok(true),
-        _ => Err(format!("invalid {flag} value (expected 0 or 1): {value}").into()),
+        _ => Err(format!("invalid --{flag} value (expected 0 or 1): {value}").into()),
     }
 }
 
 /// Parses command-line arguments (excluding `argv[0]`).
+///
+/// # Errors
+///
+/// Returns an error if an unknown flag is passed, a flag value is missing, non-UTF-8, or out of
+/// range, or the positional argument count is not 2 (`<manifest> <output>`).
 pub fn parse_args<I, T>(args: I) -> Result<Cli, lexopt::Error>
 where
     I: IntoIterator<Item = T>,
@@ -520,32 +551,33 @@ where
     let mut parser = lexopt::Parser::from_args(args);
     while let Some(arg) = parser.next()? {
         match arg {
-            Short('h') | Long("help") => return Ok(Cli::Help),
-            Long("compression") => {
+            Short(flags::HELP_SHORT) | Long(flags::HELP) => return Ok(Cli::Help),
+            Long(flags::COMPRESSION) => {
                 compress_level = parser.value()?.parse()?;
                 if compress_level > 9 {
                     return Err(format!(
-                        "invalid --compression value (expected 0-9): {compress_level}"
+                        "invalid --{} value (expected 0-9): {compress_level}",
+                        flags::COMPRESSION
                     )
                     .into());
                 }
             }
-            Long("workspace-name") => {
+            Long(flags::WORKSPACE_NAME) => {
                 workspace_name = parser.value()?.string()?;
             }
-            Long("legacy-external-runfiles") => {
+            Long(flags::LEGACY_EXTERNAL_RUNFILES) => {
                 legacy_external_runfiles =
-                    parse_bool_flag("--legacy-external-runfiles", &parser.value()?.string()?)?;
+                    parse_bool_flag(flags::LEGACY_EXTERNAL_RUNFILES, &parser.value()?.string()?)?;
             }
-            Long("runfiles-dir") => {
+            Long(flags::RUNFILES_DIR) => {
                 runfiles_dir = parser.value()?.string()?;
             }
-            Long("target-platform-pathsep") => {
+            Long(flags::TARGET_PLATFORM_PATHSEP) => {
                 platform_pathsep = parser.value()?.string()?;
             }
-            Long("link-packed-runfiles-symlinks") => {
+            Long(flags::LINK_PACKED_RUNFILES_SYMLINKS) => {
                 link_packed_runfiles_symlinks = parse_bool_flag(
-                    "--link-packed-runfiles-symlinks",
+                    flags::LINK_PACKED_RUNFILES_SYMLINKS,
                     &parser.value()?.string()?,
                 )?;
             }

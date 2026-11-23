@@ -641,6 +641,51 @@ fn test_link_packed_runfiles_symlinks_disabled() {
     }
 }
 
+#[test]
+fn test_link_packed_runfiles_symlinks_shadowed_and_sorted() {
+    let tmp = TempDir::new("link_packed_runfiles_symlinks_shadowed");
+    let manifest_path = tmp.path().join("manifest.txt");
+    let output_zip = tmp.path().join("output.zip");
+    let shared = tmp.path().join("shared.txt");
+    fs::write(&shared, "shared").expect("shared.txt should be writable");
+    let other = tmp.path().join("other.txt");
+    fs::write(&other, "other").expect("other.txt should be writable");
+    let dup = tmp.path().join("dup.so");
+    fs::write(&dup, "dup").expect("dup.so should be writable");
+
+    let manifest = [
+        // Shadowed rf-file must not redirect runfiles symlinks to the shadowing symlink.
+        format!("rf-file|0|shadowed.txt|{}", shared.display()),
+        "symlink|my_ws/shadowed.txt|my_ws/other.txt".to_string(),
+        format!("rf-file|0|other.txt|{}", other.display()),
+        format!(
+            "rf-root-symlink|0|my_ws/venv/shared.txt|{}",
+            shared.display()
+        ),
+        // Duplicate content_path targets pick the sorted zip_path deterministically.
+        format!("rf-file|0|z_copy.so|{}", dup.display()),
+        format!("rf-file|0|a_copy.so|{}", dup.display()),
+        format!("rf-root-symlink|0|my_ws/venv/dup.so|{}", dup.display()),
+    ]
+    .join("\n");
+    fs::write(&manifest_path, manifest).expect("manifest should be writable");
+
+    let mut opts = default_options(&manifest_path, &output_zip);
+    opts.link_packed_runfiles_symlinks = true;
+    create_zip(&opts).expect("create_zip should succeed");
+
+    let by_name: HashMap<String, ParsedZipEntry> = read_zip_entries(&output_zip)
+        .into_iter()
+        .map(|e| (e.name.clone(), e))
+        .collect();
+    assert!(by_name["runfiles/my_ws/shadowed.txt"].is_symlink);
+    assert_eq!(by_name["runfiles/my_ws/shadowed.txt"].text(), "other.txt");
+    assert!(!by_name["runfiles/my_ws/venv/shared.txt"].is_symlink);
+    assert_eq!(by_name["runfiles/my_ws/venv/shared.txt"].text(), "shared");
+    assert!(by_name["runfiles/my_ws/venv/dup.so"].is_symlink);
+    assert_eq!(by_name["runfiles/my_ws/venv/dup.so"].text(), "../a_copy.so");
+}
+
 fn expect_run(cli: Cli) -> ZipOptions {
     match cli {
         Cli::Run(opts) => opts,

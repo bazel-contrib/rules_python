@@ -1,22 +1,18 @@
 import os
 import posixpath
+import stat
 import subprocess
 import unittest
 import zipfile
 
-S_IFMT = 0o170000
-S_IFLNK = 0o120000
-
 
 def _is_symlink(info):
-    return (info.external_attr >> 16) & S_IFMT == S_IFLNK
+    return stat.S_ISLNK(info.external_attr >> 16)
 
 
 class NativeExtZipAppTest(unittest.TestCase):
     def test_zipapp_runnable(self):
-        output = subprocess.check_output(
-            [os.environ["TEST_ZIPAPP"]], stderr=subprocess.STDOUT
-        ).decode("utf-8")
+        output = subprocess.check_output([os.environ["TEST_ZIPAPP"]]).decode("utf-8")
         self.assertIn("native ext:", output)
 
     @unittest.skipIf(os.name == "nt", "zipapps for Windows store copies")
@@ -26,17 +22,18 @@ class NativeExtZipAppTest(unittest.TestCase):
         # to the copy packed from the pip repo, not as a second copy.
         with zipfile.ZipFile(os.environ["TEST_ZIPAPP"]) as zf:
             namelist = zf.namelist()
-            venv_lib = next(
-                (
-                    name
-                    for name in namelist
-                    if ".venv/" in name
-                    and "/site-packages/markupsafe/_speedups." in name
-                    and name.endswith(".so")
-                ),
-                None,
-            )
-            self.assertIsNotNone(venv_lib, "\n".join(namelist))
+            venv_lib = None
+            for name in namelist:
+                if ".venv/" not in name:
+                    continue
+                if "/site-packages/markupsafe/_speedups." not in name:
+                    continue
+                if not name.endswith(".so"):
+                    continue
+                venv_lib = name
+                break
+            if venv_lib is None:
+                self.fail("\n".join(namelist))
             self.assertTrue(
                 _is_symlink(zf.getinfo(venv_lib)), f"{venv_lib} is not a symlink"
             )

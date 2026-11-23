@@ -79,27 +79,50 @@ def _link_packed_runfiles_symlinks(entries):
     """Turns runfiles symlinks to packed files into symlinks to the packed copy.
 
     A `runfiles.symlinks` or `runfiles.root_symlinks` entry whose content is
-    also stored by an `rf-file` entry (e.g. a venv site-packages entry that
-    points into a pip repo) becomes a relative symlink to that `rf-file`'s zip
-    path, instead of a second copy of the content. It keeps the precedence of a
-    regular entry, so a file at the same zip path still wins over it.
+    also stored by a winning `rf-file` entry (e.g. a venv site-packages entry
+    that points into a pip repo) becomes a relative symlink to that `rf-file`'s
+    zip path, instead of a second copy of the content. It keeps the precedence
+    of a regular entry, so a file at the same zip path still wins over it.
+
+    Args:
+        entries: Sorted `(type_, is_symlink_str, zip_path, content_path)`
+            tuples, where `zip_path` is relative to the zip archive root and
+            `content_path` is a filesystem path (or a symlink target relative
+            to `dirname(zip_path)` for `"symlink"` entries).
+
+    Returns:
+        Updated entry tuples where matching runfiles symlink entries are
+        replaced with `("packed-symlink", "2", zip_path, link)` tuples whose
+        `link` target is relative to `posixpath.dirname(zip_path)` inside the
+        zip archive.
     """
+    seen_zip_paths = set()
     packed = {}
     for type_, _, zip_path, content_path in entries:
+        normalized_zip_path = posixpath.normpath(normalize_zip_path(zip_path))
+        if normalized_zip_path in seen_zip_paths:
+            continue
+        seen_zip_paths.add(normalized_zip_path)
         if type_ == "rf-file":
-            packed.setdefault(content_path, posixpath.normpath(zip_path))
+            packed.setdefault(content_path, normalized_zip_path)
 
     result = []
     for entry in entries:
         type_, _, zip_path, content_path = entry
-        target = None
-        if type_ in ("rf-symlink", "rf-root-symlink"):
-            target = packed.get(content_path)
+        if type_ not in ("rf-symlink", "rf-root-symlink"):
+            result.append(entry)
+            continue
+        target = packed.get(content_path)
+        if target is None:
+            result.append(entry)
+            continue
+        normalized_zip_path = posixpath.normpath(normalize_zip_path(zip_path))
         # A link at the target's own path would point to itself.
-        if target is not None and target != posixpath.normpath(zip_path):
-            link = posixpath.relpath(target, start=posixpath.dirname(zip_path))
-            entry = ("packed-symlink", "2", zip_path, link)
-        result.append(entry)
+        if target == normalized_zip_path:
+            result.append(entry)
+            continue
+        link = posixpath.relpath(target, start=posixpath.dirname(normalized_zip_path))
+        result.append(("packed-symlink", "2", zip_path, link))
     return result
 
 
@@ -127,12 +150,13 @@ def read_manifest(
                 e.add_note(f"Error processing line {line_idx + 1}: {line.strip()}")
                 raise
 
-    if link_packed_runfiles_symlinks:
-        entries = _link_packed_runfiles_symlinks(entries)
-
     # Sort symlink entries first so they have precedence.
     # Then sort by zip path
     entries.sort(key=lambda x: (x[2], 0 if x[0] == "symlink" else 1))
+
+    if link_packed_runfiles_symlinks:
+        entries = _link_packed_runfiles_symlinks(entries)
+
     return entries
 
 
