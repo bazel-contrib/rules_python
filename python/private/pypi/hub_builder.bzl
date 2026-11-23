@@ -378,7 +378,7 @@ def _add_whl_library(self, *, python_version, whl, repo):
 def _set_get_index_urls(self, mctx, pip_attr, default_envsubst, python_version):
     if "*" in pip_attr.simpleapi_skip:
         # The SimpleAPI is not used for any of the packages.
-        return False
+        return
 
     # Combine default_envsubst and pip_attr.envsubst without duplications.
     combined_envsubst = {k: True for k in default_envsubst + pip_attr.envsubst}.keys()
@@ -394,11 +394,6 @@ def _set_get_index_urls(self, mctx, pip_attr, default_envsubst, python_version):
         mctx.getenv,
     ) or self._config.index_url
     default_extra_index_urls = pip_attr.experimental_extra_index_urls or []
-
-    if not default_index_url:
-        # parallel_download is set to True by default, so we are not checking/validating it
-        # here
-        return False
 
     self._use_downloader.setdefault(python_version, {}).update({
         normalize_name(s): False
@@ -430,7 +425,6 @@ def _set_get_index_urls(self, mctx, pip_attr, default_envsubst, python_version):
         cache = self._simpleapi_cache,
         parallel_download = pip_attr.parallel_download,
     )
-    return True
 
 def _select_default_index(index, default):
     # We will use the value from the requirements file by default

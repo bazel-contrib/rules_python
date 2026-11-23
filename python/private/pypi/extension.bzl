@@ -86,7 +86,7 @@ def build_config(
         _fail: {type}`function` the failure function, mainly for testing.
 
     Returns:
-        A struct with the configuration.
+        A struct with the configuration, or `None` on failure.
     """
     default_hub = None
     unified_hub_requirements_bzl = False
@@ -136,8 +136,8 @@ def build_config(
 
             if tag.index_url and not tag.index_url.rstrip("/"):
                 _fail((
-                    "pip.default(index_url = {}) is not a valid index URL. To not " +
-                    "use the SimpleAPI for the packages of a hub, set " +
+                    "pip.default(index_url = {}) is not a valid index URL. " +
+                    "To not use the SimpleAPI for the packages of a hub, set " +
                     "`simpleapi_skip = [\"*\"]` on `pip.parse` instead."
                 ).format(repr(tag.index_url)))
                 return None
@@ -971,10 +971,10 @@ No longer mandatory if the {obj}`pyproject_toml` attribute or
 """,
         ),
         "simpleapi_skip": attr.string_list(
-            doc = """\
-The list of packages to skip fetching metadata for from SimpleAPI index. You should
-normally not need this attribute, but in case you do, please report this as a bug
-to `rules_python` and use this attribute until the bug is fixed.
+            doc = """
+The list of packages to skip fetching metadata for from SimpleAPI index. You
+should normally not need this attribute, but in case you do, please report this
+as a bug to `rules_python` and use this attribute until the bug is fixed.
 
 Use `["*"]` to skip it for all of the packages, in which case the SimpleAPI is
 not used for this `pip.parse` call and the packages are downloaded with `pip`.

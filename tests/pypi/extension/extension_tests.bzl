@@ -851,7 +851,7 @@ simple==0.0.1 \
 
 _tests.append(_test_default_index_setting)
 
-def _test_default_index_url_without_host_fails(env):
+def _test_default_slash_only_index_url_fails(env):
     for index_url in ["/", "//"]:
         failures = []
         config = build_config(
@@ -869,10 +869,14 @@ def _test_default_index_url_without_host_fails(env):
 
         env.expect.that_bool(config == None).equals(True)
         env.expect.that_collection(failures).contains_exactly([
-            "pip.default(index_url = \"{}\") is not a valid index URL. To not use the SimpleAPI for the packages of a hub, set `simpleapi_skip = [\"*\"]` on `pip.parse` instead.".format(index_url),
+            (
+                'pip.default(index_url = "{}") is not a valid index URL. ' +
+                "To not use the SimpleAPI for the packages of a hub, set " +
+                '`simpleapi_skip = ["*"]` on `pip.parse` instead.'
+            ).format(index_url),
         ])
 
-_tests.append(_test_default_index_url_without_host_fails)
+_tests.append(_test_default_slash_only_index_url_fails)
 
 def _test_simpleapi_skip_all(env):
     downloads = []
