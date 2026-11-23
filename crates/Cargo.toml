@@ -19,6 +19,7 @@ argfile = "1.0.0"
 base64 = "0.23.1"
 configparser = "3.3.0"
 csv = "1.4.0"
+encoding_rs = "0.8.44"
 # Transitive dep of zip: disable default features (`rust_backend` pulls in
 # unused `miniz_oxide`) and enable `runtime_detection` so `zlib-rs` enables
 # runtime SIMD feature detection (`zip` disables `flate2` default features).
@@ -26,7 +27,11 @@ flate2 = { version = "1.1.11", default-features = false, features = ["runtime_de
 lexopt = "0.3.2"
 pep440_rs = "0.7.3"
 pep508_rs = "0.9.2"
-regex = "1.13.1"
+regex = "1.13.2"
+# NOTE: Keep at 0.0.22; >= 0.0.23 bumps rust-version to "1.98" (for
+# Option::map_or_default), whereas rules_rust 0.73.0 provides rustc 1.97.1.
+ruff_python_ast = "0.0.22"
+ruff_python_parser = "0.0.22"
 sha2 = "0.11.1"
 # Disable default features (C zstd-sys bindings plus unused compression,
 # encryption, and time subsystems) and enable only `deflate-flate2-zlib-rs`.
