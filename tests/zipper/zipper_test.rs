@@ -54,6 +54,7 @@ fn default_options(manifest_path: &Path, output_zip: &Path) -> ZipOptions {
         legacy_external_runfiles: false,
         runfiles_dir: "runfiles".to_string(),
         platform_pathsep: "/".to_string(),
+        link_packed_runfiles_symlinks: false,
     }
 }
 
@@ -564,6 +565,127 @@ fn test_relative_path_calculations() {
     assert_eq!(relative_path("runfiles/a", "runfiles/a"), ".");
 }
 
+/// Writes the manifest for the `link_packed_runfiles_symlinks` tests and returns the options.
+fn packed_runfiles_symlinks_options(tmp: &TempDir) -> ZipOptions {
+    let manifest_path = tmp.path().join("manifest.txt");
+    let output_zip = tmp.path().join("output.zip");
+    let write = |name: &str, content: &str| {
+        let path = tmp.path().join(name);
+        fs::write(&path, content).expect("content file should be writable");
+        path.display().to_string()
+    };
+    let lib = write("lib.so", "lib");
+    let other = write("other.txt", "other");
+    let own = write("own.txt", "own");
+    let unpacked = write("unpacked.txt", "unpacked");
+
+    let manifest = [
+        // A pip repo file and venv links to it.
+        format!("rf-file|0|../pip/lib.so|{lib}"),
+        format!("rf-root-symlink|0|my_ws/venv/site-packages/lib.so|{lib}"),
+        format!("rf-symlink|0|venv2/lib.so|{lib}"),
+        // A link at the path of a different packed file: the file wins.
+        format!("rf-file|0|other.txt|{other}"),
+        format!("rf-root-symlink|0|my_ws/other.txt|{lib}"),
+        // A link at its own target's path is stored as the file.
+        format!("rf-file|0|own.txt|{own}"),
+        format!("rf-root-symlink|0|my_ws/own.txt|{own}"),
+        // A link to a file that isn't packed is stored as a copy.
+        format!("rf-root-symlink|0|my_ws/unpacked.txt|{unpacked}"),
+    ]
+    .join("\n");
+    fs::write(&manifest_path, manifest).expect("manifest should be writable");
+    default_options(&manifest_path, &output_zip)
+}
+
+#[test]
+fn test_link_packed_runfiles_symlinks() {
+    let tmp = TempDir::new("link_packed_runfiles_symlinks");
+    let mut opts = packed_runfiles_symlinks_options(&tmp);
+    opts.link_packed_runfiles_symlinks = true;
+    create_zip(&opts).expect("create_zip should succeed");
+
+    let by_name: HashMap<String, ParsedZipEntry> = read_zip_entries(&opts.output_zip)
+        .into_iter()
+        .map(|e| (e.name.clone(), e))
+        .collect();
+    let file = |name: &str, content: &str| {
+        assert!(!by_name[name].is_symlink, "{name} should be a file");
+        assert_eq!(by_name[name].text(), content, "{name}");
+    };
+    let link = |name: &str, target: &str| {
+        assert!(by_name[name].is_symlink, "{name} should be a symlink");
+        assert_eq!(by_name[name].text(), target, "{name}");
+    };
+
+    file("runfiles/pip/lib.so", "lib");
+    link(
+        "runfiles/my_ws/venv/site-packages/lib.so",
+        "../../../pip/lib.so",
+    );
+    link("runfiles/my_ws/venv2/lib.so", "../../pip/lib.so");
+    file("runfiles/my_ws/other.txt", "other");
+    file("runfiles/my_ws/own.txt", "own");
+    file("runfiles/my_ws/unpacked.txt", "unpacked");
+    assert_eq!(by_name.len(), 6);
+}
+
+#[test]
+fn test_link_packed_runfiles_symlinks_disabled() {
+    let tmp = TempDir::new("link_packed_runfiles_symlinks_disabled");
+    let opts = packed_runfiles_symlinks_options(&tmp);
+    create_zip(&opts).expect("create_zip should succeed");
+
+    for entry in read_zip_entries(&opts.output_zip) {
+        assert!(!entry.is_symlink, "{} should be a file", entry.name);
+    }
+}
+
+#[test]
+fn test_link_packed_runfiles_symlinks_shadowed_and_sorted() {
+    let tmp = TempDir::new("link_packed_runfiles_symlinks_shadowed");
+    let manifest_path = tmp.path().join("manifest.txt");
+    let output_zip = tmp.path().join("output.zip");
+    let shared = tmp.path().join("shared.txt");
+    fs::write(&shared, "shared").expect("shared.txt should be writable");
+    let other = tmp.path().join("other.txt");
+    fs::write(&other, "other").expect("other.txt should be writable");
+    let dup = tmp.path().join("dup.so");
+    fs::write(&dup, "dup").expect("dup.so should be writable");
+
+    let manifest = [
+        // Shadowed rf-file must not redirect runfiles symlinks to the shadowing symlink.
+        format!("rf-file|0|shadowed.txt|{}", shared.display()),
+        "symlink|my_ws/shadowed.txt|my_ws/other.txt".to_string(),
+        format!("rf-file|0|other.txt|{}", other.display()),
+        format!(
+            "rf-root-symlink|0|my_ws/venv/shared.txt|{}",
+            shared.display()
+        ),
+        // Duplicate content_path targets pick the sorted zip_path deterministically.
+        format!("rf-file|0|z_copy.so|{}", dup.display()),
+        format!("rf-file|0|a_copy.so|{}", dup.display()),
+        format!("rf-root-symlink|0|my_ws/venv/dup.so|{}", dup.display()),
+    ]
+    .join("\n");
+    fs::write(&manifest_path, manifest).expect("manifest should be writable");
+
+    let mut opts = default_options(&manifest_path, &output_zip);
+    opts.link_packed_runfiles_symlinks = true;
+    create_zip(&opts).expect("create_zip should succeed");
+
+    let by_name: HashMap<String, ParsedZipEntry> = read_zip_entries(&output_zip)
+        .into_iter()
+        .map(|e| (e.name.clone(), e))
+        .collect();
+    assert!(by_name["runfiles/my_ws/shadowed.txt"].is_symlink);
+    assert_eq!(by_name["runfiles/my_ws/shadowed.txt"].text(), "other.txt");
+    assert!(!by_name["runfiles/my_ws/venv/shared.txt"].is_symlink);
+    assert_eq!(by_name["runfiles/my_ws/venv/shared.txt"].text(), "shared");
+    assert!(by_name["runfiles/my_ws/venv/dup.so"].is_symlink);
+    assert_eq!(by_name["runfiles/my_ws/venv/dup.so"].text(), "../a_copy.so");
+}
+
 fn expect_run(cli: Cli) -> ZipOptions {
     match cli {
         Cli::Run(opts) => opts,
@@ -582,6 +704,7 @@ fn test_parse_args_cli() {
             "--legacy-external-runfiles=1",
             "--runfiles-dir=custom_rf",
             "--target-platform-pathsep=\\",
+            "--link-packed-runfiles-symlinks=1",
         ])
         .expect("all flags should parse"),
     );
@@ -593,6 +716,7 @@ fn test_parse_args_cli() {
     assert!(opts.legacy_external_runfiles);
     assert_eq!(opts.runfiles_dir, "custom_rf");
     assert_eq!(opts.platform_pathsep, "\\");
+    assert!(opts.link_packed_runfiles_symlinks);
 
     let opts2 = expect_run(
         parse_args([
@@ -607,6 +731,7 @@ fn test_parse_args_cli() {
     );
     assert_eq!(opts2.compress_level, 0);
     assert!(!opts2.legacy_external_runfiles);
+    assert!(!opts2.link_packed_runfiles_symlinks);
 
     assert_eq!(
         parse_args(["--help"]).expect("--help should parse"),

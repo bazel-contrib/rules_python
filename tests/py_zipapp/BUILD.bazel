@@ -38,6 +38,36 @@ py_test(
     },
 )
 
+# A venv binary with a pip dep that has a native extension. The venv links
+# each shared library file individually, as a runfiles symlink into the pip
+# repo, which the zipapp stores as a symlink to the packed file.
+py_binary(
+    name = "native_ext_bin",
+    srcs = ["native_ext_main.py"],
+    config_settings = {
+        "//python/config_settings:venvs_site_packages": "yes",
+    } | select({
+        "@platforms//os:windows": {},
+        "//conditions:default": {
+            "//python/config_settings:bootstrap_impl": "script",
+        },
+    }),
+    main = "native_ext_main.py",
+    deps = ["@dev_pip//markupsafe"],
+)
+
+py_zipapp_binary(
+    name = "native_ext_zipapp",
+    binary = ":native_ext_bin",
+)
+
+py_test(
+    name = "native_ext_zipapp_test",
+    srcs = ["native_ext_zipapp_test.py"],
+    data = [":native_ext_zipapp"],
+    env = {"TEST_ZIPAPP": "$(rootpath :native_ext_zipapp)"},
+)
+
 # Create the app with a supported level of compression
 py_zipapp_binary(
     name = "venv_zipapp_compressed",

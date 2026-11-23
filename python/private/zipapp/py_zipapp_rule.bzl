@@ -183,6 +183,12 @@ def _create_zip(ctx, py_runtime, py_executable, stage2_bootstrap):
     is_windows = is_windows_platform(ctx)
     zipper_args.add("\\" if is_windows else "/", format = "--target-platform-pathsep=%s")
 
+    # Store runfiles symlinks to packed files (e.g. the venv site-packages
+    # entries that point into pip repos) as symlinks, not second copies. Not on
+    # Windows, where creating symlinks when extracting needs extra privileges.
+    if not is_windows:
+        zipper_args.add("--link-packed-runfiles-symlinks=1")
+
     zipper = get_shrubbery_tool(ctx, "zipper", ctx.attr._zipper)
     actions_run(
         ctx,

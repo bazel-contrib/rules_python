@@ -1,5 +1,6 @@
 import argparse
 import os
+import posixpath
 import shutil
 import sys
 import zipfile
@@ -74,8 +75,63 @@ def _parse_entry(
     return type_, is_symlink_str, zip_path, content_path
 
 
+def _link_packed_runfiles_symlinks(entries):
+    """Turns runfiles symlinks to packed files into symlinks to the packed copy.
+
+    A `runfiles.symlinks` or `runfiles.root_symlinks` entry whose content is
+    also stored by a winning `rf-file` entry (e.g. a venv site-packages entry
+    that points into a pip repo) becomes a relative symlink to that `rf-file`'s
+    zip path, instead of a second copy of the content. It keeps the precedence
+    of a regular entry, so a file at the same zip path still wins over it.
+
+    Args:
+        entries: Sorted `(type_, is_symlink_str, zip_path, content_path)`
+            tuples, where `zip_path` is relative to the zip archive root and
+            `content_path` is a filesystem path (or a symlink target relative
+            to `dirname(zip_path)` for `"symlink"` entries).
+
+    Returns:
+        Updated entry tuples where matching runfiles symlink entries are
+        replaced with `("packed-symlink", "2", zip_path, link)` tuples whose
+        `link` target is relative to `posixpath.dirname(zip_path)` inside the
+        zip archive.
+    """
+    seen_zip_paths = set()
+    packed = {}
+    for type_, _, zip_path, content_path in entries:
+        normalized_zip_path = posixpath.normpath(normalize_zip_path(zip_path))
+        if normalized_zip_path in seen_zip_paths:
+            continue
+        seen_zip_paths.add(normalized_zip_path)
+        if type_ == "rf-file":
+            packed.setdefault(content_path, normalized_zip_path)
+
+    result = []
+    for entry in entries:
+        type_, _, zip_path, content_path = entry
+        if type_ not in ("rf-symlink", "rf-root-symlink"):
+            result.append(entry)
+            continue
+        target = packed.get(content_path)
+        if target is None:
+            result.append(entry)
+            continue
+        normalized_zip_path = posixpath.normpath(normalize_zip_path(zip_path))
+        # A link at the target's own path would point to itself.
+        if target == normalized_zip_path:
+            result.append(entry)
+            continue
+        link = posixpath.relpath(target, start=posixpath.dirname(normalized_zip_path))
+        result.append(("packed-symlink", "2", zip_path, link))
+    return result
+
+
 def read_manifest(
-    manifest_path, workspace_name, legacy_external_runfiles, runfiles_dir
+    manifest_path,
+    workspace_name,
+    legacy_external_runfiles,
+    runfiles_dir,
+    link_packed_runfiles_symlinks=False,
 ):
     with open(manifest_path, "r") as f:
         entries = []
@@ -97,6 +153,10 @@ def read_manifest(
     # Sort symlink entries first so they have precedence.
     # Then sort by zip path
     entries.sort(key=lambda x: (x[2], 0 if x[0] == "symlink" else 1))
+
+    if link_packed_runfiles_symlinks:
+        entries = _link_packed_runfiles_symlinks(entries)
+
     return entries
 
 
@@ -160,7 +220,7 @@ def _write_entry(zf, entry, compress_type, seen, platform_pathsep):
         zi.external_attr = (0o644 & 0xFFFF) << 16
         zf.writestr(zi, "")
         return
-    if type_ == "symlink":
+    if type_ in ("symlink", "packed-symlink"):
         zi = zipfile.ZipInfo(zip_path)
         zi.date_time = (1980, 1, 1, 0, 0, 0)
         zi.create_system = 3  # Unix
@@ -208,12 +268,17 @@ def create_zip(
     legacy_external_runfiles,
     runfiles_dir,
     platform_pathsep,
+    link_packed_runfiles_symlinks=False,
 ):
     compress_type = zipfile.ZIP_STORED if compress_level == 0 else zipfile.ZIP_DEFLATED
     zf_level = compress_level if compress_level != 0 else None
 
     entries = read_manifest(
-        manifest_path, workspace_name, legacy_external_runfiles, runfiles_dir
+        manifest_path,
+        workspace_name,
+        legacy_external_runfiles,
+        runfiles_dir,
+        link_packed_runfiles_symlinks,
     )
 
     seen = set()
@@ -260,6 +325,10 @@ In all cases, `is_symlink` has the following values:
 For runfiles entries, they have `--runfiles-dir` prepended to their computed
 zip path.
 
+With `--link-packed-runfiles-symlinks=1`, an `rf-symlink` or
+`rf-root-symlink` entry whose `content_path` is also stored by an `rf-file`
+entry is stored as a relative symlink to that entry's zip path.
+
 Compute `zip_path` from `runfile_path`: Computing the final zip path for
 runfiles entries is a bit complicated, but boils down to computing what the
 runfiles-root-relative path would be, with `--legacy-external-runfiles` taken
@@ -286,6 +355,12 @@ into account.
     parser.add_argument(
         "--target-platform-pathsep", help="The path separator for the target platform"
     )
+    parser.add_argument(
+        "--link-packed-runfiles-symlinks",
+        default="0",
+        choices=["0", "1"],
+        help="Whether to store runfiles symlinks to packed files as symlinks",
+    )
     args = parser.parse_args()
 
     try:
@@ -297,6 +372,7 @@ into account.
             legacy_external_runfiles=args.legacy_external_runfiles == "1",
             runfiles_dir=args.runfiles_dir,
             platform_pathsep=args.target_platform_pathsep,
+            link_packed_runfiles_symlinks=args.link_packed_runfiles_symlinks == "1",
         )
     except Exception as e:
         e.add_note(f"Error creating zip {args.output}")
