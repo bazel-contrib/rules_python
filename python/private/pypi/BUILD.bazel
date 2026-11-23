@@ -299,7 +299,10 @@ bzl_library(
 bzl_library(
     name = "pep508_evaluate",
     srcs = ["pep508_evaluate.bzl"],
-    deps = ["@pypackaging.bzl//:pypackaging"],
+    deps = [
+        "@bazel_skylib//lib:types",
+        "@pypackaging.bzl//:pypackaging",
+    ],
 )
 
 bzl_library(

@@ -9,4 +9,4 @@ string, the ordered comparisons of the strings and of the invalid versions
 are no longer lexicographic (`<` and `>` are always false, `<=` and `>=` are
 the same as `==`), the local version segments are not ignored in `==`
 comparisons and the non-standard `not` operator is no longer accepted.
-`WORKSPACE` users get `pypackaging.bzl` from `py_repositories`.
+`WORKSPACE` users get `pypackaging.bzl` from {obj}`py_repositories`.

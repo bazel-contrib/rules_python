@@ -24,15 +24,18 @@ what `rules_python` needs on top of it:
   `extra`) and to leave the rest for the analysis phase.
 """
 
+load("@bazel_skylib//lib:types.bzl", "types")
 load("@pypackaging.bzl", "pypackaging")
 
+# These pairs mean the same hardware, but different values may be used on
+# different host platforms.
 _PLATFORM_MACHINE_ALIASES = {
-    # These pairs mean the same hardware, but different values may be used
-    # on different host platforms.
+    # keep-sorted start
     "amd64": "x86_64",
     "arm64": "aarch64",
     "i386": "x86_32",
     "i686": "x86_32",
+    # keep-sorted end
 }
 
 def evaluate(marker, *, env, strict = True):
@@ -63,7 +66,7 @@ def evaluate(marker, *, env, strict = True):
         return pypackaging.markers.evaluate(tree, env)
 
     result = pypackaging.markers.evaluate_partial(tree, env)
-    if type(result) == "bool":
+    if types.is_bool(result):
         return result
 
     return pypackaging.markers.to_string(result)
@@ -89,11 +92,11 @@ def _with_platform_machine_aliases(tree, *, max_depth):
 
         src, dst = todo.pop()
         for item in src:
-            if type(item) == "list":
+            if types.is_list(item):
                 nested = []
                 dst.append(nested)
                 todo.append((item, nested))
-            elif type(item) == "tuple":
+            elif types.is_tuple(item):
                 dst.append(_with_platform_machine_alias(item))
             else:
                 dst.append(item)
