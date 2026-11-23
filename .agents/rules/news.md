@@ -13,13 +13,13 @@ Adhere to `CONTRIBUTING.md` and the rules below when drafting or reviewing
 `news/` entries.
 
 ## Applicability
-* Add a news entry only for released, user-visible behavior (`added`,
-  `changed`, `fixed`, `removed`).
+* Add a news entry for user-visible changes (`added`, `changed`, `fixed`,
+  `removed`) shipping in the next release.
 * Omit news entries for:
   * Internal refactoring
   * Test-only changes
   * CI or agent configuration changes
-  * Fixes to unreleased code
+  * Fixes or follow-ups to unreleased code introduced since the last release
 * Never edit `CHANGELOG.md` directly for unreleased changes.
 
 ## Filename
