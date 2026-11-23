@@ -284,6 +284,7 @@ bzl_library(
     name = "pep508_deps",
     srcs = ["pep508_deps.bzl"],
     deps = [
+        ":labels",
         ":pep508_env",
         ":pep508_evaluate",
         ":pep508_requirement",
@@ -638,6 +639,12 @@ bzl_library(
 )
 
 bzl_library(
+    name = "labels",
+    srcs = ["labels.bzl"],
+    deps = ["//python/private:normalize_name"],
+)
+
+bzl_library(
     name = "dependency_groups",
     srcs = ["dependency_groups.bzl"],
     deps = [
@@ -688,11 +695,6 @@ bzl_library(
 bzl_library(
     name = "hash",
     srcs = ["hash.bzl"],
-)
-
-bzl_library(
-    name = "labels",
-    srcs = ["labels.bzl"],
 )
 
 bzl_library(
