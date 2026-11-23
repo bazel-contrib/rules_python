@@ -230,6 +230,32 @@ def _evaluate_with_aliases(env):
 
 _tests.append(_evaluate_with_aliases)
 
+def _evaluate_with_aliases_in_env(env):
+    # The `platform_machine` of the env may be an alias as well, e.g. when it
+    # comes from the host platform.
+    for machine, tests in {
+        "amd64": {
+            "platform_machine != 'amd64'": False,
+            "platform_machine == 'amd64'": True,
+            "platform_machine == 'arm64'": False,
+            "platform_machine == 'x86_64'": True,
+        },
+        "arm64": {
+            "'arm64' == platform_machine": True,
+            "platform_machine != 'arm64'": False,
+            "platform_machine == 'aarch64'": True,
+            "platform_machine == 'arm64'": True,
+            "platform_machine == 'x86_64'": False,
+        },
+    }.items():
+        for input, want in tests.items():
+            _check_evaluate(env, input, want, {"platform_machine": machine})
+
+            # The partial evaluation gives the same result.
+            _check_evaluate(env, input, want, {"platform_machine": machine}, strict = False)
+
+_tests.append(_evaluate_with_aliases_in_env)
+
 def _expr_case(expr, want, env):
     return struct(expr = expr.strip(), want = want, env = env)
 

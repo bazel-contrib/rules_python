@@ -1,6 +1,7 @@
 import os
 import signal
 import subprocess
+import tempfile
 import time
 import unittest
 
@@ -55,6 +56,13 @@ class ZipAppSignalsTest(unittest.TestCase):
                 self.fail(f"{path} was not removed after the zipapp exited")
             time.sleep(0.2)
 
+    def assertEmptyEventually(self, path):
+        deadline = time.monotonic() + _CLEANUP_TIMEOUT_SECONDS
+        while os.listdir(path):
+            if time.monotonic() > deadline:
+                self.fail(f"{path} still contains {os.listdir(path)}")
+            time.sleep(0.2)
+
     def test_signal_reaches_python_process(self):
         proc, pid, zip_dir = self._start()
         # The launcher must exec the interpreter, so the PID the caller started
@@ -97,6 +105,45 @@ class ZipAppSignalsTest(unittest.TestCase):
                 proc.communicate(timeout=30)
 
                 self.assertRemovedEventually(zip_dir)
+
+    def test_extracted_files_removed_when_killed_while_extracting(self):
+        # Signal the launcher as soon as its extraction directory appears,
+        # while it's still extracting the zip. A hangup (e.g. closing the
+        # terminal), SIGTERM or SIGKILL at that point must not leak the
+        # directory. Repeat, since the timing varies.
+        probe = tempfile.mkdtemp(dir=os.environ.get("TEST_TMPDIR"))
+        created = subprocess.run(
+            ["mktemp", "-d"],
+            env={**os.environ, "TMPDIR": probe},
+            stdout=subprocess.PIPE,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        os.rmdir(created)
+        if os.path.dirname(created) != probe:
+            # e.g. macOS, where `mktemp -d` ignores TMPDIR.
+            self.skipTest("mktemp -d doesn't honor TMPDIR")
+        for sig in (signal.SIGHUP, signal.SIGTERM, signal.SIGKILL):
+            for attempt in range(5):
+                with self.subTest(signal=sig.name, attempt=attempt):
+                    tmp = tempfile.mkdtemp(dir=os.environ.get("TEST_TMPDIR"))
+                    proc = subprocess.Popen(
+                        [self.zipapp_path],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        env={**os.environ, "TMPDIR": tmp},
+                    )
+                    self.addCleanup(self._kill, proc)
+                    deadline = time.monotonic() + 30
+                    while not os.listdir(tmp):
+                        if proc.poll() is not None or time.monotonic() > deadline:
+                            self.fail(
+                                "the launcher didn't create its extraction directory"
+                            )
+                    proc.send_signal(sig)
+                    proc.wait(timeout=30)
+
+                    self.assertEmptyEventually(tmp)
 
     def test_exit_code_is_propagated(self):
         result = subprocess.run([self.zipapp_path, "--exit-code=3"], timeout=60)
