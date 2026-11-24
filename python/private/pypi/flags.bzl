@@ -23,7 +23,6 @@ load("//python/private:common_labels.bzl", "labels")
 load(":env_marker_info.bzl", "EnvMarkerInfo")
 load(
     ":pep508_env.bzl",
-    "create_env",
     "os_name_select_map",
     "platform_machine_select_map",
     "platform_system_select_map",
@@ -54,7 +53,7 @@ def _default_env_marker_config(**kwargs):
     )
 
 def _env_marker_config_impl(ctx):
-    env = create_env()
+    env = {}
     env["os_name"] = ctx.attr.os_name
     env["sys_platform"] = ctx.attr.sys_platform
     env["platform_machine"] = ctx.attr.platform_machine
