@@ -1,0 +1,8 @@
+user.bazelrc
+bazel-remote-grpc.log
+bazel-execution-log.binpb.zst
+/bazel-*
+/bazel-bin
+/bazel-genfiles
+/bazel-out
+/bazel-testlogs

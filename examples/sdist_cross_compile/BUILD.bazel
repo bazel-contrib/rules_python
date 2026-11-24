@@ -1,0 +1,97 @@
+load("@rules_python//python:py_binary.bzl", "py_binary")
+load("@rules_python//python:py_test.bzl", "py_test")
+load("@rules_python//python/private/pypi:py_sdist_wheel.bzl", "py_sdist_wheel")  # buildifier: disable=bzl-visibility
+load("@rules_python//python/private/pypi:py_wheel_library.bzl", "py_wheel_library")  # buildifier: disable=bzl-visibility
+load(":transitions.bzl", "cross_platform_files")
+
+platform(
+    name = "linux_aarch64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:aarch64",
+        "@llvm//constraints/libc:gnu.2.17",
+    ],
+)
+
+# Self-contained tiny meson-python C/C++ sdist generated at build time (no
+# checked-in binary archives) to exercise meson-python + meson + ninja +
+# meson-cross.ini cross-compilation quickly.
+py_binary(
+    name = "make_meson_sdist",
+    srcs = ["make_meson_sdist.py"],
+)
+
+genrule(
+    name = "gen_tiny_meson_sdist",
+    outs = ["tiny_meson-0.1.0.tar.gz"],
+    cmd = "$(execpath :make_meson_sdist) $@",
+    tools = [":make_meson_sdist"],
+)
+
+py_sdist_wheel(
+    name = "tiny_meson.whldir",
+    build_deps = [
+        "@sdist_deps//meson_python:pkg",
+        "@sdist_deps//ninja:pkg",
+    ],
+    sdist = ":gen_tiny_meson_sdist",
+)
+
+py_wheel_library(
+    name = "tiny_meson_wheel_lib",
+    site_paths = ["tiny_meson"],
+    wheel = ":tiny_meson.whldir",
+)
+
+# Simple setuptools C-extension sdist from PyPI.
+cross_platform_files(
+    name = "markupsafe_aarch64",
+    target_platform = ":linux_aarch64",
+    deps = ["@sdist_deps//markupsafe"],
+)
+
+# Pure-Python sdist from PyPI (with a setuptools-scm build-time dependency).
+cross_platform_files(
+    name = "tabulate_aarch64",
+    target_platform = ":linux_aarch64",
+    deps = ["@sdist_deps//tabulate"],
+)
+
+# In-repo meson-python C/C++17 sdist built directly via py_sdist_wheel.
+cross_platform_files(
+    name = "tiny_meson_aarch64",
+    target_platform = ":linux_aarch64",
+    deps = [":tiny_meson_wheel_lib"],
+)
+
+# Exercises pip.parse + pip.whl_mods(sdist_build_deps = ...) with a real PyPI
+# meson-python + pybind11 C++17 sdist.
+cross_platform_files(
+    name = "contourpy_aarch64",
+    target_platform = ":linux_aarch64",
+    deps = ["@sdist_deps//contourpy"],
+)
+
+py_test(
+    name = "native_sdist_test",
+    size = "small",
+    srcs = ["native_sdist_test.py"],
+    deps = [
+        ":tiny_meson_wheel_lib",
+        "@sdist_deps//contourpy",
+        "@sdist_deps//markupsafe",
+        "@sdist_deps//tabulate",
+    ],
+)
+
+py_test(
+    name = "cross_compile_test",
+    size = "small",
+    srcs = ["cross_compile_test.py"],
+    data = [
+        ":contourpy_aarch64",
+        ":markupsafe_aarch64",
+        ":tabulate_aarch64",
+        ":tiny_meson_aarch64",
+    ],
+)
