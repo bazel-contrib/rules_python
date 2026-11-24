@@ -8,3 +8,18 @@ reviews:
   # PR descriptions become commit messages upon merge; do not inject
   # auto-generated summaries into them.
   high_level_summary: false
+  # These default to on; set them so organization-level settings cannot
+  # turn them off.
+  in_progress_fortune: true
+  sequence_diagrams: true
+  estimate_code_review_effort: true
+
+knowledge_base:
+  code_guidelines:
+    # AGENTS.md and similar files are scanned by default. Also scan the
+    # per-topic rules that AGENTS.md refers to. Patterns are relative to the
+    # repository root.
+    filePatterns:
+      # keep-sorted start
+      - ".agents/rules/*.md"
+      # keep-sorted end
