@@ -1,0 +1,10 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+# Inherit organization-level settings (such as the review profile) instead of
+# replacing them with schema defaults.
+inheritance: true
+
+reviews:
+  # PR descriptions become commit messages upon merge; do not inject
+  # auto-generated summaries into them.
+  high_level_summary: false
