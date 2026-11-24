@@ -21,6 +21,7 @@ load(":flags.bzl", "FreeThreadedFlag")
 load(":py_internal.bzl", "py_internal")
 load(":py_runtime_info.bzl", "DEFAULT_STUB_SHEBANG", "PyRuntimeInfo")
 load(":reexports.bzl", "BuiltinPyRuntimeInfo")
+load(":sentinel_impl.bzl", "SentinelInfo")
 
 _py_builtins = py_internal
 _HAS_COVERAGE_FLAG = "//python/private:has_coverage_flag"
@@ -61,7 +62,9 @@ def coverage_tool_missing_message(
     Args:
         coverage_enabled: {type}`bool` whether the build is collecting coverage.
         coverage_tool: {type}`File | None` the runtime's coverage entry point.
-        has_coverage_flag: {type}`bool` whether `--coverage` is set to a target.
+        has_coverage_flag: {type}`bool` whether `--coverage` is set to a target
+            or the `coverage` package of the toolchain is added to the
+            dependencies of the executables.
         label: {type}`Label` the `py_runtime` being analyzed.
 
     Returns:
@@ -183,7 +186,8 @@ def _py_runtime_impl(ctx):
         coverage_enabled = ctx.configuration.coverage_enabled,
         coverage_tool = coverage_tool,
         has_coverage_flag = (
-            ctx.attr._has_coverage_flag[0][BuildSettingInfo].value
+            ctx.attr._has_coverage_flag[0][BuildSettingInfo].value or
+            SentinelInfo not in ctx.attr._toolchain_coverage
         ),
         label = ctx.label,
     )
@@ -497,6 +501,11 @@ The {obj}`PyRuntimeInfo.zip_main_template` field.
             ),
             "_python_version_flag": attr.label(
                 default = labels.PYTHON_VERSION,
+            ),
+            # Whether the `coverage` package is added to the dependencies of
+            # the executables, see `python.toolchain.configure_coverage_tool`.
+            "_toolchain_coverage": attr.label(
+                default = "@pythons_hub//:has_coverage",
             ),
         },
     ),

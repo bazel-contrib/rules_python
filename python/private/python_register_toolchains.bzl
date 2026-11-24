@@ -72,7 +72,8 @@ def python_register_toolchains(
         python_version: {type}`str` the Python version.
         register_toolchains: {type}`bool` Whether or not to register the downloaded toolchains.
         register_coverage_tool: {type}`bool` Whether or not to register the
-            downloaded coverage tool to the toolchains.
+            downloaded coverage tool to the toolchains. Only used with
+            WORKSPACE.
         set_python_version_constraint: {type}`bool` When set to `True`,
             `target_compatible_with` for the toolchains will include a version
             constraint.
@@ -168,7 +169,11 @@ def python_register_toolchains(
                 default = None,
             ),
         )
-        if register_coverage_tool and coverage_tool == None:
+
+        # NOTE: With bzlmod the `coverage` package from the
+        # `rules_python_coverage` pip hub is added to the dependencies of the
+        # executables instead, see `python.toolchain.configure_coverage_tool`.
+        if register_coverage_tool and coverage_tool == None and not bzlmod_toolchain_call:
             coverage_tool = coverage_dep(
                 name = "{name}_{platform}_coverage".format(
                     name = name,

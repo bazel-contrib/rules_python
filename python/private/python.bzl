@@ -264,6 +264,10 @@ def _python_impl(module_ctx):
     # list[str] of the repo names for host compatible repos
     all_host_compatible_repo_names = []
 
+    # list[str] of the full python versions that use the `coverage` package
+    # from the `rules_python_coverage` pip hub.
+    coverage_python_versions = []
+
     # Create the underlying python_repository repos that contain the
     # python runtimes and their toolchain implementation definitions.
     for i, toolchain_info in enumerate(py.toolchains):
@@ -302,6 +306,9 @@ def _python_impl(module_ctx):
         )
         if not register_result.impl_repos:
             continue
+
+        if kwargs["register_coverage_tool"]:
+            coverage_python_versions.append(full_python_version)
 
         host_platforms = {}
         for repo_name, (platform_name, platform_info) in register_result.impl_repos.items():
@@ -462,6 +469,7 @@ def _python_impl(module_ctx):
         toolchain_python_versions = toolchain_python_versions,
         toolchain_set_python_version_constraints = toolchain_set_python_version_constraints,
         host_compatible_repo_names = sorted(all_host_compatible_repo_names),
+        coverage_python_versions = coverage_python_versions,
         default_python_version = py.default_python_version,
         minor_mapping = py.config.minor_mapping,
         python_versions = list(py.config.default["tool_versions"].keys()),
@@ -1257,7 +1265,23 @@ Then the python interpreter will be available as `my_python_name`.
     attrs = {
         "configure_coverage_tool": attr.bool(
             mandatory = False,
-            doc = "Whether or not to configure the default coverage tool provided by `rules_python` for the compatible toolchains.",
+            doc = """\
+Whether or not to configure the default coverage tool provided by `rules_python` for the compatible
+toolchains.
+
+The `coverage` package is added to the dependencies of the {obj}`py_test` and {obj}`py_binary`
+targets when coverage is collected, unless the {flag}`--coverage` flag or the
+{attr}`py_runtime.coverage_tool` is set. It is locked per `X.Y` Python version, so it is used
+for all of the `X.Y.Z` toolchains if this is set for any of them. See {doc}`/coverage` for
+more details.
+
+:::{versionchanged} VERSION_NEXT_FEATURE
+The `coverage` package comes from a pip hub that is locked with a `uv.lock` file in
+`rules_python`, which has the wheels for all of the platforms of the toolchains. It is
+added to the dependencies of the executables instead of being the
+{attr}`py_runtime.coverage_tool` of the toolchains.
+:::
+""",
         ),
         "ignore_root_user_error": attr.bool(
             default = True,

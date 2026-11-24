@@ -1,0 +1,21 @@
+load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
+load("//python/uv:lock.bzl", "lock")
+
+package(default_visibility = ["//:__subpackages__"])
+
+exports_files(["uv.lock"])
+
+distribution_filegroup(
+    name = "distribution",
+)
+
+# Run `bazel run //python/private/coverage:requirements.update` to update the
+# `uv.lock` file.
+lock(
+    name = "requirements",
+    srcs = ["pyproject.toml"],
+    out = "uv.lock",
+    args = [
+        "--upgrade",  # always upgrade
+    ],
+)

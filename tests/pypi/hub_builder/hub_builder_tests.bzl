@@ -751,6 +751,57 @@ simple==0.0.2 --hash=sha256:deadb00f
 
 _tests.append(_test_skip_python_version_without_host_interpreter)
 
+def _test_python_version_with_patch_version_host_interpreters(env):
+    # The toolchains can be pinned to patch versions that are not the default
+    # ones for the minor version. Then the minor version uses the interpreter
+    # of the latest of them instead of being skipped.
+    builder = hub_builder(
+        env,
+        available_interpreters = {
+            "python_3_15_10_host": "unit_test_interpreter_target_3_15_10",
+            "python_3_15_9_host": "unit_test_interpreter_target_3_15_9",
+            "python_3_16_1_host": "unit_test_interpreter_target_3_16_1",
+        },
+        minor_mapping = {
+            "3.15": "3.15.19",
+        },
+    )
+    builder.pip_parse(
+        mocks.mctx(
+            mock_files = {
+                "requirements_3_15.txt": """
+simple==0.0.1 --hash=sha256:deadbeef
+""",
+            },
+            os_name = "linux",
+            arch_name = "amd64",
+        ),
+        _parse(
+            hub_name = "pypi",
+            python_version = "3.15",
+            requirements_lock = "requirements_3_15.txt",
+        ),
+    )
+    pypi = builder.build()
+
+    pypi.whl_map().contains_exactly({
+        "simple": {
+            "pypi_315_simple": [
+                whl_config_setting(version = "3.15"),
+            ],
+        },
+    })
+    pypi.whl_libraries().contains_exactly({
+        "pypi_315_simple": {
+            "config_load": "@pypi//:config.bzl",
+            "dep_template": "@pypi//{name}:{target}",
+            "python_interpreter_target": "unit_test_interpreter_target_3_15_10",
+            "requirement": "simple==0.0.1 --hash=sha256:deadbeef",
+        },
+    })
+
+_tests.append(_test_python_version_with_patch_version_host_interpreters)
+
 def _test_simple_with_markers(env):
     sub_tests = {
         ("osx", "aarch64"): "torch==2.4.1 --hash=sha256:deadbeef",

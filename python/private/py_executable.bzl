@@ -271,6 +271,10 @@ accepting arbitrary Python versions.
         "_python_version_flag": lambda: attrb.Label(
             default = labels.PYTHON_VERSION,
         ),
+        "_toolchain_coverage": lambda: attrb.Label(
+            default = "//python/private:toolchain_coverage_if_target_config",
+            providers = [PyInfo],
+        ),
         "_uncachable_version_file": lambda: attrb.Label(
             default = "//python/private:uncachable_version_file",
             allow_files = True,
@@ -928,20 +932,28 @@ def _get_coverage_details(ctx):
 
     The {obj}`--coverage` flag, which can also be set per target via
     `config_settings`, takes precedence over the `coverage_tool` of the Python
-    runtime, which is handled by the bootstrap.
+    runtime, which is handled by the bootstrap. If neither is set, then the
+    `coverage` package of the toolchains that are configured with
+    `python.toolchain(configure_coverage_tool = True)` is used.
 
     Args:
         ctx: {type}`ctx` the rule ctx.
 
     Returns:
         {type}`struct` with attributes:
-        * dep: {type}`Target | None` the `coverage` flag target to add to the
+        * dep: {type}`Target | None` the `coverage` target to add to the
           dependencies of the executable.
         * rcfiles: {type}`depset[File]` the files that may contain the
           `.coveragerc` files to merge. They are filtered when the bootstrap is
           expanded, see `_map_coverage_rcfile`.
     """
     target = ctx.attr._coverage_flag
+    if (
+        SentinelInfo in target and
+        not _maybe_get_runtime_from_ctx(ctx).coverage_tool
+    ):
+        target = ctx.attr._toolchain_coverage
+
     if (
         not ctx.configuration.coverage_enabled or
         _is_tool_config(ctx) or

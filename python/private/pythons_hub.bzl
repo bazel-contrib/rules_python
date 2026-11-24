@@ -20,6 +20,10 @@ load(":runtimes_manifest.bzl", "MANIFEST_TEXT")
 load(":text_util.bzl", "render")
 load(":toolchains_repo.bzl", "toolchain_suites_content")
 
+# The `coverage` package from the `rules_python_coverage` pip hub, which is
+# configured in the `MODULE.bazel` file of `rules_python`.
+_COVERAGE = Label("@rules_python_coverage//coverage")
+
 def _have_same_length(*lists):
     if not lists:
         fail("expected at least one list")
@@ -43,8 +47,62 @@ bzl_library(
     visibility = ["@rules_python//:__subpackages__"],
 )
 
+# The `coverage` package that is added to the dependencies of the executables
+# when coverage is collected, see `python.toolchain.configure_coverage_tool`.
+alias(
+    name = "coverage",
+    actual = {coverage},
+    # Not actually public. Only public because it's an implicit dependency of
+    # the rules built via py_binary_rule_builder() / py_test_rule_builder().
+    visibility = ["//visibility:public"],
+)
+
+# Whether `:coverage` is set. Used by `py_runtime`, which cannot depend on
+# `:coverage`, because it would be a dependency cycle.
+alias(
+    name = "has_coverage",
+    actual = {has_coverage},
+    # Not actually public. Only public because it's an implicit dependency of
+    # `py_runtime`.
+    visibility = ["//visibility:public"],
+)
+
+filegroup(name = "_has_coverage")
+
 {toolchains}
 """
+
+def _coverage_select(rctx, actual):
+    """Render a select that is `actual` if the Python version has `coverage`.
+
+    The `rules_python_coverage` hub only has an entry per `X.Y` version, so
+    all of the `X.Y.Z` versions are matched if any of them is configured.
+
+    Args:
+        rctx: {type}`repository_ctx` the repository ctx.
+        actual: {type}`str` the label to use for the configured versions.
+
+    Returns:
+        {type}`str` the rendered label or `select`.
+    """
+    sentinel = "@@{}//python/private:sentinel".format(
+        rctx.attr._rules_python_workspace.repo_name,
+    )
+    conditions = {}
+    for python_version in rctx.attr.coverage_python_versions:
+        major_minor, _, _ = python_version.rpartition(".")
+        if major_minor in rctx.attr.minor_mapping:
+            python_version = major_minor
+        conditions["@@{}//python/config_settings:is_python_{}".format(
+            rctx.attr._rules_python_workspace.repo_name,
+            python_version,
+        )] = actual
+    if not conditions:
+        return render.str(sentinel)
+
+    return render.select(
+        dict(sorted(conditions.items())) | {"//conditions:default": sentinel},
+    )
 
 def _hub_build_file_content(rctx):
     # Verify a precondition. If these don't match, then something went wrong.
@@ -82,6 +140,8 @@ def _hub_build_file_content(rctx):
 
     return _HUB_BUILD_FILE_TEMPLATE.format(
         toolchains = toolchain_suites_content(toolchains),
+        coverage = _coverage_select(rctx, str(_COVERAGE)),
+        has_coverage = _coverage_select(rctx, ":_has_coverage"),
         rules_python = rctx.attr._rules_python_workspace.repo_name,
     )
 
@@ -151,6 +211,9 @@ This rule also writes out the various toolchains for the different Python versio
 """,
     implementation = _hub_repo_impl,
     attrs = {
+        "coverage_python_versions": attr.string_list(
+            doc = "The Python versions in the `X.Y.Z` format that use the `coverage` package from the `rules_python_coverage` pip hub.",
+        ),
         "default_python_version": attr.string(
             doc = "Default Python version for the build in `X.Y` or `X.Y.Z` format.",
             mandatory = True,
