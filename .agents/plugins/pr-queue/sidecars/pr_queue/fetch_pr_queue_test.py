@@ -18,9 +18,13 @@ def _make_raw_pr(
     number: int,
     *,
     title: str = "Sample PR",
+    body: str = "",
     author: str = "contributor",
     updated_at: str = "2026-11-10T10:00:00Z",
     created_at: str = "2026-11-08T10:00:00Z",
+    head_ref: str = "",
+    base_ref: str = "main",
+    is_cross_repo: bool = False,
     is_draft: bool = False,
     review_decision: str = "REVIEW_REQUIRED",
     review_requests: list[dict[str, object]] | None = None,
@@ -30,13 +34,15 @@ def _make_raw_pr(
     return {
         "number": number,
         "title": title,
+        "body": body,
         "url": f"https://github.com/bazel-contrib/rules_python/pull/{number}",
         "author": {"login": author, "is_bot": False},
         "createdAt": created_at,
         "updatedAt": updated_at,
-        "headRefName": f"branch-{number}",
+        "headRefName": head_ref or f"branch-{number}",
         "headRefOid": f"deadbeef{number:04d}",
-        "baseRefName": "main",
+        "baseRefName": base_ref,
+        "isCrossRepository": is_cross_repo,
         "isDraft": is_draft,
         "reviewDecision": review_decision,
         "reviewRequests": review_requests or [],
@@ -457,6 +463,452 @@ class FetchPrQueueAsyncTest(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(summary.state, "MERGED")
         self.assertEqual(summary.to_dict()["state"], "MERGED")
+
+    def test_extract_body_dependencies_phrases_links_and_false_positives(self) -> None:
+        repo = "bazel-contrib/rules_python"
+        self.assertEqual(
+            fetch_pr_queue.extract_body_dependencies(
+                "DO NOT MERGE: awaiting #4571\n\nDetails here.",
+                repo=repo,
+                self_number=4572,
+            ),
+            (4571,),
+        )
+        self.assertEqual(
+            fetch_pr_queue.extract_body_dependencies(
+                "DO NOT MERGE: awaiting #4534\n\nStacked on #4534.",
+                repo=repo,
+                self_number=4535,
+            ),
+            (4534,),
+        )
+        self.assertEqual(
+            fetch_pr_queue.extract_body_dependencies(
+                "Depends on #101, #102, and PR #103. Review only commits from #999.",
+                repo=repo,
+                self_number=104,
+            ),
+            (101, 102, 103),
+        )
+        self.assertEqual(
+            fetch_pr_queue.extract_body_dependencies(
+                "Based on [#201](https://github.com/bazel-contrib/rules_python/pull/201) "
+                "and https://github.com/bazel-contrib/rules_python/pull/202/files.",
+                repo=repo,
+                self_number=203,
+            ),
+            (201, 202),
+        )
+        self.assertEqual(
+            fetch_pr_queue.extract_body_dependencies(
+                "Blocked by bazelbuild/bazel#31549 and bazel-contrib/rules_python#400 "
+                "and #500",
+                repo=repo,
+                self_number=500,
+            ),
+            (400,),
+        )
+        self.assertEqual(
+            fetch_pr_queue.extract_body_dependencies(
+                "<!-- Depends on #901 -->\n"
+                "```markdown\nDepends on #902\n```\n"
+                "`Depends on #903`\n"
+                "Parent: #904",
+                repo=repo,
+                self_number=905,
+            ),
+            (904,),
+        )
+        self.assertEqual(
+            fetch_pr_queue.extract_body_dependencies(
+                "Stack from [ghstack]:\n* #103\n* __->__ #102\n* #101\n",
+                repo=repo,
+                self_number=102,
+            ),
+            (101,),
+        )
+        self.assertEqual(
+            fetch_pr_queue.extract_body_dependencies(
+                "Stack:\n1. #101\n2. #102 (this PR)\n3. #103\n",
+                repo=repo,
+                self_number=102,
+            ),
+            (101,),
+        )
+        for non_dep_body in (
+            "Potential fix for #1913.\nResolves #1804.\nCloses #1700.",
+            "Based on this:\nhttps://github.com/bazel-contrib/rules_python/blob/main/a.py",
+            "With #4490 a dependency on an extra of another package.",
+            "* attach child as data dependency to parent",
+            "The Gazelle parser depends on github.com/smacker/go-tree-sitter.",
+        ):
+            self.assertEqual(
+                fetch_pr_queue.extract_body_dependencies(
+                    non_dep_body, repo=repo, self_number=600
+                ),
+                (),
+            )
+
+    async def test_sorts_github_native_stack_parent_before_children(self) -> None:
+        raw_prs = [
+            _make_raw_pr(4562, title="Part 4", updated_at="2026-11-12T11:30:00Z"),
+            _make_raw_pr(4561, title="Part 3", updated_at="2026-11-12T11:20:00Z"),
+            _make_raw_pr(
+                4559,
+                title="Part 2",
+                updated_at="2026-11-12T11:10:00Z",
+                latest_reviews=[
+                    {"author": {"login": "rickeylev"}, "state": "APPROVED"}
+                ],
+            ),
+            _make_raw_pr(4558, title="Part 1", updated_at="2026-11-12T10:00:00Z"),
+            _make_raw_pr(4550, title="Unrelated", updated_at="2026-11-12T11:00:00Z"),
+        ]
+        gql_resp = {
+            "data": {
+                "repository": {
+                    "pullRequests": {
+                        "nodes": [
+                            {
+                                "number": 4558,
+                                "authorAssociation": "COLLABORATOR",
+                                "stack": {"number": 4570, "size": 4},
+                                "stackEntry": {"position": 1},
+                            },
+                            {
+                                "number": 4559,
+                                "authorAssociation": "COLLABORATOR",
+                                "stack": {"number": 4570, "size": 4},
+                                "stackEntry": {"position": 2},
+                            },
+                            {
+                                "number": 4561,
+                                "authorAssociation": "COLLABORATOR",
+                                "stack": {"number": 4570, "size": 4},
+                                "stackEntry": {"position": 3},
+                            },
+                            {
+                                "number": 4562,
+                                "authorAssociation": "COLLABORATOR",
+                                "stack": {"number": 4570, "size": 4},
+                                "stackEntry": {"position": 4},
+                            },
+                        ]
+                    }
+                }
+            }
+        }
+
+        async def fake_runner(args: Sequence[str], _timeout: int) -> str:
+            if list(args[:2]) == ["api", "graphql"]:
+                return json.dumps(gql_resp)
+            return json.dumps(raw_prs)
+
+        now = datetime.datetime(2026, 11, 12, 12, 0, 0, tzinfo=datetime.UTC)
+        all_included = await fetch_pr_queue.fetch_pr_queue_async(
+            user="rickeylev",
+            exclude_approved_by_me=False,
+            runner=fake_runner,
+            now=now,
+        )
+        self.assertEqual(
+            [pr.number for pr in all_included.prs],
+            [4558, 4559, 4561, 4562, 4550],
+        )
+        self.assertEqual(
+            [pr.chain_id for pr in all_included.prs],
+            [4558, 4558, 4558, 4558, 0],
+        )
+        self.assertEqual(all_included.prs[0].stack_position, 1)
+        self.assertEqual(all_included.prs[1].depends_on, (4558,))
+        md = fetch_pr_queue.format_markdown(all_included)
+        self.assertIn("Sorted by: status (", md)
+        self.assertIn(
+            "----\n"
+            "- **#4558** [needs_review] Part 1 (@contributor [member], "
+            "0d since update, checks=none) — "
+            "https://github.com/bazel-contrib/rules_python/pull/4558\n"
+            "- **#4559** [approved] Part 2 (@contributor [member], "
+            "0d since update, checks=none) — "
+            "https://github.com/bazel-contrib/rules_python/pull/4559\n"
+            "- **#4561** [needs_review] Part 3 (@contributor [member], "
+            "0d since update, checks=none) — "
+            "https://github.com/bazel-contrib/rules_python/pull/4561\n"
+            "- **#4562** [needs_review] Part 4 (@contributor [member], "
+            "0d since update, checks=none) — "
+            "https://github.com/bazel-contrib/rules_python/pull/4562\n"
+            "----\n"
+            "- **#4550**",
+            md,
+        )
+        self.assertNotIn("[depends on", md)
+        self.assertNotIn("[stack ", md)
+
+        # Even when #4559 (position 2) is skipped as approved, #4558..#4562 stay boxed.
+        filtered = await fetch_pr_queue.fetch_pr_queue_async(
+            user="rickeylev",
+            exclude_approved_by_me=True,
+            runner=fake_runner,
+            now=now,
+        )
+        self.assertEqual([pr.number for pr in filtered.prs], [4558, 4561, 4562, 4550])
+        self.assertEqual([pr.chain_id for pr in filtered.prs], [4558, 4558, 4558, 0])
+
+    async def test_sorts_description_branch_priority_inheritance_and_cycles(
+        self,
+    ) -> None:
+        now = datetime.datetime(2026, 11, 12, 12, 0, 0, tzinfo=datetime.UTC)
+
+        # 1. Cross-bucket priority inheritance + transitive link across skipped PR:
+        # #100 (waiting_on_author) <- #101 (approved, skipped) <- #102 (review_requested)
+        raw_prs = [
+            _make_raw_pr(
+                200,
+                title="Unrelated needs review",
+                updated_at="2026-11-12T11:50:00Z",
+            ),
+            _make_raw_pr(
+                100,
+                title="Parent waiting",
+                updated_at="2026-11-10T09:00:00Z",
+                review_decision="CHANGES_REQUESTED",
+                latest_reviews=[
+                    {"author": {"login": "other"}, "state": "CHANGES_REQUESTED"}
+                ],
+            ),
+            _make_raw_pr(
+                101,
+                title="Middle approved",
+                body="DO NOT MERGE: awaiting #100",
+                updated_at="2026-11-11T09:00:00Z",
+                latest_reviews=[
+                    {"author": {"login": "rickeylev"}, "state": "APPROVED"}
+                ],
+            ),
+            _make_raw_pr(
+                102,
+                title="Child requested",
+                body="DO NOT MERGE: awaiting #101",
+                updated_at="2026-11-12T09:00:00Z",
+                review_requests=[{"login": "rickeylev"}],
+            ),
+        ]
+
+        async def fake_runner(args: Sequence[str], _timeout: int) -> str:
+            if list(args[:2]) == ["api", "graphql"]:
+                return "{}"
+            return json.dumps(raw_prs)
+
+        res = await fetch_pr_queue.fetch_pr_queue_async(
+            user="rickeylev",
+            exclude_approved_by_me=True,
+            runner=fake_runner,
+            now=now,
+        )
+        self.assertEqual([pr.number for pr in res.prs], [100, 102, 200])
+        self.assertEqual([pr.chain_id for pr in res.prs], [100, 100, 0])
+
+        # 2. Same-repo branch chain groups parent+draft child in one box; fork branch ignored:
+        branch_prs = [
+            _make_raw_pr(
+                301,
+                title="Draft child on feat-300",
+                head_ref="feat-301",
+                base_ref="feat-300",
+                is_draft=True,
+                updated_at="2026-11-12T11:55:00Z",
+            ),
+            _make_raw_pr(
+                302,
+                title="Unrelated needs review",
+                updated_at="2026-11-12T10:00:00Z",
+            ),
+            _make_raw_pr(
+                300,
+                title="Requested parent feat-300",
+                head_ref="feat-300",
+                base_ref="main",
+                is_cross_repo=False,
+                updated_at="2026-11-11T10:00:00Z",
+                review_requests=[{"login": "rickeylev"}],
+            ),
+            _make_raw_pr(
+                303,
+                title="Fork PR with colliding branch name",
+                head_ref="shared-branch",
+                base_ref="main",
+                is_cross_repo=True,
+                updated_at="2026-11-09T10:00:00Z",
+            ),
+            _make_raw_pr(
+                304,
+                title="Same-repo PR targeting shared-branch",
+                head_ref="child-of-shared",
+                base_ref="shared-branch",
+                is_cross_repo=False,
+                updated_at="2026-11-12T11:00:00Z",
+            ),
+        ]
+
+        async def branch_runner(args: Sequence[str], _timeout: int) -> str:
+            if list(args[:2]) == ["api", "graphql"]:
+                return "{}"
+            return json.dumps(branch_prs)
+
+        branch_res = await fetch_pr_queue.fetch_pr_queue_async(
+            user="rickeylev",
+            exclude_drafts=False,
+            runner=branch_runner,
+            now=now,
+        )
+        # #300 + #301 stay contiguous in one chain box; fork #303 is not #304's parent.
+        self.assertEqual(
+            [pr.number for pr in branch_res.prs], [300, 301, 304, 302, 303]
+        )
+        self.assertEqual([pr.chain_id for pr in branch_res.prs], [300, 300, 0, 0, 0])
+
+        # 3. Chain box sorts by the most recently modified PR within the box:
+        p1 = fetch_pr_queue.normalize_pr(
+            _make_raw_pr(1, updated_at="2026-11-11T12:00:00Z"),
+            repo="bazel-contrib/rules_python",
+            viewer="rickeylev",
+            max_age_days=30,
+            now=now,
+        )
+        p2 = fetch_pr_queue.normalize_pr(
+            _make_raw_pr(2, body="Depends on #1", updated_at="2026-11-10T12:00:00Z"),
+            repo="bazel-contrib/rules_python",
+            viewer="rickeylev",
+            max_age_days=30,
+            now=now,
+        )
+        p3 = fetch_pr_queue.normalize_pr(
+            _make_raw_pr(3, body="Depends on #2", updated_at="2026-11-12T10:00:00Z"),
+            repo="bazel-contrib/rules_python",
+            viewer="rickeylev",
+            max_age_days=30,
+            now=now,
+        )
+        p4 = fetch_pr_queue.normalize_pr(
+            _make_raw_pr(4, updated_at="2026-11-12T06:00:00Z"),
+            repo="bazel-contrib/rules_python",
+            viewer="rickeylev",
+            max_age_days=30,
+            now=now,
+        )
+        p5 = fetch_pr_queue.normalize_pr(
+            _make_raw_pr(5, updated_at="2026-11-12T11:30:00Z"),
+            repo="bazel-contrib/rules_python",
+            viewer="rickeylev",
+            max_age_days=30,
+            now=now,
+        )
+        box_sorted = fetch_pr_queue.sort_prs([p4, p3, p1, p5, p2])
+        self.assertEqual([pr.number for pr in box_sorted], [5, 1, 2, 3, 4])
+        self.assertEqual([pr.chain_id for pr in box_sorted], [0, 1, 1, 1, 0])
+
+        # 4. Malformed mutual cycle terminates deterministically without dropping PRs:
+        c1 = fetch_pr_queue.normalize_pr(
+            _make_raw_pr(40, body="Depends on #41", updated_at="2026-11-10T10:00:00Z"),
+            repo="bazel-contrib/rules_python",
+            viewer="rickeylev",
+            max_age_days=30,
+            now=now,
+        )
+        c2 = fetch_pr_queue.normalize_pr(
+            _make_raw_pr(41, body="Depends on #40", updated_at="2026-11-12T10:00:00Z"),
+            repo="bazel-contrib/rules_python",
+            viewer="rickeylev",
+            max_age_days=30,
+            now=now,
+        )
+        cycle_sorted = fetch_pr_queue.sort_prs([c1, c2])
+        self.assertEqual([pr.number for pr in cycle_sorted], [41, 40])
+        self.assertEqual([pr.chain_id for pr in cycle_sorted], [41, 41])
+
+    async def test_pr_list_omits_heavy_fields_and_reads_graphql_check_counts(
+        self,
+    ) -> None:
+        list_fields = set(fetch_pr_queue._PR_LIST_JSON_FIELDS.split(","))
+        self.assertNotIn("reviews", list_fields)
+        self.assertNotIn("statusCheckRollup", list_fields)
+        self.assertIn("statusCheckRollup", fetch_pr_queue.PR_JSON_FIELDS.split(","))
+
+        raw_item = _make_raw_pr(700, title="Lightweight list PR")
+        raw_item.pop("statusCheckRollup", None)
+        raw_item.pop("reviews", None)
+        gql_resp = {
+            "data": {
+                "repository": {
+                    "pullRequests": {
+                        "nodes": [
+                            {
+                                "number": 700,
+                                "authorAssociation": "MEMBER",
+                                "stack": None,
+                                "stackEntry": None,
+                                "commits": {
+                                    "nodes": [
+                                        {
+                                            "commit": {
+                                                "statusCheckRollup": {
+                                                    "contexts": {
+                                                        "totalCount": 21,
+                                                        "checkRunCountsByState": [
+                                                            {
+                                                                "state": "SUCCESS",
+                                                                "count": 17,
+                                                            },
+                                                            {
+                                                                "state": "SKIPPED",
+                                                                "count": 1,
+                                                            },
+                                                            {
+                                                                "state": "IN_PROGRESS",
+                                                                "count": 2,
+                                                            },
+                                                        ],
+                                                        "statusContextCountsByState": [
+                                                            {
+                                                                "state": "SUCCESS",
+                                                                "count": 1,
+                                                            }
+                                                        ],
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                },
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+        seen_list_json = ""
+
+        async def fake_runner(args: Sequence[str], _timeout: int) -> str:
+            nonlocal seen_list_json
+            if list(args[:2]) == ["api", "graphql"]:
+                return json.dumps(gql_resp)
+            arg_list = list(args)
+            json_idx = arg_list.index("--json")
+            seen_list_json = arg_list[json_idx + 1]
+            return json.dumps([raw_item])
+
+        res = await fetch_pr_queue.fetch_pr_queue_async(
+            user="rickeylev",
+            runner=fake_runner,
+            now=datetime.datetime(2026, 11, 12, 12, 0, 0, tzinfo=datetime.UTC),
+        )
+        self.assertEqual(seen_list_json, fetch_pr_queue._PR_LIST_JSON_FIELDS)
+        self.assertEqual(len(res.prs), 1)
+        self.assertEqual(res.prs[0].checks_state, "pending")
+        self.assertEqual(res.prs[0].checks_passed, 19)
+        self.assertEqual(res.prs[0].checks_failed, 0)
+        self.assertEqual(res.prs[0].checks_pending, 2)
+        self.assertEqual(res.prs[0].checks_total, 21)
 
 
 if __name__ == "__main__":

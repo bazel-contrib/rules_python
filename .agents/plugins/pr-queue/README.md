@@ -6,7 +6,12 @@ requests with buttons to launch manual code reviews in isolated Git worktrees.
 ## Behavior
 
 - Displays open GitHub PRs filtered by review status, author, draft state, age,
-  or custom search query using the `gh` CLI.
+  or custom search query using the `gh` CLI, along with the server PID/uptime
+  and active sort order (`status` priority, then most recently updated).
+- Groups dependent PR chains into visual boxes ordered from parent to child
+  (using GitHub PR stack metadata, base/head branch chains, and dependency
+  references in PR descriptions), sorting each box by the most recently modified
+  PR within it.
 - Fetches on demand without automatic reviews or background polling.
 - Looking up a number shows live PR details (or detects asynchronously if a
   missing number is an issue), matching review chats, and launch actions.

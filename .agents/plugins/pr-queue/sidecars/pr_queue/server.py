@@ -847,9 +847,102 @@ def _load_preload_js(candidates: Sequence[Path]) -> bytes | None:
     return None
 
 
-def _inject_preload(html_text: str, *, nonce: str = "") -> str:
-    """Ensures index.html loads `/preload.js` once and attaches optional CSP nonce."""
+def _merge_int_dependencies(
+    live_deps: object, cached_deps: Sequence[object]
+) -> list[int]:
+    merged: list[int] = []
+    if isinstance(live_deps, list):
+        for dep in live_deps:
+            if isinstance(dep, int) and not isinstance(dep, bool):
+                merged.append(dep)
+    for dep in cached_deps:
+        if isinstance(dep, int) and not isinstance(dep, bool) and dep not in merged:
+            merged.append(dep)
+    return merged
+
+
+def _merge_cached_pr_fields(
+    live_pr: dict[str, object], cached: Mapping[str, object]
+) -> None:
+    """Preserves GraphQL-only role, stack, and parent fields from a cached PR item.
+
+    Args:
+      live_pr: Mutable normalized PR dictionary from `gh pr view` updated in place.
+      cached: Previously cached PR dictionary for the same pull request.
+
+    Returns:
+      None.
+    """
+    same_author = (
+        str(cached.get("author") or "").lower()
+        == str(live_pr.get("author") or "").lower()
+    )
+    if (
+        not live_pr.get("is_bot")
+        and not live_pr.get("author_association")
+        and same_author
+    ):
+        cached_assoc = str(cached.get("author_association") or "").strip().upper()
+        if cached_assoc:
+            live_pr["author_association"] = cached_assoc
+            live_pr["is_project_member"] = bool(cached.get("is_project_member"))
+
+    if not live_pr.get("stack_number") and cached.get("stack_number"):
+        live_pr["stack_number"] = cached["stack_number"]
+        live_pr["stack_position"] = cached.get("stack_position", 0)
+        live_pr["stack_size"] = cached.get("stack_size", 0)
+
+    cached_deps = cached.get("depends_on")
+    if isinstance(cached_deps, list) and cached_deps:
+        live_pr["depends_on"] = _merge_int_dependencies(
+            live_pr.get("depends_on"), cached_deps
+        )
+
+
+# LINT.IfChange(uptime_format)
+def _format_uptime_short(total_seconds: int) -> str:
+    """Formats non-negative seconds into a compact human-readable uptime string."""
+    secs = max(0, int(total_seconds))
+    if secs < 60:
+        return f"{secs}s"
+    mins = (secs // 60) % 60
+    if secs < 3600:
+        return f"{mins}m {secs % 60}s"
+    hours = (secs // 3600) % 24
+    days = secs // 86400
+    if days == 0:
+        return f"{hours}h {mins}m"
+    return f"{days}d {hours}h {mins}m"
+
+
+# LINT.ThenChange(//.agents/plugins/pr-queue/sidecars/pr_queue/index.html:uptime_format)
+
+
+def _inject_preload(
+    html_text: str,
+    *,
+    nonce: str = "",
+    server_pid: int = 0,
+    server_uptime_seconds: int = 0,
+) -> str:
+    """Injects `/preload.js`, optional CSP nonces, and initial server PID/uptime."""
     result = html_text
+    if server_pid > 0:
+        safe_pid = int(server_pid)
+        safe_uptime = max(0, int(server_uptime_seconds))
+        pill_text = f"PID {safe_pid} · up {_format_uptime_short(safe_uptime)}"
+        # LINT.IfChange(server_pill_markup)
+        pill_html = (
+            f'<span id="server-pill" class="pill mono" '
+            f'data-server-pid="{safe_pid}" '
+            f'data-server-uptime="{safe_uptime}">{pill_text}</span>'
+        )
+        result = result.replace(
+            '<span id="server-pill" class="pill mono hidden"></span>',
+            pill_html,
+            1,
+        )
+        # LINT.ThenChange(//.agents/plugins/pr-queue/sidecars/pr_queue/index.html:server_pill_markup)
     if "/preload.js" not in result:
         tag = '<script src="/preload.js"></script>'
         if "</head>" in result:
@@ -908,6 +1001,24 @@ class PrQueueService:
         self._launch_locks: dict[str, asyncio.Lock] = {}
         self._cached_queue: dict[str, object] | None = None
         self._config_generation = 0
+        self._started_monotonic = time.monotonic()
+        self._started_at = (
+            datetime.datetime.now(datetime.UTC).replace(microsecond=0).isoformat()
+        )
+
+    def server_runtime_snapshot(self) -> tuple[int, int, str]:
+        """Returns `(server_pid, uptime_seconds, started_at_iso)`."""
+        uptime_seconds = max(0, int(time.monotonic() - self._started_monotonic))
+        return (os.getpid(), uptime_seconds, self._started_at)
+
+    def server_runtime_info(self) -> dict[str, object]:
+        """Returns current server process PID, start timestamp, and uptime."""
+        pid, uptime_seconds, started_at = self.server_runtime_snapshot()
+        return {
+            "server_pid": pid,
+            "server_uptime_seconds": uptime_seconds,
+            "server_started_at": started_at,
+        }
 
     def _get_launch_lock(self, repo: str, pr_number: int) -> asyncio.Lock:
         key = StateStore.record_key(repo, pr_number)
@@ -933,6 +1044,7 @@ class PrQueueService:
                 )
             )
         payload["detected_base_repo"] = detected_repo
+        payload.update(self.server_runtime_info())
         return payload
 
     async def update_config(self, updates: Mapping[str, object]) -> dict[str, object]:
@@ -971,6 +1083,7 @@ class PrQueueService:
     def _cached_queue_response(self, cache: Mapping[str, object]) -> dict[str, object]:
         cached = self._attach_triggered_metadata(cache)
         cached["from_cache"] = True
+        cached.update(self.server_runtime_info())
         return cached
 
     async def get_queue(self, *, refresh: bool = False) -> dict[str, object]:
@@ -1022,6 +1135,7 @@ class PrQueueService:
                 await asyncio.to_thread(self._store.save_disk_cache, payload)
             enriched = self._attach_triggered_metadata(payload)
             enriched["from_cache"] = False
+            enriched.update(self.server_runtime_info())
             return enriched
 
     def _build_fallback_queue_payload(
@@ -1050,6 +1164,7 @@ class PrQueueService:
         empty_payload["from_cache"] = False
         empty_payload["stale_cache"] = False
         empty_payload["fetched_at"] = ""
+        empty_payload.update(self.server_runtime_info())
         return empty_payload
 
     async def _resolve_viewer(self, cfg: PrQueueConfig) -> str:
@@ -1123,39 +1238,29 @@ class PrQueueService:
                 return ("pull_request", enriched_cached, True, str(exc))
             return ("error", None, False, str(exc))
 
-        if raw_pr is not None:
-            live_pr = normalize_pr(
-                raw_pr,
-                repo=clean_repo,
-                viewer=viewer,
-                max_age_days=DEFAULT_MAX_AGE_DAYS,
-                now=now,
-            ).to_dict()
-            # `gh pr view` does not expose `authorAssociation`; preserve cached membership.
-            if (
-                cached is not None
-                and not live_pr.get("is_bot")
-                and not live_pr.get("author_association")
-                and str(cached.get("author") or "").lower()
-                == str(live_pr.get("author") or "").lower()
-            ):
-                cached_assoc = (
-                    str(cached.get("author_association") or "").strip().upper()
-                )
-                if cached_assoc:
-                    live_pr["author_association"] = cached_assoc
-                    live_pr["is_project_member"] = bool(cached.get("is_project_member"))
+        if raw_pr is None:
             return (
-                "pull_request",
-                _enrich_pr_item(live_pr, cfg.repo, records_by_key, now),
+                "not_found",
+                None,
                 False,
-                "",
+                f"PR #{pr_number} was not found in {cfg.repo}.",
             )
+
+        live_pr = normalize_pr(
+            raw_pr,
+            repo=clean_repo,
+            viewer=viewer,
+            max_age_days=DEFAULT_MAX_AGE_DAYS,
+            now=now,
+        ).to_dict()
+        # `gh pr view` omits GraphQL `authorAssociation` and `stack`; preserve cached fields.
+        if cached is not None:
+            _merge_cached_pr_fields(live_pr, cached)
         return (
-            "not_found",
-            None,
+            "pull_request",
+            _enrich_pr_item(live_pr, cfg.repo, records_by_key, now),
             False,
-            f"PR #{pr_number} was not found in {cfg.repo}.",
+            "",
         )
 
     async def lookup_pr(self, pr_number: int) -> dict[str, object]:
@@ -1809,10 +1914,17 @@ class PrQueueHttpServer:
             "form-action 'self'; "
             "object-src 'none'"
         )
+        pid, uptime_seconds, _started_at = self.service.server_runtime_snapshot()
+        rendered = _inject_preload(
+            html_text,
+            nonce=nonce,
+            server_pid=pid,
+            server_uptime_seconds=uptime_seconds,
+        )
         return (
             HTTPStatus.OK,
             "text/html; charset=utf-8",
-            _inject_preload(html_text, nonce=nonce).encode("utf-8"),
+            rendered.encode("utf-8"),
             {"Content-Security-Policy": csp},
         )
 
@@ -1838,7 +1950,9 @@ class PrQueueHttpServer:
             )
 
         if path == "/healthz":
-            return self._json_http_response(HTTPStatus.OK, {"ok": True})
+            return self._json_http_response(
+                HTTPStatus.OK, {"ok": True, **self.service.server_runtime_info()}
+            )
 
         if path == "/api/config":
             return self._json_http_response(

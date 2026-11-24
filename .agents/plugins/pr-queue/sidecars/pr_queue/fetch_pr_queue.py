@@ -17,11 +17,13 @@ import asyncio
 import contextlib
 import dataclasses
 import datetime
+import heapq
 import json
 import logging
 import random
 import re
 import sys
+from collections import deque
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from typing import TypeVar
 
@@ -34,11 +36,14 @@ DEFAULT_REPO = "bazel-contrib/rules_python"
 DEFAULT_MAX_AGE_DAYS = 30
 # Match GitHub GraphQL connection `first` max (100) so PR and role lists align.
 _DEFAULT_PR_LIMIT = 100
-PR_JSON_FIELDS = (
-    "number,title,url,author,createdAt,updatedAt,headRefName,headRefOid,"
-    "baseRefName,isDraft,reviewDecision,reviewRequests,reviews,latestReviews,"
-    "additions,deletions,changedFiles,labels,state,statusCheckRollup"
+# Omit `reviews` and `statusCheckRollup` from bulk `gh pr list` so 100-PR
+# GraphQL queries avoid 100x100 nested node fan-out and GitHub 502/504 timeouts.
+_PR_LIST_JSON_FIELDS = (
+    "number,title,url,body,author,createdAt,updatedAt,headRefName,headRefOid,"
+    "baseRefName,isCrossRepository,isDraft,reviewDecision,reviewRequests,"
+    "latestReviews,additions,deletions,changedFiles,labels,state"
 )
+PR_JSON_FIELDS = f"{_PR_LIST_JSON_FIELDS},statusCheckRollup"
 
 # Allow enough time for large PR lists over slower networks.
 _GH_LIST_TIMEOUT_SECONDS = 30
@@ -71,7 +76,62 @@ _ACTION_SORT_PRIORITY = {
     "waiting_on_author": 2,
     # keep-sorted end
 }
+_ACTION_BUCKET_LABELS = {
+    # keep-sorted start
+    "approved": "Approved",
+    "draft": "Draft",
+    "my_pr": "Your PR",
+    "needs_review": "Needs Review",
+    "review_requested": "Review Requested",
+    "waiting_on_author": "Changes Requested",
+    # keep-sorted end
+}
+_ORDERED_ACTION_LABELS = " -> ".join(
+    _ACTION_BUCKET_LABELS[key]
+    for key in sorted(_ACTION_SORT_PRIORITY, key=lambda k: _ACTION_SORT_PRIORITY[k])
+)
+_SORT_ORDER_NOTE = (
+    f"Sorted by: status ({_ORDERED_ACTION_LABELS}), then most recently updated "
+    "(chain boxes sorted by most recently updated PR in box)"
+)
 # LINT.ThenChange(//.agents/plugins/pr-queue/sidecars/pr_queue/index.html:action_needed_buckets)
+
+_PASSING_CHECK_CONCLUSIONS = frozenset(
+    {
+        # keep-sorted start
+        "NEUTRAL",
+        "SKIPPED",
+        "SUCCESS",
+        # keep-sorted end
+    }
+)
+_FAILING_CHECK_CONCLUSIONS = frozenset(
+    {
+        # keep-sorted start
+        "ACTION_REQUIRED",
+        "FAILURE",
+        "STALE",
+        "STARTUP_FAILURE",
+        "TIMED_OUT",
+        # keep-sorted end
+    }
+)
+_FAILING_STATUS_STATES = frozenset(
+    {
+        # keep-sorted start
+        "ERROR",
+        "FAILURE",
+        # keep-sorted end
+    }
+)
+_PENDING_STATUS_STATES = frozenset(
+    {
+        # keep-sorted start
+        "EXPECTED",
+        "PENDING",
+        # keep-sorted end
+    }
+)
 
 _PROJECT_MEMBER_ASSOCIATIONS = frozenset(
     {
@@ -81,6 +141,71 @@ _PROJECT_MEMBER_ASSOCIATIONS = frozenset(
         "OWNER",
         # keep-sorted end
     }
+)
+
+_DEFAULT_BASE_BRANCHES = frozenset(
+    {
+        # keep-sorted start
+        "HEAD",
+        "main",
+        "master",
+        # keep-sorted end
+    }
+)
+_EMPTY_PARENT_MAP: Mapping[int, Sequence[int]] = {}
+_HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+_FENCED_CODE_RE = re.compile(r"(`{3,}|~{3,}).*?\1", re.DOTALL)
+_INLINE_CODE_RE = re.compile(r"`[^`\n]+`")
+_MARKDOWN_PR_LINK_RE = re.compile(
+    r"\[[^\]]*\]\(https?://github\.com/"
+    r"(?P<slug>[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/pull/(?P<num>\d+)"
+    r"(?:[/?#][^)\s]*)?\)"
+)
+_BARE_PR_URL_RE = re.compile(
+    r"https?://github\.com/"
+    r"(?P<slug>[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/pull/(?P<num>\d+)"
+    r"(?:[/?#][^\s),.;]*)?"
+)
+_DEPENDENCY_LEAD_IN_RE = re.compile(
+    r"\b(?:"
+    r"do\s+not\s+merge\s*[:,-]?\s*(?:awaiting|waiting\s+(?:on|for))"
+    r"|awaiting"
+    r"|waiting\s+(?:on|for)"
+    r"|depends?\s+(?:on|upon)"
+    r"|dependent\s+(?:on|upon)"
+    r"|blocked\s+(?:by|on)"
+    r"|stacked\s+(?:on(?:\s+top\s+of)?|atop)"
+    r"|based\s+(?:on|upon)"
+    r"|(?:builds?|built)\s+(?:on(?:\s+top\s+of)?|upon)"
+    r"|on\s+top\s+of"
+    r"|requires?"
+    r"|prerequisites?"
+    r"|(?:parent|base)\s+(?:pull\s+requests?|prs?)"
+    r"|parent\s*:"
+    r"|(?:merge|review|land)\s+after"
+    r")"
+    r"(?:\s+(?:pull\s+requests?|prs?))?\s*[:=-]?\s*"
+    r"(?P<tail>[^\n.;]+)",
+    re.IGNORECASE,
+)
+_LEADING_PR_REF_RE = re.compile(
+    r"^\s*[*_]*(?:(?P<slug>[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+))?#(?P<num>\d+)\b[*_]*"
+)
+_REF_LIST_SEP_RE = re.compile(
+    r"^\s*(?:,\s*(?:and\b)?|\band\b|&)\s*(?:(?:pull\s+requests?|prs?)\s+)?",
+    re.IGNORECASE,
+)
+_GHSTACK_BULLET_RE = re.compile(
+    r"^\s*[*+-]\s+(?:__->__\s+|\*\*->\*\*\s+|->\s+)?"
+    r"[*_]*(?:(?P<slug>[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+))?#(?P<num>\d+)\b"
+)
+_NUMBERED_STACK_HEADER_RE = re.compile(
+    r"^\s*#{0,6}\s*[*_]*(?:pr\s+|pull\s+request\s+)?stack[*_]*\s*:?\s*$",
+    re.IGNORECASE,
+)
+_NUMBERED_STACK_ITEM_RE = re.compile(
+    r"^\s*\d+[.)]\s+(?:[*_]|->|\s)*"
+    r"(?:(?P<slug>[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+))?#(?P<num>\d+)\b"
 )
 
 _TRANSIENT_ERROR_MARKERS = (
@@ -119,34 +244,63 @@ _AUTH_ERROR_MARKERS = (
     # keep-sorted end
 )
 
-_GRAPHQL_PR_ASSOCIATIONS_QUERY = """
-query($owner: String!, $name: String!, $limit: Int!) {
-  repository(owner: $owner, name: $name) {
+_GRAPHQL_PR_METADATA_FIELDS = """
+        number
+        authorAssociation
+        stack {
+          number
+          size
+        }
+        stackEntry {
+          position
+        }
+        commits(last: 1) {
+          nodes {
+            commit {
+              statusCheckRollup {
+                contexts(first: 0) {
+                  totalCount
+                  checkRunCountsByState {
+                    state
+                    count
+                  }
+                  statusContextCountsByState {
+                    state
+                    count
+                  }
+                }
+              }
+            }
+          }
+        }
+""".strip()
+
+_GRAPHQL_PR_METADATA_QUERY = f"""
+query($owner: String!, $name: String!, $limit: Int!) {{
+  repository(owner: $owner, name: $name) {{
     pullRequests(
       states: OPEN,
       first: $limit,
-      orderBy: {field: CREATED_AT, direction: DESC}
-    ) {
-      nodes {
-        number
-        authorAssociation
-      }
-    }
-  }
-}
+      orderBy: {{field: CREATED_AT, direction: DESC}}
+    ) {{
+      nodes {{
+        {_GRAPHQL_PR_METADATA_FIELDS}
+      }}
+    }}
+  }}
+}}
 """.strip()
 
-_GRAPHQL_SEARCH_ASSOCIATIONS_QUERY = """
-query($searchQuery: String!, $limit: Int!) {
-  search(query: $searchQuery, type: ISSUE, first: $limit) {
-    nodes {
-      ... on PullRequest {
-        number
-        authorAssociation
-      }
-    }
-  }
-}
+_GRAPHQL_SEARCH_METADATA_QUERY = f"""
+query($searchQuery: String!, $limit: Int!) {{
+  search(query: $searchQuery, type: ISSUE, first: $limit) {{
+    nodes {{
+      ... on PullRequest {{
+        {_GRAPHQL_PR_METADATA_FIELDS}
+      }}
+    }}
+  }}
+}}
 """.strip()
 
 
@@ -561,11 +715,27 @@ def _extract_review_states(raw_pr: Mapping[str, object]) -> dict[str, str]:
     return states
 
 
+def _resolve_overall_checks_state(
+    *, passed: int, failed: int, pending: int, cancelled: int
+) -> str:
+    # LINT.IfChange(checks_state_values)
+    if failed > 0:
+        return "failing"
+    if pending > 0:
+        return "pending"
+    if cancelled > 0 and passed == 0:
+        return "cancelled"
+    if passed > 0 or cancelled > 0:
+        return "passing"
+    return "none"
+    # LINT.ThenChange(//.agents/plugins/pr-queue/sidecars/pr_queue/index.html:checks_state_values)
+
+
 def _summarize_checks(raw_rollup: object) -> tuple[str, int, int, int, int]:
     """Summarizes statusCheckRollup entries into aggregate CI counts.
 
     Args:
-      raw_rollup: Raw `statusCheckRollup` value decoded from `gh pr list` JSON.
+      raw_rollup: Raw `statusCheckRollup` value decoded from `gh pr view` JSON.
 
     Returns:
       Tuple `(state, passed, failed, pending, total)`.
@@ -591,9 +761,9 @@ def _summarize_checks(raw_rollup: object) -> tuple[str, int, int, int, int]:
             state = str(item.get("state") or "").upper()
             if state == "SUCCESS":
                 passed += 1
-            elif state in ("FAILURE", "ERROR"):
+            elif state in _FAILING_STATUS_STATES:
                 failed += 1
-            elif state in ("PENDING", "EXPECTED"):
+            elif state in _PENDING_STATUS_STATES:
                 pending += 1
             continue
 
@@ -601,33 +771,78 @@ def _summarize_checks(raw_rollup: object) -> tuple[str, int, int, int, int]:
         conclusion = str(item.get("conclusion") or "").upper()
         if status and status != "COMPLETED":
             pending += 1
-        elif conclusion in ("SUCCESS", "NEUTRAL", "SKIPPED"):
+        elif conclusion in _PASSING_CHECK_CONCLUSIONS:
             passed += 1
         elif conclusion == "CANCELLED":
             cancelled += 1
-        elif conclusion in (
-            "FAILURE",
-            "TIMED_OUT",
-            "ACTION_REQUIRED",
-            "STARTUP_FAILURE",
-            "STALE",
-        ):
+        elif conclusion in _FAILING_CHECK_CONCLUSIONS:
             failed += 1
         elif not conclusion:
             pending += 1
 
-    # LINT.IfChange(checks_state_values)
-    if failed > 0:
-        overall = "failing"
-    elif pending > 0:
-        overall = "pending"
-    elif cancelled > 0 and passed == 0:
-        overall = "cancelled"
-    elif passed > 0 or cancelled > 0:
-        overall = "passing"
-    else:
-        overall = "none"
-    # LINT.ThenChange(//.agents/plugins/pr-queue/sidecars/pr_queue/index.html:checks_state_values)
+    overall = _resolve_overall_checks_state(
+        passed=passed, failed=failed, pending=pending, cancelled=cancelled
+    )
+    return (overall, passed, failed, pending, total)
+
+
+def _summarize_graphql_checks(
+    rollup_obj: object,
+) -> tuple[str, int, int, int, int] | None:
+    """Summarizes GraphQL `statusCheckRollup` aggregate counts without per-run fan-out."""
+    if not isinstance(rollup_obj, dict):
+        return None
+    contexts_obj = rollup_obj.get("contexts")
+    if not isinstance(contexts_obj, dict):
+        return ("none", 0, 0, 0, 0)
+
+    passed = 0
+    failed = 0
+    pending = 0
+    cancelled = 0
+
+    raw_check_counts = contexts_obj.get("checkRunCountsByState")
+    if isinstance(raw_check_counts, list):
+        for entry in raw_check_counts:
+            if not isinstance(entry, dict):
+                continue
+            state = str(entry.get("state") or "").upper()
+            count = _int_field(entry, "count")
+            if count <= 0:
+                continue
+            if state in _PASSING_CHECK_CONCLUSIONS:
+                passed += count
+            elif state == "CANCELLED":
+                cancelled += count
+            elif state in _FAILING_CHECK_CONCLUSIONS:
+                failed += count
+            else:
+                pending += count
+
+    raw_status_counts = contexts_obj.get("statusContextCountsByState")
+    if isinstance(raw_status_counts, list):
+        for entry in raw_status_counts:
+            if not isinstance(entry, dict):
+                continue
+            state = str(entry.get("state") or "").upper()
+            count = _int_field(entry, "count")
+            if count <= 0:
+                continue
+            if state == "SUCCESS":
+                passed += count
+            elif state in _FAILING_STATUS_STATES:
+                failed += count
+            elif state in _PENDING_STATUS_STATES:
+                pending += count
+
+    counted_total = passed + failed + pending + cancelled
+    reported_total = _int_field(contexts_obj, "totalCount")
+    total = max(counted_total, reported_total)
+    if total <= 0:
+        return ("none", 0, 0, 0, 0)
+    overall = _resolve_overall_checks_state(
+        passed=passed, failed=failed, pending=pending, cancelled=cancelled
+    )
     return (overall, passed, failed, pending, total)
 
 
@@ -694,6 +909,190 @@ def _int_field(raw_pr: Mapping[str, object], key: str) -> int:
     return 0
 
 
+def _is_stackable_branch(branch: str) -> bool:
+    if not branch or branch in _DEFAULT_BASE_BRANCHES:
+        return False
+    return not (branch.startswith("release/") or branch.startswith("release-"))
+
+
+def _append_same_repo_dep(
+    out: list[int],
+    *,
+    slug: str | None,
+    raw_num: str,
+    repo_lower: str,
+    self_number: int,
+) -> None:
+    if slug and slug.lower() != repo_lower:
+        return
+    num = int(raw_num)
+    if num <= 0 or num == self_number or num in out:
+        return
+    out.append(num)
+
+
+def _strip_code_and_comments(body: str) -> str:
+    without_comments = _HTML_COMMENT_RE.sub(" ", body)
+    without_fenced = _FENCED_CODE_RE.sub("\n", without_comments)
+    return _INLINE_CODE_RE.sub(" ", without_fenced)
+
+
+def _extract_ghstack_parent(
+    lines: Sequence[str], *, repo_lower: str, self_number: int
+) -> list[int]:
+    """Extracts the immediate parent PR from a `ghstack` bullet list.
+
+    Args:
+      lines: Cleaned Markdown body split into lines.
+      repo_lower: Lowercased `owner/name` repository slug.
+      self_number: Current PR number to locate in the stack list.
+
+    Returns:
+      Single-element list with the parent PR number, or empty list.
+    """
+    ghstack_items: list[tuple[str | None, str]] = []
+    for line in lines:
+        bullet_match = _GHSTACK_BULLET_RE.match(line)
+        if bullet_match:
+            ghstack_items.append(
+                (bullet_match.group("slug"), bullet_match.group("num"))
+            )
+    deps: list[int] = []
+    for idx, (slug, raw_num) in enumerate(ghstack_items):
+        if slug and slug.lower() != repo_lower:
+            continue
+        if int(raw_num) == self_number and idx + 1 < len(ghstack_items):
+            parent_slug, parent_num = ghstack_items[idx + 1]
+            _append_same_repo_dep(
+                deps,
+                slug=parent_slug,
+                raw_num=parent_num,
+                repo_lower=repo_lower,
+                self_number=self_number,
+            )
+            break
+    return deps
+
+
+def _extract_numbered_stack_parent(
+    lines: Sequence[str], *, repo_lower: str, self_number: int
+) -> list[int]:
+    """Extracts the preceding parent PR from a numbered `Stack:` section.
+
+    Args:
+      lines: Cleaned Markdown body split into lines.
+      repo_lower: Lowercased `owner/name` repository slug.
+      self_number: Current PR number to locate in the numbered list.
+
+    Returns:
+      Single-element list with the parent PR number, or empty list.
+    """
+    in_numbered_stack = False
+    numbered_items: list[tuple[str | None, str]] = []
+    for line in lines:
+        if _NUMBERED_STACK_HEADER_RE.match(line):
+            in_numbered_stack = True
+            numbered_items = []
+            continue
+        if not in_numbered_stack:
+            continue
+        if not line.strip():
+            if numbered_items:
+                break
+            continue
+        item_match = _NUMBERED_STACK_ITEM_RE.match(line)
+        if not item_match:
+            break
+        numbered_items.append((item_match.group("slug"), item_match.group("num")))
+
+    deps: list[int] = []
+    for idx, (slug, raw_num) in enumerate(numbered_items):
+        if slug and slug.lower() != repo_lower:
+            continue
+        if int(raw_num) == self_number and idx > 0:
+            parent_slug, parent_num = numbered_items[idx - 1]
+            _append_same_repo_dep(
+                deps,
+                slug=parent_slug,
+                raw_num=parent_num,
+                repo_lower=repo_lower,
+                self_number=self_number,
+            )
+            break
+    return deps
+
+
+def _extract_stack_list_dependencies(
+    cleaned_body: str, *, repo_lower: str, self_number: int
+) -> list[int]:
+    """Extracts parent PR numbers from `ghstack` or numbered `Stack:` lists."""
+    if self_number <= 0:
+        return []
+    lines = cleaned_body.splitlines()
+    deps: list[int] = []
+    lower_body = cleaned_body.lower()
+    if "stack from" in lower_body and "ghstack" in lower_body:
+        deps.extend(
+            _extract_ghstack_parent(
+                lines, repo_lower=repo_lower, self_number=self_number
+            )
+        )
+    for num in _extract_numbered_stack_parent(
+        lines, repo_lower=repo_lower, self_number=self_number
+    ):
+        if num not in deps:
+            deps.append(num)
+    return deps
+
+
+def extract_body_dependencies(
+    body: str, *, repo: str, self_number: int = 0
+) -> tuple[int, ...]:
+    """Extracts parent PR numbers referenced by dependency text in a PR body.
+
+    Args:
+      body: Raw Markdown pull request description.
+      repo: Target repository slug (`owner/name`) for cross-repo filtering.
+      self_number: Current PR number excluded from self-references.
+
+    Returns:
+      Ordered tuple of unique positive parent PR numbers in `repo`.
+    """
+    if not body or not body.strip():
+        return ()
+    repo_lower = repo.strip().lower()
+    cleaned = _strip_code_and_comments(body)
+    normalized = _MARKDOWN_PR_LINK_RE.sub(r"\g<slug>#\g<num>", cleaned)
+    normalized = _BARE_PR_URL_RE.sub(r"\g<slug>#\g<num>", normalized)
+
+    deps: list[int] = []
+    for clause_match in _DEPENDENCY_LEAD_IN_RE.finditer(normalized):
+        tail = clause_match.group("tail")
+        while tail:
+            ref_match = _LEADING_PR_REF_RE.match(tail)
+            if not ref_match:
+                break
+            _append_same_repo_dep(
+                deps,
+                slug=ref_match.group("slug"),
+                raw_num=ref_match.group("num"),
+                repo_lower=repo_lower,
+                self_number=self_number,
+            )
+            tail = tail[ref_match.end() :]
+            sep_match = _REF_LIST_SEP_RE.match(tail)
+            if not sep_match:
+                break
+            tail = tail[sep_match.end() :]
+
+    for list_dep in _extract_stack_list_dependencies(
+        normalized, repo_lower=repo_lower, self_number=self_number
+    ):
+        if list_dep not in deps:
+            deps.append(list_dep)
+    return tuple(deps)
+
+
 def normalize_pr(
     raw_pr: Mapping[str, object],
     *,
@@ -702,6 +1101,10 @@ def normalize_pr(
     max_age_days: int,
     now: datetime.datetime,
     author_association: str = "",
+    stack_number: int = 0,
+    stack_position: int = 0,
+    stack_size: int = 0,
+    checks_summary: tuple[str, int, int, int, int] | None = None,
 ) -> PrSummary:
     """Converts a single `gh pr list` or `gh pr view` JSON item into a PrSummary.
 
@@ -712,10 +1115,15 @@ def normalize_pr(
       max_age_days: Days since last update after which PRs are marked stale.
       now: Reference UTC timestamp used to compute age fields.
       author_association: Optional GraphQL `authorAssociation` override.
+      stack_number: Optional GitHub PR stack number from GraphQL.
+      stack_position: Optional 1-based position within the GitHub PR stack.
+      stack_size: Optional total PR count in the GitHub PR stack.
+      checks_summary: Optional `(state, passed, failed, pending, total)` from GraphQL.
 
     Returns:
       Normalized immutable PrSummary instance.
     """
+    pr_number = _int_field(raw_pr, "number")
     author_login, is_bot = _extract_author_info(raw_pr)
     clean_assoc = (
         (author_association or str(raw_pr.get("authorAssociation") or ""))
@@ -750,14 +1158,25 @@ def normalize_pr(
     my_review_state = _find_viewer_review_state(viewer_lower, review_states)
     labels = _extract_labels(raw_pr)
 
-    checks_state, checks_passed, checks_failed, checks_pending, checks_total = (
-        _summarize_checks(raw_pr.get("statusCheckRollup"))
-    )
+    raw_rollup = raw_pr.get("statusCheckRollup")
+    has_rollup = isinstance(raw_rollup, list) and bool(raw_rollup)
+    if checks_summary is not None and not has_rollup:
+        checks_state, checks_passed, checks_failed, checks_pending, checks_total = (
+            checks_summary
+        )
+    else:
+        checks_state, checks_passed, checks_failed, checks_pending, checks_total = (
+            _summarize_checks(raw_rollup)
+        )
 
     is_draft = bool(raw_pr.get("isDraft"))
+    is_cross_repo = bool(raw_pr.get("isCrossRepository"))
     pr_state = str(raw_pr.get("state") or "OPEN").strip().upper() or "OPEN"
     review_decision = str(raw_pr.get("reviewDecision") or "").upper() or "NONE"
     is_my_pr = bool(viewer_lower and author_login.lower() == viewer_lower)
+    body_deps = extract_body_dependencies(
+        str(raw_pr.get("body") or ""), repo=repo, self_number=pr_number
+    )
 
     action_needed = _determine_action_needed(
         is_draft=is_draft,
@@ -770,7 +1189,7 @@ def normalize_pr(
 
     return PrSummary(
         repo=repo,
-        number=_int_field(raw_pr, "number"),
+        number=pr_number,
         title=str(raw_pr.get("title") or ""),
         url=str(raw_pr.get("url") or ""),
         author=author_login,
@@ -803,6 +1222,11 @@ def normalize_pr(
         action_needed=action_needed,
         is_stale=is_stale,
         state=pr_state,
+        is_cross_repository=is_cross_repo,
+        depends_on=body_deps,
+        stack_number=max(0, stack_number),
+        stack_position=max(0, stack_position),
+        stack_size=max(0, stack_size),
     )
 
 
@@ -815,16 +1239,223 @@ def _updated_epoch(timestamp: str) -> float:
         return 0.0
 
 
-def sort_prs(prs: Sequence[PrSummary]) -> list[PrSummary]:
-    """Sorts PRs by queue priority first, then most recently updated descending."""
-    return sorted(
-        prs,
-        key=lambda pr: (
-            _ACTION_SORT_PRIORITY.get(pr.action_needed, _DEFAULT_ACTION_PRIORITY),
-            -_updated_epoch(pr.updated_at),
-            -pr.number,
-        ),
+def _own_sort_key(pr: PrSummary) -> tuple[int, float, int]:
+    return (
+        _ACTION_SORT_PRIORITY.get(pr.action_needed, _DEFAULT_ACTION_PRIORITY),
+        -_updated_epoch(pr.updated_at),
+        -pr.number,
     )
+
+
+def _build_dependency_graph(
+    prs: Sequence[PrSummary],
+    extra_parents: Mapping[int, Sequence[int]],
+) -> tuple[list[set[int]], list[set[int]]]:
+    """Builds `(children, parents)` index adjacency sets over `prs`."""
+    n = len(prs)
+    children: list[set[int]] = [set() for _ in range(n)]
+    parents: list[set[int]] = [set() for _ in range(n)]
+
+    num_to_indices: dict[int, list[int]] = {}
+    head_to_indices: dict[str, list[int]] = {}
+    parent_lookup: dict[int, list[int]] = {
+        num: list(deps) for num, deps in extra_parents.items()
+    }
+    stack_members: dict[int, list[tuple[int, int, int]]] = {}
+
+    for idx, pr in enumerate(prs):
+        num_to_indices.setdefault(pr.number, []).append(idx)
+        merged_deps = parent_lookup.setdefault(pr.number, [])
+        for dep in pr.depends_on:
+            if dep not in merged_deps:
+                merged_deps.append(dep)
+        if not pr.is_cross_repository and _is_stackable_branch(pr.head_ref_name):
+            head_to_indices.setdefault(pr.head_ref_name, []).append(idx)
+        if pr.stack_number > 0 and pr.stack_position > 0:
+            stack_members.setdefault(pr.stack_number, []).append(
+                (pr.stack_position, pr.number, idx)
+            )
+
+    def add_edge(parent_idx: int, child_idx: int) -> None:
+        if parent_idx == child_idx:
+            return
+        children[parent_idx].add(child_idx)
+        parents[child_idx].add(parent_idx)
+
+    for child_idx, pr in enumerate(prs):
+        queue = deque(parent_lookup.get(pr.number, ()))
+        seen_nums = {pr.number}
+        while queue:
+            anc_num = queue.popleft()
+            if anc_num in seen_nums:
+                continue
+            seen_nums.add(anc_num)
+            visible_parents = num_to_indices.get(anc_num)
+            if visible_parents:
+                for parent_idx in visible_parents:
+                    add_edge(parent_idx, child_idx)
+                continue
+            queue.extend(parent_lookup.get(anc_num, ()))
+
+        if _is_stackable_branch(pr.base_ref_name):
+            for parent_idx in head_to_indices.get(pr.base_ref_name, ()):
+                add_edge(parent_idx, child_idx)
+
+    for members in stack_members.values():
+        ordered_members = sorted(members)
+        for pos_idx in range(len(ordered_members) - 1):
+            curr_pos, _curr_num, curr_i = ordered_members[pos_idx]
+            for next_idx in range(pos_idx + 1, len(ordered_members)):
+                next_pos, _next_num, next_i = ordered_members[next_idx]
+                if next_pos > curr_pos:
+                    add_edge(curr_i, next_i)
+                    break
+
+    return (children, parents)
+
+
+def _toposort_component(
+    prs: Sequence[PrSummary],
+    comp: Sequence[int],
+    children: Sequence[set[int]],
+    parents: Sequence[set[int]],
+    own_keys: Sequence[tuple[int, float, int]],
+) -> list[PrSummary]:
+    """Orders a connected dependency component with parents higher than children."""
+    comp_set = set(comp)
+    effective_keys: dict[int, tuple[int, float, int]] = {}
+    for idx in comp:
+        comp_children = children[idx] & comp_set
+        if not comp_children:
+            effective_keys[idx] = own_keys[idx]
+            continue
+        visited = {idx}
+        stack = [idx]
+        while stack:
+            curr = stack.pop()
+            for child_idx in children[curr] & comp_set:
+                if child_idx not in visited:
+                    visited.add(child_idx)
+                    stack.append(child_idx)
+        effective_keys[idx] = min(own_keys[j] for j in visited)
+
+    in_degree = {idx: len(parents[idx] & comp_set) for idx in comp}
+    ready_heap: list[tuple[tuple[int, float, int], tuple[int, float, int], int]] = []
+    for idx in comp:
+        if in_degree[idx] == 0:
+            heapq.heappush(ready_heap, (effective_keys[idx], own_keys[idx], idx))
+
+    emitted: set[int] = set()
+    ordered: list[PrSummary] = []
+    while len(ordered) < len(comp):
+        if not ready_heap:
+            # Break malformed dependency cycles deterministically by priority.
+            best_idx = min(
+                (i for i in comp if i not in emitted),
+                key=lambda i: (effective_keys[i], own_keys[i], i),
+            )
+            heapq.heappush(
+                ready_heap, (effective_keys[best_idx], own_keys[best_idx], best_idx)
+            )
+        _eff_key, _own_key, idx = heapq.heappop(ready_heap)
+        if idx in emitted:
+            continue
+        emitted.add(idx)
+        ordered.append(prs[idx])
+        for child_idx in children[idx] & comp_set:
+            if child_idx in emitted:
+                continue
+            in_degree[child_idx] -= 1
+            if in_degree[child_idx] <= 0:
+                heapq.heappush(
+                    ready_heap,
+                    (effective_keys[child_idx], own_keys[child_idx], child_idx),
+                )
+    return ordered
+
+
+def sort_prs(
+    prs: Sequence[PrSummary],
+    *,
+    extra_parents: Mapping[int, Sequence[int]] = _EMPTY_PARENT_MAP,
+) -> list[PrSummary]:
+    """Groups PR dependency chains into contiguous boxes and sorts by priority/recency.
+
+    Each connected dependency chain is ordered topologically (parents higher
+    than children) and assigned a shared positive `chain_id`, while standalone
+    PRs receive `chain_id=0`. Multi-PR chain boxes and standalone PRs are sorted
+    relative to one another by highest-priority status in the group, then by the
+    most recently modified PR (`max(updated_at)`) within the group.
+
+    Args:
+      prs: Pull request summaries to sort.
+      extra_parents: Optional map of PR number to direct parent PR numbers across
+        all open PRs, preserving transitive links across filtered-out items.
+
+    Returns:
+      Deterministically ordered list of `PrSummary` items with `chain_id` set.
+    """
+    n = len(prs)
+    if n == 0:
+        return []
+    if n == 1:
+        only = prs[0]
+        return [dataclasses.replace(only, chain_id=0) if only.chain_id != 0 else only]
+
+    children, parents = _build_dependency_graph(prs, extra_parents)
+    own_keys = [_own_sort_key(pr) for pr in prs]
+
+    visited_comp = [False] * n
+    used_chain_ids: set[int] = set()
+    fallback_chain_id = 1
+    grouped: list[tuple[tuple[int, float, int], list[PrSummary]]] = []
+
+    for start_idx in range(n):
+        if visited_comp[start_idx]:
+            continue
+        visited_comp[start_idx] = True
+        comp = [start_idx]
+        queue = deque([start_idx])
+        while queue:
+            curr = queue.popleft()
+            for neighbor in children[curr] | parents[curr]:
+                if not visited_comp[neighbor]:
+                    visited_comp[neighbor] = True
+                    comp.append(neighbor)
+                    queue.append(neighbor)
+
+        group_sort_key = (
+            min(own_keys[i][0] for i in comp),
+            min(own_keys[i][1] for i in comp),
+            min(own_keys[i][2] for i in comp),
+        )
+        if len(comp) == 1:
+            single = prs[comp[0]]
+            if single.chain_id != 0:
+                single = dataclasses.replace(single, chain_id=0)
+            grouped.append((group_sort_key, [single]))
+            continue
+
+        ordered_comp = _toposort_component(prs, comp, children, parents, own_keys)
+        preferred_id = ordered_comp[0].number
+        if preferred_id > 0 and preferred_id not in used_chain_ids:
+            cid = preferred_id
+        else:
+            while fallback_chain_id in used_chain_ids:
+                fallback_chain_id += 1
+            cid = fallback_chain_id
+        used_chain_ids.add(cid)
+        tagged_comp = [
+            dataclasses.replace(pr, chain_id=cid) if pr.chain_id != cid else pr
+            for pr in ordered_comp
+        ]
+        grouped.append((group_sort_key, tagged_comp))
+
+    grouped.sort(key=lambda pair: pair[0])
+    ordered_all: list[PrSummary] = []
+    for _key, comp_prs in grouped:
+        ordered_all.extend(comp_prs)
+    return ordered_all
 
 
 def _build_pr_list_args(repo: str, clean_query: str, limit: int) -> list[str]:
@@ -837,14 +1468,14 @@ def _build_pr_list_args(repo: str, clean_query: str, limit: int) -> list[str]:
         "--limit",
         str(max(1, limit)),
         "--json",
-        PR_JSON_FIELDS,
+        _PR_LIST_JSON_FIELDS,
     ]
     if clean_query:
         args.append(f"--search={clean_query}")
     return args
 
 
-def _build_author_association_args(
+def _build_graphql_metadata_args(
     repo: str, clean_query: str, limit: int
 ) -> list[str] | None:
     owner, sep, name = repo.partition("/")
@@ -858,7 +1489,7 @@ def _build_author_association_args(
             "api",
             "graphql",
             "--raw-field",
-            f"query={_GRAPHQL_SEARCH_ASSOCIATIONS_QUERY}",
+            f"query={_GRAPHQL_SEARCH_METADATA_QUERY}",
             "--raw-field",
             f"searchQuery={search_expr}",
             "--field",
@@ -868,7 +1499,7 @@ def _build_author_association_args(
         "api",
         "graphql",
         "--raw-field",
-        f"query={_GRAPHQL_PR_ASSOCIATIONS_QUERY}",
+        f"query={_GRAPHQL_PR_METADATA_QUERY}",
         "--raw-field",
         f"owner={owner}",
         "--raw-field",
@@ -878,7 +1509,7 @@ def _build_author_association_args(
     ]
 
 
-def _extract_association_nodes(data: Mapping[str, object]) -> object:
+def _extract_graphql_pr_nodes(data: Mapping[str, object]) -> object:
     repo_obj = data.get("repository")
     if isinstance(repo_obj, dict):
         prs_obj = repo_obj.get("pullRequests")
@@ -890,7 +1521,28 @@ def _extract_association_nodes(data: Mapping[str, object]) -> object:
     return None
 
 
-def _parse_author_associations(raw_output: str) -> dict[int, str]:
+def _extract_graphql_checks_summary(
+    node: Mapping[str, object],
+) -> tuple[str, int, int, int, int] | None:
+    commits_obj = node.get("commits")
+    if not isinstance(commits_obj, dict):
+        return None
+    commit_nodes = commits_obj.get("nodes")
+    if not isinstance(commit_nodes, list) or not commit_nodes:
+        return None
+    first_node = commit_nodes[0]
+    if not isinstance(first_node, dict):
+        return None
+    commit_obj = first_node.get("commit")
+    if not isinstance(commit_obj, dict) or "statusCheckRollup" not in commit_obj:
+        return None
+    rollup_obj = commit_obj.get("statusCheckRollup")
+    if rollup_obj is None:
+        return ("none", 0, 0, 0, 0)
+    return _summarize_graphql_checks(rollup_obj)
+
+
+def _parse_graphql_pr_metadata(raw_output: str) -> dict[int, _PrGraphqlMeta]:
     try:
         parsed = json.loads(raw_output or "{}")
     except json.JSONDecodeError:
@@ -901,19 +1553,92 @@ def _parse_author_associations(raw_output: str) -> dict[int, str]:
     if not isinstance(data, dict):
         return {}
 
-    nodes = _extract_association_nodes(data)
+    nodes = _extract_graphql_pr_nodes(data)
     if not isinstance(nodes, list):
         return {}
 
-    associations: dict[int, str] = {}
+    metadata: dict[int, _PrGraphqlMeta] = {}
     for node in nodes:
         if not isinstance(node, dict) or "number" not in node:
             continue
+        try:
+            pr_num = int(node["number"])
+        except (TypeError, ValueError):
+            continue
+        if pr_num <= 0:
+            continue
         assoc = str(node.get("authorAssociation") or "").strip().upper()
-        if assoc:
-            with contextlib.suppress(TypeError, ValueError):
-                associations[int(node["number"])] = assoc
-    return associations
+        stack_number = 0
+        stack_size = 0
+        stack_position = 0
+        stack_obj = node.get("stack")
+        entry_obj = node.get("stackEntry")
+        if isinstance(stack_obj, dict) and isinstance(entry_obj, dict):
+            raw_stack_num = _int_field(stack_obj, "number")
+            raw_stack_size = _int_field(stack_obj, "size")
+            raw_stack_pos = _int_field(entry_obj, "position")
+            if raw_stack_num > 0 and raw_stack_pos > 0:
+                stack_number = raw_stack_num
+                stack_position = raw_stack_pos
+                stack_size = max(raw_stack_size, raw_stack_pos)
+        checks_summary = _extract_graphql_checks_summary(node)
+        if assoc or stack_number > 0 or checks_summary is not None:
+            metadata[pr_num] = _PrGraphqlMeta(
+                author_association=assoc,
+                stack_number=stack_number,
+                stack_position=stack_position,
+                stack_size=stack_size,
+                checks_summary=checks_summary,
+            )
+    return metadata
+
+
+def _attach_structural_dependencies(
+    summaries: Sequence[PrSummary],
+) -> tuple[list[PrSummary], dict[int, tuple[int, ...]]]:
+    """Resolves GitHub stack and base-branch parent PR numbers across `summaries`."""
+    same_repo_head_to_num: dict[str, int] = {}
+    stack_groups: dict[int, list[PrSummary]] = {}
+    for pr in summaries:
+        if not pr.is_cross_repository and _is_stackable_branch(pr.head_ref_name):
+            same_repo_head_to_num.setdefault(pr.head_ref_name, pr.number)
+        if pr.stack_number > 0 and pr.stack_position > 0:
+            stack_groups.setdefault(pr.stack_number, []).append(pr)
+
+    stack_parent_of: dict[int, int] = {}
+    for group in stack_groups.values():
+        ordered_group = sorted(group, key=lambda p: (p.stack_position, p.number))
+        for idx in range(1, len(ordered_group)):
+            prev_pr = ordered_group[idx - 1]
+            curr_pr = ordered_group[idx]
+            if curr_pr.stack_position > prev_pr.stack_position:
+                stack_parent_of[curr_pr.number] = prev_pr.number
+
+    resolved: list[PrSummary] = []
+    all_open_parents: dict[int, tuple[int, ...]] = {}
+    for pr in summaries:
+        combined: list[int] = []
+        stack_parent = stack_parent_of.get(pr.number, 0)
+        if stack_parent > 0 and stack_parent != pr.number:
+            combined.append(stack_parent)
+        if _is_stackable_branch(pr.base_ref_name):
+            branch_parent = same_repo_head_to_num.get(pr.base_ref_name, 0)
+            if (
+                branch_parent > 0
+                and branch_parent != pr.number
+                and branch_parent not in combined
+            ):
+                combined.append(branch_parent)
+        for body_dep in pr.depends_on:
+            if body_dep not in combined and body_dep != pr.number:
+                combined.append(body_dep)
+        deps_tuple = tuple(combined)
+        updated_pr = pr
+        if deps_tuple != pr.depends_on:
+            updated_pr = dataclasses.replace(pr, depends_on=deps_tuple)
+        resolved.append(updated_pr)
+        all_open_parents[updated_pr.number] = deps_tuple
+    return (resolved, all_open_parents)
 
 
 def _parse_and_filter_prs(
@@ -927,7 +1652,7 @@ def _parse_and_filter_prs(
     exclude_authored_by_me: bool,
     exclude_drafts: bool,
     now: datetime.datetime | None,
-    author_associations: Mapping[int, str],
+    graphql_metadata: Mapping[int, _PrGraphqlMeta],
 ) -> PrQueueResult:
     """Parses `gh pr list` JSON, normalizes each PR, and partitions active/stale.
 
@@ -941,7 +1666,7 @@ def _parse_and_filter_prs(
       exclude_authored_by_me: Omit PRs authored by viewer.
       exclude_drafts: Omit draft PRs.
       now: Optional UTC timestamp override for age calculations.
-      author_associations: Map of PR number to GraphQL authorAssociation value.
+      graphql_metadata: Map of PR number to GraphQL role and stack metadata.
 
     Returns:
       Sorted and partitioned PrQueueResult.
@@ -955,6 +1680,30 @@ def _parse_and_filter_prs(
 
     current_time = now or datetime.datetime.now(datetime.UTC)
     viewer_lower = viewer.lower()
+    default_meta = _PrGraphqlMeta()
+
+    raw_summaries: list[PrSummary] = []
+    for item in raw_items:
+        if not isinstance(item, dict) or "number" not in item:
+            continue
+        pr_num = int(item["number"])
+        meta = graphql_metadata.get(pr_num, default_meta)
+        raw_summaries.append(
+            normalize_pr(
+                item,
+                repo=clean_repo,
+                viewer=viewer,
+                max_age_days=max(0, max_age_days),
+                now=current_time,
+                author_association=meta.author_association,
+                stack_number=meta.stack_number,
+                stack_position=meta.stack_position,
+                stack_size=meta.stack_size,
+                checks_summary=meta.checks_summary,
+            )
+        )
+
+    summaries, all_open_parents = _attach_structural_dependencies(raw_summaries)
 
     active_prs: list[PrSummary] = []
     stale_prs: list[PrSummary] = []
@@ -962,18 +1711,7 @@ def _parse_and_filter_prs(
     skipped_authored = 0
     skipped_approved = 0
 
-    for item in raw_items:
-        if not isinstance(item, dict) or "number" not in item:
-            continue
-        pr_num = int(item["number"])
-        summary = normalize_pr(
-            item,
-            repo=clean_repo,
-            viewer=viewer,
-            max_age_days=max(0, max_age_days),
-            now=current_time,
-            author_association=author_associations.get(pr_num, ""),
-        )
+    for summary in summaries:
         if exclude_drafts and summary.is_draft:
             skipped_drafts += 1
             continue
@@ -998,8 +1736,8 @@ def _parse_and_filter_prs(
     return PrQueueResult(
         repo=clean_repo,
         viewer=viewer,
-        prs=sort_prs(active_prs),
-        stale_prs=sort_prs(stale_prs),
+        prs=sort_prs(active_prs, extra_parents=all_open_parents),
+        stale_prs=sort_prs(stale_prs, extra_parents=all_open_parents),
         skipped_drafts=skipped_drafts,
         skipped_authored=skipped_authored,
         skipped_approved=skipped_approved,
@@ -1048,36 +1786,36 @@ async def fetch_pr_queue_async(
     viewer = user.strip()
 
     args = _build_pr_list_args(clean_repo, clean_query, limit)
-    assoc_args = _build_author_association_args(clean_repo, clean_query, limit)
+    gql_args = _build_graphql_metadata_args(clean_repo, clean_query, limit)
 
     list_coro = runner(args, _GH_LIST_TIMEOUT_SECONDS)
-    assoc_coro = (
-        runner(assoc_args, _GH_LIST_TIMEOUT_SECONDS)
-        if assoc_args is not None
+    gql_coro = (
+        runner(gql_args, _GH_LIST_TIMEOUT_SECONDS)
+        if gql_args is not None
         else _ready_value("{}")
     )
     user_coro = (
         get_current_gh_user_async(runner=runner) if not viewer else _ready_value(viewer)
     )
 
-    raw_output, assoc_res, viewer_res = await asyncio.gather(
-        list_coro, assoc_coro, user_coro, return_exceptions=True
+    raw_output, gql_res, viewer_res = await asyncio.gather(
+        list_coro, gql_coro, user_coro, return_exceptions=True
     )
     if isinstance(viewer_res, BaseException):
         raise viewer_res
     if isinstance(raw_output, BaseException):
         raise raw_output
-    if isinstance(assoc_res, FetchError):
-        # GraphQL membership metadata is advisory; degrade safely if secondary lookup fails.
+    if isinstance(gql_res, FetchError):
+        # GraphQL membership, stack, and check metadata are advisory; degrade safely.
         _LOGGER.warning(
-            "GraphQL authorAssociation lookup failed: %s",
-            sanitize_log_text(assoc_res),
+            "GraphQL metadata lookup failed: %s",
+            sanitize_log_text(gql_res),
         )
-        associations: dict[int, str] = {}
-    elif isinstance(assoc_res, BaseException):
-        raise assoc_res
+        graphql_metadata: dict[int, _PrGraphqlMeta] = {}
+    elif isinstance(gql_res, BaseException):
+        raise gql_res
     else:
-        associations = _parse_author_associations(assoc_res)
+        graphql_metadata = _parse_graphql_pr_metadata(gql_res)
 
     return _parse_and_filter_prs(
         raw_output,
@@ -1089,8 +1827,47 @@ async def fetch_pr_queue_async(
         exclude_authored_by_me=exclude_authored_by_me,
         exclude_drafts=exclude_drafts,
         now=now,
-        author_associations=associations,
+        graphql_metadata=graphql_metadata,
     )
+
+
+def _format_markdown_entry(pr: PrSummary, *, detailed: bool) -> str:
+    member_tag = " [member]" if pr.is_project_member else ""
+    if not detailed:
+        return (
+            f"- **#{pr.number}** {pr.title} (@{pr.author}{member_tag}, "
+            f"{pr.days_since_update}d) — {pr.url}"
+        )
+    req_tag = " [review-requested]" if pr.review_requested_from_me else ""
+    checks_tag = f"checks={pr.checks_state}"
+    return (
+        f"- **#{pr.number}** [{pr.action_needed}{req_tag}] "
+        f"{pr.title} (@{pr.author}{member_tag}, "
+        f"{pr.days_since_update}d since update, "
+        f"{checks_tag}) — {pr.url}"
+    )
+
+
+def _append_markdown_pr_list(
+    lines: list[str], prs: Sequence[PrSummary], *, detailed: bool
+) -> None:
+    idx = 0
+    total = len(prs)
+    while idx < total:
+        pr = prs[idx]
+        if pr.chain_id > 0:
+            end_idx = idx + 1
+            while end_idx < total and prs[end_idx].chain_id == pr.chain_id:
+                end_idx += 1
+            if end_idx - idx >= 2:
+                lines.append("----")
+                for chain_pr in prs[idx:end_idx]:
+                    lines.append(_format_markdown_entry(chain_pr, detailed=detailed))
+                lines.append("----")
+                idx = end_idx
+                continue
+        lines.append(_format_markdown_entry(pr, detailed=detailed))
+        idx += 1
 
 
 def format_markdown(result: PrQueueResult) -> str:
@@ -1102,28 +1879,16 @@ def format_markdown(result: PrQueueResult) -> str:
             f"Active: {len(result.prs)} | Stale (>{result.max_age_days}d): "
             f"{len(result.stale_prs)} | Skipped drafts: {result.skipped_drafts}"
         ),
+        _SORT_ORDER_NOTE,
         "",
     ]
     if not result.prs:
         lines.append("No matching open pull requests.")
-    for pr in result.prs:
-        req_tag = " [review-requested]" if pr.review_requested_from_me else ""
-        member_tag = " [member]" if pr.is_project_member else ""
-        checks_tag = f"checks={pr.checks_state}"
-        lines.append(
-            f"- **#{pr.number}** [{pr.action_needed}{req_tag}] "
-            f"{pr.title} (@{pr.author}{member_tag}, "
-            f"{pr.days_since_update}d since update, "
-            f"{checks_tag}) — {pr.url}"
-        )
+    else:
+        _append_markdown_pr_list(lines, result.prs, detailed=True)
     if result.stale_prs:
         lines.extend(["", f"## Stale (>{result.max_age_days} days since update)", ""])
-        for pr in result.stale_prs:
-            member_tag = " [member]" if pr.is_project_member else ""
-            lines.append(
-                f"- **#{pr.number}** {pr.title} (@{pr.author}{member_tag}, "
-                f"{pr.days_since_update}d) — {pr.url}"
-            )
+        _append_markdown_pr_list(lines, result.stale_prs, detailed=False)
     return "\n".join(lines) + "\n"
 
 
@@ -1134,6 +1899,22 @@ def format_markdown(result: PrQueueResult) -> str:
 
 class FetchError(Exception):
     """Raised when querying GitHub pull requests fails."""
+
+
+@dataclasses.dataclass(frozen=True)
+class _PrGraphqlMeta:
+    """Supplemental per-PR role and stack metadata fetched from GitHub GraphQL."""
+
+    # Author repository association (OWNER, MEMBER, COLLABORATOR, etc.).
+    author_association: str = ""
+    # Native GitHub PR stack number, or 0 when not in a stack.
+    stack_number: int = 0
+    # 1-based position of this PR in its GitHub stack, or 0 when unstacked.
+    stack_position: int = 0
+    # Total number of entries in the GitHub stack, or 0 when unstacked.
+    stack_size: int = 0
+    # Aggregate CI check summary `(state, passed, failed, pending, total)`, or None.
+    checks_summary: tuple[str, int, int, int, int] | None = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -1208,6 +1989,18 @@ class PrSummary:
     is_stale: bool
     # PR lifecycle state from GitHub (OPEN, CLOSED, or MERGED).
     state: str = "OPEN"
+    # Whether head_ref_name comes from an external fork rather than repo.
+    is_cross_repository: bool = False
+    # Direct parent PR numbers in repo that this PR depends on.
+    depends_on: tuple[int, ...] = ()
+    # Native GitHub PR stack number, or 0 when not in a GitHub stack.
+    stack_number: int = 0
+    # 1-based position of this PR in its GitHub stack, or 0 when unstacked.
+    stack_position: int = 0
+    # Total number of entries in the GitHub stack, or 0 when unstacked.
+    stack_size: int = 0
+    # Shared positive ID for PRs in a multi-PR dependency chain, or 0 when standalone.
+    chain_id: int = 0
 
     def to_dict(self) -> dict[str, object]:
         """Serializes this summary into a JSON-compatible dict."""
@@ -1217,6 +2010,7 @@ class PrSummary:
             "approved_by",
             "changes_requested_by",
             "labels",
+            "depends_on",
         )
         for key in tuple_fields:
             raw_val = data[key]
