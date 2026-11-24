@@ -43,9 +43,7 @@ class PrefixHelperTest(unittest.TestCase):
                 module["_long_paths_enabled"] = lambda: False
                 self.assertEqual(add_prefix("C:\\short"), "C:\\short")
                 self.assertEqual(add_prefix(long_path), _PREFIX + long_path)
-                self.assertEqual(
-                    add_prefix(unc_path), _PREFIX + "UNC\\" + unc_path[2:]
-                )
+                self.assertEqual(add_prefix(unc_path), _PREFIX + "UNC\\" + unc_path[2:])
                 self.assertEqual(add_prefix(_PREFIX + "C:\\x"), _PREFIX + "C:\\x")
             with self.subTest(name, long_paths_enabled=True):
                 module["_long_paths_enabled"] = lambda: True

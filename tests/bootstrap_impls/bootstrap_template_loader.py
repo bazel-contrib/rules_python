@@ -61,5 +61,8 @@ def load_functions(rel_path: str, names: list[str]) -> dict:
         "sys": sys,
         "IS_WINDOWS": os.name == "nt",
     }
-    exec(compile(ast.Module(body=functions, type_ignores=[]), str(template), "exec"), module)
+    exec(
+        compile(ast.Module(body=functions, type_ignores=[]), str(template), "exec"),
+        module,
+    )
     return module
