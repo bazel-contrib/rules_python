@@ -252,7 +252,13 @@ def _evaluate_with_aliases_in_env(env):
             _check_evaluate(env, input, want, {"platform_machine": machine})
 
             # The partial evaluation gives the same result.
-            _check_evaluate(env, input, want, {"platform_machine": machine}, strict = False)
+            _check_evaluate(
+                env,
+                input,
+                want,
+                {"platform_machine": machine},
+                strict = False,
+            )
 
 _tests.append(_evaluate_with_aliases_in_env)
 
@@ -275,7 +281,11 @@ _MISC_EXPRESSIONS = [
     _expr_case('python_version > "1.7.post2"', False, {"python_version": "1.7.0"}),
     # The local versions cannot be used with the ordered comparisons
     _expr_case('python_version > "1.7.1+local"', False, {"python_version": "1.7.1"}),
-    _expr_case('python_version > "1.7.1+local"', False, {"python_version": "1.7.2"}),
+    _expr_case(
+        'python_version > "1.7.1+local"',
+        False,
+        {"python_version": "1.7.2"},
+    ),
     # Extra cases for the '<' operator
     _expr_case('python_version < "1.7.1"', False, {"python_version": "1.7.2"}),
     _expr_case('python_version < "1.7.3"', True, {"python_version": "1.7.2"}),

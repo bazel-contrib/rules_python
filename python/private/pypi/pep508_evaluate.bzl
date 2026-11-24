@@ -43,13 +43,15 @@ def evaluate(marker, *, env, strict = True):
 
     Args:
         marker: {type}`str` The string marker to evaluate.
-        env: {type}`dict[str, str]` The environment to evaluate the marker against.
+        env: {type}`dict[str, str]` The environment to evaluate the marker
+            against.
         strict: {type}`bool` A setting to not fail on missing values in the env.
 
     Returns:
-        The {type}`bool | str` If the marker is compatible with the given env. If strict is
-        `False`, then the output type is `str` if a part of the marker could
-        not be evaluated and it will represent the remaining expression.
+        The {type}`bool | str` If the marker is compatible with the given env.
+        If `strict` is `False`, then the output type is `str` if a part of the
+        marker could not be evaluated and it will represent the remaining
+        expression.
     """
     tree = pypackaging.markers.parse(marker)
     if "platform_machine" in marker and "platform_machine" in env:
@@ -75,12 +77,12 @@ def _with_platform_machine_aliases(tree, *, max_depth):
     """Use the canonical names in the comparisons with `platform_machine`.
 
     Args:
-        tree: {type}`list` the parsed marker.
+        tree: {type}`list[tuple | list | str]` the parsed marker.
         max_depth: {type}`int` the upper bound for the number of the
             parenthesized expressions in the marker.
 
     Returns:
-        {type}`list` a copy of the parsed marker.
+        {type}`list[tuple | list | str]` a copy of the parsed marker.
     """
     result = []
 
@@ -104,19 +106,41 @@ def _with_platform_machine_aliases(tree, *, max_depth):
     return result
 
 def _with_platform_machine_alias(item):
+    """Normalize literal operands compared against `platform_machine`.
+
+    Args:
+        item: {type}`tuple[struct, str, struct]` a parsed `(lhs, op, rhs)`
+            comparison tuple.
+
+    Returns:
+        {type}`tuple[struct, str, struct]` the comparison tuple with any
+        aliased `platform_machine` string operand replaced by its canonical
+        name.
+    """
     lhs, op, rhs = item
     if lhs.type == "variable" and lhs.value == "platform_machine":
         return (lhs, op, _platform_machine(rhs))
-    elif rhs.type == "variable" and rhs.value == "platform_machine":
+    if rhs.type == "variable" and rhs.value == "platform_machine":
         return (_platform_machine(lhs), op, rhs)
-    else:
-        return item
+    return item
 
 def _platform_machine(value):
+    """Return a copy of a string AST node with its canonical machine name.
+
+    Args:
+        value: {type}`struct` a parsed marker operand node (`type` and
+            `value`).
+
+    Returns:
+        {type}`struct` the operand node with `value` mapped through
+        `_PLATFORM_MACHINE_ALIASES` when `value` is a string node.
+    """
     if value.type != "string":
         return value
 
     return struct(
+        # str: AST node kind ("string").
         type = value.type,
+        # str: canonicalized machine architecture name.
         value = _PLATFORM_MACHINE_ALIASES.get(value.value, value.value),
     )
