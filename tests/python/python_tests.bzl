@@ -972,7 +972,7 @@ def _test_single_version_platform_override_errors(env):
                     python_version = "foo",
                 ),
             ],
-            want_error = "Failed to parse PEP 440 version identifier 'foo'. Parse error at 'foo'",
+            want_error = "The 'python_version' attribute needs to be a valid PEP 440 version, got: 'foo'",
         ),
     ]:
         errors = []
