@@ -97,11 +97,13 @@ pip.dep(name = "pytest")
 pip.dep(name = "pytest-bazel")
 use_repo(pip, "pypi", "rules_python_publish_deps")
 
+# LINT.IfChange(rules_rust_version)
 bazel_dep(
     name = "rules_rust",
     version = "0.73.0",
     dev_dependency = TOOL_DEPS_DEV_ONLY,
 )
+# LINT.ThenChange(:rust_release_linux_sha256s)
 
 rust_crates = use_extension(
     "@rules_rust//crate_universe:extensions.bzl",
@@ -183,6 +185,17 @@ rust.repository_set(
     allocator_library = "@rules_rust//rust/private/cc:empty",
     edition = "2024",
     exec_triple = "x86_64-unknown-linux-gnu",
+    # known_shas.bzl in rules_rust omits powerpc64le and riscv64gc musl; pin
+    # them here so rust_toolchain_tools_repository marks every repo in this set
+    # reproducible and shares it via Bazel's repo contents cache.
+    # LINT.IfChange(rust_release_linux_sha256s)
+    sha256s = {
+        # keep-sorted start
+        "rust-std-1.97.1-powerpc64le-unknown-linux-musl.tar.xz": "0085770b6613425845ff5bec59d27d38d5cb0c677447936cac8d85872c6c9e59",
+        "rust-std-1.97.1-riscv64gc-unknown-linux-musl.tar.xz": "3d4b7ca701a24e092f9256c9d68e117d9a7563dbb49013946763077f4f49d66b",
+        # keep-sorted end
+    },
+    # LINT.ThenChange(:rust_release_linux_version)
     target_compatible_with = [
         "@platforms//cpu:aarch64",
         "@platforms//os:linux",
@@ -192,7 +205,9 @@ rust.repository_set(
     # rules_rust 0.73.0's default version; update it with rules_rust. The
     # default toolchain builds proc-macros, which rustc only loads if they were
     # built by the same version.
+    # LINT.IfChange(rust_release_linux_version)
     versions = ["1.97.1"],
+    # LINT.ThenChange(:rust_release_windows_version)
 )
 
 # Other targets for the same set; the first tag sets the shared attributes.
@@ -282,7 +297,9 @@ rust.repository_set(
     ],
     target_triple = "i686-pc-windows-msvc",
     # See above.
+    # LINT.IfChange(rust_release_windows_version)
     versions = ["1.97.1"],
+    # LINT.ThenChange(:rules_rust_version)
 )
 
 # Another target for the same set; the first tag sets the shared attributes.
