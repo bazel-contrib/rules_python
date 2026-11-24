@@ -1,11 +1,11 @@
 """A hub repository builder for incrementally building the hub configuration."""
 
+load("@pypackaging.bzl", "pypackaging")
 load("//python/private:envsubst.bzl", "envsubst")
 load("//python/private:full_version.bzl", "full_version")
 load("//python/private:normalize_name.bzl", "normalize_name")
 load("//python/private:repo_utils.bzl", "repo_utils")
 load("//python/private:text_util.bzl", "render")
-load("//python/private:version.bzl", "version")
 load("//python/private:version_label.bzl", "version_label")
 load(":attrs.bzl", "use_isolated")
 load(":hash.bzl", "hash")
@@ -18,7 +18,7 @@ load(":whl_config_setting.bzl", "whl_config_setting")
 load(":whl_repo_name.bzl", "pypi_repo_name", "whl_repo_name")
 
 def _major_minor_version(version_str):
-    ver = version.parse(version_str)
+    ver = pypackaging.version.parse(version_str)
     return "{}.{}".format(ver.release[0], ver.release[1])
 
 def hub_builder(
@@ -481,10 +481,7 @@ def _detect_interpreter(self, pip_attr, python_version, full_python_version):
 
 def _platforms(module_ctx, *, python_version, config, target_platforms):
     platforms = {}
-    python_version = version.parse(
-        python_version,
-        strict = True,
-    )
+    python_version = pypackaging.version.parse(python_version)
 
     if "*" in target_platforms:
         # All of the configured platforms.
@@ -516,7 +513,7 @@ def _platforms(module_ctx, *, python_version, config, target_platforms):
             env = values.env,
             os = values.os_name,
             arch = values.arch_name,
-            python_version = python_version.string,
+            python_version = pypackaging.version.to_string(python_version),
         )
 
         if values.marker and not evaluate(values.marker, env = env_):
