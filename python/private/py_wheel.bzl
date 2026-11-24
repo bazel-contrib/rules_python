@@ -14,6 +14,7 @@
 
 "Implementation of py_wheel rule"
 
+load("@pypackaging.bzl", "pypackaging")
 load(
     "//python/private/toolchains:shrubbery_toolchain.bzl",
     "get_shrubbery_tool",
@@ -29,7 +30,6 @@ load(
     "TARGET_TOOLCHAIN_TYPE",
 )
 load(":transition_labels.bzl", "TRANSITION_LABELS")
-load(":version.bzl", "version")
 
 PyWheelInfo = provider(
     doc = "Information about a wheel produced by `py_wheel`",
@@ -389,6 +389,50 @@ def _escape_filename_segment(segment):
             escaped += "_"
     return escaped
 
+def _normalize_version(version_str):
+    """Normalize the version as per PEP 440.
+
+    The stamping placeholders, e.g. `{BUILD_TIMESTAMP}`, are not part of PEP
+    440, so they are swapped with digits for the normalization and are
+    restored afterwards. A placeholder is assumed to expand to something that
+    makes sense in the place where it is used.
+
+    Args:
+        version_str: {type}`str` the version, which may have placeholders.
+
+    Returns:
+        {type}`str` the normalized version.
+    """
+    placeholders = {}
+    for i, part in enumerate(version_str.split("{")[1:]):
+        name, sep, _ = part.partition("}")
+        if not sep:
+            fail("Unbalanced '{{' in the version: {}".format(version_str))
+
+        placeholder = "{" + name + "}"
+        if placeholder in placeholders:
+            continue
+
+        # Find the digits that can be swapped back. The leading digit ensures
+        # that they are not changed by the integer normalization.
+        for j in range(len(version_str) + 1):
+            digits = "9{}{}9".format("0" * j, i)
+            replaced = version_str.replace(placeholder, digits)
+            if replaced.replace(digits, placeholder) == version_str:
+                placeholders[placeholder] = digits
+                version_str = replaced
+                break
+
+    normalized = pypackaging.version.to_string(pypackaging.version.parse(version_str))
+
+    # Restore in the reverse order, because the digits of a later placeholder
+    # together with the digits next to them may look like the digits of an
+    # earlier one.
+    for placeholder, digits in reversed(placeholders.items()):
+        normalized = normalized.replace(digits, placeholder)
+
+    return normalized
+
 def _replace_make_variables(flag, ctx):
     """Replace $(VERSION) etc make variables in flag"""
     if "$" in flag:
@@ -409,7 +453,7 @@ def _py_wheel_impl(ctx):
 
     filename_segments = [
         _escape_filename_distribution_name(ctx.attr.distribution),
-        version.normalize(version_str),
+        _normalize_version(version_str),
         _escape_filename_segment(python_tag),
         _escape_filename_segment(abi),
         _escape_filename_segment(platform),
