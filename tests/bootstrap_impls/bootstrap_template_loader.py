@@ -48,7 +48,7 @@ def load_functions(rel_path: str, names: list[str]) -> dict:
     """
     template = _template_path(rel_path)
     tree = ast.parse(template.read_text(encoding="utf-8"))
-    functions = [
+    functions: list[ast.stmt] = [
         node
         for node in tree.body
         if isinstance(node, ast.FunctionDef) and node.name in names
