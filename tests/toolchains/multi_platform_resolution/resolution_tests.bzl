@@ -7,12 +7,12 @@ by setting the appropriate flags.
 """
 
 load("@bazel_skylib//lib:structs.bzl", "structs")
+load("@pypackaging.bzl", "pypackaging")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//python:versions.bzl", "TOOL_VERSIONS")
 load("//python/private:common_labels.bzl", "labels")  # buildifier: disable=bzl-visibility
 load("//python/private:toolchain_types.bzl", "TARGET_TOOLCHAIN_TYPE")  # buildifier: disable=bzl-visibility
-load("//python/private:version.bzl", "version")  # buildifier: disable=bzl-visibility
 load("//tests/support/platforms:platforms.bzl", "platform_targets")
 
 _PLATFORM_TARGET_MAP = {
@@ -100,7 +100,7 @@ def _compute_runtimes():
     # isn't worth the marginal coverage improvment.
     selected_versions = sorted(
         TOOL_VERSIONS.keys(),
-        key = lambda v: version.parse(v).key(),
+        key = lambda v: pypackaging.version.parse(v).key,
     )[-2:]
 
     for python_version in selected_versions:

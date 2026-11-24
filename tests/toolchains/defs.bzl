@@ -14,8 +14,8 @@
 
 ""
 
+load("@pypackaging.bzl", "pypackaging")
 load("//python:versions.bzl", "PLATFORMS", "TOOL_VERSIONS")
-load("//python/private:version.bzl", "version")  # buildifier: disable=bzl-visibility
 load("//tests/support:py_reconfig.bzl", "py_reconfig_test")
 
 def define_toolchain_tests(name):
@@ -39,7 +39,7 @@ def define_toolchain_tests(name):
             is_platform = "_is_{}".format(platform_key)
             target_compatible_with[is_platform] = []
 
-        parsed = version.parse(python_version, strict = True)
+        parsed = pypackaging.version.parse(python_version)
         expect_python_version = "{0}.{1}.{2}".format(*parsed.release)
         if parsed.pre:
             expect_python_version = "{0}{1}{2}".format(

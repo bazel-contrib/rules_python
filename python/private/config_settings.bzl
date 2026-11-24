@@ -17,9 +17,9 @@
 
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
+load("@pypackaging.bzl", "pypackaging")
 load(":common_labels.bzl", "labels")
 load(":text_util.bzl", "render")
-load(":version.bzl", "version")
 load(":visibility.bzl", "NOT_ACTUALLY_PUBLIC")
 
 _PYTHON_VERSION_FLAG = Label("//python/config_settings:python_version")
@@ -126,8 +126,8 @@ def construct_config_settings(
     # minor versions that could match instead.
     first_minor = None
     for minor in minor_mapping.keys():
-        ver = version.parse(minor)
-        if first_minor == None or version.is_lt(ver, first_minor):
+        ver = pypackaging.version.parse(minor)
+        if first_minor == None or ver.key < first_minor.key:
             first_minor = ver
 
         native.config_setting(
@@ -138,7 +138,7 @@ def construct_config_settings(
 
     # This is a compatibility layer to ensure that `select` statements don't break out right
     # when the toolchains for EOL minor versions are no longer registered.
-    compat_lowest_version = version.parse(compat_lowest_version)
+    compat_lowest_version = pypackaging.version.parse(compat_lowest_version)
     for minor in range(compat_lowest_version.release[-1], first_minor.release[-1]):
         native.alias(
             name = "is_python_3.{}".format(minor),
@@ -225,7 +225,7 @@ _python_version_flag = rule(
 def _python_version_major_minor_flag_impl(ctx):
     input = _flag_value(ctx.attr._python_version_flag)
     if input:
-        ver = version.parse(input)
+        ver = pypackaging.version.parse(input)
         value = "{}.{}".format(ver.release[0], ver.release[1])
     else:
         value = ""

@@ -1,7 +1,7 @@
 """Utilities for reading values from pyproject.toml."""
 
+load("@pypackaging.bzl", "pypackaging")
 load("@toml.bzl", "toml")
-load(":version.bzl", "version")
 
 def read_pyproject(module_ctx, pyproject):
     """Read a pyproject.toml file and return the relevant fields.
@@ -47,9 +47,9 @@ def version_from_requires_python(requires_python):
     """Derive a concrete Python version from a `requires-python` value.
 
     Currently only an exact `==X.Y.Z` specifier is supported. The value is
-    validated and normalized via {obj}`//python/private:version.bzl` so that
-    malformed input fails in a consistent way. Broader specifier support
-    (e.g. `>=`, `X.Y`) can be layered on here in the future.
+    validated and normalized via `pypackaging.bzl` so that malformed input
+    fails in a consistent way. Broader specifier support (e.g. `>=`, `X.Y`)
+    can be layered on here in the future.
 
     Args:
         requires_python: {type}`str` the raw `requires-python` value.
@@ -60,11 +60,8 @@ def version_from_requires_python(requires_python):
     if not requires_python:
         fail("`requires-python` must be specified")
 
-    if not requires_python.startswith("=="):
+    specs = pypackaging.specifiers.parse_set(requires_python).specs
+    if len(specs) != 1 or specs[0].operator != "==" or specs[0].version.endswith(".*"):
         fail("`requires-python` must pin an exact version with `==`, got: {}".format(requires_python))
 
-    bare_version = requires_python[len("=="):].strip()
-
-    # Parse strictly so malformed versions fail cleanly, then normalize.
-    version.parse(bare_version, strict = True)
-    return version.normalize(bare_version)
+    return pypackaging.version.to_string(specs[0].parsed_version)
