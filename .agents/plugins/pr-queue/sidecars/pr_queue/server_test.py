@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import io
 import json
 import os
@@ -1703,6 +1704,10 @@ class HttpServerTest(unittest.IsolatedAsyncioTestCase):
                 html_body = html_bytes.decode("utf-8")
                 self.assertIn("/preload.js", html_body)
                 self.assertIn("Project member", html_body)
+                self.assertIn("Sorted by: status (", html_body)
+                self.assertIn("pr-chain-box", html_body)
+                self.assertIn("renderChainBox", html_body)
+                self.assertNotIn("Depends on ", html_body)
                 self.assertIn("renderPrCard", html_body)
                 self.assertIn("renderIssueCard", html_body)
                 self.assertIn("checkIssueInBackground", html_body)
@@ -2375,6 +2380,109 @@ class HttpServerTest(unittest.IsolatedAsyncioTestCase):
             payload = json.loads(raw_body.decode("utf-8"))
             self.assertEqual(payload["conversation_id"], "chat-92")
             self.assertEqual(seen_kwargs.get("source_conversation_id"), "pane-conv-7")
+
+    async def test_lookup_pr_preserves_cached_stack_and_merges_dependencies(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            store = state_store.StateStore(root / "state")
+            stacked_pr = dataclasses.replace(
+                _make_summary(95),
+                stack_number=4570,
+                stack_position=2,
+                stack_size=4,
+                depends_on=(94,),
+            )
+
+            async def fake_fetcher(**_kw: object) -> fetch_pr_queue.PrQueueResult:
+                return fetch_pr_queue.PrQueueResult(
+                    repo="bazel-contrib/rules_python",
+                    viewer="alice",
+                    prs=[stacked_pr],
+                    stale_prs=[],
+                    skipped_drafts=0,
+                    skipped_authored=0,
+                    skipped_approved=0,
+                    max_age_days=30,
+                )
+
+            async def fake_gh(args: Sequence[str], _timeout: int) -> str:
+                if list(args[:2]) == ["api", "user"]:
+                    return "alice\n"
+                return json.dumps(
+                    {
+                        "number": 95,
+                        "title": "Fix issue #95",
+                        "body": "DO NOT MERGE: awaiting #93",
+                        "url": "https://github.com/bazel-contrib/rules_python/pull/95",
+                        "author": {"login": "contributor", "is_bot": False},
+                        "createdAt": "2026-11-10T00:00:00Z",
+                        "updatedAt": "2026-11-11T00:00:00Z",
+                        "headRefName": "feat-95",
+                        "headRefOid": "abc123",
+                        "baseRefName": "main",
+                        "isDraft": False,
+                        "reviewDecision": "REVIEW_REQUIRED",
+                        "reviewRequests": [],
+                        "reviews": [],
+                        "latestReviews": [],
+                        "additions": 15,
+                        "deletions": 3,
+                        "changedFiles": 2,
+                        "labels": [{"name": "bug"}],
+                        "state": "OPEN",
+                        "statusCheckRollup": [],
+                    }
+                )
+
+            svc = _make_service(root, store, fetcher=fake_fetcher, gh_runner=fake_gh)
+            await svc.get_queue(refresh=True)
+            lookup = await svc.lookup_pr(95)
+            pr_info = lookup["pr"]
+            assert isinstance(pr_info, dict)  # type assert
+            self.assertEqual(pr_info["stack_number"], 4570)
+            self.assertEqual(pr_info["stack_position"], 2)
+            self.assertEqual(pr_info["stack_size"], 4)
+            self.assertEqual(pr_info["depends_on"], [93, 94])
+
+    async def test_renders_and_serves_server_pid_and_uptime(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            store = state_store.StateStore(root / "state")
+            svc = _make_service(root, store)
+            httpd = server.PrQueueHttpServer(
+                ("127.0.0.1", 0),
+                svc,
+                html_path=_SIDECAR_DIR / "index.html",
+                token="",
+                preload_candidates=(),
+                allow_unauthenticated=True,
+            )
+            port = await httpd.start()
+            try:
+                status_html, html_bytes = await _http_get(port, "/")
+                status_cfg, cfg_bytes = await _http_get(port, "/api/config")
+                status_health, health_bytes = await _http_get(port, "/healthz")
+            finally:
+                await httpd.close()
+
+            self.assertEqual(status_html, 200)
+            html_text = html_bytes.decode("utf-8")
+            expected_pid = os.getpid()
+            self.assertIn(f"PID {expected_pid} · up ", html_text)
+            self.assertIn(f'data-server-pid="{expected_pid}"', html_text)
+
+            self.assertEqual(status_cfg, 200)
+            cfg_payload = json.loads(cfg_bytes.decode("utf-8"))
+            self.assertEqual(cfg_payload["server_pid"], expected_pid)
+            self.assertGreaterEqual(cfg_payload["server_uptime_seconds"], 0)
+            self.assertTrue(cfg_payload["server_started_at"])
+
+            self.assertEqual(status_health, 200)
+            health_payload = json.loads(health_bytes.decode("utf-8"))
+            self.assertEqual(health_payload["server_pid"], expected_pid)
+            self.assertGreaterEqual(health_payload["server_uptime_seconds"], 0)
 
 
 if __name__ == "__main__":

@@ -303,11 +303,21 @@
 
     .summary-strip {
       display: flex;
+      flex-direction: column;
+      gap: 3px;
+      font-size: 11.5px;
+      color: var(--fg-muted);
+    }
+
+    .summary-row {
+      display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
-      gap: 6px;
-      font-size: 12px;
+      gap: 4px 8px;
+    }
+
+    .sort-note {
       color: var(--fg-muted);
     }
 
@@ -315,6 +325,33 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
+    }
+
+    .pr-chain-box {
+      border: 1.5px solid var(--accent);
+      border-radius: calc(var(--radius) + 2px);
+      background: var(--surface-muted);
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .pr-chain-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      padding: 0 4px 2px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--info-fg);
+    }
+
+    .pr-chain-meta {
+      font-weight: 400;
+      color: var(--fg-muted);
     }
 
     .pr-card {
@@ -499,6 +536,9 @@
         <h1>PR Queue</h1>
         <span id="repo-pill" class="pill">loading...</span>
         <span id="count-pill" class="pill">0 PRs</span>
+        <!-- LINT.IfChange(server_pill_markup) -->
+        <span id="server-pill" class="pill mono hidden"></span>
+        <!-- LINT.ThenChange(//.agents/plugins/pr-queue/sidecars/pr_queue/server.py:server_pill_markup) -->
       </div>
       <div class="toolbar-actions">
         <span id="cache-note" class="cache-note"></span>
@@ -591,7 +631,12 @@
       <button id="status-dismiss-btn" type="button" class="subtle">Dismiss</button>
     </div>
 
-    <div id="summary-strip" class="summary-strip"></div>
+    <div id="summary-strip" class="summary-strip">
+      <div id="sort-note" class="sort-note">
+        Sorted by: status, then most recently updated (chain boxes use latest PR in box)
+      </div>
+      <div id="summary-meta" class="summary-row"></div>
+    </div>
 
     <main id="pr-list" class="pr-list" aria-live="polite"></main>
 
@@ -632,16 +677,26 @@
   <script>
     "use strict";
 
+    const ACTION_BUCKET_ORDER = [
+      ["review_requested", "Review Requested", "pill-warn"],
+      ["needs_review", "Needs Review", "pill-info"],
+      ["waiting_on_author", "Changes Requested", "pill-err"],
+      ["my_pr", "Your PR", "pill"],
+      ["approved", "Approved", "pill-ok"],
+      ["draft", "Draft", "pill"],
+    ];
+    const ACTION_BUCKET_MAP = Object.fromEntries(
+      ACTION_BUCKET_ORDER.map(([key, label, cls]) => [key, [label, cls]])
+    );
+    const SORT_ORDER_TEXT =
+      `Sorted by: status (${ACTION_BUCKET_ORDER.map(([, label]) => label).join(" → ")}), ` +
+      "then most recently updated (chain boxes use most recently updated PR in box)";
+
     function actionBadge(pr) {
-      const map = {
-        review_requested: ["Review Requested", "pill-warn"],
-        needs_review: ["Needs Review", "pill-info"],
-        waiting_on_author: ["Changes Requested", "pill-err"],
-        approved: ["Approved", "pill-ok"],
-        draft: ["Draft", "pill"],
-        my_pr: ["Your PR", "pill"],
-      };
-      const pair = map[pr.action_needed] || [pr.action_needed || "Open", "pill"];
+      const pair = ACTION_BUCKET_MAP[pr.action_needed] || [
+        pr.action_needed || "Open",
+        "pill",
+      ];
       return makePill(pair[0], pair[1]);
     }
   </script>
@@ -667,6 +722,28 @@
     }
   </script>
   <!-- LINT.ThenChange(//.agents/plugins/pr-queue/sidecars/pr_queue/fetch_pr_queue.py:checks_state_values) -->
+  <!-- LINT.IfChange(uptime_format) -->
+  <script>
+    "use strict";
+
+    function formatUptime(totalSeconds) {
+      const secs = Math.max(0, Math.floor(totalSeconds));
+      if (secs < 60) {
+        return `${secs}s`;
+      }
+      const mins = Math.floor(secs / 60) % 60;
+      const hours = Math.floor(secs / 3600) % 24;
+      const days = Math.floor(secs / 86400);
+      if (secs < 3600) {
+        return `${mins}m ${secs % 60}s`;
+      }
+      if (days === 0) {
+        return `${hours}h ${mins}m`;
+      }
+      return `${days}d ${hours}h ${mins}m`;
+    }
+  </script>
+  <!-- LINT.ThenChange(//.agents/plugins/pr-queue/sidecars/pr_queue/server.py:uptime_format) -->
 
   <script>
     (function () {
@@ -678,11 +755,16 @@
         loading: false,
         launchingPr: null,
         lookupSeq: 0,
+        serverPid: 0,
+        serverUptimeBaseSec: null,
+        serverUptimeSyncedMs: 0,
+        serverStartedAt: "",
       };
 
       const el = {
         repoPill: document.getElementById("repo-pill"),
         countPill: document.getElementById("count-pill"),
+        serverPill: document.getElementById("server-pill"),
         cacheNote: document.getElementById("cache-note"),
         filtersBtn: document.getElementById("filters-btn"),
         refreshBtn: document.getElementById("refresh-btn"),
@@ -708,6 +790,8 @@
         statusText: document.getElementById("status-text"),
         statusDismissBtn: document.getElementById("status-dismiss-btn"),
         summaryStrip: document.getElementById("summary-strip"),
+        sortNote: document.getElementById("sort-note"),
+        summaryMeta: document.getElementById("summary-meta"),
         prList: document.getElementById("pr-list"),
         staleDrawer: document.getElementById("stale-drawer"),
         staleSummary: document.getElementById("stale-summary"),
@@ -816,6 +900,49 @@
         if (days === 0) return "updated today";
         if (days === 1) return "updated 1d ago";
         return `updated ${days}d ago`;
+      }
+
+      function renderServerInfo() {
+        if (!el.serverPill) return;
+        if (state.serverPid <= 0 || state.serverUptimeBaseSec === null) {
+          el.serverPill.classList.add("hidden");
+          el.serverPill.textContent = "";
+          el.serverPill.title = "";
+          return;
+        }
+        const elapsedSinceSync = Math.max(
+          0,
+          Math.floor((Date.now() - state.serverUptimeSyncedMs) / 1000)
+        );
+        const currentUptime = state.serverUptimeBaseSec + elapsedSinceSync;
+        el.serverPill.textContent =
+          `PID ${state.serverPid} · up ${formatUptime(currentUptime)}`;
+        if (state.serverStartedAt) {
+          const startedLabel = formatFetchedAt(state.serverStartedAt);
+          el.serverPill.title =
+            `Server PID ${state.serverPid} · started ${startedLabel} ` +
+            `(${state.serverStartedAt})`;
+        } else {
+          el.serverPill.title = `Server PID ${state.serverPid}`;
+        }
+        el.serverPill.classList.remove("hidden");
+      }
+
+      function updateServerInfo(payload) {
+        if (!payload || typeof payload !== "object") return;
+        const pid = asSafeInt(payload.server_pid);
+        const rawUptime = payload.server_uptime_seconds;
+        if (pid <= 0 || !Number.isInteger(rawUptime) || rawUptime < 0) {
+          return;
+        }
+        state.serverPid = pid;
+        state.serverUptimeBaseSec = rawUptime;
+        state.serverUptimeSyncedMs = Date.now();
+        state.serverStartedAt =
+          typeof payload.server_started_at === "string"
+            ? payload.server_started_at
+            : "";
+        renderServerInfo();
       }
 
       function formatFetchedAt(rawTimestamp) {
@@ -1083,8 +1210,85 @@
         el.cfgExclDrafts.checked = Boolean(cfg.exclude_drafts);
       }
 
+      function formatChainLatestAge(chainPrs) {
+        let minDays = null;
+        for (const pr of chainPrs) {
+          const days = resolveDaysSinceUpdate(pr);
+          if (days !== null && (minDays === null || days < minDays)) {
+            minDays = days;
+          }
+        }
+        if (minDays === null) return "";
+        if (minDays === 0) return "box sort age: updated today";
+        if (minDays === 1) return "box sort age: updated 1d ago";
+        return `box sort age: updated ${minDays}d ago`;
+      }
+
+      function renderChainBox(chainPrs, isStaleCard) {
+        const box = document.createElement("section");
+        box.className = "pr-chain-box";
+
+        const header = document.createElement("div");
+        header.className = "pr-chain-header";
+
+        const sharedStackNums = new Set(
+          chainPrs.map((pr) => asSafeInt(pr.stack_number)).filter((n) => n > 0)
+        );
+        const titleSpan = document.createElement("span");
+        if (sharedStackNums.size === 1) {
+          const [stackNum] = sharedStackNums;
+          titleSpan.textContent =
+            `PR stack #${stackNum} · ${chainPrs.length} PRs (parent → child)`;
+        } else {
+          titleSpan.textContent =
+            `Dependency chain · ${chainPrs.length} PRs (parent → child)`;
+        }
+        header.appendChild(titleSpan);
+
+        const latestText = formatChainLatestAge(chainPrs);
+        if (latestText) {
+          const metaSpan = document.createElement("span");
+          metaSpan.className = "pr-chain-meta";
+          metaSpan.textContent = latestText;
+          header.appendChild(metaSpan);
+        }
+
+        box.appendChild(header);
+        for (const pr of chainPrs) {
+          box.appendChild(renderPrCard(pr, isStaleCard));
+        }
+        return box;
+      }
+
+      function renderPrListItems(containerEl, items, isStaleCard) {
+        let idx = 0;
+        while (idx < items.length) {
+          const pr = items[idx];
+          const cid = asSafeInt(pr.chain_id);
+          if (cid > 0) {
+            let endIdx = idx + 1;
+            while (
+              endIdx < items.length &&
+              asSafeInt(items[endIdx].chain_id) === cid
+            ) {
+              endIdx += 1;
+            }
+            if (endIdx - idx >= 2) {
+              containerEl.appendChild(
+                renderChainBox(items.slice(idx, endIdx), isStaleCard)
+              );
+              idx = endIdx;
+              continue;
+            }
+          }
+          containerEl.appendChild(renderPrCard(pr, isStaleCard));
+          idx += 1;
+        }
+      }
+
       function renderQueue(data) {
         state.queue = data;
+        updateServerInfo(data);
         el.repoPill.textContent = data.repo || "bazel-contrib/rules_python";
         const prs = data.prs || [];
         const stale = data.stale_prs || [];
@@ -1123,7 +1327,9 @@
         if (skippedApproved > 0) hiddenBits.push(`${skippedApproved} approved`);
         const hiddenText = hiddenBits.length ? ` · Hidden: ${hiddenBits.join(", ")}` : "";
         const viewerText = data.viewer ? `Viewer: @${data.viewer}` : "";
-        el.summaryStrip.textContent = `${viewerText}${hiddenText} · Manual refresh & review only`;
+        const metaTarget = el.summaryMeta || el.summaryStrip;
+        metaTarget.textContent =
+          `${viewerText}${hiddenText} · Manual refresh & review only`;
 
         el.prList.replaceChildren();
         if (!prs.length) {
@@ -1134,18 +1340,14 @@
             : "No matching open pull requests in this queue.";
           el.prList.appendChild(empty);
         } else {
-          for (const pr of prs) {
-            el.prList.appendChild(renderPrCard(pr, false));
-          }
+          renderPrListItems(el.prList, prs, false);
         }
 
         el.staleList.replaceChildren();
         if (stale.length) {
           el.staleSummary.textContent =
             `Stale PRs (>${maxAgeDays}d since update): ${stale.length}`;
-          for (const pr of stale) {
-            el.staleList.appendChild(renderPrCard(pr, true));
-          }
+          renderPrListItems(el.staleList, stale, true);
           el.staleDrawer.classList.remove("hidden");
         } else {
           el.staleDrawer.classList.add("hidden");
@@ -1156,6 +1358,7 @@
         try {
           const cfg = await apiFetch("api/config");
           state.config = cfg;
+          updateServerInfo(cfg);
           populateFilterForm(cfg);
         } catch (err) {
           showError(`Failed to load config: ${err.message}`);
@@ -1497,6 +1700,7 @@
             body: JSON.stringify(payload),
           });
           state.config = res.config;
+          updateServerInfo(res.config);
           populateFilterForm(res.config);
           el.filtersPanel.classList.add("hidden");
           await loadQueue(true);
@@ -1517,6 +1721,27 @@
       el.statusDismissBtn.addEventListener("click", () => showStatus(""));
 
       document.addEventListener("DOMContentLoaded", async () => {
+        if (el.sortNote) {
+          el.sortNote.textContent = SORT_ORDER_TEXT;
+        }
+        if (el.serverPill) {
+          const initPid = Number.parseInt(el.serverPill.dataset.serverPid || "0", 10);
+          const initUp = Number.parseInt(
+            el.serverPill.dataset.serverUptime || "-1",
+            10
+          );
+          if (
+            Number.isInteger(initPid) &&
+            initPid > 0 &&
+            Number.isInteger(initUp) &&
+            initUp >= 0
+          ) {
+            state.serverPid = initPid;
+            state.serverUptimeBaseSec = initUp;
+            state.serverUptimeSyncedMs = Date.now();
+            renderServerInfo();
+          }
+        }
         await loadConfig();
         await loadQueue(false);
       });
