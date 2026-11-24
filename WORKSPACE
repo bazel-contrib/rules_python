@@ -61,14 +61,17 @@ load("@stardoc_maven//:defs.bzl", stardoc_pinned_maven_install = "pinned_maven_i
 
 stardoc_pinned_maven_install()
 
+load("//python:repositories.bzl", "py_repositories", "python_register_multi_toolchains")
+
+# This needs to be called before the internal setup, because the repository
+# rules that it loads use the dependencies defined here.
+py_repositories()
+
 load("//:internal_dev_setup.bzl", "rules_python_internal_setup")
 
 rules_python_internal_setup()
 
 load("@pythons_hub//:versions.bzl", "PYTHON_VERSIONS")
-load("//python:repositories.bzl", "py_repositories", "python_register_multi_toolchains")
-
-py_repositories()
 
 python_register_multi_toolchains(
     name = "python",
