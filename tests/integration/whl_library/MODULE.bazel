@@ -44,7 +44,6 @@ whl_archive(
     dep_template = DEP_TEMPLATE,
     filename = "requests-2.34.2-py3-none-any.whl",
     # https://pypi.org/project/requests/#requests-2.34.2-py3-none-any.whl
-    requirement = "requests",
     sha256 = "2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0",
     urls = [
         "https://files.pythonhosted.org/packages/a0/f4/c67b0b3f1b9245e8d266f0f112c500d50e5b4e83cb6f3b71b6528104182a/requests-2.34.2-py3-none-any.whl",
@@ -57,7 +56,6 @@ whl_deps_repo(
     name = "whl_deps_repo",
     dep_template = DEP_TEMPLATE,
     metadata_file = "@whl_archive//:metadata.json",
-    requirement = "requests",
 )
 
 wheels = use_extension("//:wheels.bzl", "wheels")

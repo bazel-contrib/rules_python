@@ -57,11 +57,101 @@ which can help you create a `py_binary` target for a particular console script e
 
 [whl_ep]: https://packaging.python.org/specifications/entry-points/
 
+{#extras}
 ## 'Extras' dependencies
 
-Any "extras" specified in the requirements lock file will be automatically added
-as transitive dependencies of the package. In the example above, you'd just put
-`requirement("useful_dep")` or `@pypi//useful_dep`.
+Any "extras" specified in the requirements lock file or the `uv.lock` file will
+be automatically added as transitive dependencies of the package. In the
+example above, you'd just put `requirement("useful_dep")` or
+`@pypi//useful_dep`.
+
+If you need only some of the extras, the hub repo also has a target for the
+package without any extras and a target for each extra used in the lock file.
+For example, if the lock file has `google-api-core[async_rest,grpc]`, then the
+hub has:
+
+```
+@pypi//google_api_core               # The package with the requested extras
+@pypi//google_api_core:[]            # The package without any extras
+@pypi//google_api_core:[async_rest]  # The package with the async_rest extra
+@pypi//google_api_core:[grpc]        # The package with the grpc extra
+```
+
+Extra names are normalized in the same way as the package names, so
+`async-rest` becomes `async_rest`.
+
+The `requirement` helper supports the same syntax:
+
+```starlark
+load("@pypi//:requirements.bzl", "requirement")
+
+py_library(
+    name = "my_lib",
+    deps = [
+        requirement("google-api-core[grpc]"),
+    ],
+)
+```
+
+There are no targets for combinations of extras, because each `[extra]` target
+already includes the package. The `requirement` helper accepts at most one
+extra. To request more than one extra, depend on the target of each extra:
+
+```starlark
+py_library(
+    name = "my_lib",
+    deps = [
+        ":other_lib",
+        "@pypi//google_api_core:[async_rest]",
+        "@pypi//google_api_core:[grpc]",
+        "@pypi//numpy",
+    ],
+)
+```
+
+If the lock file requests different extras for a package on different
+platforms, for example `foo[bar]` on Linux and `foo[baz]` on macOS, then
+`@pypi//foo` includes only the extras requested for the target platform and
+`@pypi//foo:[bar]` on macOS is the same as `@pypi//foo:[]`.
+
+The dependencies of the packages use the extras written in the wheel
+`METADATA`, so if `foo` depends on `bar[socks]`, then `@pypi//foo` depends on
+`@pypi//bar:[socks]`. If the extra is not in the lock file, then building
+`@pypi//foo` fails with a message asking you to add `bar[socks]` to the
+requirements or the lock file. For example, when compiling the requirements
+with `uv pip compile`, pass `--no-strip-extras` to keep the extras in the
+output.
+
+If the lock file requests an extra that the package does not provide, e.g.
+`foo[nope]`, then `@pypi//foo:[nope]` is the same as `@pypi//foo:[]`, because
+an unknown extra does not have any dependencies. A warning is printed when the
+package is loaded, e.g. `WARNING: foo 1.0 does not provide the extra 'nope'`,
+which is how `pip` handles the unknown extras. The extras that a package
+provides are the `Provides-Extra` fields of the wheel `METADATA` and the extras
+that are used in the markers of its requirements, e.g. `extra == "socks"`,
+because the old metadata versions do not have the `Provides-Extra` fields.
+
+In bzlmod the extras are not passed to the repositories of the wheels, so
+changing the extras in the lock file does not refetch them.
+
+When the `requirements.bzl` file is vendored, there is no hub repo and the
+labels returned by the `requirement` helper point to the repositories of the
+wheels. Their `pkg` targets include the extras from the lock file and they
+have the `[]` target and the `[extra]` targets for the extras used in the lock
+file and for all of the extras that the package provides. The dependencies
+between the packages use the `pkg` targets and ignore the extras from the wheel
+`METADATA` like before, so the extras need to be in the lock file.
+
+The `whl` targets, e.g. `@pypi//foo:whl`, do not use the extras and include
+only the wheels of the package and its dependencies without extras.
+
+The packages in a dependency group can also have only some of their extras in
+the group, see the [circular dependencies](./circular-dependencies) docs.
+
+:::{versionadded} VERSION_NEXT_FEATURE
+The `[]` and `[extra]` targets, the support for extras in the `requirement`
+helper and the `requirements` helper were added.
+:::
 
 ## Consuming Wheel Dists Directly
 

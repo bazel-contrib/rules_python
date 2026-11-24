@@ -27,8 +27,16 @@ For example if your whl depends on `numpy` and your Python package repo is named
         doc = "Name of the group, if any.",
     ),
     "requirement": attr.string(
-        mandatory = True,
-        doc = "Python requirement string describing the package to make available, if 'urls' or 'whl_file' is given, then this only needs to include foo[any_extras] as a bare minimum.",
+        doc = """
+Python requirement string describing the package, e.g. `foo[bar]==1.0`. Only the
+extras are used: the `pkg` target includes the dependencies of the requested
+extras and the `[<extra>]` targets are created for them even if the package does
+not provide them.
+
+The targets for all of the extras that the package provides are always created,
+so this is only needed if the extras are not selected by a hub repository, e.g.
+when using a vendored `requirements.bzl`.
+""",
     ),
 }
 
@@ -62,6 +70,7 @@ def _whl_deps_repo_impl(rctx):
         repo = rctx.attr.repo or (
             str(rctx.attr.metadata_file) if rctx.attr.metadata_file else None
         ),
+        provides_extra = getattr(metadata, "provides_extra", []),
         extras = requirement(rctx.attr.requirement).extras,
     )
     rctx.file("BUILD.bazel", build_file_contents)

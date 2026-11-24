@@ -139,6 +139,7 @@ def patch_and_extract_whl(rctx, *, whl_path, logger, sdist_filename = None, whl_
         group_deps = rctx.attr.group_deps,
         group_name = rctx.attr.group_name,
         namespace_package_files = namespace_package_files,
+        provides_extra = metadata.provides_extra,
         extras = requirement(rctx.attr.requirement).extras,
         entry_points = entry_points,
         purl = _to_purl(

@@ -25,6 +25,7 @@ _RENDER = {
     "extras": render.list,
     "group_deps": render.list,
     "include": str,
+    "provides_extra": render.list,
     "repo": lambda maybe_label: repr(str(maybe_label)),
     "requires_dist": render.list,
     "srcs_exclude": render.list,
@@ -57,6 +58,7 @@ def generate_whl_library_build_bazel(
         config_load,
         purl = None,
         requires_dist = [],
+        extras = [],
         **kwargs):
     """Generate a BUILD file for an unzipped Wheel
 
@@ -67,6 +69,7 @@ def generate_whl_library_build_bazel(
         purl: {type}`dict[str, str] | None` The fields of the PyPI PURL passed
             to {obj}`whl_package_metadata`.
         requires_dist: {type}`list[str]` The list of dependencies from the METADATA file.
+        extras: {type}`list[str]` The list of requested extras.
         **kwargs: Extra args serialized to be passed to the
             {obj}`whl_library_targets`.
 
@@ -86,15 +89,15 @@ def generate_whl_library_build_bazel(
         "pypi_version={}".format(metadata_version),
     ]
     kwargs["tags"] = tags
+    if extras:
+        kwargs["extras"] = extras
 
-    if not requires_dist:
-        # no deps, we can leave the extra loads out
-        pass
-    elif config_load:
+    if config_load:
+        # The config is also needed without any deps, because it has the
+        # extras that are requested from this package.
         loads.append("""load("{}", "{}")""".format(config_load, "packages"))
         kwargs["include"] = "packages"
-        kwargs["requires_dist"] = requires_dist
-    else:
+    if requires_dist:
         kwargs["requires_dist"] = requires_dist
 
     loads.extend([

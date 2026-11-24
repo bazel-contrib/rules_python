@@ -43,9 +43,19 @@ _REQUIREMENTS_BZL_TMPL = '''\
 """
 
 load("@rules_python//python:pip.bzl", "pip_utils")
+load("@rules_python//python/private/pypi:labels.bzl", "requirement_label")
 
 def requirement(name):
-    return "%%MACRO_TMPL%%".format(pip_utils.normalize_name(name), "pkg")
+    """Return the label for the package.
+
+    Args:
+        name: The name of the package with at most one extra, e.g. `foo`,
+            `foo[]` or `foo[bar]`.
+
+    Returns:
+        The label of the package.
+    """
+    return requirement_label("%%MACRO_TMPL%%", name)
 
 def whl_requirement(name):
     return "%%MACRO_TMPL%%".format(pip_utils.normalize_name(name), "whl")

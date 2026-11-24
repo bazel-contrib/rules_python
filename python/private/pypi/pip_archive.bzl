@@ -358,6 +358,11 @@ pip_archive_attrs = {
         "quiet",
         "timeout",
     ]
+} | {
+    "requirement": attr.string(
+        mandatory = True,
+        doc = "Python requirement string describing the package to download or build with `pip`. The extras are used in the same way as in {obj}`whl_archive`.",
+    ),
 }
 
 pip_archive = repository_rule(
