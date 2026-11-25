@@ -310,7 +310,7 @@ def apply_unified_patch(
 
             replacement, cur_old = _apply_hunk_ops(file_lines, match_pos, hunk_ops, eol)
             file_lines[match_pos:cur_old] = replacement
-            offset += len(replacement) - (cur_old - match_pos)
+            offset += (match_pos - preferred) + len(replacement) - (cur_old - match_pos)
             min_pos = match_pos + len(replacement)
             file_had_hunk = True
             applied_any = True

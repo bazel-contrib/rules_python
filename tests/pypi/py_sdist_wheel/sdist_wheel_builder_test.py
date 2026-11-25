@@ -11,6 +11,7 @@ import unittest
 import zipfile
 
 import sdist_wheel_builder
+import sdist_wheel_helpers
 
 from python.runfiles import runfiles
 from tests.pypi.py_sdist_wheel.make_test_sdist import write_sdist_tar
@@ -217,6 +218,42 @@ class SdistWheelBuilderTest(unittest.TestCase):
             )
             self.assertEqual(wheel_py, [])
             self.assertEqual(bin_dirs, [])
+
+    def test_apply_unified_patch_carries_relocated_hunk_offset(self):
+        patch_text = (
+            "--- a/sample.txt\n"
+            "+++ b/sample.txt\n"
+            "@@ -1 +1 @@\n"
+            "-a\n"
+            "+A\n"
+            "@@ -2,0 +3 @@\n"
+            "+X\n"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = pathlib.Path(tmp)
+            patch_file = tmp_path / "relocated.patch"
+            patch_file.write_text(patch_text, encoding="utf-8")
+
+            # First hunk relocates from line 1 to line 2; second zero-context
+            # hunk must carry that +1 shift and insert after 'b'.
+            relocated_dir = tmp_path / "relocated"
+            relocated_dir.mkdir()
+            (relocated_dir / "sample.txt").write_text("prefix\na\nb\n", encoding="utf-8")
+            sdist_wheel_helpers.apply_unified_patch(relocated_dir, patch_file, strip=1)
+            self.assertEqual(
+                (relocated_dir / "sample.txt").read_text(encoding="utf-8"),
+                "prefix\nA\nb\nX\n",
+            )
+
+            # When no relocation occurs, placement is unchanged.
+            exact_dir = tmp_path / "exact"
+            exact_dir.mkdir()
+            (exact_dir / "sample.txt").write_text("a\nb\n", encoding="utf-8")
+            sdist_wheel_helpers.apply_unified_patch(exact_dir, patch_file, strip=1)
+            self.assertEqual(
+                (exact_dir / "sample.txt").read_text(encoding="utf-8"),
+                "A\nb\nX\n",
+            )
 
 
 if __name__ == "__main__":
