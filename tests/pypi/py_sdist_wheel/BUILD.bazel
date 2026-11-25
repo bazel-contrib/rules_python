@@ -3,6 +3,11 @@ load("//python:py_binary.bzl", "py_binary")
 load("//python:py_library.bzl", "py_library")
 load("//python:py_test.bzl", "py_test")
 load("//python/private/pypi:py_sdist_wheel.bzl", "py_sdist_wheel")  # buildifier: disable=bzl-visibility
+load(":py_sdist_wheel_bzl_tests.bzl", "py_sdist_wheel_bzl_test_suite")
+
+py_sdist_wheel_bzl_test_suite(
+    name = "py_sdist_wheel_bzl_tests",
+)
 
 py_binary(
     name = "make_test_sdist",

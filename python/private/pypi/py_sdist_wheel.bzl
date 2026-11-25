@@ -340,10 +340,22 @@ def _py_sdist_wheel_impl(ctx):
         if tvi.major and tvi.minor != None:
             args.add("--target-python-version", "{}.{}".format(tvi.major, tvi.minor))
 
+    target_os = ""
+    target_cpu = ""
     for constraint_target, spec in ctx.attr._platform_constraints.items():
         if ctx.target_platform_has_constraint(constraint_target[platform_common.ConstraintValueInfo]):
             kind, _, val = spec.partition("=")
-            args.add("--target-" + kind, val)
+            if kind == "os":
+                target_os = val
+            elif kind == "cpu":
+                target_cpu = val
+    if not target_os or not target_cpu:
+        fail(
+            "py_sdist_wheel requires a target platform with recognized OS and CPU " +
+            "constraints (got os='{}', cpu='{}')".format(target_os, target_cpu),
+        )
+    args.add("--target-os", target_os)
+    args.add("--target-cpu", target_cpu)
 
     if ctx.attr.add_libdir_to_library_search_path:
         args.add("--add-libdir-to-library-search-path")
