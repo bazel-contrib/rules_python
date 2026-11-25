@@ -15,44 +15,68 @@
 """This module is for parsing PEP508 requires-dist and requirements lines.
 """
 
-load("//python/private:normalize_name.bzl", "normalize_name")
-
-_STRIP = ["(", " ", ">", "=", "<", "~", "!", "@"]
+load("@pypackaging.bzl", "pypackaging")
 
 def requirement(spec):
     """Parse a PEP508 requirement line
 
     Args:
-        spec: {type}`str` requirement line that will be parsed.
+        spec: {type}`str` requirement line that will be parsed. The options
+            of a `requirements.txt` line, e.g. `--hash`, are ignored.
 
     Returns:
         A struct with the information.
     """
-    spec = spec.strip()
-    requires, _, maybe_hashes = spec.partition(";")
 
-    version_start = requires.find("==")
-    version = None
-    if version_start != -1:
-        # Extract everything after '==' until the next space or end of the string
-        version, _, _ = requires[version_start + 2:].partition(" ")
+    spec = _strip_options(spec)
 
-        # Remove any trailing characters from the version string
-        version = version.strip(" ")
+    head, semicolon, marker = spec.partition(";")
+    name, at, url = head.partition("@")
+    if at:
+        # PEP 508 does not allow a version for the direct URL requirements,
+        # but `name==version @ url` has always been accepted here, so that
+        # the version of the distribution is known.
+        name, _, _ = name.partition("==")
 
-    marker, _, _ = maybe_hashes.partition("--hash")
-    requires, _, extras_unparsed = requires.partition("[")
-    extras_unparsed, _, _ = extras_unparsed.partition("]")
-    for char in _STRIP:
-        requires, _, _ = requires.partition(char)
-    extras = [normalize_name(e) for e in extras_unparsed.replace(" ", "").split(",") if e]
-    name = requires.strip(" ")
-    name = normalize_name(name)
+        # PEP 508 needs a whitespace between the URL and the marker, but
+        # `name @ url; marker` is accepted by `pip` in the requirements files.
+        spec = name + at + url.rstrip()
+        if semicolon:
+            spec += " ;" + marker
+
+    req = pypackaging.requirements.parse(spec)
 
     return struct(
-        name = name.replace("_", "-"),
-        name_ = name,
-        marker = marker.strip(" "),
-        extras = extras,
-        version = version,
+        # str: normalized PEP 503 package name using `-` separators.
+        name = req.name,
+        # str: normalized package name using `_` separators for Bazel labels.
+        name_ = req.name.replace("-", "_"),
+        # str: PEP 508 environment marker expression, or `""` if absent.
+        marker = req.marker_str or "",
+        # list[str]: sorted normalized extra names using `_` separators.
+        extras = [e.replace("-", "_") for e in req.extras],
     )
+
+def _strip_options(line):
+    """Remove the `requirements.txt` options, which are not a part of PEP 508.
+
+    The options, e.g. `--hash=sha256:...` or `-C key=value`, start with a `-`
+    that follows a whitespace. The quoted strings of the markers are skipped,
+    because they may have such text as well.
+    """
+    if " -" not in line and "\t-" not in line:
+        return line
+
+    quote = None
+    prev = ""
+    for i, c in enumerate(line.elems()):
+        if quote:
+            if c == quote:
+                quote = None
+        elif c in ("\"", "'"):
+            quote = c
+        elif c == "-" and prev in (" ", "\t"):
+            return line[:i]
+        prev = c
+
+    return line

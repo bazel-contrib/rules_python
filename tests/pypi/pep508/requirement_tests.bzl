@@ -20,24 +20,37 @@ _tests = []
 
 def _test_requirement_line_parsing(env):
     want = {
-        " name1[ foo ] ": ("name1", ["foo"], None, ""),
-        "Name[foo]": ("name", ["foo"], None, ""),
-        "name [fred,bar] @ http://foo.com ; python_version=='2.7'": ("name", ["fred", "bar"], None, "python_version=='2.7'"),
-        "name; (os_name=='a' or os_name=='b') and os_name=='c'": ("name", [], None, "(os_name=='a' or os_name=='b') and os_name=='c'"),
-        "name@http://foo.com": ("name", [], None, ""),
-        "name[ Foo123 ]": ("name", ["foo123"], None, ""),
-        "name[extra-one,extra-two.three]==1.0": ("name", ["extra_one", "extra_two_three"], "1.0", ""),
-        "name[extra]@http://foo.com": ("name", ["extra"], None, ""),
-        "name[foo]": ("name", ["foo"], None, ""),
-        "name[quux, strange];python_version<'2.7' and platform_version=='2'": ("name", ["quux", "strange"], None, "python_version<'2.7' and platform_version=='2'"),
-        "name_foo[bar]": ("name-foo", ["bar"], None, ""),
-        "name_foo[bar]==0.25": ("name-foo", ["bar"], "0.25", ""),
+        " name1[ foo ] ": ("name1", ["foo"], ""),
+        "Name[foo]": ("name", ["foo"], ""),
+        # No whitespace between the URL and the marker
+        "foo @ https://example.org/foo-1.0-py3-none-any.whl; os_name == 'a'": ("foo", [], "os_name == 'a'"),
+        "name [fred,bar] @ http://foo.com ; python_version=='2.7'": ("name", ["bar", "fred"], "python_version=='2.7'"),
+        "name; (os_name=='a' or os_name=='b') and os_name=='c'": ("name", [], "(os_name=='a' or os_name=='b') and os_name=='c'"),
+        "name@http://foo.com": ("name", [], ""),
+        "name[ Foo123 ]": ("name", ["foo123"], ""),
+        "name[extra-one,extra-two.three]==1.0": ("name", ["extra_one", "extra_two_three"], ""),
+        "name[extra]@http://foo.com": ("name", ["extra"], ""),
+        "name[foo]": ("name", ["foo"], ""),
+        "name[quux, strange];python_version<'2.7' and platform_version=='2'": ("name", ["quux", "strange"], "python_version<'2.7' and platform_version=='2'"),
+        "name_foo; platform_release != \"custom -x\"": ("name-foo", [], "platform_release != \"custom -x\""),
+        # The text that looks like an option in a quoted marker value is kept
+        "name_foo; platform_release != 'custom -- kernel' --hash=sha256:deadbeef": ("name-foo", [], "platform_release != 'custom -- kernel'"),
+        "name_foo==0.25\t--hash=sha256:deadbeef": ("name-foo", [], ""),
+        # The options may be indented with tabs in the requirements files
+        "name_foo==0.25 \t--hash=sha256:deadbeef": ("name-foo", [], ""),
+        # The short options, e.g. `-C` for `--config-settings`
+        "name_foo==0.25 -Ckey=value --hash=sha256:deadbeef": ("name-foo", [], ""),
+        "name_foo==0.25 ; os_name=='a' --hash=sha256:deadbeef": ("name-foo", [], "os_name=='a'"),
+        "name_foo[bar]": ("name-foo", ["bar"], ""),
+        "name_foo[bar]==0.25": ("name-foo", ["bar"], ""),
+        "name_foo[bar]==0.25 --hash=sha256:deadbeef": ("name-foo", ["bar"], ""),
+        "name_foo[bar]==0.25 @ http://foo.com ; os_name=='a'": ("name-foo", ["bar"], "os_name=='a'"),
     }
 
-    got = {
-        i: (parsed.name, parsed.extras, parsed.version, parsed.marker)
-        for i, parsed in {case: requirement(case) for case in want}.items()
-    }
+    got = {}
+    for case in want:
+        parsed = requirement(case)
+        got[case] = (parsed.name, parsed.extras, parsed.marker)
     env.expect.that_dict(got).contains_exactly(want)
 
 _tests.append(_test_requirement_line_parsing)
