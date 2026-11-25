@@ -1,7 +1,6 @@
 """Rule for building a Python wheel (.whl) from an sdist archive in a Bazel build action."""
 
 load("@rules_cc//cc:action_names.bzl", "ACTION_NAMES")
-load("@rules_cc//cc:find_cc_toolchain.bzl", "find_cc_toolchain")
 load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("//python/private:attr_builders.bzl", "attrb")
 load("//python/private:attributes.bzl", "REQUIRED_EXEC_GROUP_BUILDERS")
@@ -161,9 +160,6 @@ Note that git-formatted patches with `a/` and `b/` path prefixes require strip `
         cfg = "exec",
         default = _BOOTSTRAP_DEPS,
     ),
-    "_cc_toolchain": lambda: attrb.Label(
-        default = Label("@rules_cc//cc:current_cc_toolchain"),
-    ),
     "_platform_constraints": lambda: attrb.LabelKeyedStringDict(
         default = _PLATFORM_CONSTRAINTS,
     ),
@@ -280,7 +276,8 @@ def _py_sdist_wheel_impl(ctx):
     target_runtime = target_tc.py3_runtime if target_tc else None
     _validate_sdist_toolchains(exec_runtime, target_runtime)
 
-    cc_toolchain = find_cc_toolchain(ctx, mandatory = False)
+    cc_tc_info = ctx.toolchains[CC_TOOLCHAIN_TYPE]
+    cc_toolchain = cc_tc_info.cc if cc_tc_info else None
     py_cc_tc_info = ctx.toolchains[PY_CC_TOOLCHAIN_TYPE]
     py_cc_toolchain = py_cc_tc_info.py_cc_toolchain if py_cc_tc_info else None
 
