@@ -1,0 +1,83 @@
+load("@rules_python//python:py_binary.bzl", "py_binary")
+load("@rules_python//python:py_test.bzl", "py_test")
+load("@rules_python//python/private/pypi:py_sdist_wheel.bzl", "py_sdist_wheel")  # buildifier: disable=bzl-visibility
+load(":transitions.bzl", "cross_platform_files")
+
+platform(
+    name = "linux_aarch64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:aarch64",
+        "@llvm//constraints/libc:gnu.2.17",
+    ],
+)
+
+py_binary(
+    name = "make_test_sdists",
+    srcs = ["make_test_sdists.py"],
+)
+
+# Self-contained tiny setuptools C-extension sdist generated at build time.
+genrule(
+    name = "gen_tiny_setuptools_sdist",
+    outs = ["tiny_setuptools-0.1.0.tar.gz"],
+    cmd = "$(execpath :make_test_sdists) setuptools $@",
+    tools = [":make_test_sdists"],
+)
+
+py_sdist_wheel(
+    name = "tiny_setuptools.whldir",
+    sdist = ":gen_tiny_setuptools_sdist",
+)
+
+# Self-contained tiny meson-python C/C++17 sdist generated at build time.
+genrule(
+    name = "gen_tiny_meson_sdist",
+    outs = ["tiny_meson-0.1.0.tar.gz"],
+    cmd = "$(execpath :make_test_sdists) meson $@",
+    tools = [":make_test_sdists"],
+)
+
+py_sdist_wheel(
+    name = "tiny_meson.whldir",
+    build_deps = [
+        "@sdist_build_deps//meson_python:pkg",
+        "@sdist_build_deps//ninja:data",
+        "@sdist_build_deps//ninja:pkg",
+    ],
+    sdist = ":gen_tiny_meson_sdist",
+)
+
+# Cross-compiled setuptools C-extension wheel (linux_x86_64 -> linux_aarch64).
+cross_platform_files(
+    name = "tiny_setuptools_aarch64",
+    target_platform = ":linux_aarch64",
+    deps = [":tiny_setuptools.whldir"],
+)
+
+# Cross-compiled meson-python C/C++17 wheel (linux_x86_64 -> linux_aarch64).
+cross_platform_files(
+    name = "tiny_meson_aarch64",
+    target_platform = ":linux_aarch64",
+    deps = [":tiny_meson.whldir"],
+)
+
+py_test(
+    name = "native_sdist_test",
+    size = "small",
+    srcs = ["native_sdist_test.py"],
+    data = [
+        ":tiny_meson.whldir",
+        ":tiny_setuptools.whldir",
+    ],
+)
+
+py_test(
+    name = "cross_compile_test",
+    size = "small",
+    srcs = ["cross_compile_test.py"],
+    data = [
+        ":tiny_meson_aarch64",
+        ":tiny_setuptools_aarch64",
+    ],
+)

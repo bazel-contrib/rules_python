@@ -17,6 +17,7 @@ import argparse
 import importlib.metadata
 import os
 import platform
+import shlex
 import shutil
 import subprocess
 import sys
@@ -270,6 +271,49 @@ def _get_macos_sysroot_cflag() -> str:
     return ""
 
 
+_REDACTED_MACRO_PREFIXES = ("-D__DATE__=", "-D__TIMESTAMP__=", "-D__TIME__=")
+
+
+def _absolutize_flag(prefix: Path, flag: str) -> str:
+    """Turn execroot-relative paths in a compiler/linker flag into absolute paths."""
+    if flag.startswith("-Wl,"):
+        parts = flag[4:].split(",")
+        new_parts = []
+        for p in parts:
+            if p.startswith("-L") and len(p) > 2 and not os.path.isabs(p[2:]) and (prefix / p[2:]).exists():
+                new_parts.append("-L" + str((prefix / p[2:]).absolute()))
+            elif p and not p.startswith("-") and not os.path.isabs(p) and (prefix / p).exists():
+                new_parts.append(str((prefix / p).absolute()))
+            else:
+                new_parts.append(p)
+        return "-Wl," + ",".join(new_parts)
+    for opt in ("--sysroot=", "-resource-dir=", "-isystem", "-I", "-L", "-B"):
+        if flag.startswith(opt) and len(flag) > len(opt):
+            rel = flag[len(opt):]
+            if not os.path.isabs(rel) and (prefix / rel).exists():
+                return opt + str((prefix / rel).absolute())
+            return flag
+    if flag.startswith("-") and "=" in flag:
+        key, _, rel = flag.partition("=")
+        if "/" in rel and not os.path.isabs(rel) and (prefix / rel).exists():
+            return f"{key}={str((prefix / rel).absolute())}"
+    if flag and not flag.startswith("-") and not os.path.isabs(flag) and (prefix / flag).exists():
+        return str((prefix / flag).absolute())
+    return flag
+
+
+def _sanitize_compile_flags(flags: list[str], ldflags: list[str]) -> list[str]:
+    """Strip redacted date/time macros and prefer link-action resource-dir."""
+    out = [f for f in flags if not f.startswith(_REDACTED_MACRO_PREFIXES)]
+    link_resource_dirs = [f for f in ldflags if f.startswith("-resource-dir=")]
+    if not link_resource_dirs:
+        return out
+    return [
+        link_resource_dirs[-1] if f.startswith("-resource-dir=") else f
+        for f in out
+    ]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Build a wheel from an sdist archive into a TreeArtifact directory.",
@@ -329,17 +373,35 @@ def main() -> None:
     parser.add_argument("--target-os", default="")
     parser.add_argument("--target-cpu", default="")
     parser.add_argument("--target-python-version", default="")
+    parser.add_argument("--cc", default="")
+    parser.add_argument("--cxx", default="")
+    parser.add_argument("--ar", default="")
+    parser.add_argument("--cflag", action="append", dest="cflags", default=[])
+    parser.add_argument("--cxxflag", action="append", dest="cxxflags", default=[])
+    parser.add_argument("--ldflag", action="append", dest="ldflags", default=[])
+    parser.add_argument("--sysroot", default="")
+    parser.add_argument("--target-python-bin", default="")
+    parser.add_argument(
+        "--target-python-include",
+        action="append",
+        dest="target_python_includes",
+        default=[],
+    )
+    parser.add_argument("--target-soabi", default="")
+    parser.add_argument("--target-platform-tag", default="")
     args = parser.parse_args()
 
     host_os = _detect_host_os()
     host_cpu = _detect_host_cpu()
-    if (args.target_os and args.target_os != host_os) or (
-        args.target_cpu and args.target_cpu != host_cpu
-    ):
+    is_cross = bool(
+        (args.target_os and args.target_os != host_os) or
+        (args.target_cpu and args.target_cpu != host_cpu)
+    )
+    if is_cross and not args.cc:
         raise RuntimeError(
             f"Target platform (os={args.target_os or 'any'}, cpu={args.target_cpu or 'any'}) "
             f"differs from host (os={host_os}, cpu={host_cpu}); "
-            "the default sdist builder only builds for the host."
+            "but no cross-compiler (--cc) was provided."
         )
     host_py_ver = f"{sys.version_info.major}.{sys.version_info.minor}"
     if args.target_python_version and args.target_python_version != host_py_ver:
@@ -384,6 +446,11 @@ def main() -> None:
                 *(f"{bp}/site-packages" for bp in bootstrap_py_paths),
             ],
         )
+        for sp in site_pkg_imports:
+            sibling_bin = Path(sp).parent / "bin"
+            if sibling_bin.is_dir() and sibling_bin not in bin_dirs:
+                bin_dirs.append(sibling_bin)
+
         resolved_python_paths = [
             *wheel_py_paths,
             *site_pkg_imports,
@@ -406,6 +473,12 @@ def main() -> None:
                 (prefix / Path(raw_path)).absolute(),
                 strip=int(raw_strip),
             )
+
+        def _resolve_tool(prefix: Path, raw: str) -> str:
+            if not raw or os.path.isabs(raw):
+                return raw
+            candidate = (prefix / raw).absolute()
+            return str(candidate) if candidate.exists() else raw
 
         env = dict(orig_env)
         env["PYTHONHASHSEED"] = "0"
@@ -430,8 +503,47 @@ def main() -> None:
             else rust_remap_flag
         )
 
-        include_dir = sysconfig.get_path("include") or ""
+        cc_bin = _resolve_tool(prefix, args.cc)
+        cxx_bin = _resolve_tool(prefix, args.cxx)
+        ar_bin = _resolve_tool(prefix, args.ar)
+        if cc_bin:
+            env["CC"] = cc_bin
+            env["LDSHARED"] = f"{cc_bin} -shared"
+        if cxx_bin:
+            env["CXX"] = cxx_bin
+            env["LDCXXSHARED"] = f"{cxx_bin} -shared"
+        if ar_bin:
+            env["AR"] = ar_bin
+        if args.sysroot:
+            sysroot_abs = _resolve_tool(prefix, args.sysroot)
+            for var in ("CFLAGS", "CXXFLAGS", "LDFLAGS"):
+                env[var] = (
+                    f"{env[var]} --sysroot={sysroot_abs}"
+                    if env.get(var) else f"--sysroot={sysroot_abs}"
+                )
+
+        # Because pip wheel runs with cwd=sdist_root (`scratch_dir/src/...`)
+        # rather than the Bazel execroot, any execroot-relative paths
+        # (`external/...`) in those flags need to be turned into absolute
+        # paths (`prefix / ...`).
+        for var, raw_flags in (
+            ("CFLAGS", _sanitize_compile_flags(args.cflags, args.ldflags)),
+            ("CXXFLAGS", _sanitize_compile_flags(args.cxxflags, args.ldflags)),
+            ("LDFLAGS", [f for f in args.ldflags if f != "-shared"]),
+        ):
+            if raw_flags:
+                resolved = " ".join(shlex.quote(_absolutize_flag(prefix, f)) for f in raw_flags)
+                env[var] = f"{env[var]} {resolved}" if env.get(var) else resolved
+
         cppflags: list[str] = [env["CPPFLAGS"]] if env.get("CPPFLAGS") else []
+        if args.target_python_includes:
+            for inc in args.target_python_includes:
+                inc_abs = str((prefix / inc).absolute())
+                cppflags.append(f"-I{inc_abs}")
+        else:
+            include_dir = sysconfig.get_path("include") or ""
+            if include_dir and os.path.isdir(include_dir):
+                cppflags.append(f"-isystem {include_dir}")
         sysroot_flag = _get_macos_sysroot_cflag()
         if (
             sysroot_flag
@@ -439,8 +551,6 @@ def main() -> None:
             and "-isysroot" not in env.get("CFLAGS", "")
         ):
             cppflags.append(sysroot_flag)
-        if include_dir and os.path.isdir(include_dir):
-            cppflags.append(f"-isystem {include_dir}")
         if cppflags:
             env["CPPFLAGS"] = " ".join(cppflags)
 
@@ -463,6 +573,106 @@ def main() -> None:
             env[k] = v
 
         pip_config_args = [f"--config-settings={cs}" for cs in args.config_settings]
+
+        if is_cross:
+            if args.target_os == "linux" and args.target_cpu:
+                env["_PYTHON_HOST_PLATFORM"] = f"linux-{args.target_cpu}"
+            if args.target_soabi:
+                ext = ".pyd" if args.target_os == "windows" else ".so"
+                env["SETUPTOOLS_EXT_SUFFIX"] = f".{args.target_soabi}{ext}"
+            if args.target_python_bin and args.target_python_version:
+                target_py_root = (prefix / args.target_python_bin).absolute().parent.parent
+                target_stdlib = target_py_root / "lib" / f"python{args.target_python_version}"
+                sysconfig_files = sorted(target_stdlib.glob("_sysconfigdata_*.py"))
+                if sysconfig_files:
+                    sc_src = sysconfig_files[0]
+                    sc_dir = scratch_dir / "sysconfig"
+                    sc_dir.mkdir(parents=True, exist_ok=True)
+                    sc_text = sc_src.read_text(encoding="utf-8")
+                    if args.target_python_includes:
+                        inc_dirs = [
+                            str((prefix / inc).absolute())
+                            for inc in args.target_python_includes
+                            if (prefix / inc / "Python.h").is_file()
+                        ]
+                        inc_abs = (
+                            inc_dirs[0]
+                            if inc_dirs
+                            else str((prefix / args.target_python_includes[-1]).absolute())
+                        )
+                        sc_text += (
+                            f"\nbuild_time_vars['INCLUDEPY'] = {inc_abs!r}\n"
+                            f"build_time_vars['CONFINCLUDEPY'] = {inc_abs!r}\n"
+                        )
+                    (sc_dir / sc_src.name).write_text(sc_text, encoding="utf-8")
+                    env["_PYTHON_SYSCONFIGDATA_NAME"] = sc_src.stem
+                    resolved_python_paths.insert(0, str(sc_dir))
+                    env["PYTHONPATH"] = os.pathsep.join(resolved_python_paths)
+
+        pyproject_file = sdist_root / "pyproject.toml"
+        is_meson = (
+            pyproject_file.is_file()
+            and "mesonpy" in pyproject_file.read_text(errors="ignore")
+        )
+        if is_meson:
+            # Prevent Meson from querying host pkg-config (e.g.
+            # /usr/lib/.../python-3.13.pc -> -I/usr/include/python3.13)
+            # instead of Bazel's hermetic Python headers via sysconfig.
+            env.setdefault("PKG_CONFIG_LIBDIR", "")
+
+        if is_cross and is_meson:
+            cpu_family = {"x86_32": "x86"}.get(args.target_cpu, args.target_cpu)
+            cross_ini = scratch_dir / "meson-cross.ini"
+            cross_lines = [
+                "[binaries]",
+                f"c = {cc_bin!r}",
+            ]
+            if cxx_bin:
+                cross_lines.append(f"cpp = {cxx_bin!r}")
+            if ar_bin:
+                meson_ar = ar_bin
+                if "zig" in ar_bin or "zig" in cc_bin:
+                    # zig-specific adjustment: zig's ar doesn't support thin
+                    # archives.
+                    ar_wrapper = scratch_bin_dir / "ar-no-thin"
+                    ar_wrapper.write_text(
+                        f"#!/usr/bin/env python3\n"
+                        f"import os, sys\n"
+                        f"args = sys.argv[1:]\n"
+                        f"if args and not args[0].startswith('-'):\n"
+                        f"    args[0] = args[0].replace('T', '')\n"
+                        f"os.execv({ar_bin!r}, [{ar_bin!r}, *args])\n",
+                        encoding="utf-8",
+                    )
+                    os.chmod(ar_wrapper, 0o755)
+                    meson_ar = str(ar_wrapper)
+                cross_lines.append(f"ar = {meson_ar!r}")
+            cross_lines += [
+                "",
+                "[host_machine]",
+                f"system = {args.target_os!r}",
+                f"cpu_family = {cpu_family!r}",
+                f"cpu = {args.target_cpu!r}",
+                "endian = 'little'",
+            ]
+            longdouble_formats = {
+                ("linux", "aarch64"): "IEEE_QUAD_LE",
+                ("linux", "x86_64"): "INTEL_EXTENDED_16_BYTES_LE",
+                ("linux", "x86_32"): "INTEL_EXTENDED_12_BYTES_LE",
+                ("macos", "aarch64"): "IEEE_DOUBLE_LE",
+                ("macos", "x86_64"): "INTEL_EXTENDED_16_BYTES_LE",
+                ("windows", "aarch64"): "IEEE_DOUBLE_LE",
+                ("windows", "x86_64"): "IEEE_DOUBLE_LE",
+            }
+            ld_fmt = longdouble_formats.get((args.target_os, args.target_cpu))
+            if ld_fmt:
+                cross_lines += [
+                    "",
+                    "[properties]",
+                    f"longdouble_format = {ld_fmt!r}",
+                ]
+            cross_ini.write_text("\n".join(cross_lines) + "\n", encoding="utf-8")
+            pip_config_args.append(f"--config-settings=setup-args=--cross-file={cross_ini}")
 
         cmd = [
             build_python,
