@@ -753,6 +753,8 @@ bzl_library(
         "//python/private:rule_builders",
         "//python/private:toolchain_types",
         "//python/private:version",
+        "@rules_cc//cc:bzl_srcs",
+        "@rules_cc//cc/common",
     ],
 )
 

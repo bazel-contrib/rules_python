@@ -94,7 +94,7 @@ class SdistWheelBuilderTest(unittest.TestCase):
             )
             self.assertNotEqual(proc.returncode, 0)
             self.assertIn(
-                "the default sdist builder only builds for the host",
+                "no cross-compiler (--cc) was provided",
                 proc.stderr,
             )
 
@@ -217,6 +217,46 @@ class SdistWheelBuilderTest(unittest.TestCase):
             )
             self.assertEqual(wheel_py, [])
             self.assertEqual(bin_dirs, [])
+
+    def test_absolutize_and_sanitize_compile_flags(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prefix = pathlib.Path(tmp)
+            rel_dir = prefix / "external/llvm/resource"
+            rel_dir.mkdir(parents=True)
+            rel_sysroot = prefix / "external/sysroot"
+            rel_sysroot.mkdir(parents=True)
+
+            self.assertEqual(
+                sdist_wheel_builder._absolutize_flag(
+                    prefix, "-resource-dir=external/llvm/resource"
+                ),
+                f"-resource-dir={rel_dir.absolute()}",
+            )
+            self.assertEqual(
+                sdist_wheel_builder._absolutize_flag(
+                    prefix, "--sysroot=external/sysroot"
+                ),
+                f"--sysroot={rel_sysroot.absolute()}",
+            )
+            self.assertEqual(
+                sdist_wheel_builder._absolutize_flag(prefix, "-O2"),
+                "-O2",
+            )
+
+            sanitized = sdist_wheel_builder._sanitize_compile_flags(
+                [
+                    "-O2",
+                    '-D__DATE__="redacted"',
+                    '-D__TIMESTAMP__="redacted"',
+                    '-D__TIME__="redacted"',
+                    "-resource-dir=external/llvm/old",
+                ],
+                ["-resource-dir=external/llvm/resource"],
+            )
+            self.assertEqual(
+                sanitized,
+                ["-O2", "-resource-dir=external/llvm/resource"],
+            )
 
 
 if __name__ == "__main__":

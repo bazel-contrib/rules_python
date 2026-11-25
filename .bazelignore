@@ -24,6 +24,10 @@ examples/pip_parse/bazel-pip_parse
 examples/pip_parse_vendored/bazel-pip_parse_vendored
 examples/pip_repository_annotations/bazel-pip_repository_annotations
 examples/py_proto_library/bazel-py_proto_library
+examples/sdist_cross_compile/bazel-bin
+examples/sdist_cross_compile/bazel-out
+examples/sdist_cross_compile/bazel-sdist_cross_compile
+examples/sdist_cross_compile/bazel-testlogs
 gazelle/bazel-gazelle
 gazelle/examples/bzlmod_build_file_generation/bazel-bin
 gazelle/examples/bzlmod_build_file_generation/bazel-bzlmod_build_file_generation

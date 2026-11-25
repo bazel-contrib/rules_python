@@ -1,0 +1,50 @@
+module(
+    name = "example_sdist_cross_compile",
+    version = "0.0.0",
+)
+
+bazel_dep(name = "platforms", version = "1.1.0")
+bazel_dep(name = "rules_cc", version = "0.2.25")
+bazel_dep(name = "rules_python", version = "0.0.0")
+local_path_override(
+    module_name = "rules_python",
+    path = "../..",
+)
+
+# Hermetic LLVM C/C++ cross-compilation toolchain (linux_x86_64 -> linux_aarch64).
+bazel_dep(name = "llvm", version = "0.8.27")
+
+register_toolchains("@llvm//toolchain:all")
+
+# BuildBuddy RBE platform and Ubuntu 24.04 GCC toolchain (used with --config=buildbuddy_*).
+bazel_dep(name = "toolchains_buildbuddy", version = "0.0.4", dev_dependency = True)
+
+buildbuddy = use_extension(
+    "@toolchains_buildbuddy//:extensions.bzl",
+    "buildbuddy",
+    dev_dependency = True,
+)
+buildbuddy.platform(buildbuddy_container_image = "UBUNTU24_04_IMAGE")
+
+rules_python_config = use_extension(
+    "@rules_python//python/extensions:config.bzl",
+    "config",
+)
+rules_python_config.explicit_init_py(default = True)
+
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.defaults(
+    python_version = "3.13",
+)
+python.toolchain(
+    python_version = "3.13",
+)
+
+# Build-time dependencies (meson-python, meson, ninja) fetched as prebuilt wheels.
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+pip.parse(
+    hub_name = "sdist_build_deps",
+    python_version = "3.13",
+    requirements_lock = "//:requirements.txt",
+)
+use_repo(pip, "sdist_build_deps")

@@ -1,0 +1,16 @@
+common --enable_bzlmod
+common --enable_platform_specific_config
+common --incompatible_python_disallow_native_rules
+
+test --test_output=errors
+
+# BuildBuddy's managed cloud pool only has Linux executors; disable remote
+# execution on macOS and Windows while keeping BES and Remote Cache.
+common:macos --remote_executor=
+common:macos --extra_execution_platforms=
+common:windows --remote_executor=
+common:windows --extra_execution_platforms=
+
+import %workspace%/../../buildbuddy.bazelrc
+try-import %workspace%/../../user.bazelrc
+try-import %workspace%/user.bazelrc

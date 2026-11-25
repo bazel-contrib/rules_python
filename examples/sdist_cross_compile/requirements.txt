@@ -1,0 +1,5 @@
+# Build-time dependencies for meson-python sdists (prebuilt wheels from PyPI)
+meson-python==0.22.1
+meson==1.10.2
+pyproject-metadata==0.11.0
+ninja==1.13.0

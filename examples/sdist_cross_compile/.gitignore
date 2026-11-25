@@ -1,0 +1,4 @@
+user.bazelrc
+MODULE.bazel.lock
+bazel-remote-grpc.log
+bazel-execution-log.binpb.zst
