@@ -20,6 +20,10 @@ common:_buildbuddy_base --remote_cache_compression
 common:_buildbuddy_base --experimental_remote_cache_chunking
 # Automatically rewind and regenerate lost inputs when evicted from remote cache.
 common:_buildbuddy_base --rewind_lost_inputs
+# Avoid downloading remote build outputs and passing test artifacts during
+# `bazel test`; keeps `bazel build` at its `toplevel` default for callers that
+# inspect `bazel-bin/`.
+test:_buildbuddy_base --remote_download_minimal
 
 # Diagnostic logs for troubleshooting cache misses and gRPC errors
 common:_buildbuddy_base --remote_grpc_log=bazel-remote-grpc.log

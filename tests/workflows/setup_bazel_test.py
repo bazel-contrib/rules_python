@@ -113,6 +113,7 @@ def test_buildbuddy_bazelrc_cache_and_diagnostics():
         "common:_buildbuddy_base --remote_cache_compression",
         "common:_buildbuddy_base --experimental_remote_cache_chunking",
         "common:_buildbuddy_base --rewind_lost_inputs",
+        "test:_buildbuddy_base --remote_download_minimal",
         "common:_buildbuddy_base --remote_grpc_log=bazel-remote-grpc.log",
         (
             "common:_buildbuddy_base "
