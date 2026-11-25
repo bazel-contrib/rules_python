@@ -1,0 +1,5 @@
+--- a/sdist_demo/__init__.py
++++ b/sdist_demo/__init__.py
+@@ -1 +1 @@
+-GREETING = "unpatched_sdist"
++GREETING = "patched_before_build"
