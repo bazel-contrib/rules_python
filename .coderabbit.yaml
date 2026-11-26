@@ -23,3 +23,65 @@ knowledge_base:
       # keep-sorted start
       - ".agents/rules/*.md"
       # keep-sorted end
+
+issue_enrichment:
+  labeling:
+    # Apply the labels to issues instead of only suggesting them.
+    auto_apply_labels: true
+    # Topic and type labels, plus "need: repro". Priority, "help wanted",
+    # "Good first issue", and the labels used by automation are left to
+    # maintainers.
+    labeling_instructions:
+      # keep-sorted start block=yes
+      - label: "core-rules"
+        instructions: >-
+          The issue concerns the core py_binary, py_test, py_library, or
+          py_runtime rules: their attributes, providers, runfiles, bootstrap
+          and startup behavior, or the build flags that affect them.
+      - label: "gazelle"
+        instructions: >-
+          The issue concerns the Gazelle plugin under gazelle/, including
+          BUILD file generation, import resolution, the modules mapping, and
+          the Gazelle manifest.
+      - label: "need: repro"
+        instructions: >-
+          The issue reports a bug but gives neither a minimal reproduction
+          nor enough detail (versions, configuration, commands, and error
+          output) for a maintainer to reproduce it.
+      - label: "packaging"
+        instructions: >-
+          The issue concerns building or publishing distributions with
+          py_wheel, py_package, or the related packaging rules.
+      - label: "sphinxdocs"
+        instructions: >-
+          The issue concerns the sphinxdocs module under sphinxdocs/: its
+          Sphinx rules, Sphinx extensions, or Starlark doc generation. Do not
+          use it for errors or gaps in the rules_python documentation itself.
+      - label: "type: bug"
+        instructions: >-
+          The issue reports behavior that is broken, crashes, regressed, or
+          differs from what the documentation says.
+      - label: "type: bzlmod"
+        instructions: >-
+          The issue is specific to bzlmod: MODULE.bazel, the python or pip
+          module extensions, the module lockfile, or differences between
+          bzlmod and WORKSPACE behavior.
+      - label: "type: documentation"
+        instructions: >-
+          The issue asks to fix, clarify, or add documentation, examples, or
+          API reference text for rules_python.
+      - label: "type: feature request"
+        instructions: >-
+          The issue asks for new functionality or an enhancement to existing
+          behavior, rather than reporting something broken.
+      - label: "type: pip"
+        instructions: >-
+          The issue concerns PyPI integration: pip.parse, pip_parse,
+          whl_library, requirements or uv lock files, wheel selection, sdist
+          builds, or the generated pip hub repositories.
+      - label: "type: toolchain"
+        instructions: >-
+          The issue concerns the Python toolchains: hermetic runtime
+          downloads, toolchain registration and resolution, python_register_*
+          or python.toolchain, local toolchains, or cross-compilation.
+      # keep-sorted end
