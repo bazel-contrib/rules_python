@@ -16,6 +16,7 @@ load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("//python:py_binary.bzl", "py_binary")
 load("//python:py_library.bzl", "py_library")
 load("//python/private:distribution_filegroup.bzl", "distribution_filegroup")
+load("//python/private:py_interpreter_program.bzl", "py_interpreter_program")
 
 package(default_visibility = ["//:__subpackages__"])
 
@@ -24,6 +25,28 @@ licenses(["notice"])
 exports_files(
     srcs = ["namespace_pkg_tmpl.py"],
     visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "sdist_wheel_builder_helpers",
+    srcs = ["sdist_wheel_helpers.py"],
+)
+
+py_interpreter_program(
+    name = "sdist_wheel_builder",
+    interpreter_args = ["-B"],
+    main = "sdist_wheel_builder.py",
+    visibility = ["//visibility:public"],
+)
+
+py_library(
+    name = "sdist_wheel_builder_lib",
+    srcs = [
+        "sdist_wheel_builder.py",
+        "sdist_wheel_helpers.py",
+    ],
+    imports = ["."],
+    visibility = ["//tests:__subpackages__"],
 )
 
 py_library(
@@ -713,6 +736,24 @@ bzl_library(
 bzl_library(
     name = "platform",
     srcs = ["platform.bzl"],
+)
+
+bzl_library(
+    name = "py_sdist_wheel",
+    srcs = ["py_sdist_wheel.bzl"],
+    deps = [
+        "//python/private:attr_builders",
+        "//python/private:attributes",
+        "//python/private:builders",
+        "//python/private:common",
+        "//python/private:normalize_name",
+        "//python/private:py_info",
+        "//python/private:py_interpreter_program",
+        "//python/private:reexports",
+        "//python/private:rule_builders",
+        "//python/private:toolchain_types",
+        "//python/private:version",
+    ],
 )
 
 bzl_library(
