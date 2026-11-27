@@ -60,35 +60,6 @@ _print_verbose("coverage_from_deps:", _COVERAGE_FROM_DEPS)
 _print_verbose("interpreter_actual_path:", _INTERPRETER_ACTUAL_PATH)
 
 
-def _find_runfiles_root():
-    # Give preference to the environment variables
-    runfiles_dir = os.environ.get("RUNFILES_DIR", None)
-    if not runfiles_dir:
-        runfiles_manifest_file = os.environ.get("RUNFILES_MANIFEST_FILE", "")
-        if runfiles_manifest_file.endswith(
-            ".runfiles_manifest"
-        ) or runfiles_manifest_file.endswith(".runfiles/MANIFEST"):
-            runfiles_dir = runfiles_manifest_file[:-9]
-
-    # Be defensive: the runfiles dir should contain ourselves. If it doesn't,
-    # then it must not be our runfiles directory.
-    if runfiles_dir and os.path.exists(
-        os.path.join(runfiles_dir, _SELF_RUNFILES_RELATIVE_PATH)
-    ):
-        return runfiles_dir
-
-    num_dirs_to_runfiles_root = _SELF_RUNFILES_RELATIVE_PATH.count("/") + 1
-    runfiles_root = os.path.dirname(__file__)
-    for _ in range(num_dirs_to_runfiles_root):
-        runfiles_root = os.path.dirname(runfiles_root)
-    return runfiles_root
-
-
-_RUNFILES_ROOT = _find_runfiles_root()
-
-_print_verbose("runfiles_root:", _RUNFILES_ROOT)
-
-
 def _is_windows():
     return os.name == "nt"
 
@@ -116,6 +87,39 @@ def _get_windows_path_with_unc_prefix(path):
     if path.startswith("\\\\"):
         return extended_path_prefix + "UNC\\" + path[2:]
     return extended_path_prefix + path
+
+
+def _find_runfiles_root():
+    # Give preference to the environment variables
+    runfiles_dir = os.environ.get("RUNFILES_DIR", None)
+    if not runfiles_dir:
+        runfiles_manifest_file = os.environ.get("RUNFILES_MANIFEST_FILE", "")
+        if runfiles_manifest_file.endswith(
+            ".runfiles_manifest"
+        ) or runfiles_manifest_file.endswith(".runfiles/MANIFEST"):
+            runfiles_dir = runfiles_manifest_file[:-9]
+
+    # Be defensive: the runfiles dir should contain ourselves. If it doesn't,
+    # then it must not be our runfiles directory.
+    # Without the \\?\ prefix, exists() is False for paths that are too long,
+    # unless LongPathsEnabled is set.
+    if runfiles_dir and os.path.exists(
+        _get_windows_path_with_unc_prefix(
+            os.path.join(runfiles_dir, _SELF_RUNFILES_RELATIVE_PATH)
+        )
+    ):
+        return runfiles_dir
+
+    num_dirs_to_runfiles_root = _SELF_RUNFILES_RELATIVE_PATH.count("/") + 1
+    runfiles_root = os.path.dirname(__file__)
+    for _ in range(num_dirs_to_runfiles_root):
+        runfiles_root = os.path.dirname(runfiles_root)
+    return runfiles_root
+
+
+_RUNFILES_ROOT = _find_runfiles_root()
+
+_print_verbose("runfiles_root:", _RUNFILES_ROOT)
 
 
 def _install_windows_extension_finder():

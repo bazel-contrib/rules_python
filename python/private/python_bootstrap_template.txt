@@ -129,6 +129,10 @@ _symlinks_supported = not (
 # symlinks can't be created needs to clean up.
 _WINDOWS_FALLBACK_MIN_BUILD = 17763
 
+# Windows paths at least this long need the \\?\ prefix. It's 248 rather than
+# 260 (MAX_PATH) because that's the limit for creating directories.
+_MAX_PATH_WITHOUT_PREFIX = 248
+
 # Windows APIs can be picky about slashes depending on the context,
 # so convert to backslashes to avoid any issues.
 if IS_WINDOWS:
@@ -152,10 +156,11 @@ if IS_WINDOWS:
     if PYTHON_BINARY_ACTUAL and not has_windows_executable_extension(PYTHON_BINARY_ACTUAL):
         PYTHON_BINARY_ACTUAL = PYTHON_BINARY_ACTUAL + ".exe"
 
-def get_windows_path_with_unc_prefix(path):
+def get_windows_path_with_unc_prefix(path, always=False):
   """Adds UNC prefix after getting a normalized absolute Windows path.
 
-  No-op for non-Windows platforms or if running under python2.
+  No-op for non-Windows platforms or if running under python2. Unless `always`
+  is set, the prefix is only added to paths that are too long without it.
   """
   path = path.strip()
 
@@ -164,33 +169,53 @@ def get_windows_path_with_unc_prefix(path):
   if not IS_WINDOWS or sys.version_info[0] < 3:
     return path
 
-  # Starting in Windows 10, version 1607(OS build 14393), MAX_PATH limitations have been
-  # removed from common Win32 file and directory functions.
-  # Related doc: https://docs.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=cmd#enable-long-paths-in-windows-10-version-1607-and-later
-  import platform
-  win32_version = None
-  # Windows 2022 with Python 3.12.8 gives flakey errors, so try a couple times.
-  for _ in range(3):
-    try:
-      win32_version = platform.win32_ver()[1]
-      break
-    except (ValueError, KeyError):
-      pass
-  if win32_version and win32_version >= '10.0.14393':
-    return path
-
   # import sysconfig only now to maintain python 2.6 compatibility
   import sysconfig
   if sysconfig.get_platform() == 'mingw':
     return path
 
-  # Lets start the unicode fun
   unicode_prefix = '\\\\?\\'
   if path.startswith(unicode_prefix):
     return path
 
   # abspath returns a normalized absolute path
-  return unicode_prefix + abspath(path)
+  path = abspath(path)
+  # Only add the prefix when it's needed, so that other paths, e.g. __file__,
+  # are unchanged: the prefix turns off normalization, e.g. of "..".
+  if not always and len(path) < _MAX_PATH_WITHOUT_PREFIX:
+    return path
+  if _long_paths_enabled():
+    return path
+  if path.startswith('\\\\'):
+    return unicode_prefix + 'UNC\\' + path[2:]
+  return unicode_prefix + path
+
+def strip_windows_unc_prefix(path):
+  """Removes the prefix that get_windows_path_with_unc_prefix() adds."""
+  if path.startswith('\\\\?\\UNC\\'):
+    return '\\\\' + path[8:]
+  if path.startswith('\\\\?\\'):
+    return path[4:]
+  return path
+
+_long_paths_enabled_result = None
+
+def _long_paths_enabled():
+  """Returns whether LongPathsEnabled is set, which is off by default."""
+  global _long_paths_enabled_result
+  if _long_paths_enabled_result is None:
+    # Read the registry instead of calling RtlAreLongPathsEnabled() through
+    # ctypes. ctypes needs to load _ctypes.pyd, and LongPathsEnabled doesn't
+    # apply to loading DLLs, so the import fails when Python itself is under
+    # a long path, e.g. in runfiles. winreg is built in, so it always works.
+    # python.exe opts in to long paths, so the registry value is enough.
+    try:
+      import winreg
+      with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\FileSystem") as key:
+        _long_paths_enabled_result = bool(winreg.QueryValueEx(key, "LongPathsEnabled")[0])
+    except (ImportError, OSError):
+      _long_paths_enabled_result = False
+  return _long_paths_enabled_result
 
 def search_path(name):
   """Finds a file in a given search path."""
@@ -268,7 +293,8 @@ def find_runfiles_root(main_rel_path):
       runfiles_dir = runfiles_manifest_file[:-9]
   # Be defensive: the runfiles dir should contain our main entry point. If
   # it doesn't, then it must not be our runfiles directory.
-  if runfiles_dir and os.path.exists(join(runfiles_dir, main_rel_path)):
+  if runfiles_dir and os.path.exists(
+      get_windows_path_with_unc_prefix(join(runfiles_dir, main_rel_path))):
     return runfiles_dir
 
   # Clear RUNFILES_DIR & RUNFILES_MANIFEST_FILE since the runfiles dir was
@@ -356,19 +382,23 @@ def _symlink_tree(link_from, link_to):
     # Ensure the source is an absolute path to simplify symlinking
     link_to_root = abspath(link_to)
     link_from_root = abspath(link_from)
+    # Walk with the \\?\ prefix, or os.walk() skips directories with long
+    # paths, but only pass the prefix on for the paths that need it.
+    walk_root = get_windows_path_with_unc_prefix(link_to_root, always=True)
 
     # This is non-optimal because it recreates the entire
     # venv site-packages tree (as opposed to finding a highest-common
     # directory to symlink). But its easy and understandable.
-    for root, dirs, files in os.walk(link_to_root):
-        rel_path = os.path.relpath(root, link_to_root)
-        link_from_dir = join(link_from_root, rel_path)
+    for root, dirs, files in os.walk(walk_root):
+        rel_path = os.path.relpath(root, walk_root)
+        link_from_dir = get_windows_path_with_unc_prefix(
+            join(link_from_root, rel_path))
 
         if not os.path.exists(link_from_dir):
             os.makedirs(link_from_dir)
 
         for name in files:
-            link_to = join(root, name)
+            link_to = join(link_to_root, rel_path, name)
             link_from = join(link_from_dir, name)
             _symlink_exist_ok(from_=link_from, to=link_to)
 
@@ -416,6 +446,8 @@ print(site.getsitepackages(["{venv_src}"])[-1])
         venv_lib = join(venv, LIB_DIR_NAME)
         runfiles_venv_lib = join(runfiles_venv, LIB_DIR_NAME)
 
+    runfiles_venv_lib = get_windows_path_with_unc_prefix(runfiles_venv_lib)
+
     venv_bin = join(venv, BIN_DIR_NAME)
     try:
       os.mkdir(venv_bin)
@@ -435,7 +467,8 @@ print(site.getsitepackages(["{venv_src}"])[-1])
             target = join(python_home, f)
             _symlink_exist_ok(from_=venv_path, to=target)
 
-    runfiles_venv_bin = join(runfiles_venv, BIN_DIR_NAME)
+    runfiles_venv_bin = get_windows_path_with_unc_prefix(
+        join(runfiles_venv, BIN_DIR_NAME))
     # The runfiles bin directory may not exist if it's empty, e.g.
     # supports_build_time_venv=False and the interpreter is resolved at
     # runtime.
@@ -631,6 +664,8 @@ def _run_execv(python_program, argv, env):
 def _symlink_exist_ok(*, from_, to):
   """Creates a symlink, or on Windows, a hard link, junction or copy if that's not possible."""
   global _symlinks_supported
+  from_ = get_windows_path_with_unc_prefix(from_)
+  to = get_windows_path_with_unc_prefix(to)
   # On Windows, symlinks have to be told whether they're
   # pointing to a file or directory. Python is supposed to auto-detect
   # this, but in practice, this doesn't reliably happen.
@@ -679,7 +714,9 @@ def _link_dir_windows(from_, to):
   import _winapi
   try:
     # Junctions don't need any privileges, but need an absolute target.
-    _winapi.CreateJunction(to, from_)
+    # CreateJunction() adds its own prefix to the target, and the target
+    # doesn't have the MAX_PATH limit, so remove ours.
+    _winapi.CreateJunction(strip_windows_unc_prefix(to), from_)
   # Another process sharing RULES_PYTHON_EXTRACT_ROOT created it first.
   except FileExistsError:
     return

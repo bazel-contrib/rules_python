@@ -104,27 +104,53 @@ def get_windows_path_with_unc_prefix(path):
     if not IS_WINDOWS or sys.version_info[0] < 3:
         return path
 
-    # Starting in Windows 10, version 1607(OS build 14393), MAX_PATH limitations have been
-    # removed from common Win32 file and directory functions.
-    # Related doc: https://docs.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=cmd#enable-long-paths-in-windows-10-version-1607-and-later
-    import platform
-
-    if platform.win32_ver()[1] >= "10.0.14393":
-        return path
-
     # import sysconfig only now to maintain python 2.6 compatibility
     import sysconfig
 
     if sysconfig.get_platform() == "mingw":
         return path
 
-    # Lets start the unicode fun
     unicode_prefix = "\\\\?\\"
     if path.startswith(unicode_prefix):
         return path
 
     # os.path.abspath returns a normalized absolute path
-    return unicode_prefix + os.path.abspath(path)
+    path = os.path.abspath(path)
+    # Only add the prefix when it's needed, so that other paths, e.g. __file__,
+    # are unchanged: the prefix turns off normalization, e.g. of "..". 248 is
+    # the limit for directories.
+    if len(path) < 248 or _long_paths_enabled():
+        return path
+    if path.startswith("\\\\"):
+        return unicode_prefix + "UNC\\" + path[2:]
+    return unicode_prefix + path
+
+
+_long_paths_enabled_result = None
+
+
+def _long_paths_enabled():
+    """Returns whether LongPathsEnabled is set, which is off by default."""
+    global _long_paths_enabled_result
+    if _long_paths_enabled_result is None:
+        # Read the registry instead of calling RtlAreLongPathsEnabled() through
+        # ctypes. ctypes needs to load _ctypes.pyd, and LongPathsEnabled doesn't
+        # apply to loading DLLs, so the import fails when Python itself is under
+        # a long path, e.g. in runfiles. winreg is built in, so it always works.
+        # python.exe opts in to long paths, so the registry value is enough.
+        try:
+            import winreg
+
+            with winreg.OpenKey(
+                winreg.HKEY_LOCAL_MACHINE,
+                r"SYSTEM\CurrentControlSet\Control\FileSystem",
+            ) as key:
+                _long_paths_enabled_result = bool(
+                    winreg.QueryValueEx(key, "LongPathsEnabled")[0]
+                )
+        except (ImportError, OSError):
+            _long_paths_enabled_result = False
+    return _long_paths_enabled_result
 
 
 def search_path(name):
