@@ -25,7 +25,7 @@ load(
 )
 load(":coverage_deps.bzl", "coverage_dep")
 load(":full_version.bzl", "full_version")
-load(":pbs_manifest.bzl", "split_pbs_distribution")
+load(":pbs_manifest.bzl", "PBS_DISTRIBUTION_SUFFIXES", "split_pbs_distribution")
 load(":python_repository.bzl", "python_repository")
 load(
     ":toolchains_repo.bzl",
@@ -114,13 +114,15 @@ def python_register_toolchains(
     impl_repos = {}
     for platform, platform_info in platforms.items():
         version_info = tool_versions[python_version]
-        base_platform, _ = split_pbs_distribution(platform)
+        base_platform, suffix = split_pbs_distribution(platform)
 
         # A runtime for a python-build-standalone distribution that isn't
         # available for this version and platform falls back to the archive of
-        # the plain platform key.
+        # the plain platform key. The debug build has no fallback: a non-debug
+        # runtime is not a substitute for it.
         source_platform = platform
-        if platform not in version_info["sha256"]:
+        is_debug = suffix == PBS_DISTRIBUTION_SUFFIXES["debug"]
+        if platform not in version_info["sha256"] and not is_debug:
             source_platform = base_platform
         sha256 = version_info["sha256"].get(source_platform, None)
         if not sha256:
