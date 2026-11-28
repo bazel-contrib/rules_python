@@ -73,7 +73,7 @@ def _pypi_cache_setdefault(self, key, parsed_result):
 
     # Filter the packages to only what is needed before writing to the facts cache
     filtered = _filter_packages(parsed_result, versions)
-    return self._facts.setdefault(index_url, filtered)
+    return self._facts.setdefault(index_url, filtered, versions)
 
 def _pypi_cache_get(self, key):
     """Return the parsed result from the cache.
@@ -101,7 +101,7 @@ def _pypi_cache_get(self, key):
         # We might be using something from memory that is not yet stored in facts (e.g. we processed
         # the requirements.txt for one Python version and the deps got cached, but new python
         # version means different deps, which may add extras.
-        self._facts.setdefault(index_url, cached)
+        self._facts.setdefault(index_url, cached, versions)
 
     return cached
 
@@ -204,7 +204,7 @@ def facts_cache(known_facts, facts_version = _FACT_VERSION):
             versions,
             facts_version,
         ),
-        setdefault = lambda url, value: _store_facts(facts, facts_version, url, value),
+        setdefault = lambda url, value, versions = None: _store_facts(facts, facts_version, url, value, versions),
         known_facts = known_facts,
         facts = facts,
     )
@@ -217,6 +217,7 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
     if type(requested_versions) == "dict":
         result = {}
         for pkg in requested_versions.keys():
+            # An empty URL means that the package is not on this index.
             url = known_facts.get(_index_fact_key(pkg, index_url))
             if url == None:
                 # If the results are incomplete, return None, so that we can
@@ -271,7 +272,12 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
             yanked = yanked,
         ))
 
-    if not known_sources:
+    missing_key = _missing_fact_key(index_url)
+    missing = [v for v in known_facts.get(missing_key, []) if v in requested_versions]
+    for version in missing:
+        retrieved_versions[version] = True
+
+    if not retrieved_versions:
         # We found nothing in facts
         return None
 
@@ -284,7 +290,10 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
     # entries are copied as-is instead of re-encoding the decoded structs, so
     # that a no-op run leaves the lockfile unchanged.
     facts["fact_version"] = facts_version
-    facts.setdefault(fact_key, {}).update(used_entries)
+    if used_entries:
+        facts.setdefault(fact_key, {}).update(used_entries)
+    if missing:
+        _store_missing_versions(facts, missing_key, missing)
 
     return struct(
         whls = known_sources.get("whls", {}),
@@ -295,7 +304,7 @@ def _get_from_facts(facts, known_facts, index_url, requested_versions, facts_ver
         },
     )
 
-def _store_facts(facts, fact_version, index_url, value):
+def _store_facts(facts, fact_version, index_url, value, versions = None):
     """Store values as facts in the lock file.
 
     The main idea is to ensure that the lock file is small and it is only
@@ -317,11 +326,48 @@ def _store_facts(facts, fact_version, index_url, value):
       "<distribution>@<root_url>": {
         "<dist url>": "<encoded entry>",  # see `_encode_dist_entry`
       },
+
+      # The requested versions that the package page does not have, e.g.
+      # `foo@https://pypi.org/simple#missing`
+      "<distribution>@<root_url>#missing": ["<version>", ...],
     }
     ```
 
+    A requested package that is not on an index page is stored with an empty
+    URL, and the requested versions that a package page does not have are
+    stored as missing. This keeps the facts complete for every request, so
+    that an extra index that hosts only some of the packages or versions does
+    not need to be called again on every evaluation.
+
     Adding a new field to the encoded entry requires bumping `_FACT_VERSION`.
+
+    Args:
+        facts: {type}`dict` The facts to write to.
+        fact_version: {type}`str` The facts schema version.
+        index_url: {type}`str` The index URL or the package page URL.
+        value: The filtered result to store, can be `None`.
+        versions: The requested packages for an index page (a dict) or the
+            requested versions for a package page (a list).
+
+    Returns:
+        The `value`.
     """
+    if type(versions) == "dict":
+        for pkg in versions:
+            if pkg not in (value or {}):
+                facts["fact_version"] = fact_version
+                facts[_index_fact_key(pkg, index_url)] = ""
+    elif versions:
+        found = {}
+        if value:
+            for dists in (value.sdists, value.whls):
+                for d in dists.values():
+                    found[d.version] = True
+        missing = [v for v in versions if v not in found]
+        if missing:
+            facts["fact_version"] = fact_version
+            _store_missing_versions(facts, _missing_fact_key(index_url), missing)
+
     if not value:
         return value
 
@@ -379,6 +425,24 @@ def _dist_fact_key(index_url):
     """
     root_url, _, distribution = index_url.rstrip("/").rpartition("/")
     return distribution + "@" + root_url.rstrip("/")
+
+def _missing_fact_key(index_url):
+    """Return the fact key for the versions that a package page does not have.
+
+    Args:
+        index_url: {type}`str` The URL of the package page in the index, e.g.
+            `https://pypi.org/simple/foo/`.
+
+    Returns:
+        {type}`str` The fact key, e.g. `foo@https://pypi.org/simple#missing`.
+    """
+    return _dist_fact_key(index_url) + "#missing"
+
+def _store_missing_versions(facts, missing_key, versions):
+    """Add `versions` to the sorted list of missing versions in `facts`."""
+    known = {v: None for v in facts.get(missing_key, [])}
+    known.update({v: None for v in versions})
+    facts[missing_key] = sorted(known.keys())
 
 def _encode_dist_entry(digest, dist):
     """Encode a distribution into a compact string.
