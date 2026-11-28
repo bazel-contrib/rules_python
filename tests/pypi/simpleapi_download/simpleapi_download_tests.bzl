@@ -90,6 +90,40 @@ def _test_simple(env):
 
 _tests.append(_test_simple)
 
+def _test_index_order_does_not_depend_on_cache(env):
+    """The first index in the declared order wins, even if a later one is cached."""
+
+    def read_simpleapi(ctx, url, versions, attr, cache, get_auth, block, parse_index):
+        _ = ctx, attr, cache, get_auth, versions, block  # buildifier: disable=unused-variable
+        if parse_index:
+            result = struct(success = True, output = {"foo": "/foo/"})
+
+            # The default index is a cache hit and the extra index is a download
+            return result if "main" in url else struct(wait = lambda: result)
+
+        return struct(
+            output = struct(sdists = {}, whls = {}, hashes_by_version = {}),
+            success = True,
+        )
+
+    contents = simpleapi_download(
+        ctx = mocks.mctx(),
+        attr = struct(
+            index_url_overrides = {},
+            index_url = "https://main.com",
+            extra_index_urls = ["https://extra.com"],
+            sources = {"foo": None},
+            envsubst = [],
+        ),
+        cache = pypi_cache(),
+        parallel_download = True,
+        read_simpleapi = read_simpleapi,
+    )
+
+    env.expect.that_str(contents["foo"].index_url).equals("https://extra.com/foo/")
+
+_tests.append(_test_index_order_does_not_depend_on_cache)
+
 def _test_index_overrides(env):
     calls = []
     fails = []
